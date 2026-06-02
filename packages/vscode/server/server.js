@@ -24272,6 +24272,18 @@ var require_print = __commonJS({
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.printProgram = printProgram;
     exports2.format = format2;
+    var INDENT = "    ";
+    var IndentWriter = class {
+      constructor() {
+        this.lines = [];
+      }
+      line(level, text) {
+        this.lines.push(INDENT.repeat(Math.max(0, level)) + text);
+      }
+      toString() {
+        return this.lines.join("\n");
+      }
+    };
     function printType(type) {
       switch (type.type) {
         case "basic_type":
@@ -24296,6 +24308,41 @@ var require_print = __commonJS({
           return type.variants.map(printType).join(" | ");
         default:
           return "given";
+      }
+    }
+    function printTypeDeclEntry(writer, level, decl) {
+      const inherit = decl.parentType ? ` / ${decl.parentType.module ? `${decl.parentType.module}.` : ""}${decl.parentType.name}` : "";
+      const expr = decl.typeExpr;
+      if (expr.type === "composed_type") {
+        writer.line(level, `${decl.name}${inherit} = composed of`);
+        for (const field of expr.fields) {
+          writer.line(level + 1, `${field.name}: ${printType(field.typeExpr)}`);
+        }
+        writer.line(level, "end;");
+      } else {
+        writer.line(level, `${decl.name}${inherit} = ${printType(expr)};`);
+      }
+    }
+    function relKindToSymbol(kind) {
+      switch (kind) {
+        case "eq":
+          return "=";
+        case "neq":
+          return "<>";
+        case "lt":
+          return "<";
+        case "le":
+          return "<=";
+        case "gt":
+          return ">";
+        case "ge":
+          return ">=";
+        case "inset":
+          return "inset";
+        case "notin":
+          return "notin";
+        default:
+          return kind;
       }
     }
     function printExpr(expr) {
@@ -24327,7 +24374,7 @@ var require_print = __commonJS({
         case "index_access":
           return `${printExpr(expr.object)}(${printExpr(expr.index)})`;
         case "relational_expr":
-          return `${printExpr(expr.left)} ${expr.kind === "eq" ? "=" : expr.kind === "neq" ? "<>" : expr.kind} ${printExpr(expr.right)}`;
+          return `${printExpr(expr.left)} ${relKindToSymbol(expr.kind)} ${printExpr(expr.right)}`;
         case "set_expr":
           if (expr.kind === "empty")
             return "{}";
@@ -24396,95 +24443,120 @@ var require_print = __commonJS({
       const t = n.type;
       return !["informal_text", "not_predicate", "paren_predicate", "quantified"].includes(t);
     }
-    function printFsf(fsf) {
-      const parts = fsf.scenarios.map((s) => `${printPredicate(s.test)} && ${printPredicate(s.def)}`);
+    function printFsfLines(fsf) {
+      const lines = fsf.scenarios.map((s) => `${printPredicate(s.test)} && ${printPredicate(s.def)}`);
       if (fsf.others) {
-        parts.push(`others && ${printPredicate(fsf.others)}`);
+        lines.push(`others && ${printPredicate(fsf.others)}`);
       }
-      return parts.join(" || ");
+      return lines;
+    }
+    function printFsf(writer, level, fsf) {
+      writer.line(level, "FSF :");
+      const lines = printFsfLines(fsf);
+      for (let i = 0; i < lines.length; i++) {
+        const suffix = i < lines.length - 1 ? " ||" : "";
+        writer.line(level, lines[i] + suffix);
+      }
     }
     function printParams(groups) {
       return groups.map((g) => `${g.names.join(",")}: ${printType(g.typeExpr)}`).join(", ");
     }
-    function printExt(ext) {
-      return ext.map((e) => `${e.access} ${e.name}${e.typeExpr ? `: ${printType(e.typeExpr)}` : ""}`).join("\n");
+    function printExtLine(ext) {
+      return `${ext.access} ${ext.name}${ext.typeExpr ? `: ${printType(ext.typeExpr)}` : ""}`;
     }
-    function printProcess(p) {
+    function printProcess(writer, level, p) {
       if (p.alias) {
-        return `process ${p.name} equal ${p.alias.module ? `${p.alias.module}.` : ""}${p.alias.name} end_process`;
+        writer.line(level, `process ${p.name} equal ${p.alias.module ? `${p.alias.module}.` : ""}${p.alias.name} end_process`);
+        return;
       }
-      let s = `process ${p.name}`;
-      if (p.inputs.length)
-        s += ` (${printParams(p.inputs)})`;
+      let header = `process ${p.name} (${printParams(p.inputs)})`;
       if (p.outputs.length)
-        s += ` ${printParams(p.outputs)}`;
+        header += ` ${printParams(p.outputs)}`;
+      writer.line(level, header);
+      const bodyLevel = level + 1;
       if (p.body) {
-        if (p.body.ext.length)
-          s += `
-ext
-${printExt(p.body.ext)}`;
-        if (p.body.fsf)
-          s += `
-FSF :
-${printFsf(p.body.fsf)}`;
-        if (p.body.decomposition)
-          s += `
-decom: ${p.body.decomposition}`;
-        if (p.body.comment)
-          s += `
-comment: ${p.body.comment}`;
+        if (p.body.ext.length) {
+          writer.line(bodyLevel, "ext");
+          for (const ext of p.body.ext) {
+            writer.line(bodyLevel, printExtLine(ext));
+          }
+        }
+        if (p.body.fsf) {
+          printFsf(writer, bodyLevel, p.body.fsf);
+        }
+        if (p.body.decomposition) {
+          writer.line(bodyLevel, `decom: ${p.body.decomposition}`);
+        }
+        if (p.body.comment) {
+          writer.line(bodyLevel, `comment: ${p.body.comment}`);
+        }
       }
-      s += "\nend_process";
-      return s;
+      writer.line(level, "end_process");
     }
-    function printFunction(f) {
-      let s = `function ${f.name}(${printParams(f.params)}): ${printType(f.returnType)}`;
-      if (f.fsf)
-        s += `
-${printFsf(f.fsf)}`;
-      if (f.isUndefined)
-        s += "\n== undefined";
-      else if (f.body)
-        s += `
-== ${printExpr(f.body)}`;
-      s += "\nend_function";
-      return s;
+    function printFunction(writer, level, f) {
+      writer.line(level, `function ${f.name}(${printParams(f.params)}): ${printType(f.returnType)}`);
+      const bodyLevel = level + 1;
+      if (f.fsf) {
+        printFsf(writer, bodyLevel, f.fsf);
+      }
+      if (f.isUndefined) {
+        writer.line(bodyLevel, "== undefined");
+      } else if (f.body) {
+        writer.line(bodyLevel, `== ${printExpr(f.body)}`);
+      }
+      writer.line(level, "end_function");
     }
-    function printModule(mod) {
-      let header;
+    function printModule(writer, level, mod) {
       if (mod.isSystem) {
-        header = `module SYSTEM_${mod.name};`;
+        writer.line(level, `module SYSTEM_${mod.name};`);
+      } else if (mod.parent) {
+        writer.line(level, `module ${mod.name} / ${mod.parent.name};`);
       } else {
-        header = mod.parent ? `module ${mod.name} / ${mod.parent.name};` : `module ${mod.name};`;
+        writer.line(level, `module ${mod.name};`);
       }
-      const sections = [header];
+      const itemLevel = level + 1;
       if (mod.consts.length) {
-        sections.push("const", mod.consts.map((c) => `${c.name} = ${printExpr(c.value)}`).join(";\n"));
+        writer.line(level, "const");
+        for (const c of mod.consts) {
+          writer.line(itemLevel, `${c.name} = ${printExpr(c.value)};`);
+        }
       }
       if (mod.types.length) {
-        sections.push("type", mod.types.map((t) => {
-          const inherit = t.parentType ? ` / ${t.parentType.module ? `${t.parentType.module}.` : ""}${t.parentType.name}` : "";
-          return `${t.name}${inherit} = ${printType(t.typeExpr)}`;
-        }).join(";\n"));
+        writer.line(level, "type");
+        for (const t of mod.types) {
+          printTypeDeclEntry(writer, itemLevel, t);
+        }
       }
       if (mod.vars.length) {
-        sections.push("var", mod.vars.map((v) => `${v.variable.name}: ${printType(v.typeExpr)}`).join(";\n"));
+        writer.line(level, "var");
+        for (const v of mod.vars) {
+          writer.line(itemLevel, `${v.variable.name}: ${printType(v.typeExpr)};`);
+        }
       }
       if (mod.invariants.length) {
-        sections.push("inv", mod.invariants.map((i) => printPredicate(i.condition)).join(";\n"));
+        writer.line(level, "inv");
+        for (const inv of mod.invariants) {
+          writer.line(itemLevel, `${printPredicate(inv.condition)};`);
+        }
       }
-      const procs = mod.processes.map(printProcess).join(";\n");
-      const funcs = mod.functions.map(printFunction).join(";\n");
-      if (procs)
-        sections.push(procs);
-      if (funcs)
-        sections.push(funcs);
-      sections.push("end_module");
-      return sections.join("\n");
+      for (const p of mod.processes) {
+        printProcess(writer, level, p);
+      }
+      for (const f of mod.functions) {
+        printFunction(writer, level, f);
+      }
+      writer.line(level, "end_module");
     }
     function printProgram(ast) {
-      const text = ast.modules.map(printModule).join(";\n");
-      return ast.trailingDot ? `${text}.` : text;
+      const moduleTexts = ast.modules.map((mod) => {
+        const writer = new IndentWriter();
+        printModule(writer, 0, mod);
+        return writer.toString();
+      });
+      let text = moduleTexts.join(";\n");
+      if (ast.trailingDot)
+        text += ".";
+      return text;
     }
     function format2(source, parseFn) {
       const { ast } = parseFn(source);

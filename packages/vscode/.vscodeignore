@@ -4,3 +4,7 @@ src/**
 !syntaxes/**
 tsconfig.json
 *.map
+scripts/**
+*.zip
+vsix-check/**
+**/*.vsix

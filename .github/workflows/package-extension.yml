@@ -1,4 +1,4 @@
-name: Publish VS Code extension
+name: Package VS Code extension (VSIX)
 
 on:
   workflow_dispatch:
@@ -17,7 +17,7 @@ on:
       - 'extension-v*'
 
 jobs:
-  publish:
+  package:
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -58,12 +58,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Verify parser dependency is on npm
-        run: |
-          PARSER_RANGE=$(node -p "require('./packages/language-server/package.json').dependencies['@agile-sofl/parser'] || ''")
-          echo "Language server parser dependency: $PARSER_RANGE"
-          npm view @agile-sofl/parser version || echo "Warning: @agile-sofl/parser not yet on npm; bundle uses workspace build"
-
       - name: Build parser
         run: npm run build
 
@@ -77,11 +71,6 @@ jobs:
 
       - name: Package VSIX
         run: npm run package --prefix packages/vscode
-
-      - name: Publish to Marketplace
-        run: npm run publish:marketplace --prefix packages/vscode
-        env:
-          VSCE_PAT: ${{ secrets.VSCE_PAT }}
 
       - name: Upload VSIX to GitHub Release
         uses: softprops/action-gh-release@v2

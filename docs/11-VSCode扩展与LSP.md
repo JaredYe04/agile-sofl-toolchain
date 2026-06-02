@@ -2,29 +2,37 @@
 
 本文档说明 **两条独立产品线** 的布局、安装方式、功能与本地开发/发版流程。
 
+> **分发说明**：扩展**不上架** VS Code Marketplace，仅供团队/私有场景通过 **`.vsix` 手动安装**或 GitHub Release 获取。
+
 ## 1. 两条产品线
 
 | 产品线 | 位置 | 版本号 | 发布渠道 | CI/CD |
 |--------|------|--------|----------|-------|
 | **解析器库** | 仓库根目录 `src/` | 根 `package.json` | **npm** `@agile-sofl/parser` | `ci.yml` + `publish.yml` |
-| **编辑器栈** | `packages/language-server` + `packages/vscode` | `packages/vscode/package.json` | **VS Code Marketplace** + GitHub Release `.vsix` | `ci-editor.yml` + `publish-extension.yml` |
+| **编辑器栈** | `packages/language-server` + `packages/vscode` | `packages/vscode/package.json` | **私有 `.vsix`**（GitHub Release / 本地打包） | `ci-editor.yml` + `package-extension.yml` |
 
 - Parser 发版**不触发**扩展发版；扩展发版**不触发** parser npm 发版。
-- 扩展运行时 bundled 的 Language Server 依赖 `@agile-sofl/parser`（发版时 semver 指向 npm 已发布版本；本地可用 workspace `file:../..` 联调）。
-- Language Server **不单独发 npm**（首期）：esbuild 打包进 `packages/vscode/server/server.js`，随 `.vsix` 分发。
+- 扩展运行时 bundled 的 Language Server 依赖 `@agile-sofl/parser`（CI 打包时使用 workspace 构建；本地可用 `file:../..` 联调）。
+- Language Server **不单独发 npm**：esbuild 打包进 `packages/vscode/server/server.js`，随 `.vsix` 分发。
 
 ## 2. 安装（用户）
 
-### VS Code / Cursor — Marketplace
+扩展仅通过 **VSIX** 安装，适用于 VS Code 与 Cursor。
 
-1. 打开扩展视图，搜索 **Agile-SOFL**（发布者 `agile-sofl`）。
-2. 安装后打开任意 `.asfl` 文件即可。
+### 方式 A：GitHub Release
 
-### 备用：VSIX 安装
+1. 打开仓库 [Releases](https://github.com/agile-sofl/agile-sofl-parser/releases)，找到标签 `extension-vX.Y.Z`。
+2. 下载附件 `agile-sofl-X.Y.Z.vsix`。
+3. VS Code / Cursor：**扩展** → **…** → **Install from VSIX…**（从 VSIX 安装），选择下载的文件。
+4. 打开任意 `.asfl` 文件即可。
 
-从 [GitHub Releases](https://github.com/agile-sofl/agile-sofl-parser/releases) 下载 `agile-sofl-*.vsix`（标签 `extension-vX.Y.Z`），在 VS Code 中选择 **Install from VSIX…**。
+### 方式 B：本地打包
 
-Cursor 同样支持 Marketplace 与 VSIX 安装。
+维护者或开发者自行打包（见 [5.4 本地打 VSIX](#54-本地打-vsix)），将 `.vsix` 通过网盘、内网共享等方式分发给成员，同样使用 **Install from VSIX…** 安装。
+
+### 方式 C：F5 开发宿主（仅开发）
+
+仓库根目录按 **F5** 启动 Extension Development Host，无需安装 VSIX。见 [5.2 F5 调试](#52-f5-调试)。
 
 ## 3. 功能（第一期）
 
@@ -107,9 +115,14 @@ npm run build --prefix packages/vscode
 ### 5.4 本地打 VSIX
 
 ```bash
+npm run build
+npm run build --prefix packages/language-server
+node packages/language-server/scripts/bundle.mjs
 npm run package --prefix packages/vscode
 # 产物：packages/vscode/agile-sofl-0.x.x.vsix
 ```
+
+将生成的 `.vsix` 分发给团队成员，或使用 [6.2](#62-扩展--vsix-私有分发) 中的 CI 上传至 GitHub Release。
 
 ## 6. 发版（维护者）
 
@@ -120,20 +133,19 @@ npm run package --prefix packages/vscode
 - Secret：`NPM_TOKEN`
 - **仅** bump 根 `package.json`，不包含扩展
 
-### 6.2 扩展 → Marketplace + VSIX
+### 6.2 扩展 → VSIX 私有分发
 
-- 工作流：`.github/workflows/publish-extension.yml`
+- 工作流：`.github/workflows/package-extension.yml`（**不**发布 Marketplace）
 - 触发：`workflow_dispatch`（patch/minor/major）或 push 标签 `extension-vX.Y.Z`
-- Secret：`VSCE_PAT`（Visual Studio Marketplace PAT）
-- 步骤：bump `packages/vscode/package.json` → build/bundle → `vsce publish` → 上传 `.vsix` 到 GitHub Release
-- 扩展 `dependencies` 中 `@agile-sofl/parser` 使用 semver（如 `^0.1.0`）；parser 补丁升级通常不必重发扩展
+- 步骤：bump `packages/vscode/package.json` → build/bundle → `vsce package` → 上传 `.vsix` 到 GitHub Release
+- **无需** `VSCE_PAT` 等 Marketplace 凭据
 
 ### 6.3 CI
 
 | 工作流 | 范围 |
 |--------|------|
 | `ci.yml` | parser：`src/`、`tests/` |
-| `ci-editor.yml` | `packages/**`、`examples/**`：LSP 测试 + `vsce package` |
+| `ci-editor.yml` | `packages/**`、`examples/**`：LSP 测试 + `vsce package` 编译检查 |
 
 ## 7. Monaco / 其他编辑器
 
@@ -147,5 +159,5 @@ Language Server 入口：`packages/language-server/src/server.ts`（stdio）。M
 ## 8. 版本策略示例
 
 - Parser：`0.1.0` → npm + git tag `v0.1.0`
-- Extension：`0.1.0` → Marketplace `0.1.0` + git tag `extension-v0.1.0`
+- Extension：`0.1.0` → git tag `extension-v0.1.0` + Release 附件 `.vsix`
 - 二者版本号**互不绑定**，按各自变更独立 bump

@@ -16,7 +16,7 @@
 | [08-API与CLI.md](./08-API与CLI.md) | `parse` / `check` / `inspect` / REPL 用法 |
 | [09-测试与贡献.md](./09-测试与贡献.md) | 跑测试、加 fixture、本地验证 |
 | [10-编辑器路线图.md](./10-编辑器路线图.md) | LSP 架构与后续能力规划 |
-| [11-VSCode扩展与LSP.md](./11-VSCode扩展与LSP.md) | VS Code/Cursor 扩展安装、开发与分轨发版 |
+| [11-VSCode扩展与LSP.md](./11-VSCode扩展与LSP.md) | VS Code/Cursor 扩展（私有 VSIX 安装、开发与打包发版） |
 
 ## 快速验证
 
