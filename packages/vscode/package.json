@@ -1,0 +1,71 @@
+{
+  "name": "agile-sofl",
+  "displayName": "Agile-SOFL",
+  "description": "Syntax highlighting, diagnostics, formatting, and outline for Agile-SOFL (.asfl) specifications",
+  "version": "0.1.0",
+  "publisher": "agile-sofl",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": ["Programming Languages", "Linters", "Formatters"],
+  "keywords": ["agile-sofl", "asfl", "formal specification", "SOFL"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/agile-sofl/agile-sofl-parser.git",
+    "directory": "packages/vscode"
+  },
+  "main": "./dist/extension.js",
+  "activationEvents": ["onLanguage:agile-sofl"],
+  "contributes": {
+    "languages": [
+      {
+        "id": "agile-sofl",
+        "aliases": ["Agile-SOFL", "ASFL", "agile-sofl"],
+        "extensions": [".asfl"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "agile-sofl",
+        "scopeName": "source.asfl",
+        "path": "./syntaxes/agile-sofl.tmLanguage.json"
+      }
+    ],
+    "configuration": {
+      "title": "Agile-SOFL",
+      "properties": {
+        "agileSofl.trace.server": {
+          "scope": "window",
+          "type": "string",
+          "enum": ["off", "messages", "verbose"],
+          "default": "off",
+          "description": "Traces communication between VS Code and the Agile-SOFL language server."
+        },
+        "agileSofl.debounceMs": {
+          "scope": "resource",
+          "type": "number",
+          "default": 300,
+          "description": "Debounce delay (ms) before publishing diagnostics."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "bundle-server": "npm run build --prefix ../language-server && node ../language-server/scripts/bundle.mjs",
+    "vscode:prepublish": "npm run bundle-server && npm run build",
+    "package": "vsce package --no-dependencies",
+    "publish:marketplace": "vsce publish --no-dependencies"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^2.22.0",
+    "typescript": "^5.3.0"
+  }
+}

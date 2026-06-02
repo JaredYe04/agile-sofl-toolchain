@@ -1,0 +1,102 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Agile-SOFL",
+  "scopeName": "source.asfl",
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#strings" },
+    { "include": "#chars" },
+    { "include": "#numbers" },
+    { "include": "#enums" },
+    { "include": "#keywords-control" },
+    { "include": "#keywords-declaration" },
+    { "include": "#keywords-type" },
+    { "include": "#keywords-operator" },
+    { "include": "#keywords-fsf" },
+    { "include": "#informal" },
+    { "include": "#identifiers" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.block.asfl",
+          "begin": "/\\*",
+          "end": "\\*/"
+        }
+      ]
+    },
+    "strings": {
+      "name": "string.quoted.double.asfl",
+      "begin": "\"",
+      "end": "\"",
+      "patterns": [{ "name": "constant.character.escape.asfl", "match": "\\\\." }]
+    },
+    "chars": {
+      "name": "string.quoted.single.asfl",
+      "match": "'[^'\\\\]'|'\\\\.'"
+    },
+    "numbers": {
+      "patterns": [
+        { "name": "constant.numeric.float.asfl", "match": "-?\\d+\\.\\d+" },
+        { "name": "constant.numeric.integer.asfl", "match": "-?\\d+" }
+      ]
+    },
+    "enums": {
+      "name": "constant.other.enum.asfl",
+      "match": "<[^>]+>"
+    },
+    "keywords-control": {
+      "patterns": [
+        {
+          "name": "keyword.control.asfl",
+          "match": "\\b(module|end_module|process|end_process|function|end_function|Init|end|endcase|case|default|of|if|then|else|let|in|undefined|others|FSF|equal|SYSTEM_)\\b"
+        }
+      ]
+    },
+    "keywords-declaration": {
+      "patterns": [
+        {
+          "name": "keyword.declaration.asfl",
+          "match": "\\b(const|type|var|inv|ext|rd|wr|decom|comment|composed|map|set|seq|forall|exists|forevery|forsome)\\b"
+        }
+      ]
+    },
+    "keywords-type": {
+      "patterns": [
+        {
+          "name": "storage.type.asfl",
+          "match": "\\b(nat0|nat|int|real|char|string|bool|given|universal|nil|true|false)\\b"
+        }
+      ]
+    },
+    "keywords-operator": {
+      "patterns": [
+        {
+          "name": "keyword.operator.asfl",
+          "match": "&&|\\|\\||<>|<=|>=|==|\\|\\*|/|\\+|-|\\*\\*|\\||inset|notin|mod|rem|div|to|of"
+        }
+      ]
+    },
+    "keywords-fsf": {
+      "patterns": [
+        {
+          "name": "keyword.other.fsf.asfl",
+          "match": "\\b(override|inverse|comp|conc|dconc|subset|psubset|bound|dom|rng|domrt|rngrt|domrb|rngrb|card|len|get|hd|tl|union|inter|diff|dunion|dinter|power|elems|inds|abs|floor|modify|mk)\\b"
+        }
+      ]
+    },
+    "informal": {
+      "patterns": [
+        {
+          "name": "markup.other.informal.asfl",
+          "match": "\\binformal\\b"
+        }
+      ]
+    },
+    "identifiers": {
+      "name": "variable.other.asfl",
+      "match": "[A-Za-z_][A-Za-z0-9_]*"
+    }
+  }
+}

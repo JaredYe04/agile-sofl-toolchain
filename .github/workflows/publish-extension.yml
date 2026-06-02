@@ -1,0 +1,101 @@
+name: Publish VS Code extension
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Extension version bump (patch, minor, major)'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+  push:
+    tags:
+      - 'extension-v*'
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Bump extension version (workflow_dispatch)
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          cd packages/vscode
+          npm version ${{ github.event.inputs.version }} --no-git-tag-version
+          echo "VERSION=$(node -p "require('./package.json').version")" >> $GITHUB_ENV
+
+      - name: Set version from tag
+        if: github.event_name == 'push'
+        run: |
+          TAG="${{ github.ref_name }}"
+          VERSION=${TAG#extension-v}
+          cd packages/vscode
+          npm version $VERSION --no-git-tag-version --allow-same-version
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify parser dependency is on npm
+        run: |
+          PARSER_RANGE=$(node -p "require('./packages/language-server/package.json').dependencies['@agile-sofl/parser'] || ''")
+          echo "Language server parser dependency: $PARSER_RANGE"
+          npm view @agile-sofl/parser version || echo "Warning: @agile-sofl/parser not yet on npm; bundle uses workspace build"
+
+      - name: Build parser
+        run: npm run build
+
+      - name: Bundle language server
+        run: |
+          npm run build --prefix packages/language-server
+          node packages/language-server/scripts/bundle.mjs
+
+      - name: Build extension
+        run: npm run build --prefix packages/vscode
+
+      - name: Package VSIX
+        run: npm run package --prefix packages/vscode
+
+      - name: Publish to Marketplace
+        run: npm run publish:marketplace --prefix packages/vscode
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+
+      - name: Upload VSIX to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: extension-v${{ env.VERSION }}
+          name: Agile-SOFL Extension v${{ env.VERSION }}
+          files: packages/vscode/agile-sofl-*.vsix
+          draft: false
+
+      - name: Commit extension version bump (workflow_dispatch)
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          git add packages/vscode/package.json
+          if ! git diff --staged --quiet; then
+            git commit -m "chore: bump extension version to ${{ env.VERSION }}"
+            git push origin HEAD:main
+          fi

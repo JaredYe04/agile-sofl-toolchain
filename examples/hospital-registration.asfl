@@ -1,0 +1,138 @@
+module SYSTEM_Hospital;
+const
+max_daily_patients = 500;
+registration_fee = 50;
+emergency_priority = 1;
+type
+PatientId = nat;
+DoctorId = nat;
+DeptId = nat;
+BloodType = {<A>, <B>, <AB>, <O>};
+Patient = composed of
+  id: PatientId
+  age: nat
+  blood: BloodType
+end;
+Doctor = composed of
+  id: DoctorId
+  dept: DeptId
+  on_duty: bool
+end;
+PatientQueue = seq of PatientId;
+DoctorSet = set of DoctorId;
+Schedule = map nat to bool;
+var
+queue: PatientQueue;
+doctors: DoctorSet;
+schedule: Schedule;
+waiting_count: nat;
+inv
+forall[p: queue] | p > 0 and forall[d: doctors] | d > 0 and waiting_count >= 0;
+process Register (patient: PatientId, dept: DeptId) ticket: nat
+ext
+rd queue: PatientQueue
+wr queue: PatientQueue
+wr waiting_count: nat
+FSF :
+patient > 0 && ticket = 1 ||
+dept = 0 && ticket = 0 ||
+others && ticket = 0
+decom: Hospital_Register
+comment: informal outpatient registration assigns next ticket
+end_process
+process Triage (patient: PatientId, urgent: nat) priority: nat
+FSF :
+urgent > 0 && priority = emergency_priority ||
+urgent = 0 && priority = 0 ||
+others && priority = 0
+end_process
+process AssignDoctor (patient: PatientId, doctor: DoctorId) assigned: nat
+ext
+rd doctors: DoctorSet
+rd schedule: Schedule
+wr schedule: Schedule
+FSF :
+patient > 0 && assigned = 1 ||
+doctor = 0 && assigned = 0 ||
+others && assigned = 0
+end_process
+process Discharge (patient: PatientId) cleared: nat
+ext
+wr waiting_count: nat
+FSF :
+patient > 0 && cleared = 1 ||
+others && cleared = 0
+end_process
+function registration_cost (fee: nat): nat
+== fee
+end_function
+function adult_check (age: nat): nat
+== age
+end_function
+end_module;
+module Emergency / Hospital;
+type
+EmergencyCase = composed of
+  patient: PatientId
+  severity: nat
+end;
+CaseLog = seq of EmergencyCase;
+var
+cases: CaseLog;
+open_beds: nat;
+inv
+open_beds >= 0;
+process AdmitUrgent (patient: PatientId, severity: nat) admitted: nat
+ext
+rd queue: PatientQueue
+wr open_beds: nat
+FSF :
+severity > 0 && admitted = 1 ||
+others && admitted = 0
+end_process
+process ReleaseBed ()
+FSF :
+open_beds > 0 && open_beds = 1 ||
+others && open_beds = 0
+end_process
+end_module;
+module Billing / Hospital;
+const
+insurance_cap = 10000;
+var
+collected: nat;
+process CollectFee (patient: PatientId, amount: nat) ok: nat
+ext
+wr collected: nat
+FSF :
+amount > 0 && ok = 1 ||
+amount > insurance_cap && ok = 0 ||
+others && ok = 0
+end_process
+process RefundFee (amount: nat) ok: nat
+FSF :
+amount > 0 && ok = 1 ||
+others && ok = 0
+end_process
+end_module;
+module Records / Hospital;
+type
+VisitRecord = composed of
+  patient: PatientId
+  doctor: DoctorId
+  fee: nat
+end;
+History = seq of VisitRecord;
+var
+history: History;
+process ArchiveVisit (patient: PatientId, doctor: DoctorId, fee: nat) stored: nat
+FSF :
+patient > 0 && stored = 1 ||
+others && stored = 0
+end_process
+process LookupVisits () count: nat
+FSF :
+count >= 0 && count = count ||
+others && count = 0
+end_process
+end_module

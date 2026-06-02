@@ -1,0 +1,48 @@
+name: CI Editor
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'packages/**'
+      - 'examples/**'
+      - '.github/workflows/ci-editor.yml'
+  pull_request:
+    branches: [main, master]
+    paths:
+      - 'packages/**'
+      - 'examples/**'
+      - '.github/workflows/ci-editor.yml'
+
+jobs:
+  editor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build parser
+        run: npm run build
+
+      - name: Build language server
+        run: npm run build --prefix packages/language-server
+
+      - name: Language server tests
+        run: npm test --prefix packages/language-server
+
+      - name: Bundle server into extension
+        run: node packages/language-server/scripts/bundle.mjs
+
+      - name: Build VS Code extension
+        run: npm run build --prefix packages/vscode
+
+      - name: Package VSIX (compile check)
+        run: npm run package --prefix packages/vscode

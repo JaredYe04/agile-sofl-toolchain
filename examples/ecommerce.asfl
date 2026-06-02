@@ -1,0 +1,129 @@
+module SYSTEM_Ecommerce;
+const
+cart_limit = 50;
+order_timeout = 3600;
+tax_rate = 5;
+shipping_base = 10;
+type
+ProductId = nat;
+OrderId = nat;
+CustomerId = nat;
+PaymentStatus = {<pending>, <paid>, <failed>, <refunded>};
+Product = composed of
+  id: ProductId
+  price: nat
+  stock: nat
+end;
+Customer = composed of
+  id: CustomerId
+  credit: nat
+end;
+Cart = seq of ProductId;
+Inventory = map nat to nat;
+PriceKeys = set of nat;
+ActiveCustomers = set of CustomerId;
+var
+inventory: Inventory;
+price_keys: PriceKeys;
+active_carts: ActiveCustomers;
+inv
+forall[p: price_keys] | p > 0 and tax_rate >= 0 and cart_limit > 0;
+process AddToCart (customer: CustomerId, product: ProductId) ok: nat
+ext
+rd inventory: Inventory
+rd price_keys: PriceKeys
+wr inventory: Inventory
+FSF :
+customer > 0 && ok = 1 ||
+product = 0 && ok = 0 ||
+others && ok = 0
+decom: Ecom_AddCart
+comment: informal add product when customer is active
+end_process
+process Checkout (customer: CustomerId, total: nat) receipt: OrderId
+ext
+rd inventory: Inventory
+rd price_keys: PriceKeys
+wr inventory: Inventory
+FSF :
+customer > 0 && receipt > 0 ||
+total = 0 && receipt = 0 ||
+others && receipt = 0
+end_process
+process Refund (order: OrderId, amount: nat) cleared: nat
+FSF :
+order > 0 && cleared = 1 ||
+order = 0 && cleared = 0 ||
+others && cleared = 0
+end_process
+process ShipOrder (order: OrderId, region: nat) shipped: nat
+ext
+rd inventory: Inventory
+wr inventory: Inventory
+FSF :
+order > 0 && shipped = 1 ||
+others && shipped = 0
+end_process
+function calc_tax (subtotal: nat): nat
+== subtotal
+end_function
+function with_shipping (subtotal: nat): nat
+== subtotal
+end_function
+end_module;
+module Fulfillment / Ecommerce;
+type
+Shipment = composed of
+  order: OrderId
+  region: nat
+  weight: nat
+end;
+Queue = seq of Shipment;
+var
+queue: Queue;
+backlog: nat;
+inv
+backlog >= 0;
+process Enqueue equal Ecommerce.ShipOrder
+end_process
+process DrainQueue () remaining: nat
+FSF :
+backlog > 0 && remaining = backlog - 1 ||
+others && remaining = 0
+end_process
+end_module;
+module Payments / Ecommerce;
+var
+pending_total: nat;
+process Authorize (customer: CustomerId, amount: nat) ok: nat
+FSF :
+amount > 0 && ok = 1 ||
+amount = 0 && ok = 0 ||
+others && ok = 0
+end_process
+process Capture (order: OrderId) ok: nat
+ext
+wr pending_total: nat
+FSF :
+order > 0 && ok = 1 ||
+others && ok = 0
+end_process
+end_module;
+module Catalog / Ecommerce;
+type
+Category = {<electronics>, <books>, <food>};
+var
+featured_ids: PriceKeys;
+process Promote (product: ProductId) featured: nat
+ext
+rd price_keys: PriceKeys
+FSF :
+product > 0 && featured = 1 ||
+others && featured = 0
+end_process
+process Demote (product: ProductId) featured: nat
+FSF :
+product > 0 && featured = 0 ||
+others && featured = 1
+end_process
+end_module
