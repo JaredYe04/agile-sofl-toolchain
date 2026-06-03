@@ -1,0 +1,30 @@
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { useDocumentStore } from '../../stores/document'
+
+const { t } = useI18n()
+const doc = useDocumentStore()
+
+const label = computed(() => {
+  const tab = doc.activeTab
+  if (!tab) return t('commandCenter.untitled')
+  const name = tab.filePath ?? tab.title
+  return `${name}${tab.isDirty ? ' ●' : ''}`
+})
+</script>
+
+<template>
+  <div class="titlebar-no-drag flex flex-1 items-center justify-center px-4">
+    <button
+      type="button"
+      class="flex h-[22px] max-w-md flex-1 items-center gap-2 rounded-md border border-border-subtle bg-surface-base/50 px-3 text-xs text-content-muted transition-colors duration-150 hover:border-accent/40 hover:text-content-secondary"
+    >
+      <svg class="h-3.5 w-3.5 shrink-0 opacity-60" viewBox="0 0 16 16" fill="none">
+        <circle cx="7" cy="7" r="4.5" stroke="currentColor" stroke-width="1.2" />
+        <path d="M10.5 10.5 L14 14" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
+      </svg>
+      <span class="truncate">{{ label }}</span>
+    </button>
+  </div>
+</template>

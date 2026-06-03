@@ -17,6 +17,9 @@
 | [09-测试与贡献.md](./09-测试与贡献.md) | 跑测试、加 fixture、本地验证 |
 | [10-编辑器路线图.md](./10-编辑器路线图.md) | LSP 架构与后续能力规划 |
 | [11-VSCode扩展与LSP.md](./11-VSCode扩展与LSP.md) | VS Code/Cursor 扩展（私有 VSIX 安装、开发与打包发版） |
+| [12-Electron编辑器集成.md](./12-Electron编辑器集成.md) | Electron / Studio 架构与 npm 集成 |
+| [13-模块边界与仓库结构.md](./13-模块边界与仓库结构.md) | Monorepo 包布局与依赖边界 |
+| [14-Studio-UI设计规约.md](./14-Studio-UI设计规约.md) | Studio 桌面编辑器 UI 设计 token 与组件规约 |
 
 ## 快速验证
 

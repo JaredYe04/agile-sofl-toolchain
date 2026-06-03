@@ -1,12 +1,31 @@
 import { app, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'node:path'
-import { buildDocumentModel } from '@agile-sofl/editor-api'
-import { startLanguageServer, stopLanguageServer } from './lsp'
+import { registerFileHandlers } from './services/fileService'
+import { registerWindowHandlers } from './services/windowService'
+import {
+  isLspRunning,
+  sendToLanguageServer,
+  setLspWindow,
+  startLanguageServer,
+  stopLanguageServer
+} from './lspBridge'
+
+let mainWindow: BrowserWindow | null = null
+let allowClose = false
+
+function getWindow(): BrowserWindow | null {
+  return mainWindow
+}
 
 function createWindow(): void {
-  const win = new BrowserWindow({
-    width: 1100,
-    height: 720,
+  mainWindow = new BrowserWindow({
+    width: 1280,
+    height: 800,
+    minWidth: 800,
+    minHeight: 500,
+    frame: false,
+    titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'hidden',
+    backgroundColor: '#1e1e1e',
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,
@@ -15,16 +34,52 @@ function createWindow(): void {
     title: 'Agile-SOFL Studio'
   })
 
+  setLspWindow(mainWindow)
+  startLanguageServer()
+
+  mainWindow.on('close', (e) => {
+    if (allowClose) return
+    e.preventDefault()
+    mainWindow?.webContents.send('studio:request-close')
+  })
+
+  mainWindow.on('maximize', () => {
+    mainWindow?.webContents.send('studio:window-maximized-changed', true)
+  })
+
+  mainWindow.on('unmaximize', () => {
+    mainWindow?.webContents.send('studio:window-maximized-changed', false)
+  })
+
   if (process.env.ELECTRON_RENDERER_URL) {
-    win.loadURL(process.env.ELECTRON_RENDERER_URL)
+    mainWindow.loadURL(process.env.ELECTRON_RENDERER_URL)
   } else {
-    win.loadFile(join(__dirname, '../renderer/index.html'))
+    mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
 }
 
 app.whenReady().then(() => {
-  startLanguageServer()
+  registerFileHandlers(getWindow)
+  registerWindowHandlers(getWindow)
+
+  ipcMain.on('studio:lsp-send', (_event, jsonBody: string) => {
+    sendToLanguageServer(jsonBody)
+  })
+
+  ipcMain.handle('studio:lsp-status', () => ({
+    running: isLspRunning(),
+    message: isLspRunning()
+      ? 'Language server connected'
+      : 'Language server not available — run npm run bundle --workspace @agile-sofl/language-server'
+  }))
+
+  ipcMain.on('studio:confirm-close', () => {
+    allowClose = true
+    mainWindow?.close()
+  })
+
   createWindow()
+
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
@@ -33,17 +88,4 @@ app.whenReady().then(() => {
 app.on('window-all-closed', () => {
   stopLanguageServer()
   if (process.platform !== 'darwin') app.quit()
-})
-
-ipcMain.handle('studio:lsp-status', () => ({
-  running: true,
-  message: 'Language server spawned from main process (stdio reference)'
-}))
-
-ipcMain.handle('studio:build-document-model', (_event, source: string) => {
-  const model = buildDocumentModel(source)
-  return {
-    modules: model.modules.map((m) => m.name),
-    errorCount: model.errorCount
-  }
 })

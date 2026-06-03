@@ -1,0 +1,44 @@
+{
+  "comments": {
+    "blockComment": ["/*", "*/"]
+  },
+  "brackets": [
+    ["(", ")"],
+    ["[", "]"],
+    ["{", "}"]
+  ],
+  "autoClosingPairs": [
+    { "open": "(", "close": ")" },
+    { "open": "[", "close": "]" },
+    { "open": "{", "close": "}" },
+    { "open": "\"", "close": "\"", "notIn": ["string"] },
+    { "open": "'", "close": "'", "notIn": ["string", "comment"] }
+  ],
+  "surroundingPairs": [
+    ["(", ")"],
+    ["[", "]"],
+    ["{", "}"],
+    ["\"", "\""],
+    ["'", "'"]
+  ],
+  "folding": {
+    "markers": {
+      "start": "^\\s*(module|process|function|composed\\s+of|case)\\b",
+      "end": "^\\s*(end_module|end_process|end_function|end;|endcase)\\b"
+    }
+  },
+  "indentationRules": {
+    "increaseIndentPattern": "^\\s*(module\\s|const\\s*$|type\\s*$|var\\s*$|inv\\s*$|process\\s|function\\s|composed\\s+of\\s*$|FSF\\s*:.*)$",
+    "decreaseIndentPattern": "^\\s*(end_module|end_process|end_function|end;|\\s*end\\s*$)"
+  },
+  "onEnterRules": [
+    {
+      "beforeText": "^\\s*(process\\s.+|function\\s.+|const\\s*$|type\\s*$|var\\s*$|inv\\s*$|composed\\s+of\\s*$|FSF\\s*:.*)$",
+      "action": { "indent": "indent" }
+    },
+    {
+      "beforeText": "^\\s*(end_module|end_process|end_function|end;|\\s*end\\s*)$",
+      "action": { "indent": "outdent" }
+    }
+  ]
+}

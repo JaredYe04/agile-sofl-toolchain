@@ -36,5 +36,6 @@ jobs:
       - run: npm run build --workspace @agile-sofl/editor-api
       - run: npm run build --workspace @agile-sofl/language-server
       - run: npm run bundle --workspace @agile-sofl/language-server
+      - run: npm run copy-assets --workspace @agile-sofl/studio
       - run: npm run test --workspace @agile-sofl/studio
       - run: npm run build --workspace @agile-sofl/studio

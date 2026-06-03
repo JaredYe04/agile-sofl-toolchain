@@ -25,6 +25,7 @@ export default defineConfig({
   },
   renderer: {
     root: resolve(__dirname, 'src/renderer'),
+    publicDir: resolve(__dirname, 'public'),
     build: {
       rollupOptions: {
         input: {
@@ -32,6 +33,15 @@ export default defineConfig({
         }
       }
     },
-    plugins: [vue()]
+    plugins: [vue()],
+    css: {
+      postcss: resolve(__dirname, 'postcss.config.cjs')
+    },
+    worker: {
+      format: 'es'
+    },
+    optimizeDeps: {
+      include: ['monaco-editor']
+    }
   }
 })

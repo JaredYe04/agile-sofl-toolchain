@@ -1,14 +1,15 @@
 # @agile-sofl/studio
 
-Electron + Vue visual editor shell for Agile-SOFL. Consumes shared npm packages only — no dependency on the VS Code extension.
+Electron + Vue visual editor for Agile-SOFL specifications.
 
-## Packages used
+## Features (Phase 1)
 
-| Package | Role |
-|---------|------|
-| `@agile-sofl/parser` | Parse / check |
-| `@agile-sofl/editor-api` | JSON DTOs, FSF/module graph models, patches |
-| `@agile-sofl/language-server` | LSP stdio server (spawned from main process) |
+- Frameless custom title bar (File / Edit / View / Help menus, window controls)
+- Multi-tab `.asfl` editor with New / Open / Save / Save As
+- Monaco editor with TextMate syntax highlighting (shared grammar from VS Code package)
+- LSP integration via IPC bridge (`@agile-sofl/language-server`)
+- Light / dark / system theme
+- i18n: 简体中文 + English
 
 ## Development
 
@@ -17,14 +18,17 @@ From repository root:
 ```bash
 npm install
 npm run build --workspace @agile-sofl/parser
-npm run build --workspace @agile-sofl/editor-api
 npm run build --workspace @agile-sofl/language-server
 npm run bundle --workspace @agile-sofl/language-server
 npm run dev --workspace @agile-sofl/studio
 ```
 
-## Scope
+## Architecture
 
-This package is an **empty shell**: sidebar shows `buildDocumentModel` output and LSP spawn status. Block UI, module graph canvas, and Monaco LSP client are implemented here over time.
+| Layer | Role |
+|-------|------|
+| Main | File dialogs, LSP stdio spawn + Content-Length IPC bridge, window controls |
+| Preload | Typed `window.studio` API |
+| Renderer | Vue 3 + Pinia + Tailwind + Monaco + monaco-languageclient |
 
-See [docs/12-Electron编辑器集成.md](../../docs/12-Electron编辑器集成.md).
+See [docs/12-Electron编辑器集成.md](../../docs/12-Electron编辑器集成.md) and [docs/14-Studio-UI设计规约.md](../../docs/14-Studio-UI设计规约.md).
