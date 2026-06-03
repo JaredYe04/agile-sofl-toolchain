@@ -28,30 +28,19 @@ import type {
   QuantifiedNode,
   LetBindingNode
 } from '../ast/nodes.js'
-import { spanFromToken, mergeSpans, EMPTY_SPAN } from '../ast/span.js'
+import { mergeSpans, EMPTY_SPAN } from '../ast/span.js'
+import { spanOfToken, spanOfChildren, spanFromLocation } from '../ast/spanHelpers.js'
 
 function spanOf(node: CstNode | IToken | undefined): typeof EMPTY_SPAN {
   if (!node) return EMPTY_SPAN
   if ('image' in node && 'startOffset' in node) {
-    const t = node as IToken
-    return spanFromToken(
-      t.startOffset ?? 0,
-      t.endOffset ?? 0,
-      t.startLine ?? 1,
-      t.startColumn ?? 1
-    )
+    return spanOfToken(node as IToken)
   }
   const cst = node as CstNode
-  const loc = cst.location
-  if (loc) {
-    return spanFromToken(
-      loc.startOffset ?? 0,
-      loc.endOffset ?? 0,
-      loc.startLine ?? 1,
-      loc.startColumn ?? 1
-    )
+  if (cst.location) {
+    return spanFromLocation(cst.location)
   }
-  return EMPTY_SPAN
+  return spanOfChildren(cst)
 }
 
 function firstToken(node: CstNode): IToken | undefined {
@@ -134,9 +123,10 @@ function cstToModules(cst: CstNode): ModuleNode[] {
 function cstToTopModule(cst: CstNode): ModuleNode {
   const id = tokensOf(cst, 'Identifier')[0]
   const body = singleChild(cst, 'moduleBody')
+  const endMod = tokensOf(cst, 'EndModule')[0]
   return {
     type: 'module',
-    span: spanOf(cst),
+    span: endMod ? mergeSpans(spanOf(cst), spanOfToken(endMod)) : spanOf(cst),
     name: id?.image ?? 'SYSTEM_',
     isSystem: true,
     consts: body ? extractConsts(body) : [],
@@ -152,9 +142,10 @@ function cstToRegularModule(cst: CstNode): ModuleNode {
   const ids = tokensOf(cst, 'Identifier')
   const body = singleChild(cst, 'moduleBody')
   const parent = ids.length > 1 ? ids[1] : undefined
+  const endMod = tokensOf(cst, 'EndModule')[0]
   return {
     type: 'module',
-    span: spanOf(cst),
+    span: endMod ? mergeSpans(spanOf(cst), spanOfToken(endMod)) : spanOf(cst),
     name: ids[0]?.image ?? '',
     isSystem: false,
     parent: parent
@@ -178,7 +169,7 @@ function extractConsts(body: CstNode): ConstDeclNode[] {
       const constant = singleChild(item, 'constant')
       result.push({
         type: 'const_decl',
-        span: spanOf(item),
+        span: id ? spanOfToken(id) : spanOf(item),
         name: id?.image ?? '',
         value: constant ? cstToConstant(constant) : { type: 'nil', span: EMPTY_SPAN }
       })
@@ -196,7 +187,7 @@ function extractTypes(body: CstNode): TypeDeclNode[] {
       const typeExpr = singleChild(item, 'typeExpr')
       result.push({
         type: 'type_decl',
-        span: spanOf(item),
+        span: id ? spanOfToken(id) : spanOf(item),
         name: id?.image ?? '',
         parentType: parentAccess ? cstToQualifiedName(parentAccess) : undefined,
         typeExpr: typeExpr ? cstToTypeExpr(typeExpr) : { type: 'basic_type', span: EMPTY_SPAN, name: 'given' }
@@ -228,12 +219,12 @@ function cstToVariable(cst: CstNode): VariableNode {
   const hash = tokensOf(cst, 'Hash')
   const id = tokensOf(cst, 'Identifier')[0]
   if (ext.length > 0 && hash.length > 0) {
-    return { type: 'variable', span: spanOf(cst), kind: 'ext_hash', name: id?.image ?? '' }
+    return { type: 'variable', span: id ? spanOfToken(id) : spanOf(cst), kind: 'ext_hash', name: id?.image ?? '' }
   }
   if (ext.length > 0) {
-    return { type: 'variable', span: spanOf(cst), kind: 'ext', name: id?.image ?? '' }
+    return { type: 'variable', span: id ? spanOfToken(id) : spanOf(cst), kind: 'ext', name: id?.image ?? '' }
   }
-  return { type: 'variable', span: spanOf(cst), kind: 'normal', name: id?.image ?? '' }
+  return { type: 'variable', span: id ? spanOfToken(id) : spanOf(cst), kind: 'normal', name: id?.image ?? '' }
 }
 
 function extractInvs(body: CstNode): InvariantNode[] {

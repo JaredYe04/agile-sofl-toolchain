@@ -1,0 +1,6 @@
+module SYSTEM_Nested;
+type
+U = nat | int;
+P = nat * bool;
+W = universal;
+end_module

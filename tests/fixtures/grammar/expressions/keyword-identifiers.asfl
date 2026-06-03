@@ -1,0 +1,9 @@
+module SYSTEM_Traps;
+var
+total: nat;
+subtotal: nat;
+informal_flag: bool;
+different: int;
+intersection: set of nat;
+mycomment: string;
+end_module

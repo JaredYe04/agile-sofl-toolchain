@@ -1,0 +1,6 @@
+module SYSTEM_Lit;
+const
+msg = "contains and or";
+var x: nat;
+/* module FSF keyword trap */
+end_module

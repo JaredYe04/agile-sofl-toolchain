@@ -34,20 +34,40 @@
 
 仓库根目录按 **F5** 启动 Extension Development Host，无需安装 VSIX。见 [5.2 F5 调试](#52-f5-调试)。
 
-## 3. 功能（第一期）
+## 3. 功能
+
+### 第一期（已实现）
 
 | 能力 | 说明 |
 |------|------|
-| 语法高亮 | TextMate grammar：`syntaxes/agile-sofl.tmLanguage.json` |
+| 语法高亮 | TextMate grammar + **语义 token**（模块/过程/变量/informal 等分层着色） |
 | 实时诊断 | LSP `publishDiagnostics`，默认 debounce 300ms，调用 `check()` |
-| 格式化 | **Format Document**，4 空格语义缩进（块关键字顶格、内容递增缩进；FSF 每场景一行） |
+| 格式化 | **Format Document**，4 空格语义缩进 |
 | 大纲 | **Outline**，`documentSymbol`（模块 / 类型 / 变量 / 进程 / 函数） |
 | 语言配置 | 块注释 `/* */`、括号配对、`indentationRules` 输入缩进 |
+
+### 第二期（已实现）
+
+| 能力 | 快捷键 / 触发 | 说明 |
+|------|----------------|------|
+| **跳转定义** | `F12` | 变量/类型/进程/函数声明处；单文件多模块 |
+| **悬停** | `Ctrl+Hover` | Markdown：符号 kind + 模块名 |
+| **补全** | `Ctrl+Space` | 类型位置（`nat`/`int`/作用域类型名）、FSF/`others` snippet、作用域符号 |
 
 扩展设置：
 
 - `agileSofl.trace.server` — LSP 跟踪级别
 - `agileSofl.debounceMs` — 诊断 debounce 毫秒数
+
+### 3.0 特性覆盖矩阵
+
+| 层级 | 已实现 | 后续 |
+|------|--------|------|
+| **Parser** | 多模块、FSF、informal、case/let/if、量词、类型构造、**AST span** | `forevery`/`forsome` 语法路径 |
+| **LSP** | diagnostics、format、documentSymbol、semanticTokens、**definition/hover/completion** | workspace/symbol、增量解析 |
+| **高亮** | TextMate + tokenColors + `highlight:check` + snapshot fixture、**SYSTEM_ 三色分色** | 复杂嵌套表达式 AST 驱动着色 |
+
+Parser 权威范围见 [03-文法参考.md](./03-文法参考.md) §6；路线图见 [10-编辑器路线图.md](./10-编辑器路线图.md)。
 
 ### 3.1 格式化与缩进规则
 
@@ -74,17 +94,41 @@ end_process
 
 手动编辑时，`language-configuration.json` 中的 `indentationRules` / `onEnterRules` 会在 Enter 时尽量与上述层级一致。
 
+### 3.2 语法高亮与测试
+
+**TextMate**（`syntaxes/agile-sofl.tmLanguage.json`）提供基础分层 scope；**语义 token**（LSP）基于 AST 标注 informal 文本、模块名、过程/变量等。
+
+扩展内置 `tokenColors`，即使主题未定制 scope 也能看到约 8 色层次。
+
+本地验证高亮（无需打开 VS Code 看像素）：
+
+```bash
+npm run highlight:check          # CI：scope → colorClass 断言
+npm run highlight:preview        # 终端 ANSI 预览
+```
+
+| colorClass | 含义 |
+|------------|------|
+| `kwCtrl` / `kwDecl` | 控制流 / 声明关键字 |
+| `systemPrefix` | 系统模块 `SYSTEM_` 前缀（金色，与 `module`/模块名三色分色） |
+| `type` / `entityFn` | 类型 / 过程函数名 |
+| `informalMarker` / `informalText` | `comment:` 行 informal 标记与正文 |
+| `param` / `identifier` | 参数与标识符 |
+
 ## 4. 示例规格
 
-仓库 `examples/` 下三个大型 demo，可用于打开验证：
+仓库 `examples/` 下 demo 与边界用例：
 
 | 文件 | 特性 |
 |------|------|
 | `library-system.asfl` | 多模块、composed、inv 量词、FSF + others |
 | `ecommerce.asfl` | map/product/union、ext、process alias、decom |
 | `hospital-registration.asfl` | enum、function、多子模块 FSF |
+| `keyword-traps.asfl` | 含关键字子串的标识符（`total`、`informal` 等） |
+| `highlight-edge-cases.asfl` | comment/FSF/ext/map 高亮边界 |
+| `type-showcase.asfl` | 各类型构造分色展示 |
 
-集成测试：`tests/integration/demo-fixtures.test.ts`。
+集成测试：`tests/integration/demo-fixtures.test.ts`；高亮：`tests/vscode/highlight.test.ts`。
 
 ## 5. 本地开发
 

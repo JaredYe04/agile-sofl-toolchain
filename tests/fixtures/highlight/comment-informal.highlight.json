@@ -1,0 +1,41 @@
+{
+  "line": "comment: informal add product when customer is active",
+  "segments": [
+    {
+      "text": "comment",
+      "colorClass": "kwDecl"
+    },
+    {
+      "text": ":",
+      "colorClass": "punct"
+    },
+    {
+      "text": "informal",
+      "colorClass": "informalMarker"
+    },
+    {
+      "text": "add",
+      "colorClass": "informalText"
+    },
+    {
+      "text": "product",
+      "colorClass": "informalText"
+    },
+    {
+      "text": "when",
+      "colorClass": "informalText"
+    },
+    {
+      "text": "customer",
+      "colorClass": "informalText"
+    },
+    {
+      "text": "is",
+      "colorClass": "informalText"
+    },
+    {
+      "text": "active",
+      "colorClass": "informalText"
+    }
+  ]
+}

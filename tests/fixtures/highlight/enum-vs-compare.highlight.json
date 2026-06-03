@@ -1,0 +1,13 @@
+{
+  "line": "x < on>",
+  "segments": [
+    {
+      "text": "x",
+      "colorClass": "identifier"
+    },
+    {
+      "text": "< on>",
+      "colorClass": "enum"
+    }
+  ]
+}

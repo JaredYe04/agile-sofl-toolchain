@@ -1,0 +1,25 @@
+{
+  "line": "module Child / Parent;",
+  "segments": [
+    {
+      "text": "module",
+      "colorClass": "kwCtrl"
+    },
+    {
+      "text": "Child",
+      "colorClass": "module"
+    },
+    {
+      "text": "/",
+      "colorClass": "punct"
+    },
+    {
+      "text": "Parent",
+      "colorClass": "module"
+    },
+    {
+      "text": ";",
+      "colorClass": "punct"
+    }
+  ]
+}

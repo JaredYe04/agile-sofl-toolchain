@@ -9,12 +9,12 @@ import { classifyFsf } from './fsf/classifier.js'
 import { resolveScope } from './scope/resolver.js'
 import { normalizeAST, astEqual, stripSpans } from './transform/normalize.js'
 import { printProgram } from './transform/print.js'
-import { walk, getNodeAtOffset } from './visitor/walk.js'
+import { walk, getNodeAtOffset, findNodeAtOffset } from './visitor/walk.js'
 import type { ProgramNode } from './ast/nodes.js'
 import type { Diagnostic } from './diagnostics/codes.js'
 import { formatDiagnostic } from './diagnostics/codes.js'
 
-export type { ProgramNode, ModuleNode, AST } from './ast/nodes.js'
+export type { ProgramNode, ModuleNode, ProcessNode, PredicateNode, AtomicPredicateNode, InformalTextNode, AST } from './ast/nodes.js'
 export type { Diagnostic, DiagnosticSeverity } from './diagnostics/codes.js'
 export type { Span } from './ast/span.js'
 export type { Visitor } from './visitor/walk.js'
@@ -103,8 +103,13 @@ export {
   printProgram,
   walk,
   getNodeAtOffset,
+  findNodeAtOffset,
   formatDiagnostic
 }
+
+export { resolveReference, resolveDeclarationAtOffset } from './scope/reference.js'
+export type { ReferenceTarget } from './scope/reference.js'
+export type { AstNode } from './visitor/walk.js'
 
 export { inspect, formatInspectReport } from './cli/report.js'
 export type { InspectReport, InspectOptions } from './cli/report.js'

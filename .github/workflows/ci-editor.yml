@@ -32,6 +32,9 @@ jobs:
       - name: Build parser
         run: npm run build
 
+      - name: Highlight tests
+        run: npm run highlight:check
+
       - name: Build language server
         run: npm run build --prefix packages/language-server
 

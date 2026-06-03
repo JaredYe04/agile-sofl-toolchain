@@ -1,0 +1,6 @@
+module SYSTEM_Init;
+process Init ()
+FSF :
+others && true
+end_process
+end_module

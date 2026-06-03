@@ -1,0 +1,8 @@
+module SYSTEM_Fn;
+function f (x: nat): bool
+== undefined
+end_function
+function g (n: nat): nat
+== n + 1
+end_function
+end_module

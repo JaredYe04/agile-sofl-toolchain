@@ -55,6 +55,9 @@ export function activate(context: ExtensionContext): void {
     synchronize: {
       configurationSection: 'agileSofl',
       fileEvents: workspace.createFileSystemWatcher('**/*.asfl')
+    },
+    initializationOptions: {
+      semanticHighlighting: true
     }
   }
 

@@ -1,0 +1,4 @@
+module SYSTEM_ExtHash;
+var
+ext #extId: nat;
+end_module

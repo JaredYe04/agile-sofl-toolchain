@@ -11,7 +11,14 @@ function loadExample(name: string): string {
   return readFileSync(join(repoRoot, 'examples', `${name}.asfl`), 'utf-8')
 }
 
-const demoFiles = ['library-system', 'ecommerce', 'hospital-registration'] as const
+const demoFiles = [
+  'library-system',
+  'ecommerce',
+  'hospital-registration',
+  'keyword-traps',
+  'highlight-edge-cases',
+  'type-showcase'
+] as const
 
 describe('Integration - example demos', () => {
   for (const name of demoFiles) {

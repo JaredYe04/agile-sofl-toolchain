@@ -1,0 +1,9 @@
+module SYSTEM_Expr;
+type Traffic = {<red>, <green>};
+function label (c: Traffic): string
+== case c of
+   red -> "stop"; green -> "go"
+   ; default -> "unknown"
+   end_case
+end_function
+end_module

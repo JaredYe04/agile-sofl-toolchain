@@ -4,16 +4,26 @@
   "scopeName": "source.asfl",
   "patterns": [
     { "include": "#comments" },
+    { "include": "#module-header" },
+    { "include": "#module-header-sub" },
+    { "include": "#process-header" },
+    { "include": "#function-header" },
+    { "include": "#comment-line" },
+    { "include": "#decom-line" },
+    { "include": "#fsf-block" },
+    { "include": "#ext-block" },
+    { "include": "#decl-blocks" },
     { "include": "#strings" },
     { "include": "#chars" },
     { "include": "#numbers" },
     { "include": "#enums" },
+    { "include": "#quantifier-bindings" },
     { "include": "#keywords-control" },
     { "include": "#keywords-declaration" },
     { "include": "#keywords-type" },
     { "include": "#keywords-operator" },
     { "include": "#keywords-fsf" },
-    { "include": "#informal" },
+    { "include": "#punctuation" },
     { "include": "#identifiers" }
   ],
   "repository": {
@@ -25,6 +35,153 @@
           "end": "\\*/"
         }
       ]
+    },
+    "module-header": {
+      "match": "^\\s*(module)\\s+(SYSTEM_)([A-Za-z_][A-Za-z0-9_]*)",
+      "captures": {
+        "1": { "name": "keyword.control.asfl" },
+        "2": { "name": "keyword.control.system-prefix.asfl" },
+        "3": { "name": "entity.name.namespace.asfl" }
+      }
+    },
+    "module-header-sub": {
+      "match": "^\\s*(module)\\s+([A-Za-z_][A-Za-z0-9_]*)\\s*(/)\\s*([A-Za-z_][A-Za-z0-9_]*)",
+      "captures": {
+        "1": { "name": "keyword.control.asfl" },
+        "2": { "name": "entity.name.namespace.asfl" },
+        "3": { "name": "punctuation.separator.asfl" },
+        "4": { "name": "entity.name.namespace.asfl" }
+      }
+    },
+    "process-header": {
+      "match": "^\\s*(process)\\s+((?:Init|[A-Za-z_][A-Za-z0-9_]*))\\s*(\\()?",
+      "captures": {
+        "1": { "name": "keyword.control.asfl" },
+        "2": { "name": "entity.name.function.asfl" },
+        "3": { "name": "punctuation.section.parens.begin.asfl" }
+      }
+    },
+    "function-header": {
+      "match": "^\\s*(function)\\s+([A-Za-z_][A-Za-z0-9_]*)\\s*(\\()",
+      "captures": {
+        "1": { "name": "keyword.control.asfl" },
+        "2": { "name": "entity.name.function.asfl" },
+        "3": { "name": "punctuation.section.parens.begin.asfl" }
+      }
+    },
+    "comment-line": {
+      "begin": "^\\s*(comment)\\s*(:)",
+      "end": "$",
+      "beginCaptures": {
+        "1": { "name": "keyword.declaration.asfl" },
+        "2": { "name": "punctuation.separator.asfl" }
+      },
+      "name": "meta.comment.informal.asfl",
+      "patterns": [
+        { "include": "#informal-marker" },
+        { "name": "string.unquoted.informal.asfl", "match": "[A-Za-z_][A-Za-z0-9_]*|\\S+" }
+      ]
+    },
+    "decom-line": {
+      "match": "^\\s*(decom)\\s*(:)\\s*([A-Za-z_][A-Za-z0-9_]*)",
+      "captures": {
+        "1": { "name": "keyword.declaration.asfl" },
+        "2": { "name": "punctuation.separator.asfl" },
+        "3": { "name": "entity.name.tag.asfl" }
+      }
+    },
+    "fsf-block": {
+      "begin": "^\\s*(FSF)\\s*(:)",
+      "end": "^(?=\\s*(decom|comment|end_process|end_function|\\S))",
+      "beginCaptures": {
+        "1": { "name": "keyword.control.fsf.asfl" },
+        "2": { "name": "punctuation.separator.asfl" }
+      },
+      "name": "meta.fsf.asfl",
+      "patterns": [
+        { "include": "#fsf-keywords" },
+        { "include": "#informal-marker" },
+        { "include": "#keywords-operator" },
+        { "include": "#keywords-type" },
+        { "include": "#numbers" },
+        { "include": "#identifiers" }
+      ]
+    },
+    "ext-block": {
+      "begin": "^\\s*(ext)\\s*$",
+      "end": "^(?=\\s*(FSF|decom|comment|end_process|\\S))",
+      "beginCaptures": {
+        "1": { "name": "keyword.declaration.asfl" }
+      },
+      "name": "meta.ext.asfl",
+      "patterns": [
+        {
+          "match": "^\\s*(rd|wr)\\s+([A-Za-z_][A-Za-z0-9_]*)\\s*(:)\\s*",
+          "captures": {
+            "1": { "name": "keyword.modifier.rdwr.asfl" },
+            "2": { "name": "variable.parameter.asfl" },
+            "3": { "name": "punctuation.separator.asfl" }
+          }
+        },
+        { "include": "#keywords-type" },
+        { "include": "#identifiers" }
+      ]
+    },
+    "decl-blocks": {
+      "patterns": [
+        {
+          "begin": "^\\s*(const|type|var|inv)\\b",
+          "end": "^(?=\\s*(const|type|var|inv|process|function|end_module|\\S))",
+          "beginCaptures": {
+            "1": { "name": "keyword.declaration.asfl" }
+          },
+          "patterns": [
+            {
+              "match": "([A-Za-z_][A-Za-z0-9_]*)\\s*(:|=)",
+              "captures": {
+                "1": { "name": "entity.name.type.asfl" },
+                "2": { "name": "punctuation.separator.asfl" }
+              }
+            },
+            { "include": "#keywords-type" },
+            { "include": "#keywords-declaration-inline" },
+            { "include": "#numbers" },
+            { "include": "#enums" },
+            { "include": "#identifiers" }
+          ]
+        }
+      ]
+    },
+    "keywords-declaration-inline": {
+      "patterns": [
+        {
+          "name": "keyword.declaration.asfl",
+          "match": "\\b(of|to|composed|map|set|seq|end)\\b"
+        }
+      ]
+    },
+    "informal-marker": {
+      "name": "keyword.other.informal-marker.asfl",
+      "match": "\\binformal\\b"
+    },
+    "fsf-keywords": {
+      "patterns": [
+        {
+          "name": "keyword.other.fsf-branch.asfl",
+          "match": "\\bothers\\b"
+        },
+        {
+          "name": "keyword.operator.logical.asfl",
+          "match": "&&|\\|\\|"
+        }
+      ]
+    },
+    "quantifier-bindings": {
+      "match": "\\[([A-Za-z_][A-Za-z0-9_,\\s]*?)\\s*(:)\\s*",
+      "captures": {
+        "1": { "patterns": [{ "name": "variable.parameter.asfl", "match": "[A-Za-z_][A-Za-z0-9_]*" }] },
+        "2": { "name": "punctuation.separator.asfl" }
+      }
     },
     "strings": {
       "name": "string.quoted.double.asfl",
@@ -50,7 +207,11 @@
       "patterns": [
         {
           "name": "keyword.control.asfl",
-          "match": "\\b(module|end_module|process|end_process|function|end_function|Init|end|endcase|case|default|of|if|then|else|let|in|undefined|others|FSF|equal|SYSTEM_)\\b"
+          "match": "\\b(module|end_module|process|end_process|function|end_function|Init|end_case|case|default|if|then|else|let|undefined|equal|exists|not)\\b"
+        },
+        {
+          "name": "keyword.control.system-prefix.asfl",
+          "match": "SYSTEM_"
         }
       ]
     },
@@ -58,7 +219,7 @@
       "patterns": [
         {
           "name": "keyword.declaration.asfl",
-          "match": "\\b(const|type|var|inv|ext|rd|wr|decom|comment|composed|map|set|seq|forall|exists|forevery|forsome)\\b"
+          "match": "\\b(const|type|var|inv|ext|rd|wr|decom|comment|forall|forevery|forsome)\\b"
         }
       ]
     },
@@ -73,8 +234,24 @@
     "keywords-operator": {
       "patterns": [
         {
-          "name": "keyword.operator.asfl",
-          "match": "&&|\\|\\||<>|<=|>=|==|\\|\\*|/|\\+|-|\\*\\*|\\||inset|notin|mod|rem|div|to|of"
+          "name": "keyword.operator.logical.asfl",
+          "match": "&&|\\|\\|"
+        },
+        {
+          "name": "keyword.operator.comparison.asfl",
+          "match": "<>|<=|>=|=="
+        },
+        {
+          "name": "keyword.operator.arithmetic.asfl",
+          "match": "\\*\\*|\\+|-|\\*|/"
+        },
+        {
+          "name": "keyword.operator.word.asfl",
+          "match": "\\b(inset|notin|mod|rem|div|to|of|in|and|or)\\b"
+        },
+        {
+          "name": "keyword.operator.arrow.asfl",
+          "match": "->"
         }
       ]
     },
@@ -82,21 +259,29 @@
       "patterns": [
         {
           "name": "keyword.other.fsf.asfl",
-          "match": "\\b(override|inverse|comp|conc|dconc|subset|psubset|bound|dom|rng|domrt|rngrt|domrb|rngrb|card|len|get|hd|tl|union|inter|diff|dunion|dinter|power|elems|inds|abs|floor|modify|mk)\\b"
+          "match": "\\b(override|inverse|comp|conc|dconc|subset|psubset|bound|dom|rng|domrt|rngrt|domrb|rngrb|card|len|get|hd|tl|union|inter|diff|dunion|dinter|power|elems|inds|abs|floor|modify|mk_)\\b"
         }
       ]
     },
-    "informal": {
+    "punctuation": {
       "patterns": [
-        {
-          "name": "markup.other.informal.asfl",
-          "match": "\\binformal\\b"
-        }
+        { "name": "punctuation.separator.asfl", "match": "[:;,]" },
+        { "name": "punctuation.section.parens.asfl", "match": "[()]" },
+        { "name": "punctuation.section.brackets.asfl", "match": "[\\[\\]]" },
+        { "name": "punctuation.section.braces.asfl", "match": "[{}]" }
       ]
     },
     "identifiers": {
-      "name": "variable.other.asfl",
-      "match": "[A-Za-z_][A-Za-z0-9_]*"
+      "patterns": [
+        {
+          "name": "variable.parameter.asfl",
+          "match": "(?<=\\()\\s*[A-Za-z_][A-Za-z0-9_]*(?=\\s*[:,)])"
+        },
+        {
+          "name": "variable.other.asfl",
+          "match": "[A-Za-z_][A-Za-z0-9_]*"
+        }
+      ]
     }
   }
 }

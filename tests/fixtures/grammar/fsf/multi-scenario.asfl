@@ -1,0 +1,10 @@
+module SYSTEM_Fsf;
+process P (x: int) y: nat
+FSF :
+x > 0 && y > 0 ||
+informal requirement && y = 1 ||
+others && y = 0
+decom: RefinementDiagram
+comment: informal note here
+end_process
+end_module

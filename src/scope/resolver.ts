@@ -44,7 +44,12 @@ function buildModuleScope(module: ModuleNode, parent?: ModuleScope): ModuleScope
     scope.symbols.set(t.name, { kind: 'type', name: t.name, moduleName: module.name, span: t.span })
   }
   for (const v of module.vars) {
-    scope.symbols.set(v.variable.name, { kind: 'var', name: v.variable.name, moduleName: module.name, span: v.span })
+    scope.symbols.set(v.variable.name, {
+      kind: 'var',
+      name: v.variable.name,
+      moduleName: module.name,
+      span: v.variable.span
+    })
   }
   for (const p of module.processes) {
     scope.symbols.set(p.name, { kind: 'process', name: p.name, moduleName: module.name, span: p.span })

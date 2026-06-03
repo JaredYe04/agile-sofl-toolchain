@@ -1,0 +1,17 @@
+module SYSTEM_Proc;
+process Dup equal Sub.P
+end_process
+process Worker ()
+ext
+rd total: nat
+wr subtotal: int
+FSF :
+others && subtotal = total
+end_process
+end_module;
+module Sub / Proc;
+process P ()
+FSF :
+others && true
+end_process
+end_module

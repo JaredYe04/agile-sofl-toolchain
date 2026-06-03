@@ -1,0 +1,18 @@
+module SYSTEM_Edge;
+type M = map string to nat;
+var s: set of nat;
+inv s inset {1, 2};
+process P ()
+ext
+rd total: nat
+wr subtotal: int
+FSF :
+informal precondition && subtotal = total ||
+others && subtotal = 0
+decom: RefinementDiagram
+comment: informal add product when customer is active
+end_process
+function check (x: nat): nat
+== x
+end_function
+end_module

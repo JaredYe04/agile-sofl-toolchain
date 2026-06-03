@@ -13,6 +13,10 @@ import { TextDocument } from 'vscode-languageserver-textdocument'
 import { collectDiagnostics } from './diagnostics.js'
 import { formatDocument } from './formatting.js'
 import { collectDocumentSymbols } from './symbols.js'
+import { getDefinition } from './definition.js'
+import { getHover } from './hover.js'
+import { getCompletions } from './completion.js'
+import { buildSemanticTokens, SEMANTIC_TOKEN_MODIFIERS, SEMANTIC_TOKEN_TYPES } from './semanticTokens.js'
 
 const connection = createConnection(ProposedFeatures.all)
 const documents = new TextDocuments(TextDocument)
@@ -27,7 +31,19 @@ connection.onInitialize(() => ({
       change: TextDocumentSyncKind.Incremental
     },
     documentFormattingProvider: true,
-    documentSymbolProvider: true
+    documentSymbolProvider: true,
+    definitionProvider: true,
+    hoverProvider: true,
+    completionProvider: {
+      triggerCharacters: [':', '.', '/']
+    },
+    semanticTokensProvider: {
+      legend: {
+        tokenTypes: [...SEMANTIC_TOKEN_TYPES],
+        tokenModifiers: [...SEMANTIC_TOKEN_MODIFIERS]
+      },
+      full: true
+    }
   }
 }))
 
@@ -78,6 +94,30 @@ connection.onDocumentSymbol((params) => {
   const doc = documents.get(params.textDocument.uri)
   if (!doc) return []
   return collectDocumentSymbols(doc)
+})
+
+connection.languages.semanticTokens.on((params) => {
+  const doc = documents.get(params.textDocument.uri)
+  if (!doc) return { data: [] }
+  return buildSemanticTokens(doc)
+})
+
+connection.onDefinition((params) => {
+  const doc = documents.get(params.textDocument.uri)
+  if (!doc) return null
+  return getDefinition(doc, params.position)
+})
+
+connection.onHover((params) => {
+  const doc = documents.get(params.textDocument.uri)
+  if (!doc) return null
+  return getHover(doc, params.position)
+})
+
+connection.onCompletion((params) => {
+  const doc = documents.get(params.textDocument.uri)
+  if (!doc) return []
+  return getCompletions(doc, params.position)
 })
 
 documents.listen(connection)

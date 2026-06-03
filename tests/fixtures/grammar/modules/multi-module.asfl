@@ -1,0 +1,9 @@
+module SYSTEM_Root;
+type T = nat;
+end_module;
+module Child / Root;
+var x: T;
+end_module;
+module Grand / Child;
+inv x > 0;
+end_module.

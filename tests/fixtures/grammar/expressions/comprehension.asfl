@@ -1,0 +1,10 @@
+module SYSTEM_Comp;
+process P ()
+FSF :
+others && 1 inset { x | x > 0 }
+end_process
+process Q ()
+FSF :
+others && [ n | n < 10 ] = []
+end_process
+end_module

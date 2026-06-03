@@ -163,7 +163,7 @@ export class AgileSoflParser extends CstParser {
   public module!: () => CstNode
 
   constructor() {
-    super(allTokens, { recoveryEnabled: true, skipValidations: true })
+    super(allTokens, { recoveryEnabled: true, skipValidations: true, nodeLocation: true })
 
     const $ = this as unknown as Record<string, (...args: unknown[]) => unknown> & AgileSoflParser
 

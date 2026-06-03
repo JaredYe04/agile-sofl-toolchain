@@ -1,0 +1,25 @@
+{
+  "line": "var total: nat;",
+  "segments": [
+    {
+      "text": "var",
+      "colorClass": "kwDecl"
+    },
+    {
+      "text": "total",
+      "colorClass": "entityType"
+    },
+    {
+      "text": ":",
+      "colorClass": "punct"
+    },
+    {
+      "text": "nat",
+      "colorClass": "type"
+    },
+    {
+      "text": ";",
+      "colorClass": "plain"
+    }
+  ]
+}

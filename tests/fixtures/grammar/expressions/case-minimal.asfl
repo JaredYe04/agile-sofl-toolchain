@@ -1,0 +1,8 @@
+module SYSTEM_E;
+function f (x: nat): nat
+== case x of
+   a -> 1; b -> 2
+   ; default -> 0
+   end_case
+end_function
+end_module

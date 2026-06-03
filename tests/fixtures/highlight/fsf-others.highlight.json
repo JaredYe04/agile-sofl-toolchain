@@ -1,0 +1,25 @@
+{
+  "line": "others && x = 1",
+  "segments": [
+    {
+      "text": "others",
+      "colorClass": "identifier"
+    },
+    {
+      "text": "&&",
+      "colorClass": "operator"
+    },
+    {
+      "text": "x",
+      "colorClass": "identifier"
+    },
+    {
+      "text": " = ",
+      "colorClass": "plain"
+    },
+    {
+      "text": "1",
+      "colorClass": "number"
+    }
+  ]
+}

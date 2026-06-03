@@ -1,0 +1,6 @@
+module SYSTEM_Pred;
+var items: set of nat;
+inv
+forall[i: items] | i > 0 and
+exists[j: items] | j <> i or not (j = 0);
+end_module

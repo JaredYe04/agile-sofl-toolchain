@@ -1,0 +1,11 @@
+module SYSTEM_Types;
+type
+S = set of nat;
+Q = seq of int;
+P = nat * int;
+U = nat | int;
+E = {<on>, <off>};
+M = map string to nat;
+C = composed of id: nat name: string end;
+G = universal;
+end_module

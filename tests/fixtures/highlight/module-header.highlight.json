@@ -1,0 +1,21 @@
+{
+  "line": "module SYSTEM_Traps;",
+  "segments": [
+    {
+      "text": "module",
+      "colorClass": "kwCtrl"
+    },
+    {
+      "text": "SYSTEM_",
+      "colorClass": "systemPrefix"
+    },
+    {
+      "text": "Traps",
+      "colorClass": "module"
+    },
+    {
+      "text": ";",
+      "colorClass": "punct"
+    }
+  ]
+}

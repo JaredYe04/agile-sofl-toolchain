@@ -36,6 +36,33 @@
         "path": "./syntaxes/agile-sofl.tmLanguage.json"
       }
     ],
+    "tokenColors": [
+      { "scope": "keyword.control.asfl", "settings": { "foreground": "#C586C0" } },
+      { "scope": "keyword.control.system-prefix.asfl", "settings": { "foreground": "#D7BA7D", "fontStyle": "bold" } },
+      { "scope": "keyword.control.fsf.asfl", "settings": { "foreground": "#DCDCAA", "fontStyle": "bold" } },
+      { "scope": "keyword.declaration.asfl", "settings": { "foreground": "#569CD6" } },
+      { "scope": "keyword.modifier.rdwr.asfl", "settings": { "foreground": "#4EC9B0" } },
+      { "scope": "keyword.other.informal-marker.asfl", "settings": { "foreground": "#CE9178", "fontStyle": "italic" } },
+      { "scope": "keyword.other.fsf.asfl", "settings": { "foreground": "#B5CEA8" } },
+      { "scope": "keyword.other.fsf-branch.asfl", "settings": { "foreground": "#D7BA7D" } },
+      { "scope": "keyword.operator.logical.asfl", "settings": { "foreground": "#D4D4D4" } },
+      { "scope": "keyword.operator.comparison.asfl", "settings": { "foreground": "#D4D4D4" } },
+      { "scope": "keyword.operator.word.asfl", "settings": { "foreground": "#D4D4D4" } },
+      { "scope": "storage.type.asfl", "settings": { "foreground": "#4EC9B0" } },
+      { "scope": "entity.name.namespace.asfl", "settings": { "foreground": "#4FC1FF" } },
+      { "scope": "entity.name.function.asfl", "settings": { "foreground": "#DCDCAA" } },
+      { "scope": "entity.name.type.asfl", "settings": { "foreground": "#4EC9B0" } },
+      { "scope": "entity.name.tag.asfl", "settings": { "foreground": "#9CDCFE" } },
+      { "scope": "variable.parameter.asfl", "settings": { "foreground": "#9CDCFE" } },
+      { "scope": "variable.other.asfl", "settings": { "foreground": "#9CDCFE" } },
+      { "scope": "string.unquoted.informal.asfl", "settings": { "foreground": "#CE9178" } },
+      { "scope": "string.quoted.double.asfl", "settings": { "foreground": "#CE9178" } },
+      { "scope": "constant.other.enum.asfl", "settings": { "foreground": "#D7BA7D" } },
+      { "scope": "constant.numeric", "settings": { "foreground": "#B5CEA8" } },
+      { "scope": "comment.block.asfl", "settings": { "foreground": "#6A9955" } },
+      { "scope": "meta.fsf.asfl", "settings": { "foreground": "#D4D4D4" } },
+      { "scope": "meta.comment.informal.asfl", "settings": { "foreground": "#CE9178" } }
+    ],
     "configuration": {
       "title": "Agile-SOFL",
       "properties": {
@@ -56,7 +83,8 @@
     },
     "configurationDefaults": {
       "[agile-sofl]": {
-        "editor.defaultFormatter": "JaredYe.agile-sofl"
+        "editor.defaultFormatter": "JaredYe.agile-sofl",
+        "editor.semanticHighlighting.enabled": true
       },
       "files.associations": {
         "*.asfl": "agile-sofl"

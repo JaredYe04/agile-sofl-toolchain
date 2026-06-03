@@ -1,0 +1,9 @@
+module SYSTEM_IsType;
+type
+Custom = nat;
+inv
+is_nat(1) and is_Custom(1);
+function mkFn (): Custom
+== mk_Custom(1)
+end_function
+end_module
