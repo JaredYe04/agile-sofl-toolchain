@@ -21,7 +21,7 @@ const errorLabel = computed(() =>
     <span class="truncate">{{ pathLabel }}</span>
     <div class="flex items-center gap-3">
       <span>{{ errorLabel }}</span>
-      <span>{{ lsp.running ? t('status.lsp.connected') : t('status.lsp.disconnected') }}</span>
+      <span :title="lsp.message">{{ lsp.running ? t('status.lsp.connected') : t('status.lsp.disconnected') }}</span>
       <span>{{ t('status.ready') }}</span>
     </div>
   </footer>

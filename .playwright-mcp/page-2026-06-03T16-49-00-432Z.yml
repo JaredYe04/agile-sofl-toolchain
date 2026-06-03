@@ -1,0 +1,41 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]: A
+      - menubar [ref=e7]:
+        - menuitem "File" [ref=e9] [cursor=pointer]
+        - menuitem "Edit" [ref=e11] [cursor=pointer]
+        - menuitem "View" [ref=e13] [cursor=pointer]
+        - menuitem "Help" [ref=e15] [cursor=pointer]
+    - button "Home" [ref=e17] [cursor=pointer]:
+      - img [ref=e18]
+      - generic [ref=e21]: Home
+    - generic [ref=e22]:
+      - button "Minimize" [ref=e23] [cursor=pointer]:
+        - img [ref=e24]
+      - button "Maximize" [ref=e26] [cursor=pointer]:
+        - img [ref=e27]
+      - button "Close" [ref=e29] [cursor=pointer]:
+        - img [ref=e30]
+  - button "Home" [ref=e33] [cursor=pointer]:
+    - generic [ref=e34]: ⌂
+    - generic [ref=e35]: Home
+  - main [ref=e36]:
+    - generic [ref=e38]:
+      - generic [ref=e39]:
+        - generic [ref=e40]: A
+        - generic [ref=e41]:
+          - heading "Agile-SOFL Studio" [level=1] [ref=e42]
+          - paragraph [ref=e43]: Visual editor for Agile-SOFL specifications
+      - generic [ref=e44]:
+        - button "New File" [ref=e45] [cursor=pointer]
+        - button "Open File…" [ref=e46] [cursor=pointer]
+      - generic [ref=e47]:
+        - heading "Recent files" [level=2] [ref=e48]
+        - paragraph [ref=e49]: No recent files
+  - contentinfo [ref=e50]:
+    - generic [ref=e51]: Home
+    - generic [ref=e52]:
+      - generic [ref=e53]: No errors
+      - generic [ref=e54]: LSP disconnected
+      - generic [ref=e55]: Ready

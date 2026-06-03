@@ -1,0 +1,22 @@
+import * as esbuild from 'esbuild'
+import { mkdirSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const __dirname = dirname(fileURLToPath(import.meta.url))
+const outFile = join(__dirname, '..', 'dist', 'parse-bridge.cjs')
+
+mkdirSync(dirname(outFile), { recursive: true })
+
+await esbuild.build({
+  entryPoints: [join(__dirname, '..', 'src', 'main', 'services', 'parseBridge.ts')],
+  bundle: true,
+  platform: 'node',
+  target: 'node18',
+  outfile: outFile,
+  external: ['electron'],
+  format: 'cjs',
+  sourcemap: true
+})
+
+console.log('Bundled parse bridge to', outFile)

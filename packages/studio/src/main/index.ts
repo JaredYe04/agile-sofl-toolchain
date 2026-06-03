@@ -1,9 +1,11 @@
-import { app, BrowserWindow, ipcMain } from 'electron'
+import { app, ipcMain, BrowserWindow } from 'electron'
 import { join } from 'node:path'
 import { registerFileHandlers } from './services/fileService'
 import { registerWindowHandlers } from './services/windowService'
+import { registerParseHandlers } from './services/parseService'
 import {
   isLspRunning,
+  getLspStatusMessage,
   sendToLanguageServer,
   setLspWindow,
   startLanguageServer,
@@ -35,7 +37,6 @@ function createWindow(): void {
   })
 
   setLspWindow(mainWindow)
-  startLanguageServer()
 
   mainWindow.on('close', (e) => {
     if (allowClose) return
@@ -51,6 +52,10 @@ function createWindow(): void {
     mainWindow?.webContents.send('studio:window-maximized-changed', false)
   })
 
+  mainWindow.webContents.once('did-finish-load', () => {
+    startLanguageServer()
+  })
+
   if (process.env.ELECTRON_RENDERER_URL) {
     mainWindow.loadURL(process.env.ELECTRON_RENDERER_URL)
   } else {
@@ -62,6 +67,8 @@ app.whenReady().then(() => {
   registerFileHandlers(getWindow)
   registerWindowHandlers(getWindow)
 
+  registerParseHandlers()
+
   ipcMain.on('studio:lsp-send', (_event, jsonBody: string) => {
     sendToLanguageServer(jsonBody)
   })
@@ -69,9 +76,14 @@ app.whenReady().then(() => {
   ipcMain.handle('studio:lsp-status', () => ({
     running: isLspRunning(),
     message: isLspRunning()
-      ? 'Language server connected'
-      : 'Language server not available — run npm run bundle --workspace @agile-sofl/language-server'
+      ? getLspStatusMessage() || 'Language server connected'
+      : getLspStatusMessage() ||
+        'Language server not available — run npm run bundle --workspace @agile-sofl/language-server'
   }))
+
+  ipcMain.handle('studio:open-devtools', () => {
+    mainWindow?.webContents.openDevTools({ mode: 'detach' })
+  })
 
   ipcMain.on('studio:confirm-close', () => {
     allowClose = true

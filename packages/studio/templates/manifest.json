@@ -1,0 +1,46 @@
+{
+  "templates": [
+    {
+      "id": "blank",
+      "titleKey": "template.blank.title",
+      "descriptionKey": "template.blank.description",
+      "file": "blank.asfl",
+      "category": "basic"
+    },
+    {
+      "id": "minimal-module",
+      "titleKey": "template.minimal.title",
+      "descriptionKey": "template.minimal.description",
+      "file": "minimal-module.asfl",
+      "category": "basic"
+    },
+    {
+      "id": "library-system",
+      "titleKey": "template.library.title",
+      "descriptionKey": "template.library.description",
+      "file": "library-system.asfl",
+      "category": "example"
+    },
+    {
+      "id": "ecommerce",
+      "titleKey": "template.ecommerce.title",
+      "descriptionKey": "template.ecommerce.description",
+      "file": "ecommerce.asfl",
+      "category": "example"
+    },
+    {
+      "id": "hospital-registration",
+      "titleKey": "template.hospital.title",
+      "descriptionKey": "template.hospital.description",
+      "file": "hospital-registration.asfl",
+      "category": "example"
+    },
+    {
+      "id": "type-showcase",
+      "titleKey": "template.types.title",
+      "descriptionKey": "template.types.description",
+      "file": "type-showcase.asfl",
+      "category": "example"
+    }
+  ]
+}

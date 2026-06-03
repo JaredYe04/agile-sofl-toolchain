@@ -1,40 +1,74 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
-import { createTab, type EditorTab, pathToFileUri } from './tabUtils'
+import {
+  createDocumentTab,
+  createHomeTab,
+  HOME_TAB_ID,
+  pathToFileUri,
+  type EditorTab
+} from './tabUtils'
+import { useRecentFilesStore } from './recentFiles'
 
 export const useDocumentStore = defineStore('document', () => {
-  const tabs = ref<EditorTab[]>([])
-  const activeTabId = ref<string | null>(null)
+  const tabs = ref<EditorTab[]>([createHomeTab()])
+  const activeTabId = ref<string>(HOME_TAB_ID)
 
+  const homeTab = computed(() => tabs.value.find((t) => t.kind === 'home') ?? null)
+  const documentTabs = computed(() => tabs.value.filter((t) => t.kind === 'document'))
   const activeTab = computed(() => tabs.value.find((t) => t.id === activeTabId.value) ?? null)
-  const hasDirtyTabs = computed(() => tabs.value.some((t) => t.isDirty))
+  const hasDirtyTabs = computed(() => documentTabs.value.some((t) => t.isDirty))
+  const isHomeActive = computed(() => activeTabId.value === HOME_TAB_ID)
+  const showWelcomeFallback = computed(
+    () => documentTabs.value.length === 0 && activeTabId.value !== HOME_TAB_ID
+  )
 
-  function ensureInitialTab(): void {
-    if (tabs.value.length === 0) {
-      const tab = createTab()
-      tabs.value.push(tab)
-      activeTabId.value = tab.id
+  function ensureHomeTab(): void {
+    if (!tabs.value.some((t) => t.id === HOME_TAB_ID)) {
+      tabs.value.unshift(createHomeTab())
     }
+  }
+
+  function initHome(): void {
+    ensureHomeTab()
+    activeTabId.value = HOME_TAB_ID
   }
 
   function setActive(id: string): void {
     if (tabs.value.some((t) => t.id === id)) activeTabId.value = id
   }
 
-  function newTab(): EditorTab {
-    const tab = createTab()
+  function goHome(): void {
+    ensureHomeTab()
+    activeTabId.value = HOME_TAB_ID
+  }
+
+  function newTab(options?: { content?: string; title?: string }): EditorTab {
+    const tab = createDocumentTab({
+      content: options?.content,
+      title: options?.title
+    })
     tabs.value.push(tab)
     activeTabId.value = tab.id
     return tab
   }
 
+  function setContent(id: string, content: string, dirty = true): void {
+    const tab = tabs.value.find((t) => t.id === id)
+    if (!tab || tab.kind !== 'document') return
+    tab.content = content
+    tab.isDirty = dirty
+  }
+
   function openFromFile(filePath: string, content: string, title: string): EditorTab {
-    const existing = tabs.value.find((t) => t.filePath === filePath)
+    const recent = useRecentFilesStore()
+    recent.add(filePath, title)
+
+    const existing = documentTabs.value.find((t) => t.filePath === filePath)
     if (existing) {
       activeTabId.value = existing.id
       return existing
     }
-    const tab = createTab({ filePath, content, title, isDirty: false })
+    const tab = createDocumentTab({ filePath, content, title, isDirty: false })
     tabs.value.push(tab)
     activeTabId.value = tab.id
     return tab
@@ -42,38 +76,52 @@ export const useDocumentStore = defineStore('document', () => {
 
   function updateContent(id: string, content: string): void {
     const tab = tabs.value.find((t) => t.id === id)
-    if (!tab) return
+    if (!tab || tab.kind !== 'document') return
     tab.content = content
     tab.isDirty = true
   }
 
   function markSaved(id: string, filePath: string, title: string): void {
     const tab = tabs.value.find((t) => t.id === id)
-    if (!tab) return
+    if (!tab || tab.kind !== 'document') return
     tab.filePath = filePath
     tab.title = title
     tab.isDirty = false
     tab.uri = pathToFileUri(filePath)
+    useRecentFilesStore().add(filePath, title)
   }
 
   function removeTab(id: string): void {
+    if (id === HOME_TAB_ID) return
     const idx = tabs.value.findIndex((t) => t.id === id)
     if (idx === -1) return
     tabs.value.splice(idx, 1)
+
     if (activeTabId.value === id) {
-      activeTabId.value = tabs.value[Math.min(idx, tabs.value.length - 1)]?.id ?? null
+      const remainingDocs = documentTabs.value
+      if (remainingDocs.length > 0) {
+        activeTabId.value = remainingDocs[Math.min(idx - 1, remainingDocs.length - 1)]?.id ?? remainingDocs[0].id
+      } else {
+        activeTabId.value = HOME_TAB_ID
+      }
     }
-    if (tabs.value.length === 0) ensureInitialTab()
+    ensureHomeTab()
   }
 
   return {
     tabs,
     activeTabId,
+    homeTab,
+    documentTabs,
     activeTab,
     hasDirtyTabs,
-    ensureInitialTab,
+    isHomeActive,
+    showWelcomeFallback,
+    initHome,
     setActive,
+    goHome,
     newTab,
+    setContent,
     openFromFile,
     updateContent,
     markSaved,

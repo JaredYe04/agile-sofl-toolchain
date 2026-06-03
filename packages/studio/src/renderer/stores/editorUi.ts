@@ -1,0 +1,63 @@
+import { defineStore } from 'pinia'
+import { ref } from 'vue'
+
+export type ViewMode = 'code' | 'visual' | 'split'
+
+const VIEW_KEY = 'studio-view-mode'
+const MINIMAP_KEY = 'studio-show-minimap'
+const LINENUMBERS_KEY = 'studio-show-linenumbers'
+const SPLIT_KEY = 'studio-split-ratio'
+
+function readBool(key: string, fallback: boolean): boolean {
+  const v = localStorage.getItem(key)
+  if (v === null) return fallback
+  return v === 'true'
+}
+
+export const useEditorUiStore = defineStore('editorUi', () => {
+  const viewMode = ref<ViewMode>((localStorage.getItem(VIEW_KEY) as ViewMode | null) ?? 'split')
+  const showMinimap = ref(readBool(MINIMAP_KEY, true))
+  const showLineNumbers = ref(readBool(LINENUMBERS_KEY, true))
+  const splitRatio = ref(Number.parseFloat(localStorage.getItem(SPLIT_KEY) ?? '0.5') || 0.5)
+
+  function setViewMode(mode: ViewMode): void {
+    viewMode.value = mode
+    localStorage.setItem(VIEW_KEY, mode)
+  }
+
+  function setShowMinimap(v: boolean): void {
+    showMinimap.value = v
+    localStorage.setItem(MINIMAP_KEY, String(v))
+  }
+
+  function setShowLineNumbers(v: boolean): void {
+    showLineNumbers.value = v
+    localStorage.setItem(LINENUMBERS_KEY, String(v))
+  }
+
+  function setSplitRatio(r: number): void {
+    splitRatio.value = Math.min(0.8, Math.max(0.2, r))
+    localStorage.setItem(SPLIT_KEY, String(splitRatio.value))
+  }
+
+  function showMonaco(): boolean {
+    return viewMode.value === 'code' || viewMode.value === 'split'
+  }
+
+  function showVisual(): boolean {
+    return viewMode.value === 'visual' || viewMode.value === 'split'
+  }
+
+  return {
+    viewMode,
+    showMinimap,
+    showLineNumbers,
+    splitRatio,
+    setViewMode,
+    setShowMinimap,
+    setShowLineNumbers,
+    setSplitRatio,
+    showMonaco,
+    showVisual
+  }
+})

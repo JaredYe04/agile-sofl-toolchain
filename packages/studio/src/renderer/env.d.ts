@@ -34,8 +34,10 @@ declare module 'vue-i18n' {
     'menu.help': string
     'menu.help.about': string
     'menu.help.docs': string
+    'menu.help.devTools': string
     'commandCenter.search': string
     'commandCenter.untitled': string
+    'tab.home': string
     'tab.untitled': string
     'window.minimize': string
     'window.maximize': string
@@ -52,5 +54,20 @@ declare module 'vue-i18n' {
     'status.noErrors': string
     'status.ready': string
     'about.message': string
+    'home.title': string
+    'home.subtitle': string
+    'home.newFile': string
+    'home.openFile': string
+    'home.recentFiles': string
+    'home.noRecent': string
+    'welcome.title': string
+    'welcome.message': string
+    'welcome.goHome': string
+    'toolbar.viewCode': string
+    'toolbar.viewVisual': string
+    'toolbar.viewSplit': string
+    'toolbar.minimap': string
+    'toolbar.lineNumbers': string
+    'visual.placeholder': string
   }
 }

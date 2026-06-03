@@ -1,9 +1,11 @@
 import { onMounted, onUnmounted } from 'vue'
-import { useDocumentStore } from '../stores/document'
 import { useFileActions } from './useFileActions'
 
-export function useKeyboardShortcuts(onEdit: (cmd: string) => void): void {
-  const doc = useDocumentStore()
+export function useKeyboardShortcuts(
+  onEdit: (cmd: string) => void,
+  onDevTools?: () => void,
+  onNewFile?: () => void
+): void {
   const files = useFileActions()
 
   function handler(e: KeyboardEvent): void {
@@ -13,7 +15,7 @@ export function useKeyboardShortcuts(onEdit: (cmd: string) => void): void {
     const key = e.key.toLowerCase()
     if (key === 'n') {
       e.preventDefault()
-      doc.newTab()
+      onNewFile?.()
     } else if (key === 'o') {
       e.preventDefault()
       files.openFile()
@@ -26,6 +28,9 @@ export function useKeyboardShortcuts(onEdit: (cmd: string) => void): void {
     } else if (key === 'w') {
       e.preventDefault()
       files.closeActiveTab()
+    } else if (key === 'i' && e.shiftKey) {
+      e.preventDefault()
+      onDevTools?.()
     } else if (key === 'z' && !e.shiftKey) {
       e.preventDefault()
       onEdit('undo')

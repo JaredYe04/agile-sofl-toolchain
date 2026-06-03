@@ -13,7 +13,7 @@ const lsp = useLspStore()
 onMounted(async () => {
   await initLocaleFromSystem()
   await app.init()
-  doc.ensureInitialTab()
+  doc.initHome()
   lsp.init()
 })
 </script>

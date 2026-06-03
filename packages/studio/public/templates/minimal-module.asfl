@@ -1,0 +1,3 @@
+module SYSTEM_Test;
+var x: nat;
+end_module

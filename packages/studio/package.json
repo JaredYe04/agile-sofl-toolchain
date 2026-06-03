@@ -6,9 +6,10 @@
   "main": "out/main/index.js",
   "scripts": {
     "copy-assets": "node scripts/copy-editor-assets.mjs",
-    "predev": "npm run copy-assets",
+    "bundle:parse-bridge": "node scripts/bundle-parse-bridge.mjs",
+    "predev": "npm run copy-assets && npm run bundle:parse-bridge",
     "dev": "electron-vite dev",
-    "prebuild": "npm run copy-assets",
+    "prebuild": "npm run copy-assets && npm run bundle:parse-bridge",
     "build": "electron-vite build",
     "preview": "electron-vite preview",
     "test": "vitest run"
@@ -33,6 +34,7 @@
     "autoprefixer": "^10.4.19",
     "electron": "^28.2.0",
     "electron-vite": "^2.0.0",
+    "esbuild": "^0.21.5",
     "postcss": "^8.4.38",
     "tailwindcss": "^3.4.3",
     "typescript": "^5.3.0",

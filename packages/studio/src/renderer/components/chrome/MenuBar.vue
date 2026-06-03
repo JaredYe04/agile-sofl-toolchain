@@ -3,18 +3,18 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DropdownMenu, { type MenuItem } from '../ui/DropdownMenu.vue'
 import { useAppStore } from '../../stores/app'
-import { useDocumentStore } from '../../stores/document'
 import { useFileActions } from '../../composables/useFileActions'
+import { useNewFileDialog } from '../../composables/useNewFileDialog'
 
-const emit = defineEmits<{ edit: [cmd: string] }>()
+const emit = defineEmits<{ edit: [cmd: string]; devTools: [] }>()
 
 const { t } = useI18n()
 const app = useAppStore()
-const doc = useDocumentStore()
 const files = useFileActions()
+const newFileDialog = useNewFileDialog()
 
 const fileItems = computed<MenuItem[]>(() => [
-  { id: 'new', label: t('menu.file.new'), shortcut: 'Ctrl+N', action: () => doc.newTab() },
+  { id: 'new', label: t('menu.file.new'), shortcut: 'Ctrl+N', action: () => newFileDialog.show() },
   { id: 'open', label: t('menu.file.open'), shortcut: 'Ctrl+O', action: () => files.openFile() },
   { id: 'sep1', label: '', separator: true },
   { id: 'save', label: t('menu.file.save'), shortcut: 'Ctrl+S', action: () => files.saveTab() },
@@ -44,6 +44,13 @@ const viewItems = computed<MenuItem[]>(() => [
 ])
 
 const helpItems = computed<MenuItem[]>(() => [
+  {
+    id: 'devTools',
+    label: t('menu.help.devTools'),
+    shortcut: 'Ctrl+Shift+I',
+    action: () => emit('devTools')
+  },
+  { id: 'sep0', label: '', separator: true },
   {
     id: 'about',
     label: t('menu.help.about'),

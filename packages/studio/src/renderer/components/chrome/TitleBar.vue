@@ -5,7 +5,7 @@ import MenuBar from './MenuBar.vue'
 import CommandCenter from './CommandCenter.vue'
 import WindowControls from './WindowControls.vue'
 
-defineEmits<{ edit: [cmd: string] }>()
+defineEmits<{ edit: [cmd: string]; devTools: [] }>()
 
 const app = useAppStore()
 const isDarwin = computed(() => app.platform === 'darwin')
@@ -22,7 +22,7 @@ const isDarwin = computed(() => app.platform === 'darwin')
       <div class="flex h-4 w-4 items-center justify-center rounded bg-accent/20 text-[10px] font-bold text-accent">
         A
       </div>
-      <MenuBar @edit="$emit('edit', $event)" />
+      <MenuBar @edit="$emit('edit', $event)" @dev-tools="$emit('devTools')" />
     </div>
 
     <div class="titlebar-drag min-w-0 flex-1">

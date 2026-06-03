@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { ref, watch, onMounted, onUnmounted, shallowRef } from 'vue'
+import { ref, watch, onMounted, onUnmounted, shallowRef, computed } from 'vue'
 import type * as Monaco from 'monaco-editor'
 import { monaco, initMonacoBase } from '../../monaco/setup'
 import { registerLanguageConfiguration, registerTextMateTokens } from '../../monaco/textmate'
-import { startLanguageClient, uriForTab } from '../../monaco/languageClient'
+import { uriForTab } from '../../monaco/languageClient'
 import { useDocumentStore } from '../../stores/document'
 import { useLspStore } from '../../stores/lsp'
+import { useEditorUiStore } from '../../stores/editorUi'
 
 const container = ref<HTMLElement | null>(null)
 const editor = shallowRef<Monaco.editor.IStandaloneCodeEditor | null>(null)
@@ -14,6 +15,11 @@ let markerSub: Monaco.IDisposable | null = null
 
 const doc = useDocumentStore()
 const lsp = useLspStore()
+const editorUi = useEditorUiStore()
+
+const activeDocumentTab = computed(() =>
+  doc.activeTab?.kind === 'document' ? doc.activeTab : null
+)
 
 defineExpose({
   runEditCommand(cmd: string) {
@@ -32,8 +38,15 @@ function getOrCreateModel(tabId: string, uri: string, content: string): Monaco.e
   return model
 }
 
+function applyEditorOptions(): void {
+  editor.value?.updateOptions({
+    minimap: { enabled: editorUi.showMinimap },
+    lineNumbers: editorUi.showLineNumbers ? 'on' : 'off'
+  })
+}
+
 function syncModel(): void {
-  const tab = doc.activeTab
+  const tab = activeDocumentTab.value
   const ed = editor.value
   if (!tab || !ed) return
   const model = getOrCreateModel(tab.id, tab.uri, tab.content)
@@ -43,7 +56,7 @@ function syncModel(): void {
 }
 
 function updateErrorCount(): void {
-  const tab = doc.activeTab
+  const tab = activeDocumentTab.value
   if (!tab) return
   const uri = uriForTab(tab.uri)
   const markers = monaco.editor.getModelMarkers({ resource: uri })
@@ -51,7 +64,7 @@ function updateErrorCount(): void {
 }
 
 function onContentChange(): void {
-  const tab = doc.activeTab
+  const tab = activeDocumentTab.value
   const ed = editor.value
   if (!tab || !ed) return
   const value = ed.getValue()
@@ -60,8 +73,12 @@ function onContentChange(): void {
 
 onMounted(async () => {
   initMonacoBase()
-  await registerTextMateTokens()
-  await registerLanguageConfiguration()
+  try {
+    await registerTextMateTokens()
+    await registerLanguageConfiguration()
+  } catch (err) {
+    console.error('[studio] TextMate setup failed:', err)
+  }
 
   const isDark = document.documentElement.classList.contains('dark')
   if (container.value) {
@@ -69,7 +86,8 @@ onMounted(async () => {
       theme: isDark ? 'agile-sofl-dark' : 'agile-sofl-light',
       automaticLayout: true,
       fontSize: 14,
-      minimap: { enabled: true },
+      minimap: { enabled: editorUi.showMinimap },
+      lineNumbers: editorUi.showLineNumbers ? 'on' : 'off',
       scrollBeyondLastLine: false,
       wordWrap: 'off',
       tabSize: 4
@@ -78,8 +96,16 @@ onMounted(async () => {
     syncModel()
   }
 
-  await startLanguageClient()
   await lsp.refresh()
+  if (lsp.running) await lsp.ensureClient()
+  else {
+    const unsub = window.studio?.lspOnStatusChanged(async (s) => {
+      if (s.running) {
+        await lsp.ensureClient()
+        unsub?.()
+      }
+    })
+  }
 
   markerSub = monaco.editor.onDidChangeMarkers(() => updateErrorCount())
 })
@@ -90,9 +116,9 @@ watch(() => doc.activeTabId, () => {
 })
 
 watch(
-  () => doc.tabs.map((t) => `${t.id}:${t.content.length}:${t.uri}`).join('|'),
+  () => doc.documentTabs.map((t) => `${t.id}:${t.content.length}:${t.uri}`).join('|'),
   () => {
-    for (const tab of doc.tabs) {
+    for (const tab of doc.documentTabs) {
       const model = models.get(tab.id)
       if (model && model.getValue() !== tab.content) {
         model.setValue(tab.content)
@@ -100,6 +126,8 @@ watch(
     }
   }
 )
+
+watch([() => editorUi.showMinimap, () => editorUi.showLineNumbers], applyEditorOptions)
 
 onUnmounted(() => {
   markerSub?.dispose()

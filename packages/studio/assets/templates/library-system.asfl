@@ -1,0 +1,127 @@
+module SYSTEM_Library;
+const
+max_borrow_days = 30;
+max_books_per_member = 10;
+fine_per_day = 1;
+type
+BookId = nat;
+MemberId = nat;
+Status = {<available>, <on_loan>, <reserved>};
+Book = composed of
+  id: BookId
+  title: string
+  pages: nat
+end;
+Member = composed of
+  id: MemberId
+  name: string
+  active: bool
+end;
+BookSet = set of BookId;
+MemberSet = set of MemberId;
+Catalog = seq of BookId;
+LoanMap = map nat to bool;
+var
+book_ids: BookSet;
+member_ids: MemberSet;
+catalog: Catalog;
+loan_flags: LoanMap;
+inv
+forall[b: book_ids] | b > 0 and forall[c: catalog] | c > 0 and max_books_per_member > 0;
+process Borrow (member_id: MemberId, book_id: BookId) success: nat
+ext
+rd book_ids: BookSet
+rd member_ids: MemberSet
+wr loan_flags: LoanMap
+FSF :
+member_id > 0 && success = 1 ||
+book_id = 0 && success = 0 ||
+others && success = 0
+decom: Library_Borrow
+comment: informal member borrows when both ids are valid
+end_process
+process Return (member_id: MemberId, book_id: BookId) success: nat
+ext
+rd book_ids: BookSet
+rd member_ids: MemberSet
+wr loan_flags: LoanMap
+FSF :
+member_id > 0 && success = 1 ||
+others && success = 0
+end_process
+process Reserve (member_id: MemberId, book_id: BookId) queued: nat
+ext
+rd book_ids: BookSet
+FSF :
+book_id > 0 && queued = 1 ||
+others && queued = 0
+end_process
+process ListCatalog () count: nat
+ext
+rd catalog: Catalog
+FSF :
+count > 0 && count = 1 ||
+others && count = 0
+end_process
+function member_registered (id: MemberId): nat
+== id
+end_function
+function overdue_days (borrow_date: nat, today: nat): nat
+== borrow_date
+end_function
+end_module;
+module Circulation / Library;
+type
+LoanRecord = composed of
+  book: BookId
+  member: MemberId
+  due: nat
+end;
+ActiveLoans = seq of LoanRecord;
+var
+loans: ActiveLoans;
+pending: nat;
+inv
+pending >= 0;
+process Renew equal Library.Borrow
+end_process
+process ClearPending ()
+FSF :
+true && pending = 0
+end_process
+end_module;
+module CatalogService / Library;
+var
+featured: Catalog;
+sync_count: nat;
+process SyncCatalog ()
+ext
+rd catalog: Catalog
+wr featured: Catalog
+wr sync_count: nat
+FSF :
+sync_count > 0 && sync_count = sync_count ||
+others && sync_count = 0
+decom: Catalog_Sync
+comment: informal refresh featured list from master catalog
+end_process
+process ResetFeatured ()
+ext
+wr featured: Catalog
+FSF :
+true && sync_count = 0
+end_process
+end_module;
+module Reports / Library;
+const
+report_limit = 100;
+var
+last_report: nat;
+process GenerateReport () rows: nat
+ext
+rd catalog: Catalog
+FSF :
+rows > 0 && rows = 1 ||
+others && rows = 0
+end_process
+end_module

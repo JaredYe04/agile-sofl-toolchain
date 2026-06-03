@@ -1,20 +1,36 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import TitleBar from '../components/chrome/TitleBar.vue'
 import EditorTabs from '../components/editor/EditorTabs.vue'
-import MonacoEditor from '../components/editor/MonacoEditor.vue'
+import EditorToolbar from '../components/editor/EditorToolbar.vue'
+import EditorWorkspace from '../components/editor/EditorWorkspace.vue'
+import HomeView from '../components/home/HomeView.vue'
+import WelcomeView from '../components/home/WelcomeView.vue'
 import StatusBar from '../components/editor/StatusBar.vue'
 import { useKeyboardShortcuts } from '../composables/useKeyboardShortcuts'
 import { useFileActions } from '../composables/useFileActions'
+import NewFileDialog from '../components/home/NewFileDialog.vue'
+import { useNewFileDialog } from '../composables/useNewFileDialog'
+import { useDocumentStore } from '../stores/document'
 
-const monacoRef = ref<InstanceType<typeof MonacoEditor> | null>(null)
+const workspaceRef = ref<InstanceType<typeof EditorWorkspace> | null>(null)
 const files = useFileActions()
+const doc = useDocumentStore()
+const newFileDialog = useNewFileDialog()
+
+const showDocumentEditor = computed(
+  () => doc.activeTab?.kind === 'document' && !doc.showWelcomeFallback
+)
 
 function onEdit(cmd: string): void {
-  monacoRef.value?.runEditCommand(cmd)
+  workspaceRef.value?.runEditCommand(cmd)
 }
 
-useKeyboardShortcuts((cmd) => onEdit(cmd))
+function onDevTools(): void {
+  window.studio?.openDevTools()
+}
+
+useKeyboardShortcuts((cmd) => onEdit(cmd), onDevTools, () => newFileDialog.show())
 
 let unsubClose: (() => void) | undefined
 
@@ -31,11 +47,17 @@ onUnmounted(() => {
 
 <template>
   <div class="flex h-full flex-col overflow-hidden">
-    <TitleBar @edit="onEdit" />
+    <TitleBar @edit="onEdit" @dev-tools="onDevTools" />
     <EditorTabs />
-    <main class="min-h-0 flex-1 bg-surface-raised">
-      <MonacoEditor ref="monacoRef" />
+    <main class="flex min-h-0 flex-1 flex-col bg-surface-raised">
+      <HomeView v-if="doc.isHomeActive" />
+      <WelcomeView v-else-if="doc.showWelcomeFallback" />
+      <template v-else-if="showDocumentEditor">
+        <EditorToolbar />
+        <EditorWorkspace ref="workspaceRef" class="min-h-0 flex-1" />
+      </template>
     </main>
     <StatusBar />
+    <NewFileDialog />
   </div>
 </template>

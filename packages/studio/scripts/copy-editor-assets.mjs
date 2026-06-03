@@ -22,6 +22,19 @@ const files = [
 
 const extraFiles = [[onigWasm, 'onig.wasm']]
 
+const templatesRoot = join(studioRoot, 'templates')
+const examplesRoot = join(studioRoot, '..', '..', 'examples')
+const templateOutDirs = [join(studioRoot, 'public', 'templates'), join(studioRoot, 'assets', 'templates')]
+const templateFiles = [
+  ['blank.asfl', join(templatesRoot, 'blank.asfl')],
+  ['minimal-module.asfl', join(templatesRoot, 'minimal-module.asfl')],
+  ['library-system.asfl', join(examplesRoot, 'library-system.asfl')],
+  ['ecommerce.asfl', join(examplesRoot, 'ecommerce.asfl')],
+  ['hospital-registration.asfl', join(examplesRoot, 'hospital-registration.asfl')],
+  ['type-showcase.asfl', join(examplesRoot, 'type-showcase.asfl')],
+  ['manifest.json', join(templatesRoot, 'manifest.json')]
+]
+
 for (const outDir of outDirs) {
   mkdirSync(outDir, { recursive: true })
   for (const [src, dest] of files) {
@@ -36,5 +49,17 @@ for (const outDir of outDirs) {
   }
   for (const [src, dest] of extraFiles) {
     copyFileSync(src, join(outDir, dest))
+  }
+}
+
+for (const outDir of templateOutDirs) {
+  mkdirSync(outDir, { recursive: true })
+  for (const [dest, from] of templateFiles) {
+    if (!existsSync(from)) {
+      console.error(`Missing template source: ${from}`)
+      process.exit(1)
+    }
+    copyFileSync(from, join(outDir, dest))
+    console.log(`Copied template ${dest} -> ${outDir.replace(studioRoot, 'packages/studio')}`)
   }
 }
