@@ -7,28 +7,32 @@ on:
     branches: [main, master]
 
 jobs:
-  build-test:
+  boundaries:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: node scripts/check-boundaries.mjs
+
+  monorepo:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: npm
-      - name: Install dependencies
-        run: npm ci
-      - name: Build
-        run: npm run build
-      - name: Test
-        run: npm test
-      - name: Language server tests
-        run: npm test --prefix packages/language-server
-      - name: Editor API contract tests
-        run: npm test --prefix packages/editor-api
-      - name: Highlight tests
-        run: npm run highlight:check
-      - name: Coverage
-        run: npm run coverage
-      - name: Parse benchmark (banking + ecommerce P95)
-        run: node scripts/bench-parse.mjs --assert-p95=100 --assert-ecommerce-p95=150
+      - run: npm ci
+      - run: npm run build --workspace @agile-sofl/parser
+      - run: npm run build --workspace @agile-sofl/editor-api
+      - run: npm run build --workspace @agile-sofl/language-server
+      - run: npm run bundle --workspace @agile-sofl/language-server
+      - run: npm run test --workspace @agile-sofl/parser
+      - run: npm run test --workspace @agile-sofl/editor-api
+      - run: npm run test --workspace @agile-sofl/language-server
+      - run: npm run test --workspace @agile-sofl/studio
+      - run: npm run highlight:check --workspace agile-sofl
+      - run: npm run coverage --workspace @agile-sofl/parser
+      - run: npm run bench:parse --workspace @agile-sofl/parser -- --assert-p95=100 --assert-ecommerce-p95=150

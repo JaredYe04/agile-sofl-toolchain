@@ -68,8 +68,8 @@ var require_is = __commonJS({
       return array(value) && value.every((elem) => string(elem));
     }
     exports2.stringArray = stringArray;
-    function typedArray(value, check3) {
-      return Array.isArray(value) && value.every(check3);
+    function typedArray(value, check) {
+      return Array.isArray(value) && value.every(check);
     }
     exports2.typedArray = typedArray;
     function thenable(value) {
@@ -1515,13 +1515,13 @@ var require_messageBuffer = __commonJS({
         }
         for (let i = 0; i < headers.length - 2; i++) {
           const header = headers[i];
-          const index = header.indexOf(":");
-          if (index === -1) {
+          const index2 = header.indexOf(":");
+          if (index2 === -1) {
             throw new Error(`Message header must separate key and value using ':'
 ${header}`);
           }
-          const key = header.substr(0, index);
-          const value = header.substr(index + 1).trim();
+          const key = header.substr(0, index2);
+          const value = header.substr(index2 + 1).trim();
           result.set(lowerCaseKeys ? key.toLowerCase() : key, value);
         }
         return result;
@@ -4849,8 +4849,8 @@ var require_main2 = __commonJS({
           return value !== null && typeof value === "object";
         }
         Is2.objectLiteral = objectLiteral;
-        function typedArray(value, check3) {
-          return Array.isArray(value) && value.every(check3);
+        function typedArray(value, check) {
+          return Array.isArray(value) && value.every(check);
         }
         Is2.typedArray = typedArray;
       })(Is || (Is = {}));
@@ -4938,8 +4938,8 @@ var require_is3 = __commonJS({
       return array(value) && value.every((elem) => string(elem));
     }
     exports2.stringArray = stringArray;
-    function typedArray(value, check3) {
-      return Array.isArray(value) && value.every(check3);
+    function typedArray(value, check) {
+      return Array.isArray(value) && value.every(check);
     }
     exports2.typedArray = typedArray;
     function objectLiteral(value) {
@@ -9035,9 +9035,9 @@ var init_isSymbol = __esm({
 
 // ../../node_modules/lodash-es/_arrayMap.js
 function arrayMap(array, iteratee) {
-  var index = -1, length = array == null ? 0 : array.length, result = Array(length);
-  while (++index < length) {
-    result[index] = iteratee(array[index], index, array);
+  var index2 = -1, length = array == null ? 0 : array.length, result = Array(length);
+  while (++index2 < length) {
+    result[index2] = iteratee(array[index2], index2, array);
   }
   return result;
 }
@@ -9087,10 +9087,10 @@ var init_baseToString = __esm({
 
 // ../../node_modules/lodash-es/_trimmedEndIndex.js
 function trimmedEndIndex(string) {
-  var index = string.length;
-  while (index-- && reWhitespace.test(string.charAt(index))) {
+  var index2 = string.length;
+  while (index2-- && reWhitespace.test(string.charAt(index2))) {
   }
-  return index;
+  return index2;
 }
 var reWhitespace, trimmedEndIndex_default;
 var init_trimmedEndIndex = __esm({
@@ -9398,10 +9398,10 @@ var init_noop = __esm({
 
 // ../../node_modules/lodash-es/_copyArray.js
 function copyArray(source, array) {
-  var index = -1, length = source.length;
+  var index2 = -1, length = source.length;
   array || (array = Array(length));
-  while (++index < length) {
-    array[index] = source[index];
+  while (++index2 < length) {
+    array[index2] = source[index2];
   }
   return array;
 }
@@ -9500,9 +9500,9 @@ var init_setToString = __esm({
 
 // ../../node_modules/lodash-es/_arrayEach.js
 function arrayEach(array, iteratee) {
-  var index = -1, length = array == null ? 0 : array.length;
-  while (++index < length) {
-    if (iteratee(array[index], index, array) === false) {
+  var index2 = -1, length = array == null ? 0 : array.length;
+  while (++index2 < length) {
+    if (iteratee(array[index2], index2, array) === false) {
       break;
     }
   }
@@ -9517,10 +9517,10 @@ var init_arrayEach = __esm({
 
 // ../../node_modules/lodash-es/_baseFindIndex.js
 function baseFindIndex(array, predicate, fromIndex, fromRight) {
-  var length = array.length, index = fromIndex + (fromRight ? 1 : -1);
-  while (fromRight ? index-- : ++index < length) {
-    if (predicate(array[index], index, array)) {
-      return index;
+  var length = array.length, index2 = fromIndex + (fromRight ? 1 : -1);
+  while (fromRight ? index2-- : ++index2 < length) {
+    if (predicate(array[index2], index2, array)) {
+      return index2;
     }
   }
   return -1;
@@ -9545,10 +9545,10 @@ var init_baseIsNaN = __esm({
 
 // ../../node_modules/lodash-es/_strictIndexOf.js
 function strictIndexOf(array, value, fromIndex) {
-  var index = fromIndex - 1, length = array.length;
-  while (++index < length) {
-    if (array[index] === value) {
-      return index;
+  var index2 = fromIndex - 1, length = array.length;
+  while (++index2 < length) {
+    if (array[index2] === value) {
+      return index2;
     }
   }
   return -1;
@@ -9656,9 +9656,9 @@ var init_assignValue = __esm({
 function copyObject(source, props, object, customizer) {
   var isNew = !object;
   object || (object = {});
-  var index = -1, length = props.length;
-  while (++index < length) {
-    var key = props[index];
+  var index2 = -1, length = props.length;
+  while (++index2 < length) {
+    var key = props[index2];
     var newValue = customizer ? customizer(object[key], source[key], key, object, source) : void 0;
     if (newValue === void 0) {
       newValue = source[key];
@@ -9684,14 +9684,14 @@ var init_copyObject = __esm({
 function overRest(func, start, transform) {
   start = nativeMax(start === void 0 ? func.length - 1 : start, 0);
   return function() {
-    var args = arguments, index = -1, length = nativeMax(args.length - start, 0), array = Array(length);
-    while (++index < length) {
-      array[index] = args[start + index];
+    var args = arguments, index2 = -1, length = nativeMax(args.length - start, 0), array = Array(length);
+    while (++index2 < length) {
+      array[index2] = args[start + index2];
     }
-    index = -1;
+    index2 = -1;
     var otherArgs = Array(start + 1);
-    while (++index < start) {
-      otherArgs[index] = args[index];
+    while (++index2 < start) {
+      otherArgs[index2] = args[index2];
     }
     otherArgs[start] = transform(array);
     return apply_default(func, this, otherArgs);
@@ -9746,13 +9746,13 @@ var init_isArrayLike = __esm({
 });
 
 // ../../node_modules/lodash-es/_isIterateeCall.js
-function isIterateeCall(value, index, object) {
+function isIterateeCall(value, index2, object) {
   if (!isObject_default(object)) {
     return false;
   }
-  var type = typeof index;
-  if (type == "number" ? isArrayLike_default(object) && isIndex_default(index, object.length) : type == "string" && index in object) {
-    return eq_default(object[index], value);
+  var type = typeof index2;
+  if (type == "number" ? isArrayLike_default(object) && isIndex_default(index2, object.length) : type == "string" && index2 in object) {
+    return eq_default(object[index2], value);
   }
   return false;
 }
@@ -9770,17 +9770,17 @@ var init_isIterateeCall = __esm({
 // ../../node_modules/lodash-es/_createAssigner.js
 function createAssigner(assigner) {
   return baseRest_default(function(object, sources) {
-    var index = -1, length = sources.length, customizer = length > 1 ? sources[length - 1] : void 0, guard = length > 2 ? sources[2] : void 0;
+    var index2 = -1, length = sources.length, customizer = length > 1 ? sources[length - 1] : void 0, guard = length > 2 ? sources[2] : void 0;
     customizer = assigner.length > 3 && typeof customizer == "function" ? (length--, customizer) : void 0;
     if (guard && isIterateeCall_default(sources[0], sources[1], guard)) {
       customizer = length < 3 ? void 0 : customizer;
       length = 1;
     }
     object = Object(object);
-    while (++index < length) {
-      var source = sources[index];
+    while (++index2 < length) {
+      var source = sources[index2];
       if (source) {
-        assigner(object, source, index, customizer);
+        assigner(object, source, index2, customizer);
       }
     }
     return object;
@@ -9810,9 +9810,9 @@ var init_isPrototype = __esm({
 
 // ../../node_modules/lodash-es/_baseTimes.js
 function baseTimes(n, iteratee) {
-  var index = -1, result = Array(n);
-  while (++index < n) {
-    result[index] = iteratee(index);
+  var index2 = -1, result = Array(n);
+  while (++index2 < n) {
+    result[index2] = iteratee(index2);
   }
   return result;
 }
@@ -10256,10 +10256,10 @@ var init_hashSet = __esm({
 
 // ../../node_modules/lodash-es/_Hash.js
 function Hash(entries) {
-  var index = -1, length = entries == null ? 0 : entries.length;
+  var index2 = -1, length = entries == null ? 0 : entries.length;
   this.clear();
-  while (++index < length) {
-    var entry = entries[index];
+  while (++index2 < length) {
+    var entry = entries[index2];
     this.set(entry[0], entry[1]);
   }
 }
@@ -10312,15 +10312,15 @@ var init_assocIndexOf = __esm({
 
 // ../../node_modules/lodash-es/_listCacheDelete.js
 function listCacheDelete(key) {
-  var data = this.__data__, index = assocIndexOf_default(data, key);
-  if (index < 0) {
+  var data = this.__data__, index2 = assocIndexOf_default(data, key);
+  if (index2 < 0) {
     return false;
   }
   var lastIndex = data.length - 1;
-  if (index == lastIndex) {
+  if (index2 == lastIndex) {
     data.pop();
   } else {
-    splice.call(data, index, 1);
+    splice.call(data, index2, 1);
   }
   --this.size;
   return true;
@@ -10337,8 +10337,8 @@ var init_listCacheDelete = __esm({
 
 // ../../node_modules/lodash-es/_listCacheGet.js
 function listCacheGet(key) {
-  var data = this.__data__, index = assocIndexOf_default(data, key);
-  return index < 0 ? void 0 : data[index][1];
+  var data = this.__data__, index2 = assocIndexOf_default(data, key);
+  return index2 < 0 ? void 0 : data[index2][1];
 }
 var listCacheGet_default;
 var init_listCacheGet = __esm({
@@ -10362,12 +10362,12 @@ var init_listCacheHas = __esm({
 
 // ../../node_modules/lodash-es/_listCacheSet.js
 function listCacheSet(key, value) {
-  var data = this.__data__, index = assocIndexOf_default(data, key);
-  if (index < 0) {
+  var data = this.__data__, index2 = assocIndexOf_default(data, key);
+  if (index2 < 0) {
     ++this.size;
     data.push([key, value]);
   } else {
-    data[index][1] = value;
+    data[index2][1] = value;
   }
   return this;
 }
@@ -10381,10 +10381,10 @@ var init_listCacheSet = __esm({
 
 // ../../node_modules/lodash-es/_ListCache.js
 function ListCache(entries) {
-  var index = -1, length = entries == null ? 0 : entries.length;
+  var index2 = -1, length = entries == null ? 0 : entries.length;
   this.clear();
-  while (++index < length) {
-    var entry = entries[index];
+  while (++index2 < length) {
+    var entry = entries[index2];
     this.set(entry[0], entry[1]);
   }
 }
@@ -10515,10 +10515,10 @@ var init_mapCacheSet = __esm({
 
 // ../../node_modules/lodash-es/_MapCache.js
 function MapCache(entries) {
-  var index = -1, length = entries == null ? 0 : entries.length;
+  var index2 = -1, length = entries == null ? 0 : entries.length;
   this.clear();
-  while (++index < length) {
-    var entry = entries[index];
+  while (++index2 < length) {
+    var entry = entries[index2];
     this.set(entry[0], entry[1]);
   }
 }
@@ -10657,11 +10657,11 @@ var init_toKey = __esm({
 // ../../node_modules/lodash-es/_baseGet.js
 function baseGet(object, path) {
   path = castPath_default(path, object);
-  var index = 0, length = path.length;
-  while (object != null && index < length) {
-    object = object[toKey_default(path[index++])];
+  var index2 = 0, length = path.length;
+  while (object != null && index2 < length) {
+    object = object[toKey_default(path[index2++])];
   }
-  return index && index == length ? object : void 0;
+  return index2 && index2 == length ? object : void 0;
 }
 var baseGet_default;
 var init_baseGet = __esm({
@@ -10687,9 +10687,9 @@ var init_get = __esm({
 
 // ../../node_modules/lodash-es/_arrayPush.js
 function arrayPush(array, values2) {
-  var index = -1, length = values2.length, offset = array.length;
-  while (++index < length) {
-    array[offset + index] = values2[index];
+  var index2 = -1, length = values2.length, offset = array.length;
+  while (++index2 < length) {
+    array[offset + index2] = values2[index2];
   }
   return array;
 }
@@ -10717,11 +10717,11 @@ var init_isFlattenable = __esm({
 
 // ../../node_modules/lodash-es/_baseFlatten.js
 function baseFlatten(array, depth, predicate, isStrict, result) {
-  var index = -1, length = array.length;
+  var index2 = -1, length = array.length;
   predicate || (predicate = isFlattenable_default);
   result || (result = []);
-  while (++index < length) {
-    var value = array[index];
+  while (++index2 < length) {
+    var value = array[index2];
     if (depth > 0 && predicate(value)) {
       if (depth > 1) {
         baseFlatten(value, depth - 1, predicate, isStrict, result);
@@ -10768,7 +10768,7 @@ var init_getPrototype = __esm({
 
 // ../../node_modules/lodash-es/_baseSlice.js
 function baseSlice(array, start, end) {
-  var index = -1, length = array.length;
+  var index2 = -1, length = array.length;
   if (start < 0) {
     start = -start > length ? 0 : length + start;
   }
@@ -10779,8 +10779,8 @@ function baseSlice(array, start, end) {
   length = start > end ? 0 : end - start >>> 0;
   start >>>= 0;
   var result = Array(length);
-  while (++index < length) {
-    result[index] = array[index + start];
+  while (++index2 < length) {
+    result[index2] = array[index2 + start];
   }
   return result;
 }
@@ -10913,12 +10913,12 @@ var init_upperFirst = __esm({
 
 // ../../node_modules/lodash-es/_arrayReduce.js
 function arrayReduce(array, iteratee, accumulator, initAccum) {
-  var index = -1, length = array == null ? 0 : array.length;
+  var index2 = -1, length = array == null ? 0 : array.length;
   if (initAccum && length) {
-    accumulator = array[++index];
+    accumulator = array[++index2];
   }
-  while (++index < length) {
-    accumulator = iteratee(accumulator, array[index], index, array);
+  while (++index2 < length) {
+    accumulator = iteratee(accumulator, array[index2], index2, array);
   }
   return accumulator;
 }
@@ -11077,10 +11077,10 @@ var init_cloneBuffer = __esm({
 
 // ../../node_modules/lodash-es/_arrayFilter.js
 function arrayFilter(array, predicate) {
-  var index = -1, length = array == null ? 0 : array.length, resIndex = 0, result = [];
-  while (++index < length) {
-    var value = array[index];
-    if (predicate(value, index, array)) {
+  var index2 = -1, length = array == null ? 0 : array.length, resIndex = 0, result = [];
+  while (++index2 < length) {
+    var value = array[index2];
+    if (predicate(value, index2, array)) {
       result[resIndex++] = value;
     }
   }
@@ -11661,9 +11661,9 @@ var init_clone = __esm({
 
 // ../../node_modules/lodash-es/compact.js
 function compact(array) {
-  var index = -1, length = array == null ? 0 : array.length, resIndex = 0, result = [];
-  while (++index < length) {
-    var value = array[index];
+  var index2 = -1, length = array == null ? 0 : array.length, resIndex = 0, result = [];
+  while (++index2 < length) {
+    var value = array[index2];
     if (value) {
       result[resIndex++] = value;
     }
@@ -11703,10 +11703,10 @@ var init_setCacheHas = __esm({
 
 // ../../node_modules/lodash-es/_SetCache.js
 function SetCache(values2) {
-  var index = -1, length = values2 == null ? 0 : values2.length;
+  var index2 = -1, length = values2 == null ? 0 : values2.length;
   this.__data__ = new MapCache_default();
-  while (++index < length) {
-    this.add(values2[index]);
+  while (++index2 < length) {
+    this.add(values2[index2]);
   }
 }
 var SetCache_default;
@@ -11723,9 +11723,9 @@ var init_SetCache = __esm({
 
 // ../../node_modules/lodash-es/_arraySome.js
 function arraySome(array, predicate) {
-  var index = -1, length = array == null ? 0 : array.length;
-  while (++index < length) {
-    if (predicate(array[index], index, array)) {
+  var index2 = -1, length = array == null ? 0 : array.length;
+  while (++index2 < length) {
+    if (predicate(array[index2], index2, array)) {
       return true;
     }
   }
@@ -11760,13 +11760,13 @@ function equalArrays(array, other, bitmask, customizer, equalFunc, stack) {
   if (arrStacked && othStacked) {
     return arrStacked == other && othStacked == array;
   }
-  var index = -1, result = true, seen = bitmask & COMPARE_UNORDERED_FLAG ? new SetCache_default() : void 0;
+  var index2 = -1, result = true, seen = bitmask & COMPARE_UNORDERED_FLAG ? new SetCache_default() : void 0;
   stack.set(array, other);
   stack.set(other, array);
-  while (++index < arrLength) {
-    var arrValue = array[index], othValue = other[index];
+  while (++index2 < arrLength) {
+    var arrValue = array[index2], othValue = other[index2];
     if (customizer) {
-      var compared = isPartial ? customizer(othValue, arrValue, index, other, array, stack) : customizer(arrValue, othValue, index, array, other, stack);
+      var compared = isPartial ? customizer(othValue, arrValue, index2, other, array, stack) : customizer(arrValue, othValue, index2, array, other, stack);
     }
     if (compared !== void 0) {
       if (compared) {
@@ -11807,9 +11807,9 @@ var init_equalArrays = __esm({
 
 // ../../node_modules/lodash-es/_mapToArray.js
 function mapToArray(map2) {
-  var index = -1, result = Array(map2.size);
+  var index2 = -1, result = Array(map2.size);
   map2.forEach(function(value, key) {
-    result[++index] = [key, value];
+    result[++index2] = [key, value];
   });
   return result;
 }
@@ -11822,9 +11822,9 @@ var init_mapToArray = __esm({
 
 // ../../node_modules/lodash-es/_setToArray.js
 function setToArray(set) {
-  var index = -1, result = Array(set.size);
+  var index2 = -1, result = Array(set.size);
   set.forEach(function(value) {
-    result[++index] = value;
+    result[++index2] = value;
   });
   return result;
 }
@@ -11916,9 +11916,9 @@ function equalObjects(object, other, bitmask, customizer, equalFunc, stack) {
   if (objLength != othLength && !isPartial) {
     return false;
   }
-  var index = objLength;
-  while (index--) {
-    var key = objProps[index];
+  var index2 = objLength;
+  while (index2--) {
+    var key = objProps[index2];
     if (!(isPartial ? key in other : hasOwnProperty12.call(other, key))) {
       return false;
     }
@@ -11932,8 +11932,8 @@ function equalObjects(object, other, bitmask, customizer, equalFunc, stack) {
   stack.set(object, other);
   stack.set(other, object);
   var skipCtor = isPartial;
-  while (++index < objLength) {
-    key = objProps[index];
+  while (++index2 < objLength) {
+    key = objProps[index2];
     var objValue = object[key], othValue = other[key];
     if (customizer) {
       var compared = isPartial ? customizer(othValue, objValue, key, other, object, stack) : customizer(objValue, othValue, key, object, other, stack);
@@ -12038,19 +12038,19 @@ var init_baseIsEqual = __esm({
 
 // ../../node_modules/lodash-es/_baseIsMatch.js
 function baseIsMatch(object, source, matchData, customizer) {
-  var index = matchData.length, length = index, noCustomizer = !customizer;
+  var index2 = matchData.length, length = index2, noCustomizer = !customizer;
   if (object == null) {
     return !length;
   }
   object = Object(object);
-  while (index--) {
-    var data = matchData[index];
+  while (index2--) {
+    var data = matchData[index2];
     if (noCustomizer && data[2] ? data[1] !== object[data[0]] : !(data[0] in object)) {
       return false;
     }
   }
-  while (++index < length) {
-    data = matchData[index];
+  while (++index2 < length) {
+    data = matchData[index2];
     var key = data[0], objValue = object[key], srcValue = data[1];
     if (noCustomizer && data[2]) {
       if (objValue === void 0 && !(key in object)) {
@@ -12159,15 +12159,15 @@ var init_baseHasIn = __esm({
 // ../../node_modules/lodash-es/_hasPath.js
 function hasPath(object, path, hasFunc) {
   path = castPath_default(path, object);
-  var index = -1, length = path.length, result = false;
-  while (++index < length) {
-    var key = toKey_default(path[index]);
+  var index2 = -1, length = path.length, result = false;
+  while (++index2 < length) {
+    var key = toKey_default(path[index2]);
     if (!(result = object != null && hasFunc(object, key))) {
       break;
     }
     object = object[key];
   }
-  if (result || ++index != length) {
+  if (result || ++index2 != length) {
     return result;
   }
   length = object == null ? 0 : object.length;
@@ -12294,9 +12294,9 @@ var init_baseIteratee = __esm({
 
 // ../../node_modules/lodash-es/_arrayAggregator.js
 function arrayAggregator(array, setter, iteratee, accumulator) {
-  var index = -1, length = array == null ? 0 : array.length;
-  while (++index < length) {
-    var value = array[index];
+  var index2 = -1, length = array == null ? 0 : array.length;
+  while (++index2 < length) {
+    var value = array[index2];
     setter(accumulator, value, iteratee(value), array);
   }
   return accumulator;
@@ -12311,9 +12311,9 @@ var init_arrayAggregator = __esm({
 // ../../node_modules/lodash-es/_createBaseFor.js
 function createBaseFor(fromRight) {
   return function(object, iteratee, keysFunc) {
-    var index = -1, iterable = Object(object), props = keysFunc(object), length = props.length;
+    var index2 = -1, iterable = Object(object), props = keysFunc(object), length = props.length;
     while (length--) {
-      var key = props[fromRight ? length : ++index];
+      var key = props[fromRight ? length : ++index2];
       if (iteratee(iterable[key], key, iterable) === false) {
         break;
       }
@@ -12360,9 +12360,9 @@ function createBaseEach(eachFunc, fromRight) {
     if (!isArrayLike_default(collection)) {
       return eachFunc(collection, iteratee);
     }
-    var length = collection.length, index = fromRight ? length : -1, iterable = Object(collection);
-    while (fromRight ? index-- : ++index < length) {
-      if (iteratee(iterable[index], index, iterable) === false) {
+    var length = collection.length, index2 = fromRight ? length : -1, iterable = Object(collection);
+    while (fromRight ? index2-- : ++index2 < length) {
+      if (iteratee(iterable[index2], index2, iterable) === false) {
         break;
       }
     }
@@ -12433,14 +12433,14 @@ var init_defaults = __esm({
     hasOwnProperty14 = objectProto17.hasOwnProperty;
     defaults = baseRest_default(function(object, sources) {
       object = Object(object);
-      var index = -1;
+      var index2 = -1;
       var length = sources.length;
       var guard = length > 2 ? sources[2] : void 0;
       if (guard && isIterateeCall_default(sources[0], sources[1], guard)) {
         length = 1;
       }
-      while (++index < length) {
-        var source = sources[index];
+      while (++index2 < length) {
+        var source = sources[index2];
         var props = keysIn_default(source);
         var propsIndex = -1;
         var propsLength = props.length;
@@ -12473,9 +12473,9 @@ var init_isArrayLikeObject = __esm({
 
 // ../../node_modules/lodash-es/_arrayIncludesWith.js
 function arrayIncludesWith(array, value, comparator) {
-  var index = -1, length = array == null ? 0 : array.length;
-  while (++index < length) {
-    if (comparator(value, array[index])) {
+  var index2 = -1, length = array == null ? 0 : array.length;
+  while (++index2 < length) {
+    if (comparator(value, array[index2])) {
       return true;
     }
   }
@@ -12490,7 +12490,7 @@ var init_arrayIncludesWith = __esm({
 
 // ../../node_modules/lodash-es/_baseDifference.js
 function baseDifference(array, values2, iteratee, comparator) {
-  var index = -1, includes2 = arrayIncludes_default, isCommon = true, length = array.length, result = [], valuesLength = values2.length;
+  var index2 = -1, includes2 = arrayIncludes_default, isCommon = true, length = array.length, result = [], valuesLength = values2.length;
   if (!length) {
     return result;
   }
@@ -12506,8 +12506,8 @@ function baseDifference(array, values2, iteratee, comparator) {
     values2 = new SetCache_default(values2);
   }
   outer:
-    while (++index < length) {
-      var value = array[index], computed = iteratee == null ? value : iteratee(value);
+    while (++index2 < length) {
+      var value = array[index2], computed = iteratee == null ? value : iteratee(value);
       value = comparator || value !== 0 ? value : 0;
       if (isCommon && computed === computed) {
         var valuesIndex = valuesLength;
@@ -12631,9 +12631,9 @@ var init_forEach = __esm({
 
 // ../../node_modules/lodash-es/_arrayEvery.js
 function arrayEvery(array, predicate) {
-  var index = -1, length = array == null ? 0 : array.length;
-  while (++index < length) {
-    if (!predicate(array[index], index, array)) {
+  var index2 = -1, length = array == null ? 0 : array.length;
+  while (++index2 < length) {
+    if (!predicate(array[index2], index2, array)) {
       return false;
     }
   }
@@ -12649,8 +12649,8 @@ var init_arrayEvery = __esm({
 // ../../node_modules/lodash-es/_baseEvery.js
 function baseEvery(collection, predicate) {
   var result = true;
-  baseEach_default(collection, function(value, index, collection2) {
-    result = !!predicate(value, index, collection2);
+  baseEach_default(collection, function(value, index2, collection2) {
+    result = !!predicate(value, index2, collection2);
     return result;
   });
   return result;
@@ -12686,8 +12686,8 @@ var init_every = __esm({
 // ../../node_modules/lodash-es/_baseFilter.js
 function baseFilter(collection, predicate) {
   var result = [];
-  baseEach_default(collection, function(value, index, collection2) {
-    if (predicate(value, index, collection2)) {
+  baseEach_default(collection, function(value, index2, collection2) {
+    if (predicate(value, index2, collection2)) {
       result.push(value);
     }
   });
@@ -12728,8 +12728,8 @@ function createFind(findIndexFunc) {
         return iteratee(iterable[key], key, iterable);
       };
     }
-    var index = findIndexFunc(collection, predicate, fromIndex);
-    return index > -1 ? iterable[iteratee ? collection[index] : index] : void 0;
+    var index2 = findIndexFunc(collection, predicate, fromIndex);
+    return index2 > -1 ? iterable[iteratee ? collection[index2] : index2] : void 0;
   };
 }
 var createFind_default;
@@ -12748,11 +12748,11 @@ function findIndex(array, predicate, fromIndex) {
   if (!length) {
     return -1;
   }
-  var index = fromIndex == null ? 0 : toInteger_default(fromIndex);
-  if (index < 0) {
-    index = nativeMax2(length + index, 0);
+  var index2 = fromIndex == null ? 0 : toInteger_default(fromIndex);
+  if (index2 < 0) {
+    index2 = nativeMax2(length + index2, 0);
   }
-  return baseFindIndex_default(array, baseIteratee_default(predicate, 3), index);
+  return baseFindIndex_default(array, baseIteratee_default(predicate, 3), index2);
 }
 var nativeMax2, findIndex_default;
 var init_findIndex = __esm({
@@ -12796,9 +12796,9 @@ var init_first = __esm({
 
 // ../../node_modules/lodash-es/_baseMap.js
 function baseMap(collection, iteratee) {
-  var index = -1, result = isArrayLike_default(collection) ? Array(collection.length) : [];
+  var index2 = -1, result = isArrayLike_default(collection) ? Array(collection.length) : [];
   baseEach_default(collection, function(value, key, collection2) {
-    result[++index] = iteratee(value, key, collection2);
+    result[++index2] = iteratee(value, key, collection2);
   });
   return result;
 }
@@ -12956,11 +12956,11 @@ function indexOf(array, value, fromIndex) {
   if (!length) {
     return -1;
   }
-  var index = fromIndex == null ? 0 : toInteger_default(fromIndex);
-  if (index < 0) {
-    index = nativeMax4(length + index, 0);
+  var index2 = fromIndex == null ? 0 : toInteger_default(fromIndex);
+  if (index2 < 0) {
+    index2 = nativeMax4(length + index2, 0);
   }
-  return baseIndexOf_default(array, value, index);
+  return baseIndexOf_default(array, value, index2);
 }
 var nativeMax4, indexOf_default;
 var init_indexOf = __esm({
@@ -13085,17 +13085,17 @@ function baseSet(object, path, value, customizer) {
     return object;
   }
   path = castPath_default(path, object);
-  var index = -1, length = path.length, lastIndex = length - 1, nested = object;
-  while (nested != null && ++index < length) {
-    var key = toKey_default(path[index]), newValue = value;
+  var index2 = -1, length = path.length, lastIndex = length - 1, nested = object;
+  while (nested != null && ++index2 < length) {
+    var key = toKey_default(path[index2]), newValue = value;
     if (key === "__proto__" || key === "constructor" || key === "prototype") {
       return object;
     }
-    if (index != lastIndex) {
+    if (index2 != lastIndex) {
       var objValue = nested[key];
       newValue = customizer ? customizer(objValue, key, nested) : void 0;
       if (newValue === void 0) {
-        newValue = isObject_default(objValue) ? objValue : isIndex_default(path[index + 1]) ? [] : {};
+        newValue = isObject_default(objValue) ? objValue : isIndex_default(path[index2 + 1]) ? [] : {};
       }
     }
     assignValue_default(nested, key, newValue);
@@ -13117,9 +13117,9 @@ var init_baseSet = __esm({
 
 // ../../node_modules/lodash-es/_basePickBy.js
 function basePickBy(object, paths, predicate) {
-  var index = -1, length = paths.length, result = {};
-  while (++index < length) {
-    var path = paths[index], value = baseGet_default(object, path);
+  var index2 = -1, length = paths.length, result = {};
+  while (++index2 < length) {
+    var path = paths[index2], value = baseGet_default(object, path);
     if (predicate(value, path)) {
       baseSet_default(result, castPath_default(path, object), value);
     }
@@ -13162,8 +13162,8 @@ var init_pickBy = __esm({
 
 // ../../node_modules/lodash-es/_baseReduce.js
 function baseReduce(collection, iteratee, accumulator, initAccum, eachFunc) {
-  eachFunc(collection, function(value, index, collection2) {
-    accumulator = initAccum ? (initAccum = false, value) : iteratee(accumulator, value, index, collection2);
+  eachFunc(collection, function(value, index2, collection2) {
+    accumulator = initAccum ? (initAccum = false, value) : iteratee(accumulator, value, index2, collection2);
   });
   return accumulator;
 }
@@ -13211,8 +13211,8 @@ var init_reject = __esm({
 // ../../node_modules/lodash-es/_baseSome.js
 function baseSome(collection, predicate) {
   var result;
-  baseEach_default(collection, function(value, index, collection2) {
-    result = predicate(value, index, collection2);
+  baseEach_default(collection, function(value, index2, collection2) {
+    result = predicate(value, index2, collection2);
     return !result;
   });
   return !!result;
@@ -13262,7 +13262,7 @@ var init_createSet = __esm({
 
 // ../../node_modules/lodash-es/_baseUniq.js
 function baseUniq(array, iteratee, comparator) {
-  var index = -1, includes2 = arrayIncludes_default, length = array.length, isCommon = true, result = [], seen = result;
+  var index2 = -1, includes2 = arrayIncludes_default, length = array.length, isCommon = true, result = [], seen = result;
   if (comparator) {
     isCommon = false;
     includes2 = arrayIncludesWith_default;
@@ -13278,8 +13278,8 @@ function baseUniq(array, iteratee, comparator) {
     seen = iteratee ? [] : result;
   }
   outer:
-    while (++index < length) {
-      var value = array[index], computed = iteratee ? iteratee(value) : value;
+    while (++index2 < length) {
+      var value = array[index2], computed = iteratee ? iteratee(value) : value;
       value = comparator || value !== 0 ? value : 0;
       if (isCommon && computed === computed) {
         var seenIndex = seen.length;
@@ -13792,8 +13792,8 @@ var init_rest = __esm({
     init_api2();
     RestWalker = class {
       walk(prod, prevRest = []) {
-        forEach_default(prod.definition, (subProd, index) => {
-          const currRest = drop_default(prod.definition, index + 1);
+        forEach_default(prod.definition, (subProd, index2) => {
+          const currRest = drop_default(prod.definition, index2 + 1);
           if (subProd instanceof NonTerminal) {
             this.walkProdRef(subProd, currRest, prevRest);
           } else if (subProd instanceof Terminal) {
@@ -16404,14 +16404,14 @@ var init_lexer_public = __esm({
           tokenType
         };
       }
-      addTokenUsingPush(tokenVector, index, tokenToAdd) {
+      addTokenUsingPush(tokenVector, index2, tokenToAdd) {
         tokenVector.push(tokenToAdd);
-        return index;
+        return index2;
       }
-      addTokenUsingMemberAccess(tokenVector, index, tokenToAdd) {
-        tokenVector[index] = tokenToAdd;
-        index++;
-        return index;
+      addTokenUsingMemberAccess(tokenVector, index2, tokenToAdd) {
+        tokenVector[index2] = tokenToAdd;
+        index2++;
+        return index2;
       }
       handlePayloadNoCustom(token, payload) {
       }
@@ -16596,11 +16596,11 @@ ${nextValidSequenceItems.join("\n")}`;
         }
         const topLevelName = topLevelRule.name;
         const duplicateProd = head_default(duplicateProds);
-        const index = duplicateProd.idx;
+        const index2 = duplicateProd.idx;
         const dslName = getProductionDslName(duplicateProd);
         const extraArgument = getExtraProductionArgument2(duplicateProd);
-        const hasExplicitIndex = index > 0;
-        let msg = `->${dslName}${hasExplicitIndex ? index : ""}<- ${extraArgument ? `with argument: ->${extraArgument}<-` : ""}
+        const hasExplicitIndex = index2 > 0;
+        let msg = `->${dslName}${hasExplicitIndex ? index2 : ""}<- ${extraArgument ? `with argument: ->${extraArgument}<-` : ""}
                   appears more than once (${duplicateProds.length} times) in the top level rule: ->${topLevelName}<-.                  
                   For further details see: https://chevrotain.io/docs/FAQ.html#NUMERICAL_SUFFIXES 
                   `;
@@ -20628,9 +20628,9 @@ var init_api5 = __esm({
   }
 });
 
-// ../../dist/lexer/tokens.js
+// ../parser/dist/lexer/tokens.js
 var require_tokens = __commonJS({
-  "../../dist/lexer/tokens.js"(exports2) {
+  "../parser/dist/lexer/tokens.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.Dom = exports2.Map = exports2.Seq = exports2.Set = exports2.Bool = exports2.Char = exports2.Real = exports2.Int = exports2.Nat = exports2.Let = exports2.If = exports2.To = exports2.End = exports2.Wr = exports2.Rd = exports2.Mod = exports2.Rem = exports2.Div = exports2.Not = exports2.Or = exports2.And = exports2.Of = exports2.Case = exports2.In = exports2.Exists = exports2.Forall = exports2.Fsf = exports2.Equal = exports2.Init = exports2.Ext = exports2.Inv = exports2.Var = exports2.Type = exports2.Const = exports2.Function = exports2.Process = exports2.Module = exports2.Decom = exports2.Comment = exports2.Default = exports2.Forsome = exports2.Forevery = exports2.Undefined = exports2.Universal = exports2.Composed = exports2.EndCase = exports2.EndFunction = exports2.EndProcess = exports2.EndModule = exports2.Others = void 0;
@@ -20769,7 +20769,7 @@ var require_tokens = __commonJS({
     exports2.Tilde = (0, chevrotain_1.createToken)({ name: "Tilde", pattern: /~/ });
     exports2.EnumValue = (0, chevrotain_1.createToken)({
       name: "EnumValue",
-      pattern: /<[^>]+>/
+      pattern: /<[A-Za-z_][A-Za-z0-9_]*>/
     });
     exports2.StringLiteral = (0, chevrotain_1.createToken)({
       name: "StringLiteral",
@@ -20946,9 +20946,9 @@ var require_tokens = __commonJS({
   }
 });
 
-// ../../dist/parser/parser.js
+// ../parser/dist/parser/parser.js
 var require_parser = __commonJS({
-  "../../dist/parser/parser.js"(exports2) {
+  "../parser/dist/parser/parser.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.strictParserInstance = exports2.parserInstance = exports2.AgileSoflParser = void 0;
@@ -21021,7 +21021,7 @@ var require_parser = __commonJS({
         $.RULE("constItem", () => {
           $.CONSUME(tokens_js_1.Identifier);
           $.CONSUME(tokens_js_1.Equals);
-          $.SUBRULE($.constant);
+          $.SUBRULE($.expression);
         });
         $.RULE("typeDecls", () => {
           $.CONSUME(tokens_js_1.Type);
@@ -21998,20 +21998,6 @@ var require_parser = __commonJS({
             } },
             {
               ALT: () => {
-                $.SUBRULE($.expression);
-                $.CONSUME1(tokens_js_1.Arrow);
-                $.SUBRULE1($.expression);
-                $.MANY(() => {
-                  $.CONSUME(tokens_js_1.Comma);
-                  $.SUBRULE2($.expression);
-                  $.CONSUME2(tokens_js_1.Arrow);
-                  $.SUBRULE3($.expression);
-                });
-                $.CONSUME1(tokens_js_1.RBrace);
-              }
-            },
-            {
-              ALT: () => {
                 $.SUBRULE6($.expression);
                 $.CONSUME4(tokens_js_1.Arrow);
                 $.SUBRULE7($.expression);
@@ -22030,6 +22016,20 @@ var require_parser = __commonJS({
                 $.CONSUME(tokens_js_1.Pipe);
                 $.SUBRULE($.predicate);
                 $.CONSUME2(tokens_js_1.RBrace);
+              }
+            },
+            {
+              ALT: () => {
+                $.SUBRULE($.expression);
+                $.CONSUME1(tokens_js_1.Arrow);
+                $.SUBRULE1($.expression);
+                $.MANY(() => {
+                  $.CONSUME(tokens_js_1.Comma);
+                  $.SUBRULE2($.expression);
+                  $.CONSUME2(tokens_js_1.Arrow);
+                  $.SUBRULE3($.expression);
+                });
+                $.CONSUME1(tokens_js_1.RBrace);
               }
             }
           ]);
@@ -22310,9 +22310,9 @@ var require_parser = __commonJS({
   }
 });
 
-// ../../dist/ast/span.js
+// ../parser/dist/ast/span.js
 var require_span = __commonJS({
-  "../../dist/ast/span.js"(exports2) {
+  "../parser/dist/ast/span.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.EMPTY_SPAN = void 0;
@@ -22333,9 +22333,9 @@ var require_span = __commonJS({
   }
 });
 
-// ../../dist/ast/spanHelpers.js
+// ../parser/dist/ast/spanHelpers.js
 var require_spanHelpers = __commonJS({
-  "../../dist/ast/spanHelpers.js"(exports2) {
+  "../parser/dist/ast/spanHelpers.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.spanOfToken = spanOfToken;
@@ -22362,9 +22362,9 @@ var require_spanHelpers = __commonJS({
         return [];
       return arr.filter((item) => !!item && "tokenType" in item);
     }
-    function spanOfIdentifier(cst, index = 0) {
+    function spanOfIdentifier(cst, index2 = 0) {
       const ids = tokensOf(cst, "Identifier");
-      return spanOfToken(ids[index]);
+      return spanOfToken(ids[index2]);
     }
     function spanOfTokens(tokens) {
       if (tokens.length === 0)
@@ -22405,9 +22405,9 @@ var require_spanHelpers = __commonJS({
   }
 });
 
-// ../../dist/parser/cstToAst.js
+// ../parser/dist/parser/cstToAst.js
 var require_cstToAst = __commonJS({
-  "../../dist/parser/cstToAst.js"(exports2) {
+  "../parser/dist/parser/cstToAst.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.cstToProgram = cstToProgram;
@@ -22552,12 +22552,12 @@ var require_cstToAst = __commonJS({
       for (const d of decls) {
         for (const item of allRuleInstances(d, "constItem")) {
           const id = tokensOf(item, "Identifier")[0];
-          const constant2 = singleChild(item, "constant");
+          const expr = singleChild(item, "expression");
           result.push({
             type: "const_decl",
             span: id ? (0, spanHelpers_js_1.spanOfToken)(id) : spanOf(item),
             name: id?.image ?? "",
-            value: constant2 ? cstToConstant(constant2) : { type: "nil", span: span_js_1.EMPTY_SPAN }
+            value: expr ? cstToExpression(expr) : { type: "nil", span: span_js_1.EMPTY_SPAN }
           });
         }
       }
@@ -23047,6 +23047,9 @@ var require_cstToAst = __commonJS({
       return { type: "number_literal", span: spanOf(cst), value: 0, isReal: false };
     }
     function cstToExpression(cst) {
+      const constNode = singleChild(cst, "constant");
+      if (constNode)
+        return cstToConstant(constNode);
       const num = singleChild(cst, "numberExpr");
       if (num)
         return cstToNumberExpr(num);
@@ -23586,9 +23589,9 @@ var require_cstToAst = __commonJS({
   }
 });
 
-// ../../dist/diagnostics/codes.js
+// ../parser/dist/diagnostics/codes.js
 var require_codes = __commonJS({
-  "../../dist/diagnostics/codes.js"(exports2) {
+  "../parser/dist/diagnostics/codes.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.DiagnosticCodes = void 0;
@@ -23627,9 +23630,9 @@ var require_codes = __commonJS({
   }
 });
 
-// ../../dist/parser/parse.js
+// ../parser/dist/parser/parse.js
 var require_parse = __commonJS({
-  "../../dist/parser/parse.js"(exports2) {
+  "../parser/dist/parser/parse.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.parse = parse8;
@@ -23718,9 +23721,9 @@ var require_parse = __commonJS({
   }
 });
 
-// ../../dist/typecheck/types.js
+// ../parser/dist/typecheck/types.js
 var require_types = __commonJS({
-  "../../dist/typecheck/types.js"(exports2) {
+  "../parser/dist/typecheck/types.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.isNumericType = isNumericType;
@@ -23946,9 +23949,9 @@ var require_types = __commonJS({
   }
 });
 
-// ../../dist/typecheck/builtins.js
+// ../parser/dist/typecheck/builtins.js
 var require_builtins = __commonJS({
-  "../../dist/typecheck/builtins.js"(exports2) {
+  "../parser/dist/typecheck/builtins.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.BUILTIN_FUNCTIONS = void 0;
@@ -23979,9 +23982,9 @@ var require_builtins = __commonJS({
   }
 });
 
-// ../../dist/scope/resolver.js
+// ../parser/dist/scope/resolver.js
 var require_resolver = __commonJS({
-  "../../dist/scope/resolver.js"(exports2) {
+  "../parser/dist/scope/resolver.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.resolveScope = resolveScope4;
@@ -24145,9 +24148,9 @@ var require_resolver = __commonJS({
   }
 });
 
-// ../../dist/ast/guards.js
+// ../parser/dist/ast/guards.js
 var require_guards = __commonJS({
-  "../../dist/ast/guards.js"(exports2) {
+  "../parser/dist/ast/guards.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.isProgramNode = isProgramNode;
@@ -24278,9 +24281,9 @@ var require_guards = __commonJS({
   }
 });
 
-// ../../dist/typecheck/checker.js
+// ../parser/dist/typecheck/checker.js
 var require_checker = __commonJS({
-  "../../dist/typecheck/checker.js"(exports2) {
+  "../parser/dist/typecheck/checker.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.typeCheck = typeCheck;
@@ -24863,9 +24866,9 @@ var require_checker = __commonJS({
   }
 });
 
-// ../../dist/ast/nodes.js
+// ../parser/dist/ast/nodes.js
 var require_nodes = __commonJS({
-  "../../dist/ast/nodes.js"(exports2) {
+  "../parser/dist/ast/nodes.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.textOf = textOf3;
@@ -24877,9 +24880,9 @@ var require_nodes = __commonJS({
   }
 });
 
-// ../../dist/fsf/classifier.js
+// ../parser/dist/fsf/classifier.js
 var require_classifier = __commonJS({
-  "../../dist/fsf/classifier.js"(exports2) {
+  "../parser/dist/fsf/classifier.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.classifyFsf = classifyFsf;
@@ -24968,9 +24971,9 @@ var require_classifier = __commonJS({
   }
 });
 
-// ../../dist/visitor/walk.js
+// ../parser/dist/visitor/walk.js
 var require_walk = __commonJS({
-  "../../dist/visitor/walk.js"(exports2) {
+  "../parser/dist/visitor/walk.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.walk = walk3;
@@ -25305,9 +25308,7 @@ var require_walk = __commonJS({
         },
         enterProcessBody(body) {
           pushTextRegion(regions, ctx, "decom", body.decomposition);
-        },
-        enterComment(comment) {
-          pushTextRegion(regions, ctx, "comment", comment);
+          pushTextRegion(regions, ctx, "comment", body.comment);
         }
       });
       return regions;
@@ -25315,9 +25316,9 @@ var require_walk = __commonJS({
   }
 });
 
-// ../../dist/scope/reference.js
+// ../parser/dist/scope/reference.js
 var require_reference = __commonJS({
-  "../../dist/scope/reference.js"(exports2) {
+  "../parser/dist/scope/reference.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.resolveReferenceByName = resolveReferenceByName2;
@@ -25522,9 +25523,9 @@ var require_reference = __commonJS({
   }
 });
 
-// ../../dist/scope/referenceChecker.js
+// ../parser/dist/scope/referenceChecker.js
 var require_referenceChecker = __commonJS({
-  "../../dist/scope/referenceChecker.js"(exports2) {
+  "../parser/dist/scope/referenceChecker.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.checkReferences = checkReferences;
@@ -25851,9 +25852,9 @@ var require_referenceChecker = __commonJS({
   }
 });
 
-// ../../dist/transform/normalize.js
+// ../parser/dist/transform/normalize.js
 var require_normalize = __commonJS({
-  "../../dist/transform/normalize.js"(exports2) {
+  "../parser/dist/transform/normalize.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.normalizeAST = normalizeAST;
@@ -25919,9 +25920,9 @@ var require_normalize = __commonJS({
   }
 });
 
-// ../../dist/transform/print.js
+// ../parser/dist/transform/print.js
 var require_print = __commonJS({
-  "../../dist/transform/print.js"(exports2) {
+  "../parser/dist/transform/print.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.printProgram = printProgram;
@@ -26228,9 +26229,279 @@ var require_print = __commonJS({
   }
 });
 
-// ../../dist/lexer/lexer.js
+// ../parser/dist/project/projectIndex.js
+var require_projectIndex = __commonJS({
+  "../parser/dist/project/projectIndex.js"(exports2) {
+    "use strict";
+    Object.defineProperty(exports2, "__esModule", { value: true });
+    exports2.ProjectIndex = void 0;
+    exports2.createProjectIndex = createProjectIndex;
+    var node_crypto_1 = require("node:crypto");
+    var node_fs_1 = require("node:fs");
+    var node_path_1 = require("node:path");
+    var node_url_1 = require("node:url");
+    var parse_js_1 = require_parse();
+    var resolver_js_1 = require_resolver();
+    var reference_js_1 = require_reference();
+    function indexDocument(source) {
+      const { ast, diagnostics } = (0, parse_js_1.parse)(source);
+      if (!ast || ast.type !== "program") {
+        return { ast: null, diagnostics, scope: null };
+      }
+      if (diagnostics.some((d) => d.severity === "error" && d.code === "ASFL_PARSE_001")) {
+        return { ast: null, diagnostics, scope: null };
+      }
+      const scopeResult = (0, resolver_js_1.resolveScope)(ast);
+      return {
+        ast,
+        diagnostics: [...diagnostics, ...scopeResult.diagnostics],
+        scope: scopeResult
+      };
+    }
+    function hashText(text) {
+      return (0, node_crypto_1.createHash)("sha256").update(text).digest("hex");
+    }
+    function collectAsflFiles(dir) {
+      const out = [];
+      for (const entry of (0, node_fs_1.readdirSync)(dir)) {
+        const full = (0, node_path_1.join)(dir, entry);
+        const st = (0, node_fs_1.statSync)(full);
+        if (st.isDirectory())
+          out.push(...collectAsflFiles(full));
+        else if (entry.endsWith(".asfl"))
+          out.push(full);
+      }
+      return out;
+    }
+    function moduleLabel(mod) {
+      return mod.isSystem ? `SYSTEM_${mod.name}` : mod.name;
+    }
+    var ProjectIndex2 = class {
+      constructor() {
+        this.docs = /* @__PURE__ */ new Map();
+        this.moduleUri = /* @__PURE__ */ new Map();
+      }
+      upsert(uri, source, mtimeMs = Date.now()) {
+        const contentHash2 = hashText(source);
+        const existing = this.docs.get(uri);
+        if (existing && existing.contentHash === contentHash2)
+          return existing;
+        if (existing?.ast) {
+          for (const mod of existing.ast.modules) {
+            if (this.moduleUri.get(mod.name) === uri)
+              this.moduleUri.delete(mod.name);
+          }
+        }
+        const { ast, diagnostics, scope } = indexDocument(source);
+        const doc = { uri, source, mtimeMs, contentHash: contentHash2, ast, diagnostics, scope };
+        this.docs.set(uri, doc);
+        if (ast) {
+          for (const mod of ast.modules) {
+            this.moduleUri.set(mod.name, uri);
+          }
+        }
+        return doc;
+      }
+      remove(uri) {
+        const doc = this.docs.get(uri);
+        if (doc?.ast) {
+          for (const mod of doc.ast.modules) {
+            if (this.moduleUri.get(mod.name) === uri)
+              this.moduleUri.delete(mod.name);
+          }
+        }
+        this.docs.delete(uri);
+      }
+      scan(rootDir, toUri = (p) => (0, node_url_1.pathToFileURL)(p).href) {
+        for (const filePath of collectAsflFiles(rootDir)) {
+          const st = (0, node_fs_1.statSync)(filePath);
+          this.upsert(toUri(filePath), (0, node_fs_1.readFileSync)(filePath, "utf-8"), st.mtimeMs);
+        }
+      }
+      get(uri) {
+        return this.docs.get(uri);
+      }
+      documents() {
+        return [...this.docs.values()];
+      }
+      mergedProgram() {
+        const modules = [];
+        for (const doc of this.docs.values()) {
+          if (doc.ast?.modules.length)
+            modules.push(...doc.ast.modules);
+        }
+        if (modules.length === 0)
+          return null;
+        const span = modules[0].span;
+        return { type: "program", span, modules };
+      }
+      mergedScope() {
+        const program = this.mergedProgram();
+        return program ? (0, resolver_js_1.resolveScope)(program) : null;
+      }
+      uriForModule(moduleName) {
+        return this.moduleUri.get(moduleName);
+      }
+      findDefinition(uri, offset) {
+        const doc = this.docs.get(uri);
+        if (!doc?.ast || doc.ast.type !== "program")
+          return null;
+        const scope = this.mergedScope() ?? doc.scope;
+        if (!scope)
+          return null;
+        const target = (0, reference_js_1.resolveReference)(doc.ast, scope, offset) ?? (0, reference_js_1.resolveDeclarationAtOffset)(doc.ast, scope, offset);
+        if (!target || target.span.end <= target.span.start)
+          return null;
+        const targetUri = this.moduleUri.get(target.module.name) ?? uri;
+        return { uri: targetUri, target };
+      }
+      findDefinitionByName(uri, name, moduleQualifier, offset) {
+        const doc = this.docs.get(uri);
+        if (!doc?.ast || doc.ast.type !== "program")
+          return null;
+        const scope = this.mergedScope() ?? doc.scope;
+        if (!scope)
+          return null;
+        const currentMod = doc.ast.modules.find((m) => offset !== void 0 && offset >= m.span.start && offset <= m.span.end) ?? doc.ast.modules[0];
+        if (!currentMod)
+          return null;
+        const target = (0, reference_js_1.resolveReferenceByName)(scope, currentMod, name, moduleQualifier, offset);
+        if (!target)
+          return null;
+        const targetUri = this.moduleUri.get(target.module.name) ?? uri;
+        return { uri: targetUri, target };
+      }
+      symbols(query) {
+        const needle = query?.trim().toLowerCase() ?? "";
+        const out = [];
+        for (const doc of this.docs.values()) {
+          if (!doc.ast)
+            continue;
+          for (const mod of doc.ast.modules) {
+            const label = moduleLabel(mod);
+            if (!needle || label.toLowerCase().includes(needle)) {
+              out.push({
+                uri: doc.uri,
+                name: label,
+                kind: "module",
+                moduleName: mod.name,
+                span: mod.span
+              });
+            }
+            const entries = [
+              ...mod.consts.map((c) => ({ kind: "const", name: c.name, span: c.span })),
+              ...mod.types.map((t) => ({ kind: "type", name: t.name, span: t.span })),
+              ...mod.vars.map((v) => ({
+                kind: "var",
+                name: v.variable.name,
+                span: v.variable.span
+              })),
+              ...mod.processes.map((p) => ({ kind: "process", name: p.name, span: p.span })),
+              ...mod.functions.map((f) => ({ kind: "function", name: f.name, span: f.span }))
+            ];
+            for (const sym of entries) {
+              if (needle && !sym.name.toLowerCase().includes(needle))
+                continue;
+              out.push({
+                uri: doc.uri,
+                name: sym.name,
+                kind: sym.kind,
+                moduleName: mod.name,
+                span: sym.span,
+                containerName: label
+              });
+            }
+          }
+        }
+        return out;
+      }
+    };
+    exports2.ProjectIndex = ProjectIndex2;
+    function createProjectIndex() {
+      return new ProjectIndex2();
+    }
+  }
+});
+
+// ../parser/dist/parser/incremental.js
+var require_incremental = __commonJS({
+  "../parser/dist/parser/incremental.js"(exports2) {
+    "use strict";
+    Object.defineProperty(exports2, "__esModule", { value: true });
+    exports2.moduleSourceHashes = moduleSourceHashes;
+    exports2.getChangedModules = getChangedModules;
+    exports2.checkIncremental = checkIncremental2;
+    exports2.createIncrementalState = createIncrementalState;
+    var node_crypto_1 = require("node:crypto");
+    var parse_js_1 = require_parse();
+    var resolver_js_1 = require_resolver();
+    var referenceChecker_js_1 = require_referenceChecker();
+    var checker_js_1 = require_checker();
+    var classifier_js_1 = require_classifier();
+    function runCheck(source) {
+      const result = (0, parse_js_1.parseStrict)(source);
+      if (!result.ast || result.ast.type !== "program") {
+        return { ast: null, diagnostics: result.diagnostics };
+      }
+      if (result.diagnostics.some((d) => d.severity === "error")) {
+        return { ast: null, diagnostics: result.diagnostics };
+      }
+      const scopeResult = (0, resolver_js_1.resolveScope)(result.ast);
+      const refResult = (0, referenceChecker_js_1.checkReferences)(result.ast, scopeResult);
+      const typeResult = (0, checker_js_1.typeCheck)(result.ast, scopeResult);
+      const fsfResult = (0, classifier_js_1.classifyFsf)(result.ast);
+      return {
+        ast: result.ast,
+        diagnostics: [
+          ...result.diagnostics,
+          ...scopeResult.diagnostics,
+          ...refResult.diagnostics,
+          ...typeResult.diagnostics,
+          ...fsfResult.diagnostics
+        ]
+      };
+    }
+    function hashText(text) {
+      return (0, node_crypto_1.createHash)("sha256").update(text).digest("hex");
+    }
+    function moduleSourceHashes(source, ast) {
+      const out = {};
+      for (const mod of ast.modules) {
+        if (mod.span.end > mod.span.start) {
+          out[mod.name] = hashText(source.slice(mod.span.start, mod.span.end));
+        }
+      }
+      return out;
+    }
+    function getChangedModules(source, ast, previous) {
+      if (!previous)
+        return ast.modules.map((m) => m.name);
+      const next = moduleSourceHashes(source, ast);
+      return ast.modules.filter((m) => previous.moduleHashes[m.name] !== next[m.name]).map((m) => m.name);
+    }
+    function checkIncremental2(source, previous) {
+      const contentHash2 = hashText(source);
+      if (previous?.contentHash === contentHash2) {
+        return { ast: previous.ast, diagnostics: previous.diagnostics, state: previous };
+      }
+      const result = runCheck(source);
+      const state = {
+        contentHash: contentHash2,
+        moduleHashes: result.ast ? moduleSourceHashes(source, result.ast) : {},
+        ast: result.ast,
+        diagnostics: result.diagnostics
+      };
+      return { ...result, state };
+    }
+    function createIncrementalState(source) {
+      return checkIncremental2(source).state;
+    }
+  }
+});
+
+// ../parser/dist/lexer/lexer.js
 var require_lexer = __commonJS({
-  "../../dist/lexer/lexer.js"(exports2) {
+  "../parser/dist/lexer/lexer.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.allTokens = exports2.AgileSoflLexer = exports2.tokenize = void 0;
@@ -26247,9 +26518,9 @@ var require_lexer = __commonJS({
   }
 });
 
-// ../../dist/cli/ansi.js
+// ../parser/dist/cli/ansi.js
 var require_ansi = __commonJS({
-  "../../dist/cli/ansi.js"(exports2) {
+  "../parser/dist/cli/ansi.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.ansi = void 0;
@@ -26272,9 +26543,9 @@ var require_ansi = __commonJS({
   }
 });
 
-// ../../dist/cli/report.js
+// ../parser/dist/cli/report.js
 var require_report = __commonJS({
-  "../../dist/cli/report.js"(exports2) {
+  "../parser/dist/cli/report.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.inspect = inspect;
@@ -26502,9 +26773,9 @@ var require_report = __commonJS({
   }
 });
 
-// ../../dist/inspect/symbolSummary.js
+// ../parser/dist/inspect/symbolSummary.js
 var require_symbolSummary = __commonJS({
-  "../../dist/inspect/symbolSummary.js"(exports2) {
+  "../parser/dist/inspect/symbolSummary.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.formatSymbolSummary = formatSymbolSummary2;
@@ -26652,15 +26923,15 @@ ${text}`;
   }
 });
 
-// ../../dist/index.js
+// ../parser/dist/index.js
 var require_dist = __commonJS({
-  "../../dist/index.js"(exports2) {
+  "../parser/dist/index.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.typesCompatibleStrict = exports2.typesCompatible = exports2.resolveInternalType = exports2.typeExprToInternal = exports2.typeToString = exports2.textFieldSpan = exports2.formatTextFieldSummary = exports2.formatInformalSummary = exports2.formatSymbolSummary = exports2.formatInspectReport = exports2.inspect = exports2.checkReferences = exports2.resolveReferenceByName = exports2.resolveDeclarationAtOffset = exports2.resolveReference = exports2.formatDiagnostic = exports2.collectHybridRegions = exports2.findNodeAtOffset = exports2.getNodeAtOffset = exports2.walk = exports2.printProgram = exports2.stripSpans = exports2.astEqual = exports2.normalizeAST = exports2.lookupModuleScope = exports2.resolveScope = exports2.classifyFsf = exports2.typeCheck = exports2.parseModule = exports2.parseStrict = exports2.parse = exports2.textOf = void 0;
+    exports2.typesCompatibleStrict = exports2.typesCompatible = exports2.resolveInternalType = exports2.typeExprToInternal = exports2.typeToString = exports2.textFieldSpan = exports2.formatTextFieldSummary = exports2.formatInformalSummary = exports2.formatSymbolSummary = exports2.formatInspectReport = exports2.inspect = exports2.moduleSourceHashes = exports2.getChangedModules = exports2.createIncrementalState = exports2.checkIncremental = exports2.createProjectIndex = exports2.ProjectIndex = exports2.checkReferences = exports2.resolveReferenceByName = exports2.resolveDeclarationAtOffset = exports2.resolveReference = exports2.formatDiagnostic = exports2.collectHybridRegions = exports2.findNodeAtOffset = exports2.getNodeAtOffset = exports2.walk = exports2.printProgram = exports2.stripSpans = exports2.astEqual = exports2.normalizeAST = exports2.lookupModuleScope = exports2.resolveScope = exports2.classifyFsf = exports2.typeCheck = exports2.parseModule = exports2.parseStrict = exports2.parse = exports2.textOf = void 0;
     exports2.parseSpecification = parseSpecification;
     exports2.parseSingleModule = parseSingleModule;
-    exports2.check = check3;
+    exports2.check = check;
     exports2.format = format2;
     var parse_js_1 = require_parse();
     Object.defineProperty(exports2, "parse", { enumerable: true, get: function() {
@@ -26771,7 +27042,7 @@ var require_dist = __commonJS({
         ]
       };
     }
-    function check3(source) {
+    function check(source) {
       return parseSpecification(source);
     }
     function format2(source) {
@@ -26793,6 +27064,26 @@ var require_dist = __commonJS({
     var referenceChecker_js_2 = require_referenceChecker();
     Object.defineProperty(exports2, "checkReferences", { enumerable: true, get: function() {
       return referenceChecker_js_2.checkReferences;
+    } });
+    var projectIndex_js_1 = require_projectIndex();
+    Object.defineProperty(exports2, "ProjectIndex", { enumerable: true, get: function() {
+      return projectIndex_js_1.ProjectIndex;
+    } });
+    Object.defineProperty(exports2, "createProjectIndex", { enumerable: true, get: function() {
+      return projectIndex_js_1.createProjectIndex;
+    } });
+    var incremental_js_1 = require_incremental();
+    Object.defineProperty(exports2, "checkIncremental", { enumerable: true, get: function() {
+      return incremental_js_1.checkIncremental;
+    } });
+    Object.defineProperty(exports2, "createIncrementalState", { enumerable: true, get: function() {
+      return incremental_js_1.createIncrementalState;
+    } });
+    Object.defineProperty(exports2, "getChangedModules", { enumerable: true, get: function() {
+      return incremental_js_1.getChangedModules;
+    } });
+    Object.defineProperty(exports2, "moduleSourceHashes", { enumerable: true, get: function() {
+      return incremental_js_1.moduleSourceHashes;
     } });
     var report_js_1 = require_report();
     Object.defineProperty(exports2, "inspect", { enumerable: true, get: function() {
@@ -26833,7 +27124,7 @@ var require_dist = __commonJS({
   }
 });
 
-// ../language-server/src/server.ts
+// src/server.ts
 var import_node10 = __toESM(require_node3());
 
 // ../../node_modules/vscode-languageserver-textdocument/lib/esm/main.js
@@ -27060,16 +27351,14 @@ function getWellformedEdit(textEdit) {
   return textEdit;
 }
 
-// ../language-server/src/diagnosticCache.ts
+// src/diagnosticCache.ts
 var import_node_crypto = require("node:crypto");
-
-// ../language-server/src/diagnostics.ts
 var import_parser14 = __toESM(require_dist());
 
-// ../language-server/src/lsp-utils.ts
+// src/lsp-utils.ts
 var import_node2 = __toESM(require_node3());
 
-// ../language-server/src/position.ts
+// src/position.ts
 var import_node = __toESM(require_node3());
 function spanToRange(document, span) {
   if (span.end <= span.start) {
@@ -27078,7 +27367,7 @@ function spanToRange(document, span) {
   return import_node.Range.create(document.positionAt(span.start), document.positionAt(span.end));
 }
 
-// ../language-server/src/lsp-utils.ts
+// src/lsp-utils.ts
 function diagnosticToLsp(d, document) {
   return import_node2.Diagnostic.create(
     spanToRange(document, d.span),
@@ -27087,6 +27376,10 @@ function diagnosticToLsp(d, document) {
     d.code,
     "agile-sofl"
   );
+}
+function parserDiagnosticsToLsp(diagnostics, source, uri = "file:///inline.asfl") {
+  const document = { uri, getText: () => source };
+  return diagnostics.map((d) => diagnosticToLsp(d, document));
 }
 function severityToLsp(d) {
   if (d.code === "ASFL_FSF_001")
@@ -27103,14 +27396,9 @@ function severityToLsp(d) {
   }
 }
 
-// ../language-server/src/diagnostics.ts
-function collectDiagnostics(document) {
-  const { diagnostics } = (0, import_parser14.check)(document.getText());
-  return diagnostics.map((d) => diagnosticToLsp(d, document));
-}
-
-// ../language-server/src/diagnosticCache.ts
+// src/diagnosticCache.ts
 var diagnosticCache = /* @__PURE__ */ new Map();
+var incrementalStates = /* @__PURE__ */ new Map();
 function contentHash(text) {
   return (0, import_node_crypto.createHash)("sha256").update(text).digest("hex");
 }
@@ -27122,12 +27410,15 @@ function diagnosticsForDocument(document) {
   if (cached && cached.version === document.version && cached.contentHash === hash) {
     return cached.diagnostics;
   }
-  const diagnostics = collectDiagnostics(document);
-  diagnosticCache.set(uri, { version: document.version, contentHash: hash, diagnostics });
-  return diagnostics;
+  const prev = incrementalStates.get(uri);
+  const { diagnostics, state } = (0, import_parser14.checkIncremental)(text, prev);
+  incrementalStates.set(uri, state);
+  const lspDiagnostics = parserDiagnosticsToLsp(diagnostics, text);
+  diagnosticCache.set(uri, { version: document.version, contentHash: hash, diagnostics: lspDiagnostics, incrementalState: state });
+  return lspDiagnostics;
 }
 
-// ../language-server/src/formatting.ts
+// src/formatting.ts
 var import_parser15 = __toESM(require_dist());
 var import_node3 = __toESM(require_node3());
 var import_node4 = __toESM(require_node3());
@@ -27147,7 +27438,7 @@ function formatDocument(document) {
   return [import_node3.TextEdit.replace(fullRange, formatted)];
 }
 
-// ../language-server/src/symbols.ts
+// src/symbols.ts
 var import_parser16 = __toESM(require_dist());
 var import_node5 = __toESM(require_node3());
 function collectDocumentSymbols(document) {
@@ -27237,27 +27528,53 @@ function collectDocumentSymbols(document) {
   return symbols;
 }
 
-// ../language-server/src/definition.ts
-var import_parser18 = __toESM(require_dist());
+// src/definition.ts
+var import_parser19 = __toESM(require_dist());
 
-// ../language-server/src/parseGuard.ts
+// src/parseGuard.ts
 var import_parser17 = __toESM(require_dist());
 function hasParseError(source) {
   const { diagnostics } = (0, import_parser17.parse)(source);
   return diagnostics.some((d) => d.code === "ASFL_PARSE_001");
 }
 
-// ../language-server/src/definition.ts
+// src/projectIndex.ts
+var import_parser18 = __toESM(require_dist());
+var index = new import_parser18.ProjectIndex();
+function getLspProjectIndex() {
+  return index;
+}
+function syncDocument(document) {
+  index.upsert(document.uri, document.getText());
+}
+function removeDocument(uri) {
+  index.remove(uri);
+}
+
+// src/definition.ts
 function getDefinition(document, position) {
   const source = document.getText();
+  const offset = document.offsetAt(position);
+  const indexed = getLspProjectIndex().findDefinition(document.uri, offset);
+  if (indexed) {
+    const targetDoc = indexed.uri === document.uri ? document : TextDocument.create(
+      indexed.uri,
+      "agile-sofl",
+      1,
+      getLspProjectIndex().get(indexed.uri)?.source ?? ""
+    );
+    return {
+      uri: indexed.uri,
+      range: spanToRange(targetDoc, indexed.target.span)
+    };
+  }
   if (hasParseError(source))
     return null;
-  const offset = document.offsetAt(position);
-  const { ast } = (0, import_parser18.parse)(source);
+  const { ast } = (0, import_parser19.parse)(source);
   if (!ast || ast.type !== "program")
     return null;
-  const scopeResult = (0, import_parser18.resolveScope)(ast);
-  const target = (0, import_parser18.resolveReference)(ast, scopeResult, offset) ?? (0, import_parser18.resolveDeclarationAtOffset)(ast, scopeResult, offset);
+  const scopeResult = (0, import_parser19.resolveScope)(ast);
+  const target = (0, import_parser19.resolveReference)(ast, scopeResult, offset) ?? (0, import_parser19.resolveDeclarationAtOffset)(ast, scopeResult, offset);
   if (!target || target.span.end <= target.span.start)
     return null;
   return {
@@ -27266,10 +27583,10 @@ function getDefinition(document, position) {
   };
 }
 
-// ../language-server/src/hover.ts
-var import_parser19 = __toESM(require_dist());
+// src/hover.ts
+var import_parser20 = __toESM(require_dist());
 
-// ../language-server/src/bindings.ts
+// src/bindings.ts
 function pushBindings(groups, out) {
   if (!groups)
     return;
@@ -27471,7 +27788,7 @@ function bindingNamesAtOffset(program, offset) {
   return [...new Set(bindingsAtOffset(program, offset).map((b) => b.name))];
 }
 
-// ../language-server/src/hover.ts
+// src/hover.ts
 function moduleAtOffset(modules, offset) {
   let best = null;
   let bestLen = Infinity;
@@ -27561,17 +27878,17 @@ function findInformalAtOffset(program, offset) {
 function hoverForTextFields(document, mod, offset) {
   for (const proc of mod.processes) {
     const decom = proc.body?.decomposition;
-    const decomSpan = (0, import_parser19.textFieldSpan)(decom);
+    const decomSpan = (0, import_parser20.textFieldSpan)(decom);
     if (decomSpan && offset >= decomSpan.start && offset <= decomSpan.end) {
-      const content = (0, import_parser19.formatTextFieldSummary)("decom", decom);
+      const content = (0, import_parser20.formatTextFieldSummary)("decom", decom);
       if (content) {
         return { contents: { kind: "markdown", value: content }, range: spanToRange(document, decomSpan) };
       }
     }
     const comment = proc.body?.comment;
-    const commentSpan = (0, import_parser19.textFieldSpan)(comment);
+    const commentSpan = (0, import_parser20.textFieldSpan)(comment);
     if (commentSpan && offset >= commentSpan.start && offset <= commentSpan.end) {
-      const content = (0, import_parser19.formatTextFieldSummary)("comment", comment);
+      const content = (0, import_parser20.formatTextFieldSummary)("comment", comment);
       if (content) {
         return { contents: { kind: "markdown", value: content }, range: spanToRange(document, commentSpan) };
       }
@@ -27584,13 +27901,13 @@ function getHover(document, position) {
   if (hasParseError(source))
     return null;
   const offset = document.offsetAt(position);
-  const { ast } = (0, import_parser19.parse)(source);
+  const { ast } = (0, import_parser20.parse)(source);
   if (!ast || ast.type !== "program")
     return null;
   const informal = findInformalAtOffset(ast, offset);
   if (informal) {
     return {
-      contents: { kind: "markdown", value: (0, import_parser19.formatInformalSummary)(informal.text) },
+      contents: { kind: "markdown", value: (0, import_parser20.formatInformalSummary)(informal.text) },
       range: spanToRange(document, informal.span)
     };
   }
@@ -27604,15 +27921,15 @@ function getHover(document, position) {
   if (compBinding && currentMod) {
     const env = /* @__PURE__ */ new Map();
     for (const t of currentMod.types) {
-      env.set(t.name, (0, import_parser19.typeExprToInternal)(t.typeExpr));
+      env.set(t.name, (0, import_parser20.typeExprToInternal)(t.typeExpr));
     }
     for (const t of currentMod.types) {
-      env.set(t.name, (0, import_parser19.resolveInternalType)(env.get(t.name), env));
+      env.set(t.name, (0, import_parser20.resolveInternalType)(env.get(t.name), env));
     }
     for (const v of currentMod.vars) {
-      env.set(v.variable.name, (0, import_parser19.resolveInternalType)((0, import_parser19.typeExprToInternal)(v.typeExpr), env));
+      env.set(v.variable.name, (0, import_parser20.resolveInternalType)((0, import_parser20.typeExprToInternal)(v.typeExpr), env));
     }
-    const typeStr = (0, import_parser19.typeToString)((0, import_parser19.resolveInternalType)((0, import_parser19.typeExprToInternal)(compBinding.typeExpr), env));
+    const typeStr = (0, import_parser20.typeToString)((0, import_parser20.resolveInternalType)((0, import_parser20.typeExprToInternal)(compBinding.typeExpr), env));
     return {
       contents: {
         kind: "markdown",
@@ -27623,14 +27940,14 @@ function getHover(document, position) {
       range: spanToRange(document, compBinding.span)
     };
   }
-  const scopeResult = (0, import_parser19.resolveScope)(ast);
-  let target = (0, import_parser19.resolveReference)(ast, scopeResult, offset) ?? (0, import_parser19.resolveDeclarationAtOffset)(ast, scopeResult, offset);
+  const scopeResult = (0, import_parser20.resolveScope)(ast);
+  let target = (0, import_parser20.resolveReference)(ast, scopeResult, offset) ?? (0, import_parser20.resolveDeclarationAtOffset)(ast, scopeResult, offset);
   if (!target) {
-    const node = (0, import_parser19.findNodeAtOffset)(ast, offset);
+    const node = (0, import_parser20.findNodeAtOffset)(ast, offset);
     if (node?.type === "call" && typeof node.callee !== "string" && node.callee.type === "identifier") {
       const currentMod2 = moduleAtOffset(ast.modules, offset);
       if (currentMod2) {
-        target = (0, import_parser19.resolveReferenceByName)(scopeResult, currentMod2, node.callee.name, node.callee.qualified?.module, offset);
+        target = (0, import_parser20.resolveReferenceByName)(scopeResult, currentMod2, node.callee.name, node.callee.qualified?.module, offset);
       }
     }
   }
@@ -27639,15 +27956,15 @@ function getHover(document, position) {
   const { symbol, module: module2 } = target;
   const process2 = symbol.kind === "process" ? module2.processes.find((p) => p.name === symbol.name) ?? processAtOffset(module2, offset) : processAtOffset(module2, offset);
   const fn = symbol.kind === "function" ? module2.functions.find((f) => f.name === symbol.name) ?? functionAtOffset(module2, offset) : functionAtOffset(module2, offset);
-  const content = (0, import_parser19.formatSymbolSummary)({ symbol, module: module2, process: process2, function: fn, markdown: true });
+  const content = (0, import_parser20.formatSymbolSummary)({ symbol, module: module2, process: process2, function: fn, markdown: true });
   return {
     contents: { kind: "markdown", value: content },
     range: spanToRange(document, target.span)
   };
 }
 
-// ../language-server/src/completion.ts
-var import_parser20 = __toESM(require_dist());
+// src/completion.ts
+var import_parser21 = __toESM(require_dist());
 var import_node6 = __toESM(require_node3());
 var BASIC_TYPES = ["nat", "int", "bool", "char", "string", "real", "given"];
 var PROCESS_KEYWORDS = ["FSF", "ext", "decom", "comment", "end_process"];
@@ -27688,7 +28005,7 @@ function collectScopeSymbols(program, scopeResult, offset) {
   const currentMod = moduleAtOffset2(program, offset);
   if (!currentMod)
     return [];
-  const scope = (0, import_parser20.lookupModuleScope)(scopeResult, currentMod.name);
+  const scope = (0, import_parser21.lookupModuleScope)(scopeResult, currentMod.name);
   if (!scope)
     return [];
   const symbols = /* @__PURE__ */ new Map();
@@ -27733,7 +28050,7 @@ function collectTypeNames(program, scopeResult, offset) {
   const currentMod = moduleAtOffset2(program, offset);
   if (!currentMod)
     return [];
-  const scope = (0, import_parser20.lookupModuleScope)(scopeResult, currentMod.name);
+  const scope = (0, import_parser21.lookupModuleScope)(scopeResult, currentMod.name);
   const names = new Set(BASIC_TYPES);
   if (scope) {
     for (const sym of scope.symbols.values()) {
@@ -27760,8 +28077,8 @@ function getCompletions(document, position) {
   const trimmed = prefix.trimStart();
   const source = document.getText();
   const offset = document.offsetAt(position);
-  const { ast } = (0, import_parser20.parse)(source);
-  const scopeResult = ast && ast.type === "program" ? (0, import_parser20.resolveScope)(ast) : null;
+  const { ast } = (0, import_parser21.parse)(source);
+  const scopeResult = ast && ast.type === "program" ? (0, import_parser21.resolveScope)(ast) : null;
   if (ast?.type === "program") {
     const bindings = quantifierBindingsAtOffset(ast, offset);
     if (bindings.length && inBindingCompletionContext(prefix)) {
@@ -27805,8 +28122,8 @@ function getCompletions(document, position) {
   return [];
 }
 
-// ../language-server/src/semanticTokens.ts
-var import_parser21 = __toESM(require_dist());
+// src/semanticTokens.ts
+var import_parser22 = __toESM(require_dist());
 var import_node7 = __toESM(require_node3());
 var SEMANTIC_TOKEN_TYPES = [
   "namespace",
@@ -27918,7 +28235,7 @@ function collectProcessTokens(proc, records) {
     pushSpan(records, decom.span, "parameter", ["readonly"], decom.text);
   }
   const comment = proc.body?.comment;
-  const commentText = (0, import_parser21.textOf)(comment);
+  const commentText = (0, import_parser22.textOf)(comment);
   if (commentText && comment && typeof comment === "object" && "span" in comment) {
     pushWordInText(records, comment.span, commentText, "informal", "keyword");
   }
@@ -27956,11 +28273,11 @@ function collectModuleTokens(mod, records) {
   }
 }
 function buildSemanticTokenRecords(source, ast) {
-  const parsed = ast ?? (0, import_parser21.parse)(source).ast;
+  const parsed = ast ?? (0, import_parser22.parse)(source).ast;
   if (!parsed || parsed.type !== "program")
     return [];
   const records = [];
-  (0, import_parser21.walk)(parsed, {
+  (0, import_parser22.walk)(parsed, {
     enterModule(mod) {
       collectModuleTokens(mod, records);
     }
@@ -27997,18 +28314,18 @@ function semanticTokenRecordsToLsp(records, document) {
 }
 function buildSemanticTokens(document) {
   const source = document.getText();
-  const { ast } = (0, import_parser21.parse)(source);
+  const { ast } = (0, import_parser22.parse)(source);
   const program = ast && ast.type === "program" ? ast : null;
   const records = buildSemanticTokenRecords(source, program);
   return semanticTokenRecordsToLsp(records, document);
 }
 
-// ../language-server/src/folding.ts
-var import_parser22 = __toESM(require_dist());
+// src/folding.ts
+var import_parser23 = __toESM(require_dist());
 var import_node8 = __toESM(require_node3());
 function collectFoldingRanges(document) {
   const source = document.getText();
-  const { ast } = (0, import_parser22.parse)(source);
+  const { ast } = (0, import_parser23.parse)(source);
   if (!ast || ast.type !== "program")
     return [];
   const ranges = [];
@@ -28050,53 +28367,32 @@ function collectFoldingRanges(document) {
   return ranges.sort((a, b) => a.startLine - b.startLine || a.endLine - b.endLine);
 }
 
-// ../language-server/src/workspaceSymbols.ts
-var import_parser23 = __toESM(require_dist());
+// src/workspaceSymbols.ts
 var import_node9 = __toESM(require_node3());
 var KIND_MAP = {
   const: import_node9.SymbolKind.Constant,
   type: import_node9.SymbolKind.Class,
   var: import_node9.SymbolKind.Variable,
   process: import_node9.SymbolKind.Method,
-  function: import_node9.SymbolKind.Function
+  function: import_node9.SymbolKind.Function,
+  module: import_node9.SymbolKind.Module
 };
 function collectWorkspaceSymbols(document, query) {
-  const { ast } = (0, import_parser23.check)(document.getText());
-  if (!ast || ast.type !== "program")
-    return [];
-  const needle = query?.trim().toLowerCase() ?? "";
-  const symbols = [];
-  for (const mod of ast.modules) {
-    const modLabel = mod.isSystem ? `SYSTEM_${mod.name}` : mod.name;
-    if (!needle || modLabel.toLowerCase().includes(needle)) {
-      symbols.push({
-        name: modLabel,
-        kind: import_node9.SymbolKind.Module,
-        location: { uri: document.uri, range: spanToRange(document, mod.span) },
-        containerName: void 0
-      });
-    }
-    for (const sym of [
-      ...mod.consts.map((c) => ({ kind: "const", name: c.name, span: c.span })),
-      ...mod.types.map((t) => ({ kind: "type", name: t.name, span: t.span })),
-      ...mod.vars.map((v) => ({ kind: "var", name: v.variable.name, span: v.variable.span })),
-      ...mod.processes.map((p) => ({ kind: "process", name: p.name, span: p.span })),
-      ...mod.functions.map((f) => ({ kind: "function", name: f.name, span: f.span }))
-    ]) {
-      if (needle && !sym.name.toLowerCase().includes(needle))
-        continue;
-      symbols.push({
-        name: sym.name,
-        kind: KIND_MAP[sym.kind],
-        location: { uri: document.uri, range: spanToRange(document, sym.span) },
-        containerName: modLabel
-      });
-    }
-  }
-  return symbols;
+  const index2 = getLspProjectIndex();
+  index2.upsert(document.uri, document.getText());
+  return index2.symbols(query).map((sym) => {
+    const source = sym.uri === document.uri ? document.getText() : index2.get(sym.uri)?.source ?? document.getText();
+    const doc = TextDocument.create(sym.uri, "agile-sofl", 1, source);
+    return {
+      name: sym.name,
+      kind: KIND_MAP[sym.kind],
+      location: { uri: sym.uri, range: spanToRange(doc, sym.span) },
+      containerName: sym.containerName
+    };
+  });
 }
 
-// ../language-server/src/server.ts
+// src/server.ts
 var connection = (0, import_node10.createConnection)(import_node10.ProposedFeatures.all);
 var documents = new import_node10.TextDocuments(TextDocument);
 var debounceMs = 300;
@@ -28151,13 +28447,18 @@ function scheduleDiagnostics(document) {
   );
 }
 documents.onDidChangeContent((change) => {
+  syncDocument(change.document);
   scheduleDiagnostics(change.document);
 });
 documents.onDidOpen((event) => {
+  syncDocument(event.document);
   connection.sendDiagnostics({
     uri: event.document.uri,
     diagnostics: diagnosticsForDocument(event.document)
   });
+});
+documents.onDidClose((event) => {
+  removeDocument(event.document.uri);
 });
 connection.onDocumentFormatting((params) => {
   const doc = documents.get(params.textDocument.uri);

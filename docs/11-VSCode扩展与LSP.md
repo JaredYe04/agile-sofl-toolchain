@@ -12,7 +12,7 @@
 | **编辑器栈** | `packages/language-server` + `packages/vscode` | `packages/vscode/package.json` | **私有 `.vsix`**（GitHub Release / 本地打包） | `ci-editor.yml` + `package-extension.yml` |
 
 - Parser 发版**不触发**扩展发版；扩展发版**不触发** parser npm 发版。
-- 扩展运行时 bundled 的 Language Server 依赖 `@agile-sofl/parser`（CI 打包时使用 workspace 构建；本地可用 `file:../..` 联调）。
+- 扩展运行时 bundled 的 Language Server 依赖 `@agile-sofl/parser`（CI 打包时使用 workspace 构建；本地可用 `file:../parser` 联调）。
 - Language Server **不单独发 npm**：esbuild 打包进 `packages/vscode/server/server.js`，随 `.vsix` 分发。
 
 ## 2. 安装（用户）
@@ -119,8 +119,8 @@ end_process
 本地验证高亮（无需打开 VS Code 看像素）：
 
 ```bash
-npm run highlight:check          # CI：scope → colorClass 断言
-npm run highlight:preview        # 终端 ANSI 预览
+npm run highlight:check --workspace agile-sofl   # CI：scope → colorClass 断言
+npm run highlight:preview --workspace agile-sofl   # 终端 ANSI 预览
 ```
 
 | colorClass | 含义 |
@@ -144,7 +144,7 @@ npm run highlight:preview        # 终端 ANSI 预览
 | `highlight-edge-cases.asfl` | comment/FSF/ext/map 高亮边界 |
 | `type-showcase.asfl` | 各类型构造分色展示 |
 
-集成测试：`tests/integration/demo-fixtures.test.ts`；高亮：`tests/vscode/highlight.test.ts`。
+集成测试：`packages/parser/tests/integration/demo-fixtures.test.ts`；高亮：`packages/vscode/tests/highlight/`。
 
 ## 5. 本地开发
 
@@ -160,8 +160,8 @@ npm run build --prefix packages/language-server
 npm test --prefix packages/language-server
 
 # 打包 server 并编译扩展
-node packages/language-server/scripts/bundle.mjs
-npm run build --prefix packages/vscode
+npm run bundle-server --workspace agile-sofl
+npm run build --workspace agile-sofl
 ```
 
 ### 5.2 F5 调试
@@ -170,15 +170,14 @@ npm run build --prefix packages/vscode
 
 ### 5.3 联调本地 parser
 
-根目录 `npm run build` 后，`packages/language-server` 通过 `"@agile-sofl/parser": "file:../.."` 引用本地构建产物。修改 parser 后重新 build + bundle server 即可。
+根目录 `npm run build --workspace @agile-sofl/parser` 后，`packages/language-server` 通过 `"@agile-sofl/parser": "file:../parser"` 引用本地构建产物。修改 parser 后重新 build + bundle server 即可。
 
 ### 5.4 本地打 VSIX
 
 ```bash
-npm run build
-npm run build --prefix packages/language-server
-node packages/language-server/scripts/bundle.mjs
-npm run package --prefix packages/vscode
+npm run build --workspace @agile-sofl/parser
+npm run bundle-server --workspace agile-sofl
+npm run package --workspace agile-sofl
 # 产物：packages/vscode/agile-sofl-0.x.x.vsix
 ```
 
@@ -204,8 +203,14 @@ npm run package --prefix packages/vscode
 
 | 工作流 | 范围 |
 |--------|------|
-| `ci.yml` | parser：`src/`、`tests/`；LSP 测试；banking + ecommerce P95 基准（阻塞）；fuzz smoke |
-| `ci-editor.yml` | `packages/**`、`examples/**`：LSP 测试 + `vsce package` 编译检查 |
+| `ci.yml` | 全 monorepo smoke：parser、editor-api、LSP、studio、highlight、P95 |
+| `ci-parser.yml` | `packages/parser/**` |
+| `ci-lsp.yml` | parser + language-server |
+| `ci-vscode.yml` | parser + LSP + vscode + highlight |
+| `ci-studio.yml` | shared packages + studio build |
+| `ci-editor.yml` | `packages/**`：LSP + VSIX 编译检查 |
+
+模块边界见 [13-模块边界与仓库结构.md](./13-模块边界与仓库结构.md)。
 
 ## 7. Monaco / 其他编辑器
 
@@ -214,7 +219,7 @@ Language Server 入口：`packages/language-server/src/server.ts`（stdio）。M
 1. 从扩展 `.vsix` 或源码 bundle 引用 `server/server.js`；或
 2. 直接依赖 `@agile-sofl/parser` 在浏览器侧调用 `check()` / `format()`（无 LSP）。
 
-浏览器 POC：`packages/monaco-demo`（见该目录 `README.md`）。
+桌面编辑器 POC：`packages/studio`（Electron + Vue，见该目录 `README.md`）。
 
 详见 [10-编辑器路线图.md](./10-编辑器路线图.md) 中长期能力规划。
 

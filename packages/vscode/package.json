@@ -94,12 +94,15 @@
   },
   "scripts": {
     "build": "node scripts/bundle-extension.mjs",
-    "bundle-server": "npm run build --prefix ../language-server && node ../language-server/scripts/bundle.mjs",
+    "bundle-server": "npm run build --prefix ../language-server && npm run bundle --prefix ../language-server && node scripts/copy-lsp-server.mjs",
     "vscode:prepublish": "npm run bundle-server && npm run build",
-    "package": "vsce package --no-dependencies"
+    "package": "vsce package --no-dependencies",
+    "test": "vitest run",
+    "highlight:check": "vitest run tests/highlight",
+    "highlight:preview": "node scripts/highlight-report.mjs --ansi"
   },
   "dependencies": {
-    "@agile-sofl/parser": "file:../..",
+    "@agile-sofl/parser": "file:../parser",
     "vscode-languageclient": "^9.0.1"
   },
   "devDependencies": {
@@ -107,6 +110,9 @@
     "@types/vscode": "^1.85.0",
     "@vscode/vsce": "^2.22.0",
     "esbuild": "^0.20.0",
-    "typescript": "^5.3.0"
+    "typescript": "^5.3.0",
+    "vitest": "^1.0.0",
+    "vscode-oniguruma": "^1.7.0",
+    "vscode-textmate": "^9.0.0"
   }
 }

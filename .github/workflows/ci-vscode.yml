@@ -1,0 +1,41 @@
+name: CI VS Code
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'packages/parser/**'
+      - 'packages/language-server/**'
+      - 'packages/vscode/**'
+      - 'examples/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/ci-vscode.yml'
+  pull_request:
+    branches: [main, master]
+    paths:
+      - 'packages/parser/**'
+      - 'packages/language-server/**'
+      - 'packages/vscode/**'
+      - 'examples/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/ci-vscode.yml'
+
+jobs:
+  vscode:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci
+      - run: npm run build --workspace @agile-sofl/parser
+      - run: npm run highlight:check --workspace agile-sofl
+      - run: npm run build --workspace @agile-sofl/language-server
+      - run: npm run test --workspace @agile-sofl/language-server
+      - run: npm run bundle-server --workspace agile-sofl
+      - run: npm run build --workspace agile-sofl
+      - run: npm run package --workspace agile-sofl

@@ -1,0 +1,46 @@
+{
+  "name": "@agile-sofl/parser",
+  "version": "0.1.0",
+  "description": "Agile-SOFL parser with AST, type checking, and FSF classification",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "asfl": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "coverage": "vitest run --coverage",
+    "lint": "eslint src tests --ext .ts",
+    "cli": "npm run build && node dist/cli.js",
+    "bench:parse": "npm run build && node scripts/bench-parse.mjs"
+  },
+  "dependencies": {
+    "chevrotain": "^11.0.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "@vitest/coverage-v8": "^1.0.0",
+    "eslint": "^8.0.0",
+    "typescript": "^5.3.0",
+    "vitest": "^1.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT",
+  "keywords": ["agile-sofl", "parser", "formal-specification", "chevrotain", "ast"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/agile-sofl/agile-sofl-parser.git",
+    "directory": "packages/parser"
+  }
+}

@@ -1,51 +1,28 @@
 {
-  "name": "@agile-sofl/parser",
-  "version": "0.1.0",
-  "description": "Agile-SOFL parser with AST, type checking, and FSF classification",
-  "main": "dist/index.js",
-  "module": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "bin": {
-    "asfl": "dist/cli.js"
-  },
-  "files": [
-    "dist",
-    "README.md"
+  "name": "agile-sofl-monorepo",
+  "private": true,
+  "description": "Agile-SOFL monorepo: parser, language server, editor API, VS Code extension, and Studio",
+  "workspaces": [
+    "packages/*"
   ],
   "scripts": {
-    "build": "tsc",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "coverage": "vitest run --coverage",
-    "lint": "eslint src tests --ext .ts",
-    "cli": "npm run build && node dist/cli.js",
-    "highlight:check": "vitest run tests/vscode/highlight.test.ts tests/vscode/semantic-highlight.test.ts",
-    "highlight:preview": "node scripts/highlight-report.mjs --ansi examples/keyword-traps.asfl",
-    "highlight:update": "node scripts/highlight-report.mjs --write-snapshots examples/keyword-traps.asfl examples/highlight-edge-cases.asfl examples/type-showcase.asfl",
-    "bench:parse": "npm run build && node scripts/bench-parse.mjs"
-  },
-  "dependencies": {
-    "chevrotain": "^11.0.3"
-  },
-  "devDependencies": {
-    "@types/node": "^20.10.0",
-    "@typescript-eslint/eslint-plugin": "^6.0.0",
-    "@typescript-eslint/parser": "^6.0.0",
-    "@vitest/coverage-v8": "^1.0.0",
-    "eslint": "^8.0.0",
-    "typescript": "^5.3.0",
-    "vitest": "^1.0.0",
-    "vscode-oniguruma": "^2.0.0",
-    "vscode-textmate": "^9.0.0"
+    "build": "npm run build --workspace @agile-sofl/parser && npm run build --workspace @agile-sofl/editor-api && npm run build --workspace @agile-sofl/language-server && npm run build --workspace agile-sofl --if-present && npm run build --workspace @agile-sofl/studio --if-present",
+    "build:parser": "npm run build --workspace @agile-sofl/parser",
+    "build:lsp": "npm run build --workspace @agile-sofl/language-server",
+    "build:vscode": "npm run build --workspace agile-sofl",
+    "build:studio": "npm run build --workspace @agile-sofl/studio",
+    "test": "npm run test --workspace @agile-sofl/parser && npm run test --workspace @agile-sofl/editor-api && npm run test --workspace @agile-sofl/language-server && npm run test --workspace agile-sofl --if-present && npm run test --workspace @agile-sofl/studio --if-present",
+    "test:parser": "npm run test --workspace @agile-sofl/parser",
+    "test:vscode": "npm run test --workspace agile-sofl",
+    "bench:parse": "npm run bench:parse --workspace @agile-sofl/parser",
+    "coverage": "npm run coverage --workspace @agile-sofl/parser",
+    "highlight:check": "npm run highlight:check --workspace agile-sofl",
+    "check:boundaries": "node scripts/check-boundaries.mjs"
   },
   "engines": {
     "node": ">=18"
   },
   "license": "MIT",
-  "workspaces": [
-    "packages/*"
-  ],
-  "keywords": ["agile-sofl", "parser", "formal-specification", "chevrotain", "ast"],
   "repository": {
     "type": "git",
     "url": "https://github.com/agile-sofl/agile-sofl-parser.git"

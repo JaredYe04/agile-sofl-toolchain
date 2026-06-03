@@ -9,7 +9,7 @@ import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
-const bankingPath = join(__dirname, '..', '..', '..', 'tests', 'fixtures', 'integration', 'banking.asfl')
+const bankingPath = join(__dirname, '..', '..', 'parser', 'tests', 'fixtures', 'integration', 'banking.asfl')
 
 function doc(source: string, uri = 'file:///test.asfl'): TextDocument {
   return TextDocument.create(uri, 'agile-sofl', 1, source)

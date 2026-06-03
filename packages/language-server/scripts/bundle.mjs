@@ -4,7 +4,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
-const outFile = join(__dirname, '..', '..', 'vscode', 'server', 'server.js')
+const outFile = join(__dirname, '..', 'dist', 'server.js')
 
 mkdirSync(dirname(outFile), { recursive: true })
 

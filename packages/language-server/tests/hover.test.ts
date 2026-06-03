@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url'
 import { TextDocument } from 'vscode-languageserver-textdocument'
 import { getHover } from '../src/hover.js'
 
-const bankingPath = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', 'tests', 'fixtures', 'integration', 'banking.asfl')
+const bankingPath = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'parser', 'tests', 'fixtures', 'integration', 'banking.asfl')
 
 function doc(source: string, uri = 'file:///test.asfl'): TextDocument {
   return TextDocument.create(uri, 'agile-sofl', 1, source)

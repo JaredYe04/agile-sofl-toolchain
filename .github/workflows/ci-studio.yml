@@ -1,0 +1,40 @@
+name: CI Studio
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'packages/parser/**'
+      - 'packages/editor-api/**'
+      - 'packages/language-server/**'
+      - 'packages/studio/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/ci-studio.yml'
+  pull_request:
+    branches: [main, master]
+    paths:
+      - 'packages/parser/**'
+      - 'packages/editor-api/**'
+      - 'packages/language-server/**'
+      - 'packages/studio/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/ci-studio.yml'
+
+jobs:
+  studio:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci
+      - run: npm run build --workspace @agile-sofl/parser
+      - run: npm run build --workspace @agile-sofl/editor-api
+      - run: npm run build --workspace @agile-sofl/language-server
+      - run: npm run bundle --workspace @agile-sofl/language-server
+      - run: npm run test --workspace @agile-sofl/studio
+      - run: npm run build --workspace @agile-sofl/studio

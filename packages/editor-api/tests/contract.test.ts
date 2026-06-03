@@ -19,8 +19,8 @@ import {
 } from '../src/index.js'
 import { parse } from '@agile-sofl/parser'
 
-const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..')
-const banking = readFileSync(join(repoRoot, 'tests', 'fixtures', 'integration', 'banking.asfl'), 'utf8')
+const parserRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'parser')
+const banking = readFileSync(join(parserRoot, 'tests', 'fixtures', 'integration', 'banking.asfl'), 'utf8')
 
 const DEMO = `module SYSTEM_Demo;
 process Demo (x: nat) ok: nat

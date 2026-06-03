@@ -59,18 +59,16 @@ jobs:
         run: npm ci
 
       - name: Build parser
-        run: npm run build
+        run: npm run build --workspace @agile-sofl/parser
 
-      - name: Bundle language server
-        run: |
-          npm run build --prefix packages/language-server
-          node packages/language-server/scripts/bundle.mjs
+      - name: Bundle language server into extension
+        run: npm run bundle-server --workspace agile-sofl
 
       - name: Build extension
-        run: npm run build --prefix packages/vscode
+        run: npm run build --workspace agile-sofl
 
       - name: Package VSIX
-        run: npm run package --prefix packages/vscode
+        run: npm run package --workspace agile-sofl
 
       - name: Upload VSIX to GitHub Release
         uses: softprops/action-gh-release@v2

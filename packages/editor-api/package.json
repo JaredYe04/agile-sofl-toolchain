@@ -10,7 +10,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@agile-sofl/parser": "file:../.."
+    "@agile-sofl/parser": "file:../parser"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",

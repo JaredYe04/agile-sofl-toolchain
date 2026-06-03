@@ -5,7 +5,8 @@ import { fileURLToPath } from 'node:url'
 import { TextDocument } from 'vscode-languageserver-textdocument'
 import { buildSemanticTokenRecords, formatSemanticTokenRecords } from '../src/semanticTokens.js'
 
-const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..')
+const parserRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'parser')
+const monorepoRoot = join(parserRoot, '..', '..')
 
 describe('Semantic tokens', () => {
   it('marks informal text using AST spans', () => {
@@ -20,14 +21,14 @@ end_module`
   })
 
   it('marks SYSTEM_ prefix and module name from nameSpan', () => {
-    const source = readFileSync(join(repoRoot, 'examples', 'keyword-traps.asfl'), 'utf8')
+    const source = readFileSync(join(monorepoRoot, 'examples', 'keyword-traps.asfl'), 'utf8')
     const records = buildSemanticTokenRecords(source)
     expect(records.some((r) => r.type === 'keyword' && r.text === 'SYSTEM_')).toBe(true)
     expect(records.some((r) => r.type === 'namespace' && r.text === 'Traps')).toBe(true)
   })
 
   it('marks process param names from nameSpans', () => {
-    const source = readFileSync(join(repoRoot, 'tests', 'fixtures', 'integration', 'banking.asfl'), 'utf8')
+    const source = readFileSync(join(parserRoot, 'tests', 'fixtures', 'integration', 'banking.asfl'), 'utf8')
     const records = buildSemanticTokenRecords(source)
     expect(records.some((r) => r.type === 'parameter' && r.text === 'x')).toBe(true)
     expect(records.some((r) => r.type === 'parameter' && r.text === 'q1')).toBe(true)
@@ -41,7 +42,7 @@ end_module`
   })
 
   it('marks informal keyword in comment from text span', () => {
-    const source = readFileSync(join(repoRoot, 'examples', 'highlight-edge-cases.asfl'), 'utf8')
+    const source = readFileSync(join(monorepoRoot, 'examples', 'highlight-edge-cases.asfl'), 'utf8')
     const records = buildSemanticTokenRecords(source)
     expect(records.some((r) => r.type === 'keyword' && r.text === 'informal')).toBe(true)
   })

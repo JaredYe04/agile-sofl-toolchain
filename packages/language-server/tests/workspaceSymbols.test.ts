@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url'
 import { TextDocument } from 'vscode-languageserver-textdocument'
 import { collectWorkspaceSymbols } from '../src/workspaceSymbols.js'
 
-const bankingPath = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', 'tests', 'fixtures', 'integration', 'banking.asfl')
+const bankingPath = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'parser', 'tests', 'fixtures', 'integration', 'banking.asfl')
 
 function doc(source: string): TextDocument {
   return TextDocument.create('file:///banking.asfl', 'agile-sofl', 1, source)

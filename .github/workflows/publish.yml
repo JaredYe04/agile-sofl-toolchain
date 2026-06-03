@@ -53,7 +53,7 @@ jobs:
       - name: Bump version (workflow_dispatch)
         if: github.event_name == 'workflow_dispatch'
         run: |
-          LOCAL_VERSION=$(node -p "require('./package.json').version")
+          LOCAL_VERSION=$(node -p "require('./packages/parser/package.json').version")
           echo "Local package.json version: $LOCAL_VERSION"
           NPM_VERSION=$(npm view @agile-sofl/parser version 2>/dev/null || echo "")
           if [ -z "$NPM_VERSION" ]; then
@@ -70,22 +70,22 @@ jobs:
               console.log('equal');
             ")
             if [ "$COMPARE" = "npm" ] || [ "$COMPARE" = "equal" ]; then
-              npm version $NPM_VERSION --no-git-tag-version --allow-same-version
+              npm version $NPM_VERSION --no-git-tag-version --allow-same-version --workspace @agile-sofl/parser
               BASE_VERSION=$NPM_VERSION
             else
               BASE_VERSION=$LOCAL_VERSION
             fi
           fi
-          CURRENT=$(node -p "require('./package.json').version")
+          CURRENT=$(node -p "require('./packages/parser/package.json').version")
           if [ "$CURRENT" != "$BASE_VERSION" ]; then
-            npm version $BASE_VERSION --no-git-tag-version --allow-same-version
+            npm version $BASE_VERSION --no-git-tag-version --allow-same-version --workspace @agile-sofl/parser
           fi
-          npm version ${{ github.event.inputs.version }} --no-git-tag-version
-          NEW_VERSION=$(node -p "require('./package.json').version")
+          npm version ${{ github.event.inputs.version }} --no-git-tag-version --workspace @agile-sofl/parser
+          NEW_VERSION=$(node -p "require('./packages/parser/package.json').version")
           echo "New version: $NEW_VERSION"
           if npm view @agile-sofl/parser@$NEW_VERSION version > /dev/null 2>&1; then
-            npm version ${{ github.event.inputs.version }} --no-git-tag-version
-            NEW_VERSION=$(node -p "require('./package.json').version")
+            npm version ${{ github.event.inputs.version }} --no-git-tag-version --workspace @agile-sofl/parser
+            NEW_VERSION=$(node -p "require('./packages/parser/package.json').version")
           fi
           echo "VERSION=$NEW_VERSION" >> $GITHUB_ENV
 
@@ -94,12 +94,12 @@ jobs:
         run: |
           TAG="${{ github.event.release.tag_name }}"
           VERSION=${TAG#v}
-          npm version $VERSION --no-git-tag-version --allow-same-version
+          npm version $VERSION --no-git-tag-version --allow-same-version --workspace @agile-sofl/parser
           echo "VERSION=$VERSION" >> $GITHUB_ENV
 
       - name: Verify version before publish
         run: |
-          VERSION=$(node -p "require('./package.json').version")
+          VERSION=$(node -p "require('./packages/parser/package.json').version")
           echo "Preparing to publish @agile-sofl/parser version: $VERSION"
           if npm view @agile-sofl/parser@$VERSION version > /dev/null 2>&1; then
             echo "Error: Version $VERSION already exists on npm"
@@ -107,7 +107,7 @@ jobs:
           fi
 
       - name: Build
-        run: npm run build
+        run: npm run build --workspace @agile-sofl/parser
 
       - name: Verify NPM authentication
         run: npm whoami || { echo "Not authenticated. Set NPM_TOKEN in repo secrets."; exit 1; }
@@ -115,14 +115,14 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish to npm
-        run: npm publish --access public
+        run: npm publish --access public --workspace @agile-sofl/parser
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Create Git tag and push (workflow_dispatch)
         if: github.event_name == 'workflow_dispatch'
         run: |
-          git add package.json package-lock.json
+          git add packages/parser/package.json package-lock.json
           if ! git diff --staged --quiet; then
             git commit -m "chore: bump parser version to ${{ env.VERSION }}"
           fi

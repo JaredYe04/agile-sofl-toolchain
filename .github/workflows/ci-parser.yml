@@ -1,0 +1,34 @@
+name: CI Parser
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'packages/parser/**'
+      - 'examples/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/ci-parser.yml'
+  pull_request:
+    branches: [main, master]
+    paths:
+      - 'packages/parser/**'
+      - 'examples/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/ci-parser.yml'
+
+jobs:
+  parser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci
+      - run: npm run build --workspace @agile-sofl/parser
+      - run: npm run test --workspace @agile-sofl/parser
+      - run: npm run coverage --workspace @agile-sofl/parser
+      - run: npm run bench:parse --workspace @agile-sofl/parser -- --assert-p95=100 --assert-ecommerce-p95=150

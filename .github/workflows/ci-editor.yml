@@ -19,33 +19,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build parser
-        run: npm run build
-
-      - name: Highlight tests
-        run: npm run highlight:check
-
-      - name: Build language server
-        run: npm run build --prefix packages/language-server
-
-      - name: Language server tests
-        run: npm test --prefix packages/language-server
-
-      - name: Bundle server into extension
-        run: node packages/language-server/scripts/bundle.mjs
-
-      - name: Build VS Code extension
-        run: npm run build --prefix packages/vscode
-
-      - name: Package VSIX (compile check)
-        run: npm run package --prefix packages/vscode
+      - run: npm ci
+      - run: npm run build --workspace @agile-sofl/parser
+      - run: npm run highlight:check --workspace agile-sofl
+      - run: npm run build --workspace @agile-sofl/language-server
+      - run: npm run test --workspace @agile-sofl/language-server
+      - run: npm run bundle-server --workspace agile-sofl
+      - run: npm run build --workspace agile-sofl
+      - run: npm run package --workspace agile-sofl

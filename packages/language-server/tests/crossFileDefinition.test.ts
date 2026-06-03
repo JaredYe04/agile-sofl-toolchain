@@ -6,7 +6,7 @@ import { TextDocument } from 'vscode-languageserver-textdocument'
 import { getDefinition } from '../src/definition.js'
 import { resetLspProjectIndex, syncDocument } from '../src/projectIndex.js'
 
-const projectFixtures = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', 'tests', 'fixtures', 'project')
+const projectFixtures = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'parser', 'tests', 'fixtures', 'project')
 
 function doc(source: string, uri: string): TextDocument {
   return TextDocument.create(uri, 'agile-sofl', 1, source)
