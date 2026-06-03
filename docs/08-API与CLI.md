@@ -63,6 +63,45 @@ const node = getNodeAtOffset(ast, offset)
 console.log(formatDiagnostic(diag, source))
 ```
 
+### 2.5 项目索引与增量检查（M6）
+
+```typescript
+import {
+  ProjectIndex,
+  createProjectIndex,
+  checkIncremental,
+  getChangedModules
+} from '@agile-sofl/parser'
+
+const index = createProjectIndex()
+index.scan('/path/to/specs')           // 扫描目录下全部 .asfl
+index.upsert('file:///a.asfl', source) // 或按 URI 更新单文件
+const doc = index.get('file:///a.asfl')
+const def = index.findDefinition('file:///b.asfl', offset)
+const symbols = index.symbols('Item')
+
+const first = checkIncremental(source)
+const second = checkIncremental(source, first.state) // 内容未变时复用结果
+```
+
+`ProjectIndex` 合并工作区内多文件的模块作用域，支持跨文件跳转与 workspace 级符号搜索。LSP 通过 `packages/language-server/src/projectIndex.ts` 薄封装复用同一实现。
+
+### 2.6 Editor API 包（M7）
+
+可视化编辑器（Electron + Vue，**独立仓库**）应依赖 `@agile-sofl/editor-api`，消费 JSON DTO 而非直接操作 AST：
+
+```typescript
+import {
+  buildDocumentModel,
+  buildFsfModelByName,
+  buildModuleGraph,
+  patchFsfSpec,
+  formatDocument
+} from '@agile-sofl/editor-api'
+```
+
+集成指南见 [12-Electron编辑器集成.md](./12-Electron编辑器集成.md)。
+
 ## 3. CLI 命令
 
 ```text
@@ -190,4 +229,4 @@ echo 'module SYSTEM_T; end_module' | npx asfl inspect --tree
 
 CI：`npx asfl check specs/main.asfl`（依赖 exit code）。脚本中 `check(readFileSync(...))` 过滤 `severity === 'error'` 即可。
 
-主要导出类型：`ProgramNode`, `ModuleNode`, `Diagnostic`, `Span`, `CheckResult`, `FormatResult`, `InspectReport`, `ScopeResult`, `SymbolEntry`, `Visitor`。完整定义见 `dist/index.d.ts`。
+主要导出类型：`ProgramNode`, `ModuleNode`, `Diagnostic`, `Span`, `CheckResult`, `FormatResult`, `InspectReport`, `ScopeResult`, `SymbolEntry`, `ProjectDocument`, `IncrementalCheckState`, `Visitor`。`@agile-sofl/editor-api` 另导出 `DocumentModel`, `FsfModelDto`, `ModuleGraph` 等 DTO。完整定义见各包 `dist/index.d.ts`。

@@ -1,0 +1,30 @@
+{
+  "source": "composed-type.asfl",
+  "lineNumber": 1,
+  "segments": [
+    {
+      "text": "composed",
+      "colorClass": "identifier"
+    },
+    {
+      "text": "of",
+      "colorClass": "operator"
+    },
+    {
+      "text": "x",
+      "colorClass": "identifier"
+    },
+    {
+      "text": ":",
+      "colorClass": "punct"
+    },
+    {
+      "text": "nat",
+      "colorClass": "type"
+    },
+    {
+      "text": "end",
+      "colorClass": "identifier"
+    }
+  ]
+}

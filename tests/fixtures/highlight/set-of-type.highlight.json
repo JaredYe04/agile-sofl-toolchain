@@ -1,0 +1,18 @@
+{
+  "source": "set-of-type.asfl",
+  "lineNumber": 1,
+  "segments": [
+    {
+      "text": "set",
+      "colorClass": "identifier"
+    },
+    {
+      "text": "of",
+      "colorClass": "operator"
+    },
+    {
+      "text": "nat",
+      "colorClass": "type"
+    }
+  ]
+}

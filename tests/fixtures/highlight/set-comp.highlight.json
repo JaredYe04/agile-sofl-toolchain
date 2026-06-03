@@ -1,0 +1,50 @@
+{
+  "source": "set-comp.asfl",
+  "lineNumber": 1,
+  "segments": [
+    {
+      "text": "{",
+      "colorClass": "punct"
+    },
+    {
+      "text": "n",
+      "colorClass": "identifier"
+    },
+    {
+      "text": " | ",
+      "colorClass": "plain"
+    },
+    {
+      "text": "n",
+      "colorClass": "identifier"
+    },
+    {
+      "text": ":",
+      "colorClass": "punct"
+    },
+    {
+      "text": "nat",
+      "colorClass": "type"
+    },
+    {
+      "text": " & ",
+      "colorClass": "plain"
+    },
+    {
+      "text": "n",
+      "colorClass": "identifier"
+    },
+    {
+      "text": " > ",
+      "colorClass": "plain"
+    },
+    {
+      "text": "0",
+      "colorClass": "number"
+    },
+    {
+      "text": "}",
+      "colorClass": "punct"
+    }
+  ]
+}

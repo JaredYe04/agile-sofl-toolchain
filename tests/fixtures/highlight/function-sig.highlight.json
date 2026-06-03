@@ -1,0 +1,42 @@
+{
+  "source": "function-sig.asfl",
+  "lineNumber": 1,
+  "segments": [
+    {
+      "text": "function",
+      "colorClass": "kwCtrl"
+    },
+    {
+      "text": "f",
+      "colorClass": "entityFn"
+    },
+    {
+      "text": "(",
+      "colorClass": "punct"
+    },
+    {
+      "text": "x",
+      "colorClass": "param"
+    },
+    {
+      "text": ":",
+      "colorClass": "punct"
+    },
+    {
+      "text": "nat",
+      "colorClass": "type"
+    },
+    {
+      "text": ")",
+      "colorClass": "punct"
+    },
+    {
+      "text": ":",
+      "colorClass": "punct"
+    },
+    {
+      "text": "int",
+      "colorClass": "type"
+    }
+  ]
+}

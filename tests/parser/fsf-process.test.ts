@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { parse } from '../../src/index'
+import { textOf } from '../../src/ast/nodes'
 import { expectParseOk, expectDiagnostic } from '../helpers/index'
 import { isProgramNode } from '../../src/ast/guards'
 
@@ -105,8 +106,8 @@ end_module`
     const ast = expectParseOk(source, parse)
     if (isProgramNode(ast)) {
       const body = ast.modules[0].processes[0].body
-      expect(body?.decomposition).toBe('RefinementDiagram')
-      expect(body?.comment).toContain('informal')
+      expect(textOf(body?.decomposition)).toBe('RefinementDiagram')
+      expect(textOf(body?.comment)).toContain('informal')
     }
   })
 })

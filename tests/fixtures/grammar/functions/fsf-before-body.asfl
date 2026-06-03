@@ -1,0 +1,6 @@
+module SYSTEM_FsfFn;
+function guarded (x: nat): bool
+others && true
+== x
+end_function
+end_module

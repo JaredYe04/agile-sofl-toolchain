@@ -137,7 +137,7 @@ export const Tilde = createToken({ name: 'Tilde', pattern: /~/ })
 
 export const EnumValue = createToken({
   name: 'EnumValue',
-  pattern: /<[^>]+>/
+  pattern: /<[A-Za-z_][A-Za-z0-9_]*>/
 })
 
 export const StringLiteral = createToken({
@@ -229,7 +229,9 @@ export const allTokens: TokenType[] = [
   Equal,
   Fsf,
   Forall,
+  Forevery,
   Exists,
+  Forsome,
   True,
   False,
   Nil,

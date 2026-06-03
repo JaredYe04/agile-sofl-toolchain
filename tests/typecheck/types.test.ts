@@ -62,7 +62,7 @@ end_module`
       isUniversal: true
     })
     expect(u.kind).toBe('union')
-    expect(typeToString(u)).toBe('unknown')
+    expect(typeToString(u)).toBe('*')
   })
 })
 

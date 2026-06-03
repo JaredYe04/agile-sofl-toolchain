@@ -1,0 +1,14 @@
+module SYSTEM_CompTypes;
+process SetComp ()
+FSF :
+others && 1 inset { n | n: nat & n mod 2 = 0 }
+end_process
+process SeqComp ()
+FSF :
+others && [ i | i: int & i > 0 ] = []
+end_process
+process MapComp ()
+FSF :
+others && { k -> k | k: nat & k < 3 } = {->}
+end_process
+end_module

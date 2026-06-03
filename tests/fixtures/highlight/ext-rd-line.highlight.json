@@ -1,0 +1,22 @@
+{
+  "source": "ext-rd-line.asfl",
+  "lineNumber": 1,
+  "segments": [
+    {
+      "text": "rd",
+      "colorClass": "kwDecl"
+    },
+    {
+      "text": "total",
+      "colorClass": "identifier"
+    },
+    {
+      "text": ":",
+      "colorClass": "punct"
+    },
+    {
+      "text": "nat",
+      "colorClass": "type"
+    }
+  ]
+}

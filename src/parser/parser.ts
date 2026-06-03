@@ -40,7 +40,9 @@ import {
   DoublePipe,
   DoubleAmp,
   Forall,
+  Forevery,
   Exists,
+  Forsome,
   LBracket,
   RBracket,
   Pipe,
@@ -139,31 +141,12 @@ import { EOF } from 'chevrotain'
 
 const TYPE_EXPR_STOP = [Semicolon, Comma, End, RParen, RBrace, EndModule, EndProcess, EndFunction, To, Star]
 
-function typeLooksLikeUnion($: AgileSoflParser): boolean {
-  if ($.LA(1).tokenType === Universal) return true
-  for (let i = 1; i <= 64; i++) {
-    const t = $.LA(i).tokenType
-    if (t === Pipe) return true
-    if (t === EOF || TYPE_EXPR_STOP.includes(t)) return false
-  }
-  return false
-}
-
-function typeLooksLikeProduct($: AgileSoflParser): boolean {
-  for (let i = 1; i <= 64; i++) {
-    const t = $.LA(i).tokenType
-    if (t === Star) return true
-    if (t === EOF || TYPE_EXPR_STOP.includes(t)) return false
-  }
-  return false
-}
-
 export class AgileSoflParser extends CstParser {
   public specification!: () => CstNode
   public module!: () => CstNode
 
-  constructor() {
-    super(allTokens, { recoveryEnabled: true, skipValidations: true, nodeLocation: true })
+  constructor(recoveryEnabled = true) {
+    super(allTokens, { recoveryEnabled, skipValidations: true, nodeLocation: true })
 
     const $ = this as unknown as Record<string, (...args: unknown[]) => unknown> & AgileSoflParser
 
@@ -233,7 +216,7 @@ export class AgileSoflParser extends CstParser {
     $.RULE('constItem', () => {
       $.CONSUME(Identifier)
       $.CONSUME(Equals)
-      $.SUBRULE($.constant)
+      $.SUBRULE($.expression)
     })
 
     $.RULE('typeDecls', () => {
@@ -482,13 +465,37 @@ export class AgileSoflParser extends CstParser {
     $.RULE('typeExpr', () => {
       $.OR([
         {
-          ALT: () => $.SUBRULE($.unionType),
-          GATE: () => typeLooksLikeUnion($)
+          ALT: () => $.SUBRULE($.moduleOrFieldAccess),
+          GATE: () => {
+            if ($.LA(1).tokenType !== Identifier) return false
+            if ($.LA(2).tokenType === Dot) return true
+            const t2 = $.LA(2).tokenType
+            if (t2 === Star || t2 === Pipe) return false
+            return !isTypeAtomicStarter(t2)
+          }
         },
-        { ALT: () => $.SUBRULE($.moduleOrFieldAccess) },
-        { ALT: () => $.SUBRULE($.otherType) }
+        { ALT: () => $.SUBRULE($.unionType) }
       ])
     })
+
+    function isTypeAtomicStarter(t: typeof allTokens[number]): boolean {
+      return (
+        t === Nat0 ||
+        t === Nat ||
+        t === Int ||
+        t === Real ||
+        t === Char ||
+        t === String ||
+        t === Bool ||
+        t === Given ||
+        t === Set ||
+        t === Seq ||
+        t === Map ||
+        t === Composed ||
+        t === LBrace ||
+        t === LParen
+      )
+    }
 
     $.RULE('typeAtomic', () => {
       $.OR([
@@ -502,17 +509,24 @@ export class AgileSoflParser extends CstParser {
     })
 
     $.RULE('typePrimary', () => {
-      $.SUBRULE($.typeAtomic)
+      $.OR([
+        { ALT: () => $.SUBRULE($.typeAtomic) },
+        {
+          ALT: () => {
+            $.CONSUME(LParen)
+            $.SUBRULE($.typeExpr)
+            $.CONSUME(RParen)
+          }
+        }
+      ])
     })
 
-    $.RULE('otherType', () => {
-      $.OR([
-        {
-          ALT: () => $.SUBRULE($.productType),
-          GATE: () => typeLooksLikeProduct($)
-        },
-        { ALT: () => $.SUBRULE($.typeAtomic) }
-      ])
+    $.RULE('productType', () => {
+      $.SUBRULE($.typePrimary)
+      $.MANY(() => {
+        $.CONSUME(Star)
+        $.SUBRULE2($.typePrimary)
+      })
     })
 
     $.RULE('basicType', () => {
@@ -570,16 +584,6 @@ export class AgileSoflParser extends CstParser {
       $.SUBRULE($.typeExpr)
     })
 
-    $.RULE('productType', () => {
-      $.SUBRULE($.typeAtomic)
-      $.CONSUME(Star)
-      $.SUBRULE2($.typeAtomic)
-      $.MANY(() => {
-        $.CONSUME1(Star)
-        $.SUBRULE3($.typeAtomic)
-      })
-    })
-
     $.RULE('mapType', () => {
       $.CONSUME(Map)
       $.SUBRULE($.typeExpr)
@@ -592,10 +596,10 @@ export class AgileSoflParser extends CstParser {
         { ALT: () => $.CONSUME(Universal) },
         {
           ALT: () => {
-            $.SUBRULE($.typeAtomic)
-            $.AT_LEAST_ONE(() => {
+            $.SUBRULE($.productType)
+            $.MANY(() => {
               $.CONSUME(Pipe)
-              $.SUBRULE2($.typeAtomic)
+              $.SUBRULE2($.productType)
             })
           }
         }
@@ -776,7 +780,9 @@ export class AgileSoflParser extends CstParser {
     $.RULE('quantified', () => {
       $.OR([
         { ALT: () => $.CONSUME(Forall) },
-        { ALT: () => $.CONSUME(Exists) }
+        { ALT: () => $.CONSUME(Forevery) },
+        { ALT: () => $.CONSUME(Exists) },
+        { ALT: () => $.CONSUME(Forsome) }
       ])
       $.OPTION(() => $.CONSUME1(Not))
       $.CONSUME(LBracket)
@@ -790,7 +796,9 @@ export class AgileSoflParser extends CstParser {
     $.RULE('quantifierList', () => {
       $.OR([
         { ALT: () => { $.CONSUME(Forall); $.CONSUME(LBracket); $.SUBRULE($.bindingList); $.CONSUME(RBracket) } },
-        { ALT: () => { $.CONSUME(Exists); $.OPTION(() => $.CONSUME(Not)); $.CONSUME1(LBracket); $.SUBRULE1($.bindingList); $.CONSUME1(RBracket) } }
+        { ALT: () => { $.CONSUME(Forevery); $.CONSUME1(LBracket); $.SUBRULE1($.bindingList); $.CONSUME1(RBracket) } },
+        { ALT: () => { $.CONSUME(Exists); $.OPTION(() => $.CONSUME(Not)); $.CONSUME2(LBracket); $.SUBRULE2($.bindingList); $.CONSUME2(RBracket) } },
+        { ALT: () => { $.CONSUME(Forsome); $.OPTION1(() => $.CONSUME1(Not)); $.CONSUME3(LBracket); $.SUBRULE3($.bindingList); $.CONSUME3(RBracket) } }
       ])
     })
 
@@ -938,20 +946,20 @@ export class AgileSoflParser extends CstParser {
         },
         {
           ALT: () => {
-            $.SUBRULE($.expression)
-            $.CONSUME(Pipe)
-            $.SUBRULE($.predicate)
-            $.CONSUME3(RBrace)
-          }
-        },
-        {
-          ALT: () => {
             $.SUBRULE1($.expression)
             $.CONSUME1(Pipe)
             $.SUBRULE($.bindingList)
             $.CONSUME(Amp)
             $.SUBRULE1($.predicate)
             $.CONSUME4(RBrace)
+          }
+        },
+        {
+          ALT: () => {
+            $.SUBRULE($.expression)
+            $.CONSUME(Pipe)
+            $.SUBRULE($.predicate)
+            $.CONSUME3(RBrace)
           }
         }
       ])
@@ -998,20 +1006,20 @@ export class AgileSoflParser extends CstParser {
         },
         {
           ALT: () => {
-            $.SUBRULE($.expression)
-            $.CONSUME(Pipe)
-            $.SUBRULE($.predicate)
-            $.CONSUME3(RBracket)
-          }
-        },
-        {
-          ALT: () => {
             $.SUBRULE1($.expression)
             $.CONSUME1(Pipe)
             $.SUBRULE($.bindingList)
             $.CONSUME(Amp)
             $.SUBRULE1($.predicate)
             $.CONSUME4(RBracket)
+          }
+        },
+        {
+          ALT: () => {
+            $.SUBRULE($.expression)
+            $.CONSUME(Pipe)
+            $.SUBRULE($.predicate)
+            $.CONSUME3(RBracket)
           }
         }
       ])
@@ -1039,16 +1047,14 @@ export class AgileSoflParser extends CstParser {
         { ALT: () => { $.CONSUME(Arrow); $.CONSUME(RBrace) } },
         {
           ALT: () => {
-            $.SUBRULE($.expression)
-            $.CONSUME1(Arrow)
-            $.SUBRULE1($.expression)
-            $.MANY(() => {
-              $.CONSUME(Comma)
-              $.SUBRULE2($.expression)
-              $.CONSUME2(Arrow)
-              $.SUBRULE3($.expression)
-            })
-            $.CONSUME1(RBrace)
+            $.SUBRULE6($.expression)
+            $.CONSUME4(Arrow)
+            $.SUBRULE7($.expression)
+            $.CONSUME1(Pipe)
+            $.SUBRULE($.bindingList)
+            $.CONSUME(Amp)
+            $.SUBRULE1($.predicate)
+            $.CONSUME3(RBrace)
           }
         },
         {
@@ -1063,14 +1069,16 @@ export class AgileSoflParser extends CstParser {
         },
         {
           ALT: () => {
-            $.SUBRULE6($.expression)
-            $.CONSUME4(Arrow)
-            $.SUBRULE7($.expression)
-            $.CONSUME1(Pipe)
-            $.SUBRULE($.bindingList)
-            $.CONSUME(Amp)
-            $.SUBRULE1($.predicate)
-            $.CONSUME3(RBrace)
+            $.SUBRULE($.expression)
+            $.CONSUME1(Arrow)
+            $.SUBRULE1($.expression)
+            $.MANY(() => {
+              $.CONSUME(Comma)
+              $.SUBRULE2($.expression)
+              $.CONSUME2(Arrow)
+              $.SUBRULE3($.expression)
+            })
+            $.CONSUME1(RBrace)
           }
         }
       ])
@@ -1281,4 +1289,5 @@ export class AgileSoflParser extends CstParser {
   }
 }
 
-export const parserInstance = new AgileSoflParser()
+export const parserInstance = new AgileSoflParser(true)
+export const strictParserInstance = new AgileSoflParser(false)

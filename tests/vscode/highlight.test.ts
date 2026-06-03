@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
@@ -15,16 +15,40 @@ function loadExample(name: string): string {
   return readFileSync(join(repoRoot, 'examples', `${name}.asfl`), 'utf-8')
 }
 
-function expectHighlightFile(name: string) {
-  const fixture = JSON.parse(readFileSync(join(highlightFixtures, `${name}.highlight.json`), 'utf-8')) as {
-    line: string
+function loadHighlightFixture(name: string): {
+  line: string
+  segments: Array<{ text: string; colorClass: string }>
+} {
+  const fixture = JSON.parse(
+    readFileSync(join(highlightFixtures, `${name}.highlight.json`), 'utf-8')
+  ) as {
+    line?: string
+    lineNumber?: number
+    source?: string
     segments: Array<{ text: string; colorClass: string }>
   }
-  return highlightSource(fixture.line).then((highlighted) => {
-    const segs = segmentsForLine(highlighted, fixture.line)
-    expectSegmentTexts(segs, fixture.segments)
+  if (fixture.line) {
+    return { line: fixture.line, segments: fixture.segments }
+  }
+  const sourceFile = fixture.source ?? `${name}.asfl`
+  const sourcePath = join(highlightFixtures, sourceFile)
+  const sourceLines = readFileSync(sourcePath, 'utf-8').split(/\r?\n/)
+  const lineNo = fixture.lineNumber ?? 1
+  const line = sourceLines[lineNo - 1] ?? ''
+  return { line, segments: fixture.segments }
+}
+
+function expectHighlightFile(name: string) {
+  const { line, segments } = loadHighlightFixture(name)
+  return highlightSource(line).then((highlighted) => {
+    const segs = segmentsForLine(highlighted, line)
+    expectSegmentTexts(segs, segments)
   })
 }
+
+const highlightSnapshotNames = readdirSync(highlightFixtures)
+  .filter((f) => f.endsWith('.highlight.json'))
+  .map((f) => f.replace('.highlight.json', ''))
 
 function segmentsForLine(highlighted: Awaited<ReturnType<typeof highlightSource>>, lineText: string) {
   const row = highlighted.find((r) => r.text === lineText)
@@ -103,15 +127,7 @@ describe('TextMate highlight', () => {
     expect(annotated).toContain('{module}Demo{/module}')
   })
 
-  it('matches module-header highlight snapshot', () => expectHighlightFile('module-header'))
-
-  it('matches module-header-sub highlight snapshot', () => expectHighlightFile('module-header-sub'))
-
-  it('matches keyword-traps var line snapshot', () => expectHighlightFile('keyword-traps'))
-
-  it('matches comment informal snapshot', () => expectHighlightFile('comment-informal'))
-
-  it('matches FSF others snapshot', () => expectHighlightFile('fsf-others'))
-
-  it('matches enum vs compare snapshot', () => expectHighlightFile('enum-vs-compare'))
+  for (const name of highlightSnapshotNames) {
+    it(`matches ${name} highlight snapshot`, () => expectHighlightFile(name))
+  }
 })

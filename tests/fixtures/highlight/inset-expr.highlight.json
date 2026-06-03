@@ -1,0 +1,34 @@
+{
+  "source": "inset-expr.asfl",
+  "lineNumber": 1,
+  "segments": [
+    {
+      "text": "x",
+      "colorClass": "identifier"
+    },
+    {
+      "text": "inset",
+      "colorClass": "operator"
+    },
+    {
+      "text": "{",
+      "colorClass": "punct"
+    },
+    {
+      "text": "1",
+      "colorClass": "number"
+    },
+    {
+      "text": ",",
+      "colorClass": "punct"
+    },
+    {
+      "text": "2",
+      "colorClass": "number"
+    },
+    {
+      "text": "}",
+      "colorClass": "punct"
+    }
+  ]
+}

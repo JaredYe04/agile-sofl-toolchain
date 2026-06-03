@@ -9,6 +9,7 @@ import type {
   AtomicPredicateNode,
   ExpressionNode
 } from '../ast/nodes.js'
+import { textOf } from '../ast/nodes.js'
 import type { Diagnostic } from '../diagnostics/codes.js'
 import { formatDiagnostic } from '../diagnostics/codes.js'
 import { parse } from '../parser/parse.js'
@@ -163,11 +164,13 @@ function renderModule(mod: ModuleNode): string[] {
         lines.push(`      ${color('others', ansi.yellow)}     =>  ${summarizePredicate(proc.body.fsf.others)}`)
       }
     }
-    if (proc.body?.decomposition) {
-      lines.push(`    decom: ${proc.body.decomposition}`)
+    const decom = textOf(proc.body?.decomposition)
+    if (decom) {
+      lines.push(`    decom: ${decom}`)
     }
-    if (proc.body?.comment) {
-      lines.push(`    comment: ${proc.body.comment}`)
+    const comment = textOf(proc.body?.comment)
+    if (comment) {
+      lines.push(`    comment: ${comment}`)
     }
   }
   for (const fn of mod.functions) {

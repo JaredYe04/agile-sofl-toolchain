@@ -1,0 +1,10 @@
+{
+  "source": "universal-type.asfl",
+  "lineNumber": 1,
+  "segments": [
+    {
+      "text": "universal",
+      "colorClass": "type"
+    }
+  ]
+}

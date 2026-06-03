@@ -4,8 +4,6 @@ import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { TextDocument } from 'vscode-languageserver-textdocument'
 import { getDefinition } from '../src/definition.js'
-import { getHover } from '../src/hover.js'
-import { getCompletions } from '../src/completion.js'
 
 const bankingPath = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', 'tests', 'fixtures', 'integration', 'banking.asfl')
 
@@ -30,34 +28,64 @@ describe('Definition', () => {
     const def = getDefinition(document, position)
     expect(def).not.toBeNull()
   })
-})
 
-describe('Hover', () => {
-  it('shows symbol kind for salary', () => {
+  it('jumps to var declaration from FSF reference', () => {
     const source = readFileSync(bankingPath, 'utf8')
     const document = doc(source)
-    const idx = source.indexOf('salary')
-    const hover = getHover(document, document.positionAt(idx))
-    expect(hover?.contents).toBeDefined()
-    const text = typeof hover!.contents === 'string' ? hover!.contents : hover!.contents.value
-    expect(text).toContain('var')
-    expect(text).toContain('salary')
-  })
-})
-
-describe('Completion', () => {
-  it('offers nat after colon in var decl', () => {
-    const source = 'module SYSTEM_T;\nvar x: n'
-    const document = doc(source)
-    const colonIdx = source.lastIndexOf(':')
-    const items = getCompletions(document, document.positionAt(colonIdx + 2))
-    expect(items.some((i) => i.label === 'nat')).toBe(true)
+    const fsfIdx = source.indexOf('FSF :')
+    const salaryInFsf = source.indexOf('q1', fsfIdx)
+    const def = getDefinition(document, document.positionAt(salaryInFsf))
+    expect(def).not.toBeNull()
   })
 
-  it('offers defined type names in type position', () => {
-    const source = 'module SYSTEM_T;\ntype T = nat;\nvar x: '
+  it('jumps to aliased process P from equal Sub.P', () => {
+    const source = `module SYSTEM_Proc;
+process Dup equal Sub.P
+end_process
+end_module;
+module Sub / Proc;
+process P ()
+FSF :
+others && true
+end_process
+end_module`
     const document = doc(source)
-    const items = getCompletions(document, document.positionAt(source.length))
-    expect(items.some((i) => i.label === 'T')).toBe(true)
+    const idx = source.indexOf('Sub.P') + 4
+    const def = getDefinition(document, document.positionAt(idx))
+    expect(def).not.toBeNull()
+    expect(def!.range.start.line).toBeGreaterThanOrEqual(0)
+  })
+
+  it('returns null for undefined symbol', () => {
+    const source = `module SYSTEM_T;
+process P ()
+FSF :
+others && missingRef > 0
+end_process
+end_module`
+    const document = doc(source)
+    const idx = source.indexOf('missingRef')
+    const def = getDefinition(document, document.positionAt(idx))
+    expect(def).toBeNull()
+  })
+
+  it('jumps to parent module type from child module', () => {
+    const source = `module SYSTEM_R;
+type Item = nat;
+end_module;
+module Child / R;
+var x: Item;
+end_module`
+    const document = doc(source)
+    const idx = source.indexOf('Item', source.indexOf('var x'))
+    const def = getDefinition(document, document.positionAt(idx))
+    expect(def).not.toBeNull()
+  })
+
+  it('returns null when ASFL_PARSE_001 present', () => {
+    const source = 'module broken'
+    const document = doc(source)
+    const def = getDefinition(document, document.positionAt(0))
+    expect(def).toBeNull()
   })
 })

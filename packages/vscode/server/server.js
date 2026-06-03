@@ -3387,8 +3387,8 @@ var require_main2 = __commonJS({
         }
         uinteger2.is = is;
       })(uinteger || (exports3.uinteger = uinteger = {}));
-      var Position2;
-      (function(Position3) {
+      var Position;
+      (function(Position2) {
         function create(line, character) {
           if (line === Number.MAX_VALUE) {
             line = uinteger.MAX_VALUE;
@@ -3398,31 +3398,31 @@ var require_main2 = __commonJS({
           }
           return { line, character };
         }
-        Position3.create = create;
+        Position2.create = create;
         function is(value) {
           var candidate = value;
           return Is.objectLiteral(candidate) && Is.uinteger(candidate.line) && Is.uinteger(candidate.character);
         }
-        Position3.is = is;
-      })(Position2 || (exports3.Position = Position2 = {}));
-      var Range4;
-      (function(Range5) {
+        Position2.is = is;
+      })(Position || (exports3.Position = Position = {}));
+      var Range3;
+      (function(Range4) {
         function create(one, two, three, four) {
           if (Is.uinteger(one) && Is.uinteger(two) && Is.uinteger(three) && Is.uinteger(four)) {
-            return { start: Position2.create(one, two), end: Position2.create(three, four) };
-          } else if (Position2.is(one) && Position2.is(two)) {
+            return { start: Position.create(one, two), end: Position.create(three, four) };
+          } else if (Position.is(one) && Position.is(two)) {
             return { start: one, end: two };
           } else {
             throw new Error("Range#create called with invalid arguments[".concat(one, ", ").concat(two, ", ").concat(three, ", ").concat(four, "]"));
           }
         }
-        Range5.create = create;
+        Range4.create = create;
         function is(value) {
           var candidate = value;
-          return Is.objectLiteral(candidate) && Position2.is(candidate.start) && Position2.is(candidate.end);
+          return Is.objectLiteral(candidate) && Position.is(candidate.start) && Position.is(candidate.end);
         }
-        Range5.is = is;
-      })(Range4 || (exports3.Range = Range4 = {}));
+        Range4.is = is;
+      })(Range3 || (exports3.Range = Range3 = {}));
       var Location;
       (function(Location2) {
         function create(uri, range) {
@@ -3431,7 +3431,7 @@ var require_main2 = __commonJS({
         Location2.create = create;
         function is(value) {
           var candidate = value;
-          return Is.objectLiteral(candidate) && Range4.is(candidate.range) && (Is.string(candidate.uri) || Is.undefined(candidate.uri));
+          return Is.objectLiteral(candidate) && Range3.is(candidate.range) && (Is.string(candidate.uri) || Is.undefined(candidate.uri));
         }
         Location2.is = is;
       })(Location || (exports3.Location = Location = {}));
@@ -3443,7 +3443,7 @@ var require_main2 = __commonJS({
         LocationLink2.create = create;
         function is(value) {
           var candidate = value;
-          return Is.objectLiteral(candidate) && Range4.is(candidate.targetRange) && Is.string(candidate.targetUri) && Range4.is(candidate.targetSelectionRange) && (Range4.is(candidate.originSelectionRange) || Is.undefined(candidate.originSelectionRange));
+          return Is.objectLiteral(candidate) && Range3.is(candidate.targetRange) && Is.string(candidate.targetUri) && Range3.is(candidate.targetSelectionRange) && (Range3.is(candidate.originSelectionRange) || Is.undefined(candidate.originSelectionRange));
         }
         LocationLink2.is = is;
       })(LocationLink || (exports3.LocationLink = LocationLink = {}));
@@ -3475,7 +3475,7 @@ var require_main2 = __commonJS({
         ColorInformation2.create = create;
         function is(value) {
           var candidate = value;
-          return Is.objectLiteral(candidate) && Range4.is(candidate.range) && Color.is(candidate.color);
+          return Is.objectLiteral(candidate) && Range3.is(candidate.range) && Color.is(candidate.color);
         }
         ColorInformation2.is = is;
       })(ColorInformation || (exports3.ColorInformation = ColorInformation = {}));
@@ -3495,12 +3495,12 @@ var require_main2 = __commonJS({
         }
         ColorPresentation2.is = is;
       })(ColorPresentation || (exports3.ColorPresentation = ColorPresentation = {}));
-      var FoldingRangeKind;
-      (function(FoldingRangeKind2) {
-        FoldingRangeKind2.Comment = "comment";
-        FoldingRangeKind2.Imports = "imports";
-        FoldingRangeKind2.Region = "region";
-      })(FoldingRangeKind || (exports3.FoldingRangeKind = FoldingRangeKind = {}));
+      var FoldingRangeKind2;
+      (function(FoldingRangeKind3) {
+        FoldingRangeKind3.Comment = "comment";
+        FoldingRangeKind3.Imports = "imports";
+        FoldingRangeKind3.Region = "region";
+      })(FoldingRangeKind2 || (exports3.FoldingRangeKind = FoldingRangeKind2 = {}));
       var FoldingRange;
       (function(FoldingRange2) {
         function create(startLine, endLine, startCharacter, endCharacter, kind, collapsedText) {
@@ -3586,7 +3586,7 @@ var require_main2 = __commonJS({
         function is(value) {
           var _a;
           var candidate = value;
-          return Is.defined(candidate) && Range4.is(candidate.range) && Is.string(candidate.message) && (Is.number(candidate.severity) || Is.undefined(candidate.severity)) && (Is.integer(candidate.code) || Is.string(candidate.code) || Is.undefined(candidate.code)) && (Is.undefined(candidate.codeDescription) || Is.string((_a = candidate.codeDescription) === null || _a === void 0 ? void 0 : _a.href)) && (Is.string(candidate.source) || Is.undefined(candidate.source)) && (Is.undefined(candidate.relatedInformation) || Is.typedArray(candidate.relatedInformation, DiagnosticRelatedInformation.is));
+          return Is.defined(candidate) && Range3.is(candidate.range) && Is.string(candidate.message) && (Is.number(candidate.severity) || Is.undefined(candidate.severity)) && (Is.integer(candidate.code) || Is.string(candidate.code) || Is.undefined(candidate.code)) && (Is.undefined(candidate.codeDescription) || Is.string((_a = candidate.codeDescription) === null || _a === void 0 ? void 0 : _a.href)) && (Is.string(candidate.source) || Is.undefined(candidate.source)) && (Is.undefined(candidate.relatedInformation) || Is.typedArray(candidate.relatedInformation, DiagnosticRelatedInformation.is));
         }
         Diagnostic3.is = is;
       })(Diagnostic2 || (exports3.Diagnostic = Diagnostic2 = {}));
@@ -3626,7 +3626,7 @@ var require_main2 = __commonJS({
         TextEdit3.del = del;
         function is(value) {
           var candidate = value;
-          return Is.objectLiteral(candidate) && Is.string(candidate.newText) && Range4.is(candidate.range);
+          return Is.objectLiteral(candidate) && Is.string(candidate.newText) && Range3.is(candidate.range);
         }
         TextEdit3.is = is;
       })(TextEdit2 || (exports3.TextEdit = TextEdit2 = {}));
@@ -4170,7 +4170,7 @@ var require_main2 = __commonJS({
         InsertReplaceEdit2.create = create;
         function is(value) {
           var candidate = value;
-          return candidate && Is.string(candidate.newText) && Range4.is(candidate.insert) && Range4.is(candidate.replace);
+          return candidate && Is.string(candidate.newText) && Range3.is(candidate.insert) && Range3.is(candidate.replace);
         }
         InsertReplaceEdit2.is = is;
       })(InsertReplaceEdit || (exports3.InsertReplaceEdit = InsertReplaceEdit = {}));
@@ -4217,7 +4217,7 @@ var require_main2 = __commonJS({
       (function(Hover2) {
         function is(value) {
           var candidate = value;
-          return !!candidate && Is.objectLiteral(candidate) && (MarkupContent.is(candidate.contents) || MarkedString.is(candidate.contents) || Is.typedArray(candidate.contents, MarkedString.is)) && (value.range === void 0 || Range4.is(value.range));
+          return !!candidate && Is.objectLiteral(candidate) && (MarkupContent.is(candidate.contents) || MarkedString.is(candidate.contents) || Is.typedArray(candidate.contents, MarkedString.is)) && (value.range === void 0 || Range3.is(value.range));
         }
         Hover2.is = is;
       })(Hover || (exports3.Hover = Hover = {}));
@@ -4265,41 +4265,41 @@ var require_main2 = __commonJS({
         }
         DocumentHighlight2.create = create;
       })(DocumentHighlight || (exports3.DocumentHighlight = DocumentHighlight = {}));
-      var SymbolKind2;
-      (function(SymbolKind3) {
-        SymbolKind3.File = 1;
-        SymbolKind3.Module = 2;
-        SymbolKind3.Namespace = 3;
-        SymbolKind3.Package = 4;
-        SymbolKind3.Class = 5;
-        SymbolKind3.Method = 6;
-        SymbolKind3.Property = 7;
-        SymbolKind3.Field = 8;
-        SymbolKind3.Constructor = 9;
-        SymbolKind3.Enum = 10;
-        SymbolKind3.Interface = 11;
-        SymbolKind3.Function = 12;
-        SymbolKind3.Variable = 13;
-        SymbolKind3.Constant = 14;
-        SymbolKind3.String = 15;
-        SymbolKind3.Number = 16;
-        SymbolKind3.Boolean = 17;
-        SymbolKind3.Array = 18;
-        SymbolKind3.Object = 19;
-        SymbolKind3.Key = 20;
-        SymbolKind3.Null = 21;
-        SymbolKind3.EnumMember = 22;
-        SymbolKind3.Struct = 23;
-        SymbolKind3.Event = 24;
-        SymbolKind3.Operator = 25;
-        SymbolKind3.TypeParameter = 26;
-      })(SymbolKind2 || (exports3.SymbolKind = SymbolKind2 = {}));
+      var SymbolKind3;
+      (function(SymbolKind4) {
+        SymbolKind4.File = 1;
+        SymbolKind4.Module = 2;
+        SymbolKind4.Namespace = 3;
+        SymbolKind4.Package = 4;
+        SymbolKind4.Class = 5;
+        SymbolKind4.Method = 6;
+        SymbolKind4.Property = 7;
+        SymbolKind4.Field = 8;
+        SymbolKind4.Constructor = 9;
+        SymbolKind4.Enum = 10;
+        SymbolKind4.Interface = 11;
+        SymbolKind4.Function = 12;
+        SymbolKind4.Variable = 13;
+        SymbolKind4.Constant = 14;
+        SymbolKind4.String = 15;
+        SymbolKind4.Number = 16;
+        SymbolKind4.Boolean = 17;
+        SymbolKind4.Array = 18;
+        SymbolKind4.Object = 19;
+        SymbolKind4.Key = 20;
+        SymbolKind4.Null = 21;
+        SymbolKind4.EnumMember = 22;
+        SymbolKind4.Struct = 23;
+        SymbolKind4.Event = 24;
+        SymbolKind4.Operator = 25;
+        SymbolKind4.TypeParameter = 26;
+      })(SymbolKind3 || (exports3.SymbolKind = SymbolKind3 = {}));
       var SymbolTag;
       (function(SymbolTag2) {
         SymbolTag2.Deprecated = 1;
       })(SymbolTag || (exports3.SymbolTag = SymbolTag = {}));
-      var SymbolInformation;
-      (function(SymbolInformation2) {
+      var SymbolInformation2;
+      (function(SymbolInformation3) {
         function create(name, kind, range, uri, containerName) {
           var result = {
             name,
@@ -4311,8 +4311,8 @@ var require_main2 = __commonJS({
           }
           return result;
         }
-        SymbolInformation2.create = create;
-      })(SymbolInformation || (exports3.SymbolInformation = SymbolInformation = {}));
+        SymbolInformation3.create = create;
+      })(SymbolInformation2 || (exports3.SymbolInformation = SymbolInformation2 = {}));
       var WorkspaceSymbol;
       (function(WorkspaceSymbol2) {
         function create(name, kind, uri, range) {
@@ -4338,7 +4338,7 @@ var require_main2 = __commonJS({
         DocumentSymbol3.create = create;
         function is(value) {
           var candidate = value;
-          return candidate && Is.string(candidate.name) && Is.number(candidate.kind) && Range4.is(candidate.range) && Range4.is(candidate.selectionRange) && (candidate.detail === void 0 || Is.string(candidate.detail)) && (candidate.deprecated === void 0 || Is.boolean(candidate.deprecated)) && (candidate.children === void 0 || Array.isArray(candidate.children)) && (candidate.tags === void 0 || Array.isArray(candidate.tags));
+          return candidate && Is.string(candidate.name) && Is.number(candidate.kind) && Range3.is(candidate.range) && Range3.is(candidate.selectionRange) && (candidate.detail === void 0 || Is.string(candidate.detail)) && (candidate.deprecated === void 0 || Is.boolean(candidate.deprecated)) && (candidate.children === void 0 || Array.isArray(candidate.children)) && (candidate.tags === void 0 || Array.isArray(candidate.tags));
         }
         DocumentSymbol3.is = is;
       })(DocumentSymbol2 || (exports3.DocumentSymbol = DocumentSymbol2 = {}));
@@ -4415,7 +4415,7 @@ var require_main2 = __commonJS({
         CodeLens2.create = create;
         function is(value) {
           var candidate = value;
-          return Is.defined(candidate) && Range4.is(candidate.range) && (Is.undefined(candidate.command) || Command.is(candidate.command));
+          return Is.defined(candidate) && Range3.is(candidate.range) && (Is.undefined(candidate.command) || Command.is(candidate.command));
         }
         CodeLens2.is = is;
       })(CodeLens || (exports3.CodeLens = CodeLens = {}));
@@ -4439,7 +4439,7 @@ var require_main2 = __commonJS({
         DocumentLink2.create = create;
         function is(value) {
           var candidate = value;
-          return Is.defined(candidate) && Range4.is(candidate.range) && (Is.undefined(candidate.target) || Is.string(candidate.target));
+          return Is.defined(candidate) && Range3.is(candidate.range) && (Is.undefined(candidate.target) || Is.string(candidate.target));
         }
         DocumentLink2.is = is;
       })(DocumentLink || (exports3.DocumentLink = DocumentLink = {}));
@@ -4451,7 +4451,7 @@ var require_main2 = __commonJS({
         SelectionRange2.create = create;
         function is(value) {
           var candidate = value;
-          return Is.objectLiteral(candidate) && Range4.is(candidate.range) && (candidate.parent === void 0 || SelectionRange2.is(candidate.parent));
+          return Is.objectLiteral(candidate) && Range3.is(candidate.range) && (candidate.parent === void 0 || SelectionRange2.is(candidate.parent));
         }
         SelectionRange2.is = is;
       })(SelectionRange || (exports3.SelectionRange = SelectionRange = {}));
@@ -4510,7 +4510,7 @@ var require_main2 = __commonJS({
         InlineValueText2.create = create;
         function is(value) {
           var candidate = value;
-          return candidate !== void 0 && candidate !== null && Range4.is(candidate.range) && Is.string(candidate.text);
+          return candidate !== void 0 && candidate !== null && Range3.is(candidate.range) && Is.string(candidate.text);
         }
         InlineValueText2.is = is;
       })(InlineValueText || (exports3.InlineValueText = InlineValueText = {}));
@@ -4522,7 +4522,7 @@ var require_main2 = __commonJS({
         InlineValueVariableLookup2.create = create;
         function is(value) {
           var candidate = value;
-          return candidate !== void 0 && candidate !== null && Range4.is(candidate.range) && Is.boolean(candidate.caseSensitiveLookup) && (Is.string(candidate.variableName) || candidate.variableName === void 0);
+          return candidate !== void 0 && candidate !== null && Range3.is(candidate.range) && Is.boolean(candidate.caseSensitiveLookup) && (Is.string(candidate.variableName) || candidate.variableName === void 0);
         }
         InlineValueVariableLookup2.is = is;
       })(InlineValueVariableLookup || (exports3.InlineValueVariableLookup = InlineValueVariableLookup = {}));
@@ -4534,7 +4534,7 @@ var require_main2 = __commonJS({
         InlineValueEvaluatableExpression2.create = create;
         function is(value) {
           var candidate = value;
-          return candidate !== void 0 && candidate !== null && Range4.is(candidate.range) && (Is.string(candidate.expression) || candidate.expression === void 0);
+          return candidate !== void 0 && candidate !== null && Range3.is(candidate.range) && (Is.string(candidate.expression) || candidate.expression === void 0);
         }
         InlineValueEvaluatableExpression2.is = is;
       })(InlineValueEvaluatableExpression || (exports3.InlineValueEvaluatableExpression = InlineValueEvaluatableExpression = {}));
@@ -4546,7 +4546,7 @@ var require_main2 = __commonJS({
         InlineValueContext2.create = create;
         function is(value) {
           var candidate = value;
-          return Is.defined(candidate) && Range4.is(value.stoppedLocation);
+          return Is.defined(candidate) && Range3.is(value.stoppedLocation);
         }
         InlineValueContext2.is = is;
       })(InlineValueContext || (exports3.InlineValueContext = InlineValueContext = {}));
@@ -4583,7 +4583,7 @@ var require_main2 = __commonJS({
         InlayHint2.create = create;
         function is(value) {
           var candidate = value;
-          return Is.objectLiteral(candidate) && Position2.is(candidate.position) && (Is.string(candidate.label) || Is.typedArray(candidate.label, InlayHintLabelPart.is)) && (candidate.kind === void 0 || InlayHintKind.is(candidate.kind)) && candidate.textEdits === void 0 || Is.typedArray(candidate.textEdits, TextEdit2.is) && (candidate.tooltip === void 0 || Is.string(candidate.tooltip) || MarkupContent.is(candidate.tooltip)) && (candidate.paddingLeft === void 0 || Is.boolean(candidate.paddingLeft)) && (candidate.paddingRight === void 0 || Is.boolean(candidate.paddingRight));
+          return Is.objectLiteral(candidate) && Position.is(candidate.position) && (Is.string(candidate.label) || Is.typedArray(candidate.label, InlayHintLabelPart.is)) && (candidate.kind === void 0 || InlayHintKind.is(candidate.kind)) && candidate.textEdits === void 0 || Is.typedArray(candidate.textEdits, TextEdit2.is) && (candidate.tooltip === void 0 || Is.string(candidate.tooltip) || MarkupContent.is(candidate.tooltip)) && (candidate.paddingLeft === void 0 || Is.boolean(candidate.paddingLeft)) && (candidate.paddingRight === void 0 || Is.boolean(candidate.paddingRight));
         }
         InlayHint2.is = is;
       })(InlayHint || (exports3.InlayHint = InlayHint = {}));
@@ -4772,7 +4772,7 @@ var require_main2 = __commonJS({
             var lineOffsets = this.getLineOffsets();
             var low = 0, high = lineOffsets.length;
             if (high === 0) {
-              return Position2.create(0, offset);
+              return Position.create(0, offset);
             }
             while (low < high) {
               var mid = Math.floor((low + high) / 2);
@@ -4783,7 +4783,7 @@ var require_main2 = __commonJS({
               }
             }
             var line = low - 1;
-            return Position2.create(line, offset - lineOffsets[line]);
+            return Position.create(line, offset - lineOffsets[line]);
           };
           FullTextDocument3.prototype.offsetAt = function(position) {
             var lineOffsets = this.getLineOffsets();
@@ -6453,13 +6453,13 @@ var require_uuid = __commonJS({
       return _UUIDPattern.test(value);
     }
     exports2.isUUID = isUUID;
-    function parse5(value) {
+    function parse8(value) {
       if (!isUUID(value)) {
         throw new Error("invalid uuid");
       }
       return new ValueUUID(value);
     }
-    exports2.parse = parse5;
+    exports2.parse = parse8;
     function generateUuid() {
       return v4().asHex();
     }
@@ -20853,7 +20853,9 @@ var require_tokens = __commonJS({
       exports2.Equal,
       exports2.Fsf,
       exports2.Forall,
+      exports2.Forevery,
       exports2.Exists,
+      exports2.Forsome,
       exports2.True,
       exports2.False,
       exports2.Nil,
@@ -20949,36 +20951,13 @@ var require_parser = __commonJS({
   "../../dist/parser/parser.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.parserInstance = exports2.AgileSoflParser = void 0;
+    exports2.strictParserInstance = exports2.parserInstance = exports2.AgileSoflParser = void 0;
     var chevrotain_1 = (init_api5(), __toCommonJS(api_exports));
     var tokens_js_1 = require_tokens();
-    var chevrotain_2 = (init_api5(), __toCommonJS(api_exports));
     var TYPE_EXPR_STOP = [tokens_js_1.Semicolon, tokens_js_1.Comma, tokens_js_1.End, tokens_js_1.RParen, tokens_js_1.RBrace, tokens_js_1.EndModule, tokens_js_1.EndProcess, tokens_js_1.EndFunction, tokens_js_1.To, tokens_js_1.Star];
-    function typeLooksLikeUnion($) {
-      if ($.LA(1).tokenType === tokens_js_1.Universal)
-        return true;
-      for (let i = 1; i <= 64; i++) {
-        const t = $.LA(i).tokenType;
-        if (t === tokens_js_1.Pipe)
-          return true;
-        if (t === chevrotain_2.EOF || TYPE_EXPR_STOP.includes(t))
-          return false;
-      }
-      return false;
-    }
-    function typeLooksLikeProduct($) {
-      for (let i = 1; i <= 64; i++) {
-        const t = $.LA(i).tokenType;
-        if (t === tokens_js_1.Star)
-          return true;
-        if (t === chevrotain_2.EOF || TYPE_EXPR_STOP.includes(t))
-          return false;
-      }
-      return false;
-    }
     var AgileSoflParser = class extends chevrotain_1.CstParser {
-      constructor() {
-        super(tokens_js_1.allTokens, { recoveryEnabled: true, skipValidations: true, nodeLocation: true });
+      constructor(recoveryEnabled = true) {
+        super(tokens_js_1.allTokens, { recoveryEnabled, skipValidations: true, nodeLocation: true });
         const $ = this;
         $.RULE("specification", () => {
           $.SUBRULE($.modules);
@@ -21279,13 +21258,24 @@ var require_parser = __commonJS({
         $.RULE("typeExpr", () => {
           $.OR([
             {
-              ALT: () => $.SUBRULE($.unionType),
-              GATE: () => typeLooksLikeUnion($)
+              ALT: () => $.SUBRULE($.moduleOrFieldAccess),
+              GATE: () => {
+                if ($.LA(1).tokenType !== tokens_js_1.Identifier)
+                  return false;
+                if ($.LA(2).tokenType === tokens_js_1.Dot)
+                  return true;
+                const t2 = $.LA(2).tokenType;
+                if (t2 === tokens_js_1.Star || t2 === tokens_js_1.Pipe)
+                  return false;
+                return !isTypeAtomicStarter(t2);
+              }
             },
-            { ALT: () => $.SUBRULE($.moduleOrFieldAccess) },
-            { ALT: () => $.SUBRULE($.otherType) }
+            { ALT: () => $.SUBRULE($.unionType) }
           ]);
         });
+        function isTypeAtomicStarter(t) {
+          return t === tokens_js_1.Nat0 || t === tokens_js_1.Nat || t === tokens_js_1.Int || t === tokens_js_1.Real || t === tokens_js_1.Char || t === tokens_js_1.String || t === tokens_js_1.Bool || t === tokens_js_1.Given || t === tokens_js_1.Set || t === tokens_js_1.Seq || t === tokens_js_1.Map || t === tokens_js_1.Composed || t === tokens_js_1.LBrace || t === tokens_js_1.LParen;
+        }
         $.RULE("typeAtomic", () => {
           $.OR([
             { ALT: () => $.SUBRULE($.basicType) },
@@ -21297,16 +21287,23 @@ var require_parser = __commonJS({
           ]);
         });
         $.RULE("typePrimary", () => {
-          $.SUBRULE($.typeAtomic);
-        });
-        $.RULE("otherType", () => {
           $.OR([
+            { ALT: () => $.SUBRULE($.typeAtomic) },
             {
-              ALT: () => $.SUBRULE($.productType),
-              GATE: () => typeLooksLikeProduct($)
-            },
-            { ALT: () => $.SUBRULE($.typeAtomic) }
+              ALT: () => {
+                $.CONSUME(tokens_js_1.LParen);
+                $.SUBRULE($.typeExpr);
+                $.CONSUME(tokens_js_1.RParen);
+              }
+            }
           ]);
+        });
+        $.RULE("productType", () => {
+          $.SUBRULE($.typePrimary);
+          $.MANY(() => {
+            $.CONSUME(tokens_js_1.Star);
+            $.SUBRULE2($.typePrimary);
+          });
         });
         $.RULE("basicType", () => {
           $.OR([
@@ -21356,15 +21353,6 @@ var require_parser = __commonJS({
           $.CONSUME(tokens_js_1.Colon);
           $.SUBRULE($.typeExpr);
         });
-        $.RULE("productType", () => {
-          $.SUBRULE($.typeAtomic);
-          $.CONSUME(tokens_js_1.Star);
-          $.SUBRULE2($.typeAtomic);
-          $.MANY(() => {
-            $.CONSUME1(tokens_js_1.Star);
-            $.SUBRULE3($.typeAtomic);
-          });
-        });
         $.RULE("mapType", () => {
           $.CONSUME(tokens_js_1.Map);
           $.SUBRULE($.typeExpr);
@@ -21376,10 +21364,10 @@ var require_parser = __commonJS({
             { ALT: () => $.CONSUME(tokens_js_1.Universal) },
             {
               ALT: () => {
-                $.SUBRULE($.typeAtomic);
-                $.AT_LEAST_ONE(() => {
+                $.SUBRULE($.productType);
+                $.MANY(() => {
                   $.CONSUME(tokens_js_1.Pipe);
-                  $.SUBRULE2($.typeAtomic);
+                  $.SUBRULE2($.productType);
                 });
               }
             }
@@ -21566,7 +21554,9 @@ var require_parser = __commonJS({
         $.RULE("quantified", () => {
           $.OR([
             { ALT: () => $.CONSUME(tokens_js_1.Forall) },
-            { ALT: () => $.CONSUME(tokens_js_1.Exists) }
+            { ALT: () => $.CONSUME(tokens_js_1.Forevery) },
+            { ALT: () => $.CONSUME(tokens_js_1.Exists) },
+            { ALT: () => $.CONSUME(tokens_js_1.Forsome) }
           ]);
           $.OPTION(() => $.CONSUME1(tokens_js_1.Not));
           $.CONSUME(tokens_js_1.LBracket);
@@ -21585,11 +21575,24 @@ var require_parser = __commonJS({
               $.CONSUME(tokens_js_1.RBracket);
             } },
             { ALT: () => {
-              $.CONSUME(tokens_js_1.Exists);
-              $.OPTION(() => $.CONSUME(tokens_js_1.Not));
+              $.CONSUME(tokens_js_1.Forevery);
               $.CONSUME1(tokens_js_1.LBracket);
               $.SUBRULE1($.bindingList);
               $.CONSUME1(tokens_js_1.RBracket);
+            } },
+            { ALT: () => {
+              $.CONSUME(tokens_js_1.Exists);
+              $.OPTION(() => $.CONSUME(tokens_js_1.Not));
+              $.CONSUME2(tokens_js_1.LBracket);
+              $.SUBRULE2($.bindingList);
+              $.CONSUME2(tokens_js_1.RBracket);
+            } },
+            { ALT: () => {
+              $.CONSUME(tokens_js_1.Forsome);
+              $.OPTION1(() => $.CONSUME1(tokens_js_1.Not));
+              $.CONSUME3(tokens_js_1.LBracket);
+              $.SUBRULE3($.bindingList);
+              $.CONSUME3(tokens_js_1.RBracket);
             } }
           ]);
         });
@@ -21811,20 +21814,20 @@ var require_parser = __commonJS({
             },
             {
               ALT: () => {
-                $.SUBRULE($.expression);
-                $.CONSUME(tokens_js_1.Pipe);
-                $.SUBRULE($.predicate);
-                $.CONSUME3(tokens_js_1.RBrace);
-              }
-            },
-            {
-              ALT: () => {
                 $.SUBRULE1($.expression);
                 $.CONSUME1(tokens_js_1.Pipe);
                 $.SUBRULE($.bindingList);
                 $.CONSUME(tokens_js_1.Amp);
                 $.SUBRULE1($.predicate);
                 $.CONSUME4(tokens_js_1.RBrace);
+              }
+            },
+            {
+              ALT: () => {
+                $.SUBRULE($.expression);
+                $.CONSUME(tokens_js_1.Pipe);
+                $.SUBRULE($.predicate);
+                $.CONSUME3(tokens_js_1.RBrace);
               }
             }
           ]);
@@ -21933,20 +21936,20 @@ var require_parser = __commonJS({
             },
             {
               ALT: () => {
-                $.SUBRULE($.expression);
-                $.CONSUME(tokens_js_1.Pipe);
-                $.SUBRULE($.predicate);
-                $.CONSUME3(tokens_js_1.RBracket);
-              }
-            },
-            {
-              ALT: () => {
                 $.SUBRULE1($.expression);
                 $.CONSUME1(tokens_js_1.Pipe);
                 $.SUBRULE($.bindingList);
                 $.CONSUME(tokens_js_1.Amp);
                 $.SUBRULE1($.predicate);
                 $.CONSUME4(tokens_js_1.RBracket);
+              }
+            },
+            {
+              ALT: () => {
+                $.SUBRULE($.expression);
+                $.CONSUME(tokens_js_1.Pipe);
+                $.SUBRULE($.predicate);
+                $.CONSUME3(tokens_js_1.RBracket);
               }
             }
           ]);
@@ -22009,16 +22012,6 @@ var require_parser = __commonJS({
             },
             {
               ALT: () => {
-                $.SUBRULE4($.expression);
-                $.CONSUME3(tokens_js_1.Arrow);
-                $.SUBRULE5($.expression);
-                $.CONSUME(tokens_js_1.Pipe);
-                $.SUBRULE($.predicate);
-                $.CONSUME2(tokens_js_1.RBrace);
-              }
-            },
-            {
-              ALT: () => {
                 $.SUBRULE6($.expression);
                 $.CONSUME4(tokens_js_1.Arrow);
                 $.SUBRULE7($.expression);
@@ -22027,6 +22020,16 @@ var require_parser = __commonJS({
                 $.CONSUME(tokens_js_1.Amp);
                 $.SUBRULE1($.predicate);
                 $.CONSUME3(tokens_js_1.RBrace);
+              }
+            },
+            {
+              ALT: () => {
+                $.SUBRULE4($.expression);
+                $.CONSUME3(tokens_js_1.Arrow);
+                $.SUBRULE5($.expression);
+                $.CONSUME(tokens_js_1.Pipe);
+                $.SUBRULE($.predicate);
+                $.CONSUME2(tokens_js_1.RBrace);
               }
             }
           ]);
@@ -22302,7 +22305,8 @@ var require_parser = __commonJS({
       }
     };
     exports2.AgileSoflParser = AgileSoflParser;
-    exports2.parserInstance = new AgileSoflParser();
+    exports2.parserInstance = new AgileSoflParser(true);
+    exports2.strictParserInstance = new AgileSoflParser(false);
   }
 });
 
@@ -22504,12 +22508,15 @@ var require_cstToAst = __commonJS({
     }
     function cstToTopModule(cst) {
       const id = tokensOf(cst, "Identifier")[0];
+      const sysPrefix = tokensOf(cst, "SystemPrefix")[0];
       const body = singleChild(cst, "moduleBody");
       const endMod = tokensOf(cst, "EndModule")[0];
       return {
         type: "module",
         span: endMod ? (0, span_js_1.mergeSpans)(spanOf(cst), (0, spanHelpers_js_1.spanOfToken)(endMod)) : spanOf(cst),
         name: id?.image ?? "SYSTEM_",
+        nameSpan: id ? (0, spanHelpers_js_1.spanOfToken)(id) : void 0,
+        systemPrefixSpan: sysPrefix ? (0, spanHelpers_js_1.spanOfToken)(sysPrefix) : void 0,
         isSystem: true,
         consts: body ? extractConsts(body) : [],
         types: body ? extractTypes(body) : [],
@@ -22528,6 +22535,7 @@ var require_cstToAst = __commonJS({
         type: "module",
         span: endMod ? (0, span_js_1.mergeSpans)(spanOf(cst), (0, spanHelpers_js_1.spanOfToken)(endMod)) : spanOf(cst),
         name: ids[0]?.image ?? "",
+        nameSpan: ids[0] ? (0, spanHelpers_js_1.spanOfToken)(ids[0]) : void 0,
         isSystem: false,
         parent: parent ? { type: "qualified_name", span: spanOf(parent), name: parent.image } : void 0,
         consts: body ? extractConsts(body) : [],
@@ -22641,10 +22649,12 @@ var require_cstToAst = __commonJS({
       const ids = tokensOf(cst, "Identifier");
       const paramDecls = childNodes(cst, "paramDecls");
       const body = singleChild(cst, "processBody");
+      const nameTok = init[0] ?? ids[0];
       return {
         type: "process",
         span: spanOf(cst),
         name: init.length > 0 ? "Init" : ids[0]?.image ?? "",
+        nameSpan: nameTok ? (0, spanHelpers_js_1.spanOfToken)(nameTok) : void 0,
         isInit: init.length > 0,
         inputs: paramDecls[0] ? cstToParamDecls(paramDecls[0]) : [],
         outputs: paramDecls[1] ? cstToParamDecls(paramDecls[1]) : [],
@@ -22659,22 +22669,29 @@ var require_cstToAst = __commonJS({
           type: "param_group",
           span: spanOf(g),
           names: ids.map((t) => t.image),
+          nameSpans: ids.map((t) => ({ name: t.image, span: (0, spanHelpers_js_1.spanOfToken)(t) })),
           typeExpr: typeExpr ? cstToTypeExpr(typeExpr) : { type: "basic_type", span: span_js_1.EMPTY_SPAN, name: "given" }
         };
       });
     }
+    function decomIdentifier(cst) {
+      const decomTok = tokensOf(cst, "Decom")[0];
+      if (!decomTok)
+        return void 0;
+      return tokensOf(cst, "Identifier").find((id) => id.startOffset > decomTok.startOffset);
+    }
     function cstToProcessBody(cst) {
       const extVars = singleChild(cst, "extVars");
       const fsfSpec = singleChild(cst, "fsfSpec");
-      const decomId = tokensOf(cst, "Identifier");
+      const decomId = decomIdentifier(cst);
       const commentText = singleChild(cst, "text");
       return {
         type: "process_body",
         span: spanOf(cst),
         ext: extVars ? cstToExtVars(extVars) : [],
         fsf: fsfSpec ? cstToFsfSpec(fsfSpec) : void 0,
-        decomposition: decomId[0]?.image,
-        comment: commentText ? cstToText(commentText) : void 0
+        decomposition: decomId ? { text: decomId.image, span: (0, spanHelpers_js_1.spanOfToken)(decomId) } : void 0,
+        comment: commentText ? cstToTextWithSpan(commentText) : void 0
       };
     }
     function cstToExtVars(cst) {
@@ -22684,7 +22701,7 @@ var require_cstToAst = __commonJS({
         const typeExpr = singleChild(ev, "typeExpr");
         return {
           type: "ext_var",
-          span: spanOf(ev),
+          span: id ? (0, spanHelpers_js_1.spanOfToken)(id) : spanOf(ev),
           access: rd.length > 0 ? "rd" : "wr",
           name: id?.image ?? "",
           typeExpr: typeExpr ? cstToTypeExpr(typeExpr) : void 0
@@ -22731,6 +22748,7 @@ var require_cstToAst = __commonJS({
         type: "function",
         span: spanOf(cst),
         name: id?.image ?? "",
+        nameSpan: id ? (0, spanHelpers_js_1.spanOfToken)(id) : void 0,
         params: paramDecls ? cstToParamDecls(paramDecls) : [],
         returnType: typeExpr ? cstToTypeExpr(typeExpr) : { type: "basic_type", span: span_js_1.EMPTY_SPAN, name: "given" },
         fsf: fsfSpec ? cstToFsfSpec(fsfSpec) : void 0,
@@ -22751,33 +22769,47 @@ var require_cstToAst = __commonJS({
       return { type: "qualified_name", span: spanOf(cst), name: ids[0]?.image ?? "" };
     }
     function cstToTypeExpr(cst) {
-      const product = singleChild(cst, "productType");
-      if (product) {
-        const elements = childNodes(product, "typeAtomic").map(cstToTypeAtomic);
-        return { type: "product_type", span: spanOf(cst), elements };
-      }
       const union = singleChild(cst, "unionType");
-      if (union) {
-        const universal = tokensOf(union, "Universal");
-        if (universal.length > 0) {
-          return { type: "union_type", span: spanOf(cst), variants: [], isUniversal: true };
-        }
-        const variants = childNodes(union, "typeAtomic").map(cstToTypeAtomic);
-        return { type: "union_type", span: spanOf(cst), variants };
-      }
-      const atomic = singleChild(cst, "typeAtomic");
-      if (atomic)
-        return cstToTypeAtomic(atomic);
-      const primary = singleChild(cst, "typePrimary");
-      if (primary)
-        return cstToTypeAtomic(primary);
-      const other = singleChild(cst, "otherType");
-      if (other)
-        return cstToTypeExpr(other);
+      if (union)
+        return cstToUnionType(union);
       const access = singleChild(cst, "moduleOrFieldAccess");
       if (access) {
         return { type: "named_type", span: spanOf(cst), qualified: cstToQualifiedName(access) };
       }
+      const product = singleChild(cst, "productType");
+      if (product)
+        return cstToProductType(product);
+      const primary = singleChild(cst, "typePrimary");
+      if (primary)
+        return cstToTypePrimary(primary);
+      const atomic = singleChild(cst, "typeAtomic");
+      if (atomic)
+        return cstToTypeAtomic(atomic);
+      return { type: "basic_type", span: spanOf(cst), name: "given" };
+    }
+    function cstToUnionType(cst) {
+      const universal = tokensOf(cst, "Universal");
+      if (universal.length > 0) {
+        return { type: "union_type", span: spanOf(cst), variants: [], isUniversal: true };
+      }
+      const products = allRuleInstances(cst, "productType").map(cstToProductType);
+      if (products.length === 1)
+        return products[0];
+      return { type: "union_type", span: spanOf(cst), variants: products };
+    }
+    function cstToProductType(cst) {
+      const primaries = allRuleInstances(cst, "typePrimary").map(cstToTypePrimary);
+      if (primaries.length === 1)
+        return primaries[0];
+      return { type: "product_type", span: spanOf(cst), elements: primaries };
+    }
+    function cstToTypePrimary(cst) {
+      const inner = singleChild(cst, "typeExpr");
+      if (inner)
+        return cstToTypeExpr(inner);
+      const atomic = singleChild(cst, "typeAtomic");
+      if (atomic)
+        return cstToTypeAtomic(atomic);
       return { type: "basic_type", span: spanOf(cst), name: "given" };
     }
     function cstToTypeAtomic(cst) {
@@ -22858,12 +22890,14 @@ var require_cstToAst = __commonJS({
         return {
           type: "not_predicate",
           span: spanOf(cst),
-          operand: inner2 ? cstToAtomicPredicate(inner2) : { type: "informal_text", span: span_js_1.EMPTY_SPAN, text: "" }
+          operand: inner2 ? cstToAtomicPredicate(inner2) : { type: "informal_text", span: spanOf(cst), text: "" }
         };
       }
       const text = singleChild(cst, "text");
-      if (text)
-        return { type: "informal_text", span: spanOf(cst), text: cstToText(text) };
+      if (text) {
+        const withSpan = cstToTextWithSpan(text);
+        return { type: "informal_text", span: withSpan.span, text: withSpan.text };
+      }
       const boolVal = singleChild(cst, "booleanValue");
       if (boolVal) {
         const t = tokensOf(boolVal, "True");
@@ -22896,14 +22930,18 @@ var require_cstToAst = __commonJS({
     }
     function cstToQuantified(cst) {
       const forall = tokensOf(cst, "Forall");
+      const forevery = tokensOf(cst, "Forevery");
       const exists = tokensOf(cst, "Exists");
+      const forsome = tokensOf(cst, "Forsome");
       const notTok = tokensOf(cst, "Not");
       const bindingList = singleChild(cst, "bindingList");
       const predicate = singleChild(cst, "predicate");
+      const isForall = forall.length > 0 || forevery.length > 0;
+      const isExists = exists.length > 0 || forsome.length > 0;
       return {
         type: "quantified",
         span: spanOf(cst),
-        quantifier: forall.length > 0 ? "forall" : notTok.length > 0 && exists.length > 0 ? "exists_unique" : "exists",
+        quantifier: isForall ? "forall" : notTok.length > 0 && isExists ? "exists_unique" : "exists",
         bindings: bindingList ? cstToBindingList(bindingList) : [],
         nestedQuantifiers: childNodes(cst, "quantifierList").map((q) => cstToQuantifiedFromList(q)),
         body: predicate ? cstToPredicate(predicate) : { type: "predicate", span: span_js_1.EMPTY_SPAN, disjuncts: [] }
@@ -22911,11 +22949,12 @@ var require_cstToAst = __commonJS({
     }
     function cstToQuantifiedFromList(cst) {
       const forall = tokensOf(cst, "Forall");
+      const forevery = tokensOf(cst, "Forevery");
       const bindingList = singleChild(cst, "bindingList");
       return {
         type: "quantified",
         span: spanOf(cst),
-        quantifier: forall.length > 0 ? "forall" : "exists",
+        quantifier: forall.length > 0 || forevery.length > 0 ? "forall" : "exists",
         bindings: bindingList ? cstToBindingList(bindingList) : [],
         nestedQuantifiers: [],
         body: { type: "predicate", span: span_js_1.EMPTY_SPAN, disjuncts: [] }
@@ -22933,15 +22972,21 @@ var require_cstToAst = __commonJS({
         };
       });
     }
-    function cstToText(cst) {
+    function cstToTextWithSpan(cst) {
+      const strTokens = tokensOf(cst, "StringLiteral");
+      const idTokens = tokensOf(cst, "Identifier");
+      const allTokens = [...strTokens, ...idTokens].sort((a, b) => a.startOffset - b.startOffset);
       const parts = [];
-      for (const str of tokensOf(cst, "StringLiteral")) {
+      for (const str of strTokens) {
         parts.push(str.image.slice(1, -1));
       }
-      for (const id of tokensOf(cst, "Identifier")) {
+      for (const id of idTokens) {
         parts.push(id.image);
       }
-      return parts.join(" ");
+      return {
+        text: parts.join(" "),
+        span: allTokens.length > 0 ? (0, spanHelpers_js_1.spanOfTokens)(allTokens) : (0, spanHelpers_js_1.spanOfChildren)(cst)
+      };
     }
     function cstToConstant(cst) {
       const nil = tokensOf(cst, "Nil");
@@ -23587,7 +23632,8 @@ var require_parse = __commonJS({
   "../../dist/parser/parse.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.parse = parse5;
+    exports2.parse = parse8;
+    exports2.parseStrict = parseStrict;
     exports2.parseModule = parseModule;
     var tokens_js_1 = require_tokens();
     var parser_js_1 = require_parser();
@@ -23603,25 +23649,29 @@ var require_parse = __commonJS({
       const offset = e.offset ?? 0;
       return { start: offset, end: offset + 1, line, column };
     }
-    function parseErrorsToDiagnostics() {
-      return parser_js_1.parserInstance.errors.map((e) => (0, codes_js_1.createDiagnostic)(codes_js_1.DiagnosticCodes.PARSE_ERROR, e.message, "error", {
+    function parseErrorsToDiagnostics(parser) {
+      return parser.errors.map((e) => (0, codes_js_1.createDiagnostic)(codes_js_1.DiagnosticCodes.PARSE_ERROR, e.message, "error", {
         start: e.token?.startOffset ?? 0,
-        end: e.token?.endOffset ?? 0,
+        end: (e.token?.endOffset ?? 0) + 1,
         line: e.token?.startLine ?? 1,
         column: e.token?.startColumn ?? 1
       }));
     }
-    function parse5(source) {
+    function runProgramParse(source, options = {}) {
+      const tolerant = options.tolerant !== false;
+      const parser = tolerant ? parser_js_1.parserInstance : parser_js_1.strictParserInstance;
       const diagnostics = [];
       const lexResult = tokens_js_1.AgileSoflLexer.tokenize(source);
       if (lexResult.errors.length > 0) {
         diagnostics.push(...lexErrorsToDiagnostics(lexResult.errors));
         return { ast: null, diagnostics };
       }
-      parser_js_1.parserInstance.input = lexResult.tokens;
-      const cst = parser_js_1.parserInstance.specification();
-      if (parser_js_1.parserInstance.errors.length > 0) {
-        diagnostics.push(...parseErrorsToDiagnostics());
+      parser.input = lexResult.tokens;
+      const cst = parser.specification();
+      if (parser.errors.length > 0) {
+        diagnostics.push(...parseErrorsToDiagnostics(parser));
+        if (!tolerant)
+          return { ast: null, diagnostics };
       }
       if (!cst)
         return { ast: null, diagnostics };
@@ -23633,17 +23683,27 @@ var require_parse = __commonJS({
         return { ast: null, diagnostics };
       }
     }
-    function parseModule(source) {
+    function parse8(source, options) {
+      return runProgramParse(source, options);
+    }
+    function parseStrict(source) {
+      return runProgramParse(source, { tolerant: false });
+    }
+    function parseModule(source, options) {
+      const tolerant = options?.tolerant !== false;
+      const parser = tolerant ? parser_js_1.parserInstance : parser_js_1.strictParserInstance;
       const diagnostics = [];
       const lexResult = tokens_js_1.AgileSoflLexer.tokenize(source);
       if (lexResult.errors.length > 0) {
         diagnostics.push(...lexErrorsToDiagnostics(lexResult.errors));
         return { ast: null, diagnostics };
       }
-      parser_js_1.parserInstance.input = lexResult.tokens;
-      const cst = parser_js_1.parserInstance.module();
-      if (parser_js_1.parserInstance.errors.length > 0) {
-        diagnostics.push(...parseErrorsToDiagnostics());
+      parser.input = lexResult.tokens;
+      const cst = parser.module();
+      if (parser.errors.length > 0) {
+        diagnostics.push(...parseErrorsToDiagnostics(parser));
+        if (!tolerant)
+          return { ast: null, diagnostics };
       }
       if (!cst)
         return { ast: null, diagnostics };
@@ -23663,10 +23723,37 @@ var require_types = __commonJS({
   "../../dist/typecheck/types.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.typeExprToInternal = typeExprToInternal;
+    exports2.isNumericType = isNumericType;
+    exports2.numericRank = numericRank;
+    exports2.numericSubtype = numericSubtype;
+    exports2.typeExprToInternal = typeExprToInternal2;
+    exports2.resolveInternalType = resolveInternalType2;
     exports2.typesCompatible = typesCompatible;
-    exports2.typeToString = typeToString;
-    function typeExprToInternal(node) {
+    exports2.typesCompatibleStrict = typesCompatibleStrict;
+    exports2.unifyExprTypes = unifyExprTypes;
+    exports2.typeToString = typeToString2;
+    var NUMERIC_RANK = {
+      nat0: 0,
+      nat: 1,
+      int: 2,
+      real: 3
+    };
+    function isNumericType(t) {
+      return t.kind === "basic" && t.name in NUMERIC_RANK;
+    }
+    function numericRank(name) {
+      return NUMERIC_RANK[name];
+    }
+    function numericSubtype(a, b) {
+      if (a.kind !== "basic" || b.kind !== "basic")
+        return false;
+      const ra = NUMERIC_RANK[a.name];
+      const rb = NUMERIC_RANK[b.name];
+      if (ra === void 0 || rb === void 0)
+        return false;
+      return ra <= rb;
+    }
+    function typeExprToInternal2(node) {
       switch (node.type) {
         case "basic_type":
           return { kind: "basic", name: node.name };
@@ -23679,37 +23766,86 @@ var require_types = __commonJS({
         case "enum_type":
           return { kind: "enum", values: node.values };
         case "set_type":
-          return { kind: "set", element: typeExprToInternal(node.element) };
+          return { kind: "set", element: typeExprToInternal2(node.element) };
         case "seq_type":
-          return { kind: "seq", element: typeExprToInternal(node.element) };
+          return { kind: "seq", element: typeExprToInternal2(node.element) };
         case "composed_type":
           return {
             kind: "composed",
-            fields: node.fields.map((f) => ({ name: f.name, type: typeExprToInternal(f.typeExpr) }))
+            fields: node.fields.map((f) => ({ name: f.name, type: typeExprToInternal2(f.typeExpr) }))
           };
         case "product_type":
-          return { kind: "product", elements: node.elements.map(typeExprToInternal) };
+          return { kind: "product", elements: node.elements.map(typeExprToInternal2) };
         case "map_type":
           return {
             kind: "map",
-            domain: typeExprToInternal(node.domain),
-            range: typeExprToInternal(node.range)
+            domain: typeExprToInternal2(node.domain),
+            range: typeExprToInternal2(node.range)
           };
         case "union_type":
           return {
             kind: "union",
-            variants: node.isUniversal ? [] : node.variants.map(typeExprToInternal)
+            variants: node.isUniversal ? [] : node.variants.map(typeExprToInternal2)
           };
         default:
           return { kind: "unknown" };
       }
     }
+    function namedKey(name, module3) {
+      return module3 ? `${module3}.${name}` : name;
+    }
+    function resolveInternalType2(t, env, depth = 0) {
+      if (depth > 32)
+        return t;
+      switch (t.kind) {
+        case "named": {
+          const key = namedKey(t.name, t.module);
+          const resolved = env.get(key) ?? env.get(t.name);
+          if (!resolved)
+            return t;
+          return resolveInternalType2(resolved, env, depth + 1);
+        }
+        case "set":
+          return { kind: "set", element: resolveInternalType2(t.element, env, depth + 1) };
+        case "seq":
+          return { kind: "seq", element: resolveInternalType2(t.element, env, depth + 1) };
+        case "map":
+          return {
+            kind: "map",
+            domain: resolveInternalType2(t.domain, env, depth + 1),
+            range: resolveInternalType2(t.range, env, depth + 1)
+          };
+        case "product":
+          return {
+            kind: "product",
+            elements: t.elements.map((e) => resolveInternalType2(e, env, depth + 1))
+          };
+        case "composed":
+          return {
+            kind: "composed",
+            fields: t.fields.map((f) => ({
+              name: f.name,
+              type: resolveInternalType2(f.type, env, depth + 1)
+            }))
+          };
+        case "union":
+          return {
+            kind: "union",
+            variants: t.variants.map((v) => resolveInternalType2(v, env, depth + 1))
+          };
+        default:
+          return t;
+      }
+    }
     function typesCompatible(a, b) {
       if (a.kind === "unknown" || b.kind === "unknown")
         return true;
+      if (a.kind === "basic" && b.kind === "basic") {
+        if (a.name === b.name)
+          return true;
+        return numericSubtype(a, b);
+      }
       if (a.kind !== b.kind) {
-        if (a.kind === "basic" && b.kind === "basic")
-          return a.name === b.name;
         if (a.kind === "named" && b.kind === "named") {
           return a.name === b.name && (a.module ?? "") === (b.module ?? "");
         }
@@ -23734,26 +23870,71 @@ var require_types = __commonJS({
             return false;
           return a.elements.every((e, i) => typesCompatible(e, bp.elements[i]));
         }
+        case "composed": {
+          const bc = b;
+          if (a.fields.length !== bc.fields.length)
+            return false;
+          return a.fields.every((f, i) => f.name === bc.fields[i].name && typesCompatible(f.type, bc.fields[i].type));
+        }
+        case "union": {
+          const bu = b;
+          if (a.variants.length === 0 || bu.variants.length === 0)
+            return true;
+          return a.variants.some((va) => bu.variants.some((vb) => typesCompatible(va, vb)));
+        }
         case "enum":
           return JSON.stringify(a.values) === JSON.stringify(b.values);
         default:
           return true;
       }
     }
-    function typeToString(t) {
+    function typesCompatibleStrict(a, b) {
+      if (a.kind === "unknown" || b.kind === "unknown")
+        return false;
+      return typesCompatible(a, b);
+    }
+    function unifyExprTypes(types) {
+      const known = types.filter((t) => t.kind !== "unknown");
+      if (known.length === 0)
+        return { kind: "unknown" };
+      let result = known[0];
+      for (let i = 1; i < known.length; i++) {
+        result = widenNumeric(result, known[i]);
+      }
+      return result;
+    }
+    function widenNumeric(a, b) {
+      if (a.kind === "basic" && b.kind === "basic" && isNumericType(a) && isNumericType(b)) {
+        const rank = Math.max(NUMERIC_RANK[a.name], NUMERIC_RANK[b.name]);
+        const name = Object.keys(NUMERIC_RANK).find((k) => NUMERIC_RANK[k] === rank);
+        return { kind: "basic", name: name ?? "int" };
+      }
+      if (typesCompatible(a, b))
+        return b;
+      if (typesCompatible(b, a))
+        return a;
+      return { kind: "unknown" };
+    }
+    function typeToString2(t) {
       switch (t.kind) {
         case "basic":
           return t.name;
         case "named":
           return t.module ? `${t.module}.${t.name}` : t.name;
         case "set":
-          return `set of ${typeToString(t.element)}`;
+          return `set of ${typeToString2(t.element)}`;
         case "seq":
-          return `seq of ${typeToString(t.element)}`;
+          return `seq of ${typeToString2(t.element)}`;
         case "map":
-          return `map ${typeToString(t.domain)} to ${typeToString(t.range)}`;
+          return `map ${typeToString2(t.domain)} to ${typeToString2(t.range)}`;
         case "product":
-          return t.elements.map(typeToString).join(" * ");
+          return t.elements.map(typeToString2).join(" * ");
+        case "composed": {
+          const fields = t.fields.map((f) => `${f.name}: ${typeToString2(f.type)}`).join(" ");
+          return `composed of ${fields} end`;
+        }
+        case "union":
+          return t.variants.length === 0 ? "*" : t.variants.map(typeToString2).join(" | ");
         case "enum":
           return `{${t.values.map((v) => `<${v}>`).join(", ")}}`;
         case "unknown":
@@ -23804,6 +23985,7 @@ var require_resolver = __commonJS({
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.resolveScope = resolveScope4;
+    exports2.lookupModuleScope = lookupModuleScope2;
     exports2.lookupSymbol = lookupSymbol;
     exports2.checkVarWriteAccess = checkVarWriteAccess;
     var codes_js_1 = require_codes();
@@ -23840,12 +24022,15 @@ var require_resolver = __commonJS({
     function linkParentChild(scopes) {
       for (const scope of scopes.values()) {
         const parentName = scope.module.parent?.name;
-        if (parentName) {
-          const parent = scopes.get(parentName);
-          if (parent) {
-            scope.parent = parent;
-            parent.children.push(scope);
-          }
+        if (!parentName)
+          continue;
+        let parent = scopes.get(parentName);
+        if (!parent) {
+          parent = [...scopes.values()].find((s) => s.module.name.endsWith(`_${parentName}`));
+        }
+        if (parent) {
+          scope.parent = parent;
+          parent.children.push(scope);
         }
       }
     }
@@ -23867,16 +24052,50 @@ var require_resolver = __commonJS({
           allSymbols.push(sym);
         }
       }
-      return { root: rootScope ?? null, symbols: allSymbols, diagnostics };
+      return { root: rootScope ?? null, scopes, symbols: allSymbols, diagnostics };
     }
-    function lookupSymbol(scope, name, moduleQualifier) {
+    function lookupModuleScope2(scopeResult, moduleName) {
+      const direct = scopeResult.scopes.get(moduleName);
+      if (direct)
+        return direct;
+      for (const scope of scopeResult.scopes.values()) {
+        if (scope.module.parent?.name === moduleName && scope.parent) {
+          return scope.parent;
+        }
+      }
+      if (!moduleName.includes("_")) {
+        const suffix = `_${moduleName}`;
+        for (const scope of scopeResult.scopes.values()) {
+          if (scope.module.name.endsWith(suffix))
+            return scope;
+        }
+      }
+      if (!scopeResult.root)
+        return void 0;
+      const queue = [scopeResult.root, ...scopeResult.root.children];
+      while (queue.length) {
+        const current = queue.shift();
+        if (current.module.name === moduleName)
+          return current;
+        queue.push(...current.children);
+      }
+      return void 0;
+    }
+    function lookupSymbol(scope, name, moduleQualifier, scopeResult) {
       if (moduleQualifier) {
         let current2 = scope;
         while (current2) {
-          if (current2.module.name === moduleQualifier || current2.module.name.endsWith(moduleQualifier)) {
-            return current2.symbols.get(name);
+          if (current2.module.name === moduleQualifier) {
+            const sym = current2.symbols.get(name);
+            if (sym)
+              return sym;
           }
           current2 = findChildModule(current2, moduleQualifier) ?? current2.parent;
+        }
+        if (scopeResult) {
+          const modScope = lookupModuleScope2(scopeResult, moduleQualifier);
+          if (modScope)
+            return modScope.symbols.get(name);
         }
         return void 0;
       }
@@ -23922,132 +24141,6 @@ var require_resolver = __commonJS({
         return (0, codes_js_1.createDiagnostic)(codes_js_1.DiagnosticCodes.PARENT_VAR_WRITE, `Variable '${varName}' can only be written in module '${declaringScope.module.name}', not '${writerModule}'`, "error", span_js_1.EMPTY_SPAN);
       }
       return null;
-    }
-  }
-});
-
-// ../../dist/typecheck/checker.js
-var require_checker = __commonJS({
-  "../../dist/typecheck/checker.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.typeCheck = typeCheck;
-    exports2.resolveTypeDecl = resolveTypeDecl;
-    var codes_js_1 = require_codes();
-    var types_js_1 = require_types();
-    var builtins_js_1 = require_builtins();
-    var resolver_js_1 = require_resolver();
-    var NUMERIC_TYPES = /* @__PURE__ */ new Set(["nat0", "nat", "int", "real"]);
-    function inferExprType(expr, typeEnv) {
-      switch (expr.type) {
-        case "nil":
-          return { kind: "unknown" };
-        case "boolean_literal":
-          return { kind: "basic", name: "bool" };
-        case "number_literal":
-          return { kind: "basic", name: expr.isReal ? "real" : "int" };
-        case "char_literal":
-          return { kind: "basic", name: "char" };
-        case "string_literal":
-        case "seq_expr":
-          if (expr.type === "seq_expr" && expr.kind === "string") {
-            return { kind: "basic", name: "string" };
-          }
-          if (expr.type === "seq_expr")
-            return { kind: "seq", element: { kind: "unknown" } };
-          return { kind: "basic", name: "string" };
-        case "enum_literal":
-          return { kind: "enum", values: [expr.value] };
-        case "identifier": {
-          const t = typeEnv.get(expr.name);
-          return t ?? { kind: "unknown" };
-        }
-        case "binary_op":
-          return { kind: "basic", name: "int" };
-        case "unary_minus":
-          return inferExprType(expr.operand, typeEnv);
-        case "set_expr":
-          return { kind: "set", element: { kind: "unknown" } };
-        case "map_expr":
-          return { kind: "map", domain: { kind: "unknown" }, range: { kind: "unknown" } };
-        case "relational_expr":
-          return { kind: "basic", name: "bool" };
-        case "call":
-          if (typeof expr.callee === "string" && (0, builtins_js_1.isBuiltin)(expr.callee)) {
-            return { kind: "basic", name: "bool" };
-          }
-          return { kind: "unknown" };
-        case "if_expr":
-        case "let_expr":
-        case "case_expr":
-        case "paren_expr":
-          return expr.type === "paren_expr" ? inferExprType(expr.inner, typeEnv) : { kind: "unknown" };
-        default:
-          return { kind: "unknown" };
-      }
-    }
-    function buildTypeEnv(module3) {
-      const env = /* @__PURE__ */ new Map();
-      for (const t of module3.types) {
-        env.set(t.name, (0, types_js_1.typeExprToInternal)(t.typeExpr));
-      }
-      for (const v of module3.vars) {
-        env.set(v.variable.name, (0, types_js_1.typeExprToInternal)(v.typeExpr));
-      }
-      return env;
-    }
-    function checkModuleTypes(module3) {
-      const diagnostics = [];
-      const typeEnv = buildTypeEnv(module3);
-      for (const v of module3.vars) {
-        const declared = (0, types_js_1.typeExprToInternal)(v.typeExpr);
-        if (declared.kind === "unknown") {
-          diagnostics.push((0, codes_js_1.createDiagnostic)(codes_js_1.DiagnosticCodes.UNKNOWN_TYPE, `Unknown type for variable '${v.variable.name}'`, "error", v.span));
-        }
-      }
-      for (const p of module3.processes) {
-        for (const group of [...p.inputs, ...p.outputs]) {
-          const t = (0, types_js_1.typeExprToInternal)(group.typeExpr);
-          if (t.kind === "basic" && !NUMERIC_TYPES.has(t.name) && t.name !== "bool" && t.name !== "given") {
-          }
-        }
-        if (p.body?.ext) {
-          for (const ext of p.body.ext) {
-            if (ext.access === "wr" && ext.typeExpr) {
-              const d = inferExprType({ type: "identifier", span: ext.span, name: ext.name }, typeEnv);
-              if (d.kind !== "unknown" && ext.typeExpr) {
-                const extType = (0, types_js_1.typeExprToInternal)(ext.typeExpr);
-                if (!(0, types_js_1.typesCompatible)(d, extType)) {
-                  diagnostics.push((0, codes_js_1.createDiagnostic)(codes_js_1.DiagnosticCodes.TYPE_MISMATCH, `Type mismatch for ext wr '${ext.name}': expected ${(0, types_js_1.typeToString)(extType)}`, "error", ext.span));
-                }
-              }
-            }
-          }
-        }
-      }
-      for (const f of module3.functions) {
-        const ret = (0, types_js_1.typeExprToInternal)(f.returnType);
-        if (f.body && !f.isUndefined) {
-          const bodyType = inferExprType(f.body, typeEnv);
-          if (bodyType.kind !== "unknown" && ret.kind !== "unknown" && !(0, types_js_1.typesCompatible)(bodyType, ret)) {
-            diagnostics.push((0, codes_js_1.createDiagnostic)(codes_js_1.DiagnosticCodes.TYPE_MISMATCH, `Function '${f.name}' return type ${(0, types_js_1.typeToString)(ret)} does not match body ${(0, types_js_1.typeToString)(bodyType)}`, "error", f.span));
-          }
-        }
-      }
-      return diagnostics;
-    }
-    function typeCheck(program) {
-      const diagnostics = [];
-      (0, resolver_js_1.resolveScope)(program);
-      for (const mod of program.modules) {
-        diagnostics.push(...checkModuleTypes(mod));
-      }
-      return { diagnostics };
-    }
-    function resolveTypeDecl(decl, env) {
-      const t = (0, types_js_1.typeExprToInternal)(decl.typeExpr);
-      env.set(decl.name, t);
-      return t;
     }
   }
 });
@@ -24185,12 +24278,612 @@ var require_guards = __commonJS({
   }
 });
 
+// ../../dist/typecheck/checker.js
+var require_checker = __commonJS({
+  "../../dist/typecheck/checker.js"(exports2) {
+    "use strict";
+    Object.defineProperty(exports2, "__esModule", { value: true });
+    exports2.typeCheck = typeCheck;
+    exports2.resolveTypeDecl = resolveTypeDecl;
+    var codes_js_1 = require_codes();
+    var types_js_1 = require_types();
+    var builtins_js_1 = require_builtins();
+    var resolver_js_1 = require_resolver();
+    var guards_js_1 = require_guards();
+    var BOOL_TYPE = { kind: "basic", name: "bool" };
+    function qualifiedKey(q) {
+      return q.module ? `${q.module}.${q.name}` : q.name;
+    }
+    function builtinReturnType(sigReturn) {
+      switch (sigReturn) {
+        case "number":
+          return { kind: "basic", name: "int" };
+        case "bool":
+          return BOOL_TYPE;
+        case "set":
+          return { kind: "set", element: { kind: "unknown" } };
+        case "seq":
+          return { kind: "seq", element: { kind: "unknown" } };
+        case "map":
+          return { kind: "map", domain: { kind: "unknown" }, range: { kind: "unknown" } };
+        default:
+          return { kind: "unknown" };
+      }
+    }
+    function inferBinaryOpType(op, typeEnv) {
+      const left = inferExprType(op.left, typeEnv);
+      const right = inferExprType(op.right, typeEnv);
+      if (op.op === "**") {
+        return (0, types_js_1.unifyExprTypes)([left, right, { kind: "basic", name: "real" }]);
+      }
+      if (["+", "-", "*", "/", "div", "rem", "mod"].includes(op.op)) {
+        if ((0, types_js_1.isNumericType)(left) || (0, types_js_1.isNumericType)(right) || left.kind === "unknown" || right.kind === "unknown") {
+          return (0, types_js_1.unifyExprTypes)([left, right]);
+        }
+      }
+      return { kind: "unknown" };
+    }
+    function lookupFieldType(objType, field) {
+      const t = objType;
+      if (t.kind === "composed") {
+        const f = t.fields.find((x) => x.name === field);
+        return f?.type;
+      }
+      if (t.kind === "product") {
+        const idx = Number.parseInt(field, 10);
+        if (!Number.isNaN(idx) && idx >= 1 && idx <= t.elements.length) {
+          return t.elements[idx - 1];
+        }
+      }
+      return void 0;
+    }
+    function addComprehensionBindings(bindings, typeEnv) {
+      const local = new Map(typeEnv);
+      if (!bindings)
+        return local;
+      for (const bg of bindings) {
+        const bt = (0, types_js_1.resolveInternalType)((0, types_js_1.typeExprToInternal)(bg.typeExpr), local);
+        for (const n of bg.names)
+          local.set(n, bt);
+      }
+      return local;
+    }
+    function inferExprType(expr, typeEnv) {
+      switch (expr.type) {
+        case "nil":
+          return { kind: "unknown" };
+        case "boolean_literal":
+          return BOOL_TYPE;
+        case "number_literal": {
+          if (expr.isReal)
+            return { kind: "basic", name: "real" };
+          const value = Number(expr.value);
+          if (Number.isInteger(value) && value >= 0) {
+            if (value === 0)
+              return { kind: "basic", name: "nat0" };
+            return { kind: "basic", name: "nat" };
+          }
+          return { kind: "basic", name: "int" };
+        }
+        case "char_literal":
+          return { kind: "basic", name: "char" };
+        case "string_literal":
+        case "seq_expr":
+          if (expr.type === "seq_expr" && expr.kind === "string") {
+            return { kind: "basic", name: "string" };
+          }
+          if (expr.type === "seq_expr") {
+            if (expr.kind === "comprehension" && expr.compExpr) {
+              const local = addComprehensionBindings(expr.compBindings, typeEnv);
+              return { kind: "seq", element: inferExprType(expr.compExpr, local) };
+            }
+            if (expr.elements?.length) {
+              return {
+                kind: "seq",
+                element: (0, types_js_1.unifyExprTypes)(expr.elements.map((e) => inferExprType(e, typeEnv)))
+              };
+            }
+            return { kind: "seq", element: { kind: "unknown" } };
+          }
+          return { kind: "basic", name: "string" };
+        case "enum_literal":
+          return { kind: "enum", values: [expr.value] };
+        case "identifier": {
+          const key = expr.qualified ? qualifiedKey(expr.qualified) : expr.name;
+          const t = typeEnv.get(key) ?? typeEnv.get(expr.name);
+          return t ? (0, types_js_1.resolveInternalType)(t, typeEnv) : { kind: "unknown" };
+        }
+        case "binary_op":
+          return inferBinaryOpType(expr, typeEnv);
+        case "unary_minus": {
+          const operand = inferExprType(expr.operand, typeEnv);
+          if ((0, types_js_1.isNumericType)(operand) || operand.kind === "unknown") {
+            return operand.kind === "unknown" ? { kind: "basic", name: "int" } : operand;
+          }
+          return { kind: "unknown" };
+        }
+        case "set_expr":
+          if (expr.kind === "comprehension" && expr.compExpr) {
+            const local = addComprehensionBindings(expr.compBindings, typeEnv);
+            return { kind: "set", element: inferExprType(expr.compExpr, local) };
+          }
+          if (expr.elements?.length) {
+            return {
+              kind: "set",
+              element: (0, types_js_1.unifyExprTypes)(expr.elements.map((e) => inferExprType(e, typeEnv)))
+            };
+          }
+          return { kind: "set", element: { kind: "unknown" } };
+        case "map_expr":
+          if (expr.kind === "comprehension" && (expr.compKey || expr.compValue)) {
+            const local = addComprehensionBindings(expr.compBindings, typeEnv);
+            return {
+              kind: "map",
+              domain: expr.compKey ? inferExprType(expr.compKey, local) : { kind: "unknown" },
+              range: expr.compValue ? inferExprType(expr.compValue, local) : { kind: "unknown" }
+            };
+          }
+          if (expr.pairs?.length) {
+            return {
+              kind: "map",
+              domain: (0, types_js_1.unifyExprTypes)(expr.pairs.map((p) => inferExprType(p.key, typeEnv))),
+              range: (0, types_js_1.unifyExprTypes)(expr.pairs.map((p) => inferExprType(p.value, typeEnv)))
+            };
+          }
+          return { kind: "map", domain: { kind: "unknown" }, range: { kind: "unknown" } };
+        case "relational_expr":
+          return BOOL_TYPE;
+        case "call": {
+          const name = typeof expr.callee === "string" ? expr.callee : expr.callee.type === "identifier" ? expr.callee.name : void 0;
+          if (name && (0, builtins_js_1.isBuiltin)(name)) {
+            return builtinReturnType(builtins_js_1.BUILTIN_FUNCTIONS[name].returnType);
+          }
+          if (name) {
+            const fnKey = `@fn:${name}`;
+            const fnRet = typeEnv.get(fnKey);
+            if (fnRet)
+              return fnRet;
+          }
+          if (typeof expr.callee !== "string") {
+            return inferExprType(expr.callee, typeEnv);
+          }
+          return { kind: "unknown" };
+        }
+        case "if_expr":
+          return (0, types_js_1.unifyExprTypes)([
+            inferExprType(expr.thenExpr, typeEnv),
+            inferExprType(expr.elseExpr, typeEnv)
+          ]);
+        case "let_expr": {
+          const local = new Map(typeEnv);
+          for (const b of expr.bindings) {
+            if (b.typeExpr) {
+              for (const n of b.names) {
+                local.set(n, (0, types_js_1.resolveInternalType)((0, types_js_1.typeExprToInternal)(b.typeExpr), local));
+              }
+            } else if (b.value) {
+              const vt = inferExprType(b.value, local);
+              for (const n of b.names)
+                local.set(n, vt);
+            }
+          }
+          return inferExprType(expr.body, local);
+        }
+        case "case_expr": {
+          const branchTypes = expr.alternatives.map((a) => inferExprType(a.expr, typeEnv));
+          if (expr.default)
+            branchTypes.push(inferExprType(expr.default, typeEnv));
+          return (0, types_js_1.unifyExprTypes)(branchTypes);
+        }
+        case "field_access": {
+          const obj = inferExprType(expr.object, typeEnv);
+          const ft = lookupFieldType((0, types_js_1.resolveInternalType)(obj, typeEnv), expr.field);
+          return ft ?? { kind: "unknown" };
+        }
+        case "index_access": {
+          const obj = (0, types_js_1.resolveInternalType)(inferExprType(expr.object, typeEnv), typeEnv);
+          if (obj.kind === "seq")
+            return obj.element;
+          if (obj.kind === "map")
+            return obj.range;
+          if (obj.kind === "set")
+            return BOOL_TYPE;
+          return { kind: "unknown" };
+        }
+        case "mk_expr": {
+          const key = qualifiedKey(expr.typeName);
+          const t = typeEnv.get(key) ?? typeEnv.get(expr.typeName.name);
+          return t ? (0, types_js_1.resolveInternalType)(t, typeEnv) : { kind: "unknown" };
+        }
+        case "modify_expr":
+          return inferExprType(expr.target, typeEnv);
+        case "paren_expr":
+          return inferExprType(expr.inner, typeEnv);
+        default:
+          return { kind: "unknown" };
+      }
+    }
+    function moduleTypeChain(module3, scopes) {
+      const chain = [];
+      let scope = scopes.get(module3.name);
+      const ancestors = [];
+      while (scope?.parent) {
+        ancestors.unshift(scope.parent.module);
+        scope = scope.parent;
+      }
+      chain.push(...ancestors, module3);
+      return chain;
+    }
+    function buildTypeEnv(module3, scopes) {
+      const env = /* @__PURE__ */ new Map();
+      const chain = scopes ? moduleTypeChain(module3, scopes) : [module3];
+      for (const mod of chain) {
+        for (const t of mod.types) {
+          env.set(t.name, (0, types_js_1.typeExprToInternal)(t.typeExpr));
+        }
+      }
+      for (const mod of chain) {
+        for (const t of mod.types) {
+          env.set(t.name, (0, types_js_1.resolveInternalType)(env.get(t.name), env));
+        }
+      }
+      for (const v of module3.vars) {
+        env.set(v.variable.name, (0, types_js_1.resolveInternalType)((0, types_js_1.typeExprToInternal)(v.typeExpr), env));
+      }
+      for (const c of module3.consts) {
+        env.set(c.name, inferExprType(c.value, env));
+      }
+      for (const p of module3.processes) {
+        for (const group of [...p.inputs, ...p.outputs]) {
+          addParamGroupToEnv(group, env);
+        }
+      }
+      for (const f of module3.functions) {
+        for (const group of f.params) {
+          addParamGroupToEnv(group, env);
+        }
+        env.set(`@fn:${f.name}`, (0, types_js_1.resolveInternalType)((0, types_js_1.typeExprToInternal)(f.returnType), env));
+      }
+      return env;
+    }
+    function addParamGroupToEnv(group, env) {
+      const t = (0, types_js_1.resolveInternalType)((0, types_js_1.typeExprToInternal)(group.typeExpr), env);
+      for (const name of group.names) {
+        env.set(name, t);
+      }
+    }
+    function isResolvedType(t) {
+      return t.kind !== "named" && t.kind !== "unknown";
+    }
+    function validateTypeExpr(typeExpr, env, label, span) {
+      const diagnostics = [];
+      const raw = (0, types_js_1.typeExprToInternal)(typeExpr);
+      const resolved = (0, types_js_1.resolveInternalType)(raw, env);
+      if (raw.kind === "named" && resolved.kind === "named") {
+        diagnostics.push((0, codes_js_1.createDiagnostic)(codes_js_1.DiagnosticCodes.UNKNOWN_TYPE, `Unknown type '${raw.module ? `${raw.module}.` : ""}${raw.name}' for ${label}`, "error", span));
+      } else if (resolved.kind === "unknown") {
+        diagnostics.push((0, codes_js_1.createDiagnostic)(codes_js_1.DiagnosticCodes.UNKNOWN_TYPE, `Unknown type for ${label}`, "error", span));
+      }
+      return diagnostics;
+    }
+    function checkAtomicPredicate(atom, typeEnv, diagnostics, context) {
+      switch (atom.type) {
+        case "relational_expr":
+          inferExprType(atom.left, typeEnv);
+          inferExprType(atom.right, typeEnv);
+          if (atom.chainMid)
+            inferExprType(atom.chainMid, typeEnv);
+          if (atom.chainHigh)
+            inferExprType(atom.chainHigh, typeEnv);
+          break;
+        case "not_predicate":
+          checkAtomicPredicate(atom.operand, typeEnv, diagnostics, context);
+          break;
+        case "paren_predicate":
+          checkAtomicPredicate(atom.inner, typeEnv, diagnostics, context);
+          break;
+        case "quantified": {
+          const local = new Map(typeEnv);
+          for (const bg of atom.bindings) {
+            const bt = (0, types_js_1.resolveInternalType)((0, types_js_1.typeExprToInternal)(bg.typeExpr), local);
+            for (const n of bg.names)
+              local.set(n, bt);
+          }
+          checkPredicate(atom.body, local, diagnostics, context);
+          break;
+        }
+        case "informal_text":
+          diagnostics.push((0, codes_js_1.createDiagnostic)(codes_js_1.DiagnosticCodes.FSF_FORMAL_NON_BOTTOM, `Semi-formal predicate in ${context}`, "info", atom.span));
+          break;
+        default:
+          if ((0, guards_js_1.isExpressionNode)(atom)) {
+            const t = inferExprType(atom, typeEnv);
+            if (t.kind !== "unknown" && !(0, types_js_1.typesCompatibleStrict)(t, BOOL_TYPE)) {
+              diagnostics.push((0, codes_js_1.createDiagnostic)(codes_js_1.DiagnosticCodes.TYPE_MISMATCH, `Expected bool in ${context}, got ${(0, types_js_1.typeToString)(t)}`, "error", atom.span));
+            }
+          }
+      }
+    }
+    function checkPredicate(pred, typeEnv, diagnostics, context) {
+      for (const conj of pred.disjuncts) {
+        for (const atom of conj.atoms) {
+          checkAtomicPredicate(atom, typeEnv, diagnostics, context);
+        }
+      }
+    }
+    function checkModuleTypes(module3, scopes) {
+      const diagnostics = [];
+      const typeEnv = buildTypeEnv(module3, scopes);
+      for (const t of module3.types) {
+        const raw = (0, types_js_1.typeExprToInternal)(t.typeExpr);
+        const resolved = (0, types_js_1.resolveInternalType)(raw, typeEnv);
+        if (raw.kind === "named" && resolved.kind === "named") {
+          diagnostics.push((0, codes_js_1.createDiagnostic)(codes_js_1.DiagnosticCodes.UNKNOWN_TYPE, `Unknown type alias '${t.name}'`, "error", t.span));
+        }
+      }
+      for (const v of module3.vars) {
+        const declared = (0, types_js_1.resolveInternalType)((0, types_js_1.typeExprToInternal)(v.typeExpr), typeEnv);
+        if (!isResolvedType(declared)) {
+          diagnostics.push((0, codes_js_1.createDiagnostic)(codes_js_1.DiagnosticCodes.UNKNOWN_TYPE, `Unknown type for variable '${v.variable.name}'`, "error", v.span));
+        }
+      }
+      for (const inv of module3.invariants) {
+        checkPredicate(inv.condition, typeEnv, diagnostics, `invariant`);
+      }
+      for (const p of module3.processes) {
+        for (const group of [...p.inputs, ...p.outputs]) {
+          diagnostics.push(...validateTypeExpr(group.typeExpr, typeEnv, `process '${p.name}' parameter`, group.span));
+        }
+        if (p.body?.fsf) {
+          for (const sc of p.body.fsf.scenarios) {
+            checkPredicate(sc.test, typeEnv, diagnostics, `FSF test of process '${p.name}'`);
+            checkPredicate(sc.def, typeEnv, diagnostics, `FSF def of process '${p.name}'`);
+          }
+          if (p.body.fsf.others) {
+            checkPredicate(p.body.fsf.others, typeEnv, diagnostics, `FSF others of process '${p.name}'`);
+          }
+        }
+        if (p.body?.ext) {
+          for (const ext of p.body.ext) {
+            if (ext.typeExpr) {
+              const d = inferExprType({ type: "identifier", span: ext.span, name: ext.name }, typeEnv);
+              if (d.kind !== "unknown") {
+                const extType = (0, types_js_1.resolveInternalType)((0, types_js_1.typeExprToInternal)(ext.typeExpr), typeEnv);
+                if (!(0, types_js_1.typesCompatibleStrict)(d, extType)) {
+                  diagnostics.push((0, codes_js_1.createDiagnostic)(codes_js_1.DiagnosticCodes.TYPE_MISMATCH, `Type mismatch for ext ${ext.access} '${ext.name}': expected ${(0, types_js_1.typeToString)(extType)}, got ${(0, types_js_1.typeToString)(d)}`, "error", ext.span));
+                }
+              }
+            }
+          }
+        }
+      }
+      for (const f of module3.functions) {
+        for (const group of f.params) {
+          diagnostics.push(...validateTypeExpr(group.typeExpr, typeEnv, `function '${f.name}' parameter`, group.span));
+        }
+        const ret = (0, types_js_1.resolveInternalType)((0, types_js_1.typeExprToInternal)(f.returnType), typeEnv);
+        if (!isResolvedType(ret)) {
+          diagnostics.push((0, codes_js_1.createDiagnostic)(codes_js_1.DiagnosticCodes.UNKNOWN_TYPE, `Unknown return type for function '${f.name}'`, "error", f.span));
+        }
+        if (f.fsf) {
+          for (const sc of f.fsf.scenarios) {
+            checkPredicate(sc.test, typeEnv, diagnostics, `FSF test of function '${f.name}'`);
+            checkPredicate(sc.def, typeEnv, diagnostics, `FSF def of function '${f.name}'`);
+          }
+          if (f.fsf.others) {
+            checkPredicate(f.fsf.others, typeEnv, diagnostics, `FSF others of function '${f.name}'`);
+          }
+        }
+        if (f.body && !f.isUndefined) {
+          const bodyType = inferExprType(f.body, typeEnv);
+          if (bodyType.kind !== "unknown" && ret.kind !== "unknown" && !(0, types_js_1.typesCompatibleStrict)(bodyType, ret)) {
+            diagnostics.push((0, codes_js_1.createDiagnostic)(codes_js_1.DiagnosticCodes.TYPE_MISMATCH, `Function '${f.name}' return type ${(0, types_js_1.typeToString)(ret)} does not match body ${(0, types_js_1.typeToString)(bodyType)}`, "error", f.span));
+          }
+          checkExprCalls(f.body, typeEnv, diagnostics, module3);
+        }
+      }
+      for (const c of module3.consts) {
+        checkExprCalls(c.value, typeEnv, diagnostics, module3);
+      }
+      return diagnostics;
+    }
+    function editDistanceAtMostOne(a, b) {
+      if (a === b)
+        return false;
+      if (Math.abs(a.length - b.length) > 1)
+        return false;
+      if (a.length === b.length) {
+        let diff = 0;
+        for (let i2 = 0; i2 < a.length; i2++) {
+          if (a[i2] !== b[i2])
+            diff++;
+          if (diff > 1)
+            return false;
+        }
+        return diff === 1;
+      }
+      const [shorter, longer] = a.length < b.length ? [a, b] : [b, a];
+      let i = 0;
+      let j = 0;
+      let edits = 0;
+      while (i < shorter.length && j < longer.length) {
+        if (shorter[i] === longer[j]) {
+          i++;
+          j++;
+          continue;
+        }
+        edits++;
+        if (edits > 1)
+          return false;
+        j++;
+      }
+      return edits + (longer.length - j) <= 1;
+    }
+    function isBuiltinTypo(name) {
+      if ((0, builtins_js_1.isBuiltin)(name))
+        return false;
+      return Object.keys(builtins_js_1.BUILTIN_FUNCTIONS).some((b) => editDistanceAtMostOne(name, b));
+    }
+    function callCalleeName(expr) {
+      if (typeof expr.callee === "string")
+        return expr.callee;
+      if (expr.callee.type === "identifier")
+        return expr.callee.name;
+      return void 0;
+    }
+    function functionParamTypes(fn, typeEnv) {
+      const params = [];
+      for (const group of fn.params) {
+        const t = (0, types_js_1.resolveInternalType)((0, types_js_1.typeExprToInternal)(group.typeExpr), typeEnv);
+        for (let i = 0; i < group.names.length; i++)
+          params.push(t);
+      }
+      return params;
+    }
+    function matchesBuiltinArgKind(kind, argType) {
+      if (argType.kind === "unknown")
+        return false;
+      switch (kind) {
+        case "number":
+          return (0, types_js_1.isNumericType)(argType);
+        case "bool":
+          return argType.kind === "basic" && argType.name === "bool";
+        case "set":
+          return argType.kind === "set";
+        case "seq":
+          return argType.kind === "seq";
+        case "map":
+          return argType.kind === "map";
+        case "identifier":
+          return true;
+        default:
+          return true;
+      }
+    }
+    function validateBuiltinCall(sig, args, typeEnv, diagnostics, span) {
+      if (args.length !== sig.argTypes.length) {
+        diagnostics.push((0, codes_js_1.createDiagnostic)(codes_js_1.DiagnosticCodes.TYPE_MISMATCH, `Builtin '${sig.name}' expects ${sig.argTypes.length} argument(s), got ${args.length}`, "error", span));
+        return;
+      }
+      for (let i = 0; i < args.length; i++) {
+        const argType = inferExprType(args[i], typeEnv);
+        if (!matchesBuiltinArgKind(sig.argTypes[i], argType)) {
+          diagnostics.push((0, codes_js_1.createDiagnostic)(codes_js_1.DiagnosticCodes.TYPE_MISMATCH, `Argument ${i + 1} to '${sig.name}' expected ${sig.argTypes[i]}, got ${(0, types_js_1.typeToString)(argType)}`, "error", args[i].span));
+        }
+      }
+    }
+    function validateUserCall(fn, args, typeEnv, diagnostics, span) {
+      const paramTypes = functionParamTypes(fn, typeEnv);
+      if (args.length !== paramTypes.length) {
+        diagnostics.push((0, codes_js_1.createDiagnostic)(codes_js_1.DiagnosticCodes.TYPE_MISMATCH, `Function '${fn.name}' expects ${paramTypes.length} argument(s), got ${args.length}`, "error", span));
+        return;
+      }
+      for (let i = 0; i < args.length; i++) {
+        const argType = inferExprType(args[i], typeEnv);
+        if (!(0, types_js_1.typesCompatibleStrict)(argType, paramTypes[i])) {
+          diagnostics.push((0, codes_js_1.createDiagnostic)(codes_js_1.DiagnosticCodes.TYPE_MISMATCH, `Argument ${i + 1} to '${fn.name}' expected ${(0, types_js_1.typeToString)(paramTypes[i])}, got ${(0, types_js_1.typeToString)(argType)}`, "error", args[i].span));
+        }
+      }
+    }
+    function checkExprCalls(expr, typeEnv, diagnostics, module3) {
+      if (expr.type === "call") {
+        const name = callCalleeName(expr);
+        if (name && isBuiltinTypo(name)) {
+          diagnostics.push((0, codes_js_1.createDiagnostic)(codes_js_1.DiagnosticCodes.INVALID_BUILTIN, `Unknown builtin function '${name}'`, "error", expr.span));
+        } else if (name && (0, builtins_js_1.isBuiltin)(name)) {
+          validateBuiltinCall(builtins_js_1.BUILTIN_FUNCTIONS[name], expr.args, typeEnv, diagnostics, expr.span);
+        } else if (name) {
+          const fn = module3.functions.find((f) => f.name === name);
+          if (fn)
+            validateUserCall(fn, expr.args, typeEnv, diagnostics, expr.span);
+        }
+      }
+      switch (expr.type) {
+        case "binary_op":
+          checkExprCalls(expr.left, typeEnv, diagnostics, module3);
+          checkExprCalls(expr.right, typeEnv, diagnostics, module3);
+          break;
+        case "let_expr":
+          for (const b of expr.bindings) {
+            if (b.value)
+              checkExprCalls(b.value, typeEnv, diagnostics, module3);
+          }
+          checkExprCalls(expr.body, typeEnv, diagnostics, module3);
+          break;
+        case "if_expr":
+          checkExprCalls(expr.thenExpr, typeEnv, diagnostics, module3);
+          checkExprCalls(expr.elseExpr, typeEnv, diagnostics, module3);
+          break;
+        case "case_expr":
+          for (const a of expr.alternatives)
+            checkExprCalls(a.expr, typeEnv, diagnostics, module3);
+          if (expr.default)
+            checkExprCalls(expr.default, typeEnv, diagnostics, module3);
+          break;
+        case "call":
+          for (const a of expr.args)
+            checkExprCalls(a, typeEnv, diagnostics, module3);
+          break;
+        case "paren_expr":
+          checkExprCalls(expr.inner, typeEnv, diagnostics, module3);
+          break;
+        case "field_access":
+          checkExprCalls(expr.object, typeEnv, diagnostics, module3);
+          break;
+        case "index_access":
+          checkExprCalls(expr.object, typeEnv, diagnostics, module3);
+          checkExprCalls(expr.index, typeEnv, diagnostics, module3);
+          break;
+        case "modify_expr":
+          checkExprCalls(expr.target, typeEnv, diagnostics, module3);
+          for (const f of expr.fields)
+            checkExprCalls(f.value, typeEnv, diagnostics, module3);
+          break;
+        case "mk_expr":
+          for (const a of expr.args)
+            checkExprCalls(a, typeEnv, diagnostics, module3);
+          break;
+        default:
+          break;
+      }
+    }
+    function typeCheck(program, scopeResult) {
+      const diagnostics = [];
+      const scopes = scopeResult ?? (0, resolver_js_1.resolveScope)(program);
+      for (const mod of program.modules) {
+        diagnostics.push(...checkModuleTypes(mod, scopes.scopes));
+      }
+      return { diagnostics };
+    }
+    function resolveTypeDecl(decl, env) {
+      const t = (0, types_js_1.resolveInternalType)((0, types_js_1.typeExprToInternal)(decl.typeExpr), env);
+      env.set(decl.name, t);
+      return t;
+    }
+  }
+});
+
+// ../../dist/ast/nodes.js
+var require_nodes = __commonJS({
+  "../../dist/ast/nodes.js"(exports2) {
+    "use strict";
+    Object.defineProperty(exports2, "__esModule", { value: true });
+    exports2.textOf = textOf3;
+    function textOf3(value) {
+      if (value === void 0)
+        return void 0;
+      return typeof value === "string" ? value : value.text;
+    }
+  }
+});
+
 // ../../dist/fsf/classifier.js
 var require_classifier = __commonJS({
   "../../dist/fsf/classifier.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.classifyFsf = classifyFsf;
+    var nodes_js_1 = require_nodes();
     var codes_js_1 = require_codes();
     var guards_js_1 = require_guards();
     function atomIsFormal(atom) {
@@ -24234,14 +24927,14 @@ var require_classifier = __commonJS({
       if (!process2.body?.fsf)
         return diagnostics;
       const formal = fsfIsFormal(process2.body.fsf);
-      const hasDecom = !!process2.body.decomposition;
+      const hasDecom = !!(0, nodes_js_1.textOf)(process2.body.decomposition);
       const isBottom = !hasDecom;
       if (isBottom && !formal) {
         diagnostics.push((0, codes_js_1.createDiagnostic)(codes_js_1.DiagnosticCodes.FSF_INFORMAL_BOTTOM, `Bottom-level process '${process2.name}' should use formal FSF specification`, "warning", process2.body.fsf.span));
       }
-      if (hasDecom && formal && process2.body.comment) {
+      if (hasDecom && formal && (0, nodes_js_1.textOf)(process2.body.comment)) {
       }
-      if (hasDecom && formal && !process2.body.comment) {
+      if (hasDecom && formal && !(0, nodes_js_1.textOf)(process2.body.comment)) {
         diagnostics.push((0, codes_js_1.createDiagnostic)(codes_js_1.DiagnosticCodes.FSF_FORMAL_NON_BOTTOM, `Non-bottom process '${process2.name}' with decomposition typically uses semi-formal FSF`, "info", process2.body.fsf.span));
       }
       if (process2.body.fsf.scenarios.length > 0 && !process2.body.fsf.others) {
@@ -24275,6 +24968,889 @@ var require_classifier = __commonJS({
   }
 });
 
+// ../../dist/visitor/walk.js
+var require_walk = __commonJS({
+  "../../dist/visitor/walk.js"(exports2) {
+    "use strict";
+    Object.defineProperty(exports2, "__esModule", { value: true });
+    exports2.walk = walk3;
+    exports2.visitAllNodes = visitAllNodes;
+    exports2.findNodeAtOffset = findNodeAtOffset2;
+    exports2.getNodeAtOffset = getNodeAtOffset;
+    exports2.collectHybridRegions = collectHybridRegions;
+    function spanOfText(value) {
+      if (value === void 0)
+        return void 0;
+      return typeof value === "string" ? void 0 : value.span;
+    }
+    function walk3(ast, visitor) {
+      visitor.enterProgram?.(ast);
+      for (const mod of ast.modules) {
+        walkModule(mod, visitor);
+      }
+      visitor.leaveProgram?.(ast);
+    }
+    function walkModule(mod, visitor) {
+      visitor.enterModule?.(mod);
+      for (const c of mod.consts) {
+        visitor.enterConstDecl?.(c);
+        walkDeclName(c.span, c.name, visitor);
+        visitor.leaveConstDecl?.(c);
+      }
+      for (const t of mod.types) {
+        visitor.enterTypeDecl?.(t);
+        walkTypeExpr(t.typeExpr, visitor);
+        visitor.leaveTypeDecl?.(t);
+      }
+      for (const v of mod.vars) {
+        visitor.enterVarDecl?.(v);
+        walkDeclName(v.variable.span, v.variable.name, visitor);
+        walkTypeExpr(v.typeExpr, visitor);
+        visitor.leaveVarDecl?.(v);
+      }
+      for (const inv of mod.invariants) {
+        walkPredicate2(inv.condition, visitor);
+      }
+      for (const p of mod.processes) {
+        visitor.enterProcess?.(p);
+        for (const g of [...p.inputs, ...p.outputs]) {
+          for (const name of g.names)
+            walkDeclName(g.span, name, visitor);
+          walkTypeExpr(g.typeExpr, visitor);
+        }
+        walkProcessBody(p, visitor);
+        visitor.leaveProcess?.(p);
+      }
+      for (const f of mod.functions) {
+        visitor.enterFunction?.(f);
+        if (f.body)
+          walkExpression(f.body, visitor);
+        if (f.fsf) {
+          visitor.enterFsfSpec?.(f.fsf);
+          walkFsf(f.fsf, visitor);
+          visitor.leaveFsfSpec?.(f.fsf);
+        }
+        visitor.leaveFunction?.(f);
+      }
+      visitor.leaveModule?.(mod);
+    }
+    function walkProcessBody(proc, visitor) {
+      const body = proc.body;
+      if (!body)
+        return;
+      visitor.enterProcessBody?.(body);
+      for (const ext of body.ext) {
+        visitor.enterExtVar?.(ext);
+        walkDeclName(ext.span, ext.name, visitor);
+        if (ext.typeExpr)
+          walkTypeExpr(ext.typeExpr, visitor);
+        visitor.leaveExtVar?.(ext);
+      }
+      if (body.fsf) {
+        visitor.enterFsfSpec?.(body.fsf);
+        walkFsf(body.fsf, visitor);
+        visitor.leaveFsfSpec?.(body.fsf);
+      }
+      if (body.comment !== void 0) {
+        visitor.enterComment?.(body.comment, body);
+      }
+      visitor.leaveProcessBody?.(body);
+    }
+    function walkDeclName(span, name, visitor) {
+      const id = { type: "identifier", span, name };
+      visitor.enterExpression?.(id);
+      visitor.leaveExpression?.(id);
+    }
+    function walkTypeExpr(type, visitor) {
+      visitor.enterTypeExpr?.(type);
+      if (type.type === "named_type") {
+        const q = type.qualified;
+        const id = {
+          type: "identifier",
+          span: type.span,
+          name: q.name,
+          qualified: q.module ? q : void 0
+        };
+        visitor.enterExpression?.(id);
+        visitor.leaveExpression?.(id);
+      } else if (type.type === "set_type" || type.type === "seq_type") {
+        walkTypeExpr(type.element, visitor);
+      } else if (type.type === "map_type") {
+        walkTypeExpr(type.domain, visitor);
+        walkTypeExpr(type.range, visitor);
+      } else if (type.type === "product_type") {
+        for (const el of type.elements)
+          walkTypeExpr(el, visitor);
+      } else if (type.type === "union_type") {
+        for (const v of type.variants)
+          walkTypeExpr(v, visitor);
+      } else if (type.type === "composed_type") {
+        for (const f of type.fields)
+          walkTypeExpr(f.typeExpr, visitor);
+      }
+      visitor.leaveTypeExpr?.(type);
+    }
+    function walkFsf(fsf, visitor) {
+      for (const scenario of fsf.scenarios) {
+        walkPredicate2(scenario.test, visitor);
+        walkPredicate2(scenario.def, visitor);
+      }
+      if (fsf.others)
+        walkPredicate2(fsf.others, visitor);
+    }
+    function walkPredicate2(pred, visitor) {
+      visitor.enterPredicate?.(pred);
+      for (const conj of pred.disjuncts) {
+        walkConjunction(conj, visitor);
+      }
+      visitor.leavePredicate?.(pred);
+    }
+    function walkConjunction(conj, visitor) {
+      for (const atom of conj.atoms) {
+        walkAtomic(atom, visitor);
+      }
+    }
+    function walkAtomic(atom, visitor) {
+      visitor.enterAtomic?.(atom);
+      if (atom.type === "not_predicate") {
+        walkAtomic(atom.operand, visitor);
+      } else if (atom.type === "paren_predicate") {
+        walkAtomic(atom.inner, visitor);
+      } else if (atom.type === "quantified") {
+        walkPredicate2(atom.body, visitor);
+        for (const nested of atom.nestedQuantifiers) {
+          walkPredicate2(nested.body, visitor);
+        }
+      } else if (atom.type === "informal_text") {
+        visitor.enterInformalText?.(atom);
+        visitor.leaveInformalText?.(atom);
+      } else if (atom.type !== "boolean_literal") {
+        walkExpression(atom, visitor);
+      }
+      visitor.leaveAtomic?.(atom);
+    }
+    function walkExpression(expr, visitor) {
+      visitor.enterExpression?.(expr);
+      switch (expr.type) {
+        case "binary_op":
+          walkExpression(expr.left, visitor);
+          walkExpression(expr.right, visitor);
+          break;
+        case "paren_expr":
+          walkExpression(expr.inner, visitor);
+          break;
+        case "if_expr":
+          walkPredicate2(expr.condition, visitor);
+          walkExpression(expr.thenExpr, visitor);
+          walkExpression(expr.elseExpr, visitor);
+          break;
+        case "let_expr":
+          for (const b of expr.bindings) {
+            if (b.guard)
+              walkPredicate2(b.guard, visitor);
+            if (b.value)
+              walkExpression(b.value, visitor);
+          }
+          walkExpression(expr.body, visitor);
+          break;
+        case "relational_expr":
+          walkExpression(expr.left, visitor);
+          if (expr.chainMid)
+            walkExpression(expr.chainMid, visitor);
+          if (expr.chainHigh)
+            walkExpression(expr.chainHigh, visitor);
+          walkExpression(expr.right, visitor);
+          break;
+        case "unary_minus":
+          walkExpression(expr.operand, visitor);
+          break;
+        case "index_access":
+          walkExpression(expr.object, visitor);
+          walkExpression(expr.index, visitor);
+          break;
+        case "field_access":
+          walkExpression(expr.object, visitor);
+          break;
+        case "mk_expr":
+          for (const arg of expr.args)
+            walkExpression(arg, visitor);
+          break;
+        case "modify_expr":
+          walkExpression(expr.target, visitor);
+          for (const f of expr.fields)
+            walkExpression(f.value, visitor);
+          break;
+        case "set_expr":
+        case "seq_expr":
+          if (expr.elements)
+            for (const el of expr.elements)
+              walkExpression(el, visitor);
+          if (expr.rangeLow)
+            walkExpression(expr.rangeLow, visitor);
+          if (expr.rangeHigh)
+            walkExpression(expr.rangeHigh, visitor);
+          if (expr.compExpr)
+            walkExpression(expr.compExpr, visitor);
+          if (expr.compGuard)
+            walkPredicate2(expr.compGuard, visitor);
+          break;
+        case "map_expr":
+          if (expr.pairs)
+            for (const p of expr.pairs) {
+              walkExpression(p.key, visitor);
+              walkExpression(p.value, visitor);
+            }
+          if (expr.compKey)
+            walkExpression(expr.compKey, visitor);
+          if (expr.compValue)
+            walkExpression(expr.compValue, visitor);
+          if (expr.compGuard)
+            walkPredicate2(expr.compGuard, visitor);
+          break;
+        case "call":
+          if (typeof expr.callee !== "string")
+            walkExpression(expr.callee, visitor);
+          for (const arg of expr.args)
+            walkExpression(arg, visitor);
+          break;
+        case "case_expr":
+          walkExpression(expr.scrutinee, visitor);
+          for (const alt of expr.alternatives) {
+            walkExpression(alt.expr, visitor);
+          }
+          if (expr.default)
+            walkExpression(expr.default, visitor);
+          break;
+        default:
+          break;
+      }
+      visitor.leaveExpression?.(expr);
+    }
+    function visitAllNodes(ast, visit) {
+      walk3(ast, {
+        enterProgram: visit,
+        enterModule: visit,
+        enterConstDecl: visit,
+        enterTypeDecl: visit,
+        enterVarDecl: visit,
+        enterProcess: visit,
+        enterFunction: visit,
+        enterExpression: visit,
+        enterPredicate: visit,
+        enterAtomic: visit,
+        enterTypeExpr: visit
+      });
+    }
+    function findNodeAtOffset2(ast, offset) {
+      let best = null;
+      let bestLen = Infinity;
+      visitAllNodes(ast, (node) => {
+        const span = node.span;
+        if (!span || span.start === 0 && span.end === 0)
+          return;
+        if (offset >= span.start && offset <= span.end && span.end - span.start < bestLen) {
+          best = node;
+          bestLen = span.end - span.start;
+        }
+      });
+      return best;
+    }
+    function getNodeAtOffset(ast, offset) {
+      return findNodeAtOffset2(ast, offset);
+    }
+    function pushHybridRegion(regions, ctx, type, span) {
+      if (!span || span.end <= span.start)
+        return;
+      regions.push({
+        type,
+        span,
+        moduleName: ctx.moduleName,
+        processName: ctx.processName,
+        functionName: ctx.functionName
+      });
+    }
+    function pushTextRegion(regions, ctx, type, value) {
+      if (value === void 0)
+        return;
+      pushHybridRegion(regions, ctx, type, spanOfText(value));
+    }
+    function collectHybridRegions(ast) {
+      const regions = [];
+      const ctx = { moduleName: "" };
+      walk3(ast, {
+        enterModule(mod) {
+          ctx.moduleName = mod.name;
+          ctx.processName = void 0;
+          ctx.functionName = void 0;
+        },
+        enterProcess(proc) {
+          ctx.processName = proc.name;
+          ctx.functionName = void 0;
+        },
+        leaveProcess() {
+          ctx.processName = void 0;
+        },
+        enterFunction(fn) {
+          ctx.functionName = fn.name;
+          ctx.processName = void 0;
+        },
+        leaveFunction() {
+          ctx.functionName = void 0;
+        },
+        enterFsfSpec(node) {
+          pushHybridRegion(regions, ctx, "fsf", node.span);
+        },
+        enterInformalText(node) {
+          pushHybridRegion(regions, ctx, "informal", node.span);
+        },
+        enterProcessBody(body) {
+          pushTextRegion(regions, ctx, "decom", body.decomposition);
+        },
+        enterComment(comment) {
+          pushTextRegion(regions, ctx, "comment", comment);
+        }
+      });
+      return regions;
+    }
+  }
+});
+
+// ../../dist/scope/reference.js
+var require_reference = __commonJS({
+  "../../dist/scope/reference.js"(exports2) {
+    "use strict";
+    Object.defineProperty(exports2, "__esModule", { value: true });
+    exports2.resolveReferenceByName = resolveReferenceByName2;
+    exports2.resolveReference = resolveReference3;
+    exports2.resolveDeclarationAtOffset = resolveDeclarationAtOffset3;
+    var walk_js_1 = require_walk();
+    var resolver_js_1 = require_resolver();
+    function moduleAtOffset3(program, offset) {
+      let best = null;
+      let bestLen = Infinity;
+      for (const mod of program.modules) {
+        const { span } = mod;
+        if (span.end <= span.start)
+          continue;
+        if (offset >= span.start && offset <= span.end && span.end - span.start < bestLen) {
+          best = mod;
+          bestLen = span.end - span.start;
+        }
+      }
+      return best;
+    }
+    function scopeForModule(scopeResult, mod) {
+      return (0, resolver_js_1.lookupModuleScope)(scopeResult, mod.name);
+    }
+    function findEnclosingFunction(mod, offset) {
+      for (const fn of mod.functions) {
+        if (offset >= fn.span.start && offset <= fn.span.end)
+          return fn;
+      }
+      return null;
+    }
+    function functionLocalSymbol(fn, name, moduleName) {
+      for (const group of fn.params) {
+        if (group.names.includes(name)) {
+          return { kind: "var", name, moduleName, span: group.span };
+        }
+      }
+      return null;
+    }
+    function findEnclosingProcess(mod, offset) {
+      for (const proc of mod.processes) {
+        if (offset >= proc.span.start && offset <= proc.span.end)
+          return proc;
+      }
+      return null;
+    }
+    function paramNameSpan(group) {
+      return group.span;
+    }
+    function processLocalSymbol(proc, name, moduleName) {
+      for (const group of proc.inputs) {
+        if (group.names.includes(name)) {
+          return { kind: "var", name, moduleName, span: paramNameSpan(group) };
+        }
+      }
+      for (const group of proc.outputs) {
+        if (group.names.includes(name)) {
+          return { kind: "var", name, moduleName, span: paramNameSpan(group) };
+        }
+      }
+      if (proc.body) {
+        for (const ext of proc.body.ext) {
+          if (ext.name === name) {
+            return { kind: "var", name, moduleName, span: ext.span };
+          }
+        }
+      }
+      return null;
+    }
+    function resolveProcessAlias(scopeResult, currentMod, proc) {
+      const alias = proc.alias;
+      if (!alias)
+        return null;
+      return resolveName(scopeResult, currentMod, alias.name, alias.module);
+    }
+    function resolveName(scopeResult, currentMod, name, moduleQualifier, offset) {
+      const scope = scopeForModule(scopeResult, currentMod);
+      if (!scope)
+        return null;
+      if (!moduleQualifier && offset !== void 0) {
+        const proc = findEnclosingProcess(currentMod, offset);
+        if (proc) {
+          const local = processLocalSymbol(proc, name, currentMod.name);
+          if (local) {
+            return { symbol: local, module: currentMod, span: local.span };
+          }
+        }
+        const fn = findEnclosingFunction(currentMod, offset);
+        if (fn) {
+          const local = functionLocalSymbol(fn, name, currentMod.name);
+          if (local) {
+            return { symbol: local, module: currentMod, span: local.span };
+          }
+        }
+      }
+      let symbol = (0, resolver_js_1.lookupSymbol)(scope, name, moduleQualifier, scopeResult);
+      if (!symbol && moduleQualifier) {
+        const modScope = (0, resolver_js_1.lookupModuleScope)(scopeResult, moduleQualifier);
+        symbol = modScope?.symbols.get(name);
+      }
+      if (!symbol) {
+        symbol = (0, resolver_js_1.lookupSymbol)(scope, name, void 0, scopeResult);
+      }
+      if (!symbol)
+        return null;
+      const mod = scopeResult.scopes.get(symbol.moduleName)?.module ?? programModuleByName(scopeResult, symbol.moduleName);
+      if (!mod)
+        return null;
+      return { symbol, module: mod, span: symbol.span };
+    }
+    function programModuleByName(scopeResult, name) {
+      const modScope = (0, resolver_js_1.lookupModuleScope)(scopeResult, name);
+      return modScope?.module ?? null;
+    }
+    function referenceFromNode(node, scopeResult, currentMod, offset) {
+      if (node.type === "identifier") {
+        const id = node;
+        const qualifier = id.qualified?.module;
+        return resolveName(scopeResult, currentMod, id.name, qualifier, offset);
+      }
+      if (node.type === "field_access") {
+        const fa = node;
+        if (fa.object.type === "identifier") {
+          const obj = fa.object;
+          const modName = obj.qualified?.module ?? obj.name;
+          return resolveName(scopeResult, currentMod, fa.field, modName, offset);
+        }
+      }
+      if (node.type === "named_type") {
+        const nt = node;
+        return resolveName(scopeResult, currentMod, nt.qualified.name, nt.qualified.module, offset);
+      }
+      if (node.type === "type_decl" || node.type === "var_decl" || node.type === "const_decl") {
+        return null;
+      }
+      if (node.type === "process" || node.type === "function") {
+        return null;
+      }
+      return null;
+    }
+    function resolveReferenceByName2(scopeResult, currentMod, name, moduleQualifier, offset) {
+      return resolveName(scopeResult, currentMod, name, moduleQualifier, offset);
+    }
+    function resolveDeclarationTarget(node, scopeResult, currentMod) {
+      if (node.type === "type_decl") {
+        const sym = scopeForModule(scopeResult, currentMod)?.symbols.get(node.name);
+        if (sym)
+          return { symbol: sym, module: currentMod, span: node.span };
+      }
+      if (node.type === "var_decl") {
+        const sym = scopeForModule(scopeResult, currentMod)?.symbols.get(node.variable.name);
+        if (sym)
+          return { symbol: sym, module: currentMod, span: node.variable.span };
+      }
+      if (node.type === "const_decl") {
+        const sym = scopeForModule(scopeResult, currentMod)?.symbols.get(node.name);
+        if (sym)
+          return { symbol: sym, module: currentMod, span: node.span };
+      }
+      if (node.type === "process") {
+        const sym = scopeForModule(scopeResult, currentMod)?.symbols.get(node.name);
+        if (sym)
+          return { symbol: sym, module: currentMod, span: node.span };
+      }
+      if (node.type === "function") {
+        const sym = scopeForModule(scopeResult, currentMod)?.symbols.get(node.name);
+        if (sym)
+          return { symbol: sym, module: currentMod, span: node.span };
+      }
+      return null;
+    }
+    function resolveReference3(program, scopeResult, offset) {
+      const currentMod = moduleAtOffset3(program, offset);
+      if (!currentMod)
+        return null;
+      const proc = findEnclosingProcess(currentMod, offset);
+      if (proc?.alias && offset >= proc.alias.span.start && offset <= proc.alias.span.end) {
+        const aliasTarget = resolveProcessAlias(scopeResult, currentMod, proc);
+        if (aliasTarget)
+          return aliasTarget;
+      }
+      const node = (0, walk_js_1.findNodeAtOffset)(program, offset);
+      if (!node)
+        return null;
+      return referenceFromNode(node, scopeResult, currentMod, offset);
+    }
+    function resolveDeclarationAtOffset3(program, scopeResult, offset) {
+      const currentMod = moduleAtOffset3(program, offset);
+      if (!currentMod)
+        return null;
+      const proc = findEnclosingProcess(currentMod, offset);
+      if (proc?.alias && offset >= proc.alias.span.start && offset <= proc.alias.span.end) {
+        const aliasTarget = resolveProcessAlias(scopeResult, currentMod, proc);
+        if (aliasTarget)
+          return aliasTarget;
+      }
+      const node = (0, walk_js_1.findNodeAtOffset)(program, offset);
+      if (!node)
+        return null;
+      return resolveDeclarationTarget(node, scopeResult, currentMod) ?? resolveReference3(program, scopeResult, offset);
+    }
+  }
+});
+
+// ../../dist/scope/referenceChecker.js
+var require_referenceChecker = __commonJS({
+  "../../dist/scope/referenceChecker.js"(exports2) {
+    "use strict";
+    Object.defineProperty(exports2, "__esModule", { value: true });
+    exports2.checkReferences = checkReferences;
+    var codes_js_1 = require_codes();
+    var reference_js_1 = require_reference();
+    function moduleAtOffset3(program, offset) {
+      for (const mod of program.modules) {
+        if (offset >= mod.span.start && offset <= mod.span.end)
+          return mod;
+      }
+      return null;
+    }
+    function isDeclNameOffset(program, scopeResult, offset) {
+      const decl = (0, reference_js_1.resolveDeclarationAtOffset)(program, scopeResult, offset);
+      if (!decl)
+        return false;
+      return offset >= decl.span.start && offset <= decl.span.end;
+    }
+    function collectRefSites(program) {
+      const sites = [];
+      for (const mod of program.modules) {
+        collectModuleRefSites(mod, sites);
+      }
+      return sites;
+    }
+    function pushSite(sites, span, name, offset, moduleQualifier) {
+      if (span.end <= span.start)
+        return;
+      sites.push({ span, offset: offset ?? span.start, name, moduleQualifier });
+    }
+    function pushIdentifier(sites, id) {
+      pushSite(sites, id.span, id.name, void 0, id.qualified?.module);
+    }
+    function paramNames(groups) {
+      const names = /* @__PURE__ */ new Set();
+      for (const g of groups) {
+        for (const n of g.names)
+          names.add(n);
+      }
+      return names;
+    }
+    function collectModuleRefSites(mod, sites) {
+      for (const c of mod.consts) {
+        walkExpressionRefs(c.value, sites, /* @__PURE__ */ new Set());
+      }
+      for (const t of mod.types) {
+        if (t.parentType)
+          pushQualifiedName(t.parentType, sites);
+        walkTypeExprRefs(t.typeExpr, sites);
+      }
+      for (const v of mod.vars) {
+        walkTypeExprRefs(v.typeExpr, sites);
+      }
+      for (const inv of mod.invariants) {
+        walkPredicateRefs(inv.condition, sites, /* @__PURE__ */ new Set());
+      }
+      for (const p of mod.processes) {
+        for (const g of [...p.inputs, ...p.outputs]) {
+          walkTypeExprRefs(g.typeExpr, sites);
+        }
+        if (p.alias)
+          pushQualifiedName(p.alias, sites);
+        walkProcessBodyRefs(p, sites);
+      }
+      for (const f of mod.functions) {
+        for (const g of f.params)
+          walkTypeExprRefs(g.typeExpr, sites);
+        walkTypeExprRefs(f.returnType, sites);
+        const fnLocals = paramNames(f.params);
+        if (f.fsf)
+          walkFsfRefs(f.fsf, sites, fnLocals);
+        if (f.body)
+          walkExpressionRefs(f.body, sites, fnLocals);
+      }
+    }
+    function pushQualifiedName(q, sites) {
+      pushSite(sites, q.span, q.name, void 0, q.module);
+    }
+    function walkProcessBodyRefs(proc, sites) {
+      const body = proc.body;
+      if (!body)
+        return;
+      for (const ext of body.ext) {
+        if (ext.typeExpr)
+          walkTypeExprRefs(ext.typeExpr, sites);
+      }
+      const locals = paramNames([...proc.inputs, ...proc.outputs]);
+      for (const ext of body.ext ?? [])
+        locals.add(ext.name);
+      if (body.fsf)
+        walkFsfRefs(body.fsf, sites, locals);
+    }
+    function walkFsfRefs(fsf, sites, skipNames) {
+      for (const sc of fsf.scenarios) {
+        walkPredicateRefs(sc.test, sites, skipNames);
+        walkPredicateRefs(sc.def, sites, skipNames);
+      }
+      if (fsf.others)
+        walkPredicateRefs(fsf.others, sites, skipNames);
+    }
+    function walkTypeExprRefs(type, sites) {
+      switch (type.type) {
+        case "named_type":
+          pushQualifiedName(type.qualified, sites);
+          break;
+        case "set_type":
+        case "seq_type":
+          walkTypeExprRefs(type.element, sites);
+          break;
+        case "map_type":
+          walkTypeExprRefs(type.domain, sites);
+          walkTypeExprRefs(type.range, sites);
+          break;
+        case "product_type":
+          for (const el of type.elements)
+            walkTypeExprRefs(el, sites);
+          break;
+        case "union_type":
+          for (const v of type.variants)
+            walkTypeExprRefs(v, sites);
+          break;
+        case "composed_type":
+          for (const f of type.fields)
+            walkTypeExprRefs(f.typeExpr, sites);
+          break;
+        default:
+          break;
+      }
+    }
+    function walkPredicateRefs(pred, sites, skipNames) {
+      for (const conj of pred.disjuncts) {
+        for (const atom of conj.atoms) {
+          walkAtomicRefs(atom, sites, skipNames);
+        }
+      }
+    }
+    function walkAtomicRefs(atom, sites, skipNames) {
+      switch (atom.type) {
+        case "not_predicate":
+          walkAtomicRefs(atom.operand, sites, skipNames);
+          break;
+        case "paren_predicate":
+          walkAtomicRefs(atom.inner, sites, skipNames);
+          break;
+        case "informal_text":
+          break;
+        case "quantified": {
+          const local = new Set(skipNames);
+          for (const bg of atom.bindings) {
+            for (const n of bg.names)
+              local.add(n);
+            walkTypeExprRefs(bg.typeExpr, sites);
+          }
+          for (const nested of atom.nestedQuantifiers) {
+            for (const bg of nested.bindings) {
+              for (const n of bg.names)
+                local.add(n);
+              walkTypeExprRefs(bg.typeExpr, sites);
+            }
+          }
+          walkPredicateRefs(atom.body, sites, local);
+          break;
+        }
+        case "boolean_literal":
+          break;
+        default:
+          walkExpressionRefs(atom, sites, skipNames);
+      }
+    }
+    function walkExpressionRefs(expr, sites, skipNames) {
+      switch (expr.type) {
+        case "identifier":
+          if (skipNames.has(expr.name))
+            return;
+          pushIdentifier(sites, expr);
+          return;
+        case "field_access":
+          walkExpressionRefs(expr.object, sites, skipNames);
+          return;
+        case "binary_op":
+          walkExpressionRefs(expr.left, sites, skipNames);
+          walkExpressionRefs(expr.right, sites, skipNames);
+          return;
+        case "paren_expr":
+          walkExpressionRefs(expr.inner, sites, skipNames);
+          return;
+        case "if_expr":
+          walkPredicateRefs(expr.condition, sites, skipNames);
+          walkExpressionRefs(expr.thenExpr, sites, skipNames);
+          walkExpressionRefs(expr.elseExpr, sites, skipNames);
+          return;
+        case "let_expr": {
+          const local = new Set(skipNames);
+          for (const b of expr.bindings) {
+            if (b.typeExpr) {
+              for (const n of b.names)
+                local.add(n);
+              walkTypeExprRefs(b.typeExpr, sites);
+            }
+            if (b.guard)
+              walkPredicateRefs(b.guard, sites, local);
+            if (b.value) {
+              walkExpressionRefs(b.value, sites, local);
+              if (!b.typeExpr)
+                for (const n of b.names)
+                  local.add(n);
+            }
+          }
+          walkExpressionRefs(expr.body, sites, local);
+          return;
+        }
+        case "relational_expr":
+          walkExpressionRefs(expr.left, sites, skipNames);
+          if (expr.chainMid)
+            walkExpressionRefs(expr.chainMid, sites, skipNames);
+          if (expr.chainHigh)
+            walkExpressionRefs(expr.chainHigh, sites, skipNames);
+          walkExpressionRefs(expr.right, sites, skipNames);
+          return;
+        case "unary_minus":
+          walkExpressionRefs(expr.operand, sites, skipNames);
+          return;
+        case "index_access":
+          walkExpressionRefs(expr.object, sites, skipNames);
+          walkExpressionRefs(expr.index, sites, skipNames);
+          return;
+        case "mk_expr":
+          pushQualifiedName(expr.typeName, sites);
+          for (const a of expr.args)
+            walkExpressionRefs(a, sites, skipNames);
+          return;
+        case "modify_expr":
+          walkExpressionRefs(expr.target, sites, skipNames);
+          for (const f of expr.fields)
+            walkExpressionRefs(f.value, sites, skipNames);
+          return;
+        case "set_expr":
+        case "seq_expr":
+          if (expr.elements) {
+            for (const el of expr.elements)
+              walkExpressionRefs(el, sites, skipNames);
+          }
+          if (expr.rangeLow)
+            walkExpressionRefs(expr.rangeLow, sites, skipNames);
+          if (expr.rangeHigh)
+            walkExpressionRefs(expr.rangeHigh, sites, skipNames);
+          if (expr.kind === "comprehension") {
+            const local = new Set(skipNames);
+            if (expr.compBindings) {
+              for (const bg of expr.compBindings) {
+                for (const n of bg.names)
+                  local.add(n);
+                walkTypeExprRefs(bg.typeExpr, sites);
+              }
+            }
+            if (expr.compGuard)
+              walkPredicateRefs(expr.compGuard, sites, local);
+            if (expr.compExpr)
+              walkExpressionRefs(expr.compExpr, sites, local);
+          }
+          return;
+        case "map_expr":
+          if (expr.pairs) {
+            for (const p of expr.pairs) {
+              walkExpressionRefs(p.key, sites, skipNames);
+              walkExpressionRefs(p.value, sites, skipNames);
+            }
+          }
+          if (expr.kind === "comprehension") {
+            const local = new Set(skipNames);
+            if (expr.compBindings) {
+              for (const bg of expr.compBindings) {
+                for (const n of bg.names)
+                  local.add(n);
+                walkTypeExprRefs(bg.typeExpr, sites);
+              }
+            }
+            if (expr.compGuard)
+              walkPredicateRefs(expr.compGuard, sites, local);
+            if (expr.compKey)
+              walkExpressionRefs(expr.compKey, sites, local);
+            if (expr.compValue)
+              walkExpressionRefs(expr.compValue, sites, local);
+          }
+          return;
+        case "call":
+          if (typeof expr.callee !== "string") {
+            walkExpressionRefs(expr.callee, sites, skipNames);
+          }
+          for (const a of expr.args)
+            walkExpressionRefs(a, sites, skipNames);
+          return;
+        case "case_expr":
+          walkExpressionRefs(expr.scrutinee, sites, skipNames);
+          for (const alt of expr.alternatives) {
+            walkExpressionRefs(alt.expr, sites, skipNames);
+          }
+          if (expr.default)
+            walkExpressionRefs(expr.default, sites, skipNames);
+          return;
+        default:
+          break;
+      }
+    }
+    function checkReferences(program, scopeResult) {
+      const diagnostics = [];
+      const seen = /* @__PURE__ */ new Set();
+      const sites = collectRefSites(program);
+      for (const site of sites) {
+        const key = `${site.offset}:${site.span.end}`;
+        if (seen.has(key))
+          continue;
+        seen.add(key);
+        if (isDeclNameOffset(program, scopeResult, site.offset))
+          continue;
+        const mod = moduleAtOffset3(program, site.offset);
+        const resolved = (0, reference_js_1.resolveReference)(program, scopeResult, site.offset) ?? (mod ? (0, reference_js_1.resolveReferenceByName)(scopeResult, mod, site.name, site.moduleQualifier, site.offset) : null);
+        if (resolved)
+          continue;
+        diagnostics.push((0, codes_js_1.createDiagnostic)(codes_js_1.DiagnosticCodes.UNDEFINED_SYMBOL, "Undefined symbol reference", "error", site.span));
+      }
+      return { diagnostics };
+    }
+  }
+});
+
 // ../../dist/transform/normalize.js
 var require_normalize = __commonJS({
   "../../dist/transform/normalize.js"(exports2) {
@@ -24302,7 +25878,7 @@ var require_normalize = __commonJS({
       }
       const result = {};
       for (const [key, value] of Object.entries(node)) {
-        if (key === "span")
+        if (key === "span" || key.endsWith("Span"))
           continue;
         result[key] = stripSpans(value);
       }
@@ -24350,6 +25926,7 @@ var require_print = __commonJS({
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.printProgram = printProgram;
     exports2.format = format2;
+    var nodes_js_1 = require_nodes();
     var INDENT = "    ";
     var IndentWriter = class {
       constructor() {
@@ -24362,6 +25939,12 @@ var require_print = __commonJS({
         return this.lines.join("\n");
       }
     };
+    function needsTypeParens(type) {
+      return type.type === "union_type" && !type.isUniversal && type.variants.length > 1;
+    }
+    function printTypeOperand(type) {
+      return needsTypeParens(type) ? `(${printType(type)})` : printType(type);
+    }
     function printType(type) {
       switch (type.type) {
         case "basic_type":
@@ -24377,7 +25960,7 @@ var require_print = __commonJS({
         case "composed_type":
           return `composed of ${type.fields.map((f) => `${f.name}: ${printType(f.typeExpr)}`).join(" ")} end`;
         case "product_type":
-          return type.elements.map(printType).join(" * ");
+          return type.elements.map(printTypeOperand).join(" * ");
         case "map_type":
           return `map ${printType(type.domain)} to ${printType(type.range)}`;
         case "union_type":
@@ -24563,10 +26146,10 @@ var require_print = __commonJS({
           printFsf(writer, bodyLevel, p.body.fsf);
         }
         if (p.body.decomposition) {
-          writer.line(bodyLevel, `decom: ${p.body.decomposition}`);
+          writer.line(bodyLevel, `decom: ${(0, nodes_js_1.textOf)(p.body.decomposition)}`);
         }
         if (p.body.comment) {
-          writer.line(bodyLevel, `comment: ${p.body.comment}`);
+          writer.line(bodyLevel, `comment: ${(0, nodes_js_1.textOf)(p.body.comment)}`);
         }
       }
       writer.line(level, "end_process");
@@ -24645,315 +26228,6 @@ var require_print = __commonJS({
   }
 });
 
-// ../../dist/visitor/walk.js
-var require_walk = __commonJS({
-  "../../dist/visitor/walk.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.walk = walk3;
-    exports2.visitAllNodes = visitAllNodes;
-    exports2.findNodeAtOffset = findNodeAtOffset;
-    exports2.getNodeAtOffset = getNodeAtOffset;
-    function walk3(ast, visitor) {
-      visitor.enterProgram?.(ast);
-      for (const mod of ast.modules) {
-        walkModule(mod, visitor);
-      }
-      visitor.leaveProgram?.(ast);
-    }
-    function walkModule(mod, visitor) {
-      visitor.enterModule?.(mod);
-      for (const c of mod.consts) {
-        visitor.enterConstDecl?.(c);
-        visitor.leaveConstDecl?.(c);
-      }
-      for (const t of mod.types) {
-        visitor.enterTypeDecl?.(t);
-        visitor.leaveTypeDecl?.(t);
-      }
-      for (const v of mod.vars) {
-        visitor.enterVarDecl?.(v);
-        visitor.leaveVarDecl?.(v);
-      }
-      for (const inv of mod.invariants) {
-        walkPredicate2(inv.condition, visitor);
-      }
-      for (const p of mod.processes) {
-        visitor.enterProcess?.(p);
-        walkProcessBody(p, visitor);
-        visitor.leaveProcess?.(p);
-      }
-      for (const f of mod.functions) {
-        visitor.enterFunction?.(f);
-        if (f.body)
-          walkExpression(f.body, visitor);
-        if (f.fsf)
-          walkFsf(f.fsf, visitor);
-        visitor.leaveFunction?.(f);
-      }
-      visitor.leaveModule?.(mod);
-    }
-    function walkProcessBody(proc, visitor) {
-      const body = proc.body;
-      if (!body)
-        return;
-      if (body.fsf)
-        walkFsf(body.fsf, visitor);
-    }
-    function walkFsf(fsf, visitor) {
-      for (const scenario of fsf.scenarios) {
-        walkPredicate2(scenario.test, visitor);
-        walkPredicate2(scenario.def, visitor);
-      }
-      if (fsf.others)
-        walkPredicate2(fsf.others, visitor);
-    }
-    function walkPredicate2(pred, visitor) {
-      visitor.enterPredicate?.(pred);
-      for (const conj of pred.disjuncts) {
-        walkConjunction(conj, visitor);
-      }
-      visitor.leavePredicate?.(pred);
-    }
-    function walkConjunction(conj, visitor) {
-      for (const atom of conj.atoms) {
-        walkAtomic(atom, visitor);
-      }
-    }
-    function walkAtomic(atom, visitor) {
-      visitor.enterAtomic?.(atom);
-      if (atom.type === "not_predicate") {
-        walkAtomic(atom.operand, visitor);
-      } else if (atom.type === "paren_predicate") {
-        walkAtomic(atom.inner, visitor);
-      } else if (atom.type === "quantified") {
-        walkPredicate2(atom.body, visitor);
-        for (const nested of atom.nestedQuantifiers) {
-          walkPredicate2(nested.body, visitor);
-        }
-      } else if (atom.type !== "informal_text" && atom.type !== "boolean_literal") {
-        walkExpression(atom, visitor);
-      }
-      visitor.leaveAtomic?.(atom);
-    }
-    function walkExpression(expr, visitor) {
-      visitor.enterExpression?.(expr);
-      switch (expr.type) {
-        case "binary_op":
-          walkExpression(expr.left, visitor);
-          walkExpression(expr.right, visitor);
-          break;
-        case "paren_expr":
-          walkExpression(expr.inner, visitor);
-          break;
-        case "if_expr":
-          walkPredicate2(expr.condition, visitor);
-          walkExpression(expr.thenExpr, visitor);
-          walkExpression(expr.elseExpr, visitor);
-          break;
-        case "let_expr":
-          for (const b of expr.bindings) {
-            if (b.guard)
-              walkPredicate2(b.guard, visitor);
-            if (b.value)
-              walkExpression(b.value, visitor);
-          }
-          walkExpression(expr.body, visitor);
-          break;
-        case "field_access":
-          walkExpression(expr.object, visitor);
-          break;
-        case "call":
-          if (typeof expr.callee !== "string")
-            walkExpression(expr.callee, visitor);
-          for (const arg of expr.args)
-            walkExpression(arg, visitor);
-          break;
-        case "case_expr":
-          walkExpression(expr.scrutinee, visitor);
-          for (const alt of expr.alternatives) {
-            walkExpression(alt.expr, visitor);
-          }
-          if (expr.default)
-            walkExpression(expr.default, visitor);
-          break;
-        default:
-          break;
-      }
-      visitor.leaveExpression?.(expr);
-    }
-    function visitAllNodes(ast, visit) {
-      walk3(ast, {
-        enterProgram: visit,
-        enterModule: visit,
-        enterConstDecl: visit,
-        enterTypeDecl: visit,
-        enterVarDecl: visit,
-        enterProcess: visit,
-        enterFunction: visit,
-        enterExpression: visit,
-        enterPredicate: visit,
-        enterAtomic: visit
-      });
-    }
-    function findNodeAtOffset(ast, offset) {
-      let best = null;
-      let bestLen = Infinity;
-      visitAllNodes(ast, (node) => {
-        const span = node.span;
-        if (!span || span.start === 0 && span.end === 0)
-          return;
-        if (offset >= span.start && offset <= span.end && span.end - span.start < bestLen) {
-          best = node;
-          bestLen = span.end - span.start;
-        }
-      });
-      return best;
-    }
-    function getNodeAtOffset(ast, offset) {
-      return findNodeAtOffset(ast, offset);
-    }
-  }
-});
-
-// ../../dist/scope/reference.js
-var require_reference = __commonJS({
-  "../../dist/scope/reference.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.resolveReference = resolveReference3;
-    exports2.resolveDeclarationAtOffset = resolveDeclarationAtOffset3;
-    var walk_js_1 = require_walk();
-    var resolver_js_1 = require_resolver();
-    function moduleAtOffset(program, offset) {
-      let best = null;
-      let bestLen = Infinity;
-      for (const mod of program.modules) {
-        const { span } = mod;
-        if (span.end <= span.start)
-          continue;
-        if (offset >= span.start && offset <= span.end && span.end - span.start < bestLen) {
-          best = mod;
-          bestLen = span.end - span.start;
-        }
-      }
-      return best;
-    }
-    function scopeForModule(scopeResult, mod) {
-      return findModuleScope(scopeResult, mod.name);
-    }
-    function findModuleScope(scopeResult, moduleName) {
-      if (!scopeResult.root)
-        return void 0;
-      if (scopeResult.root.module.name === moduleName)
-        return scopeResult.root;
-      const queue = [...scopeResult.root.children];
-      while (queue.length) {
-        const current = queue.shift();
-        if (current.module.name === moduleName)
-          return current;
-        queue.push(...current.children);
-      }
-      return void 0;
-    }
-    function resolveName(scopeResult, currentMod, name, moduleQualifier) {
-      const scope = scopeForModule(scopeResult, currentMod);
-      if (!scope)
-        return null;
-      let symbol = (0, resolver_js_1.lookupSymbol)(scope, name, moduleQualifier);
-      if (!symbol && moduleQualifier) {
-        const modScope = findModuleScope(scopeResult, moduleQualifier);
-        symbol = modScope?.symbols.get(name);
-      }
-      if (!symbol) {
-        symbol = (0, resolver_js_1.lookupSymbol)(scope, name);
-      }
-      if (!symbol)
-        return null;
-      const mod = scopeResult.root?.module.name === symbol.moduleName ? scopeResult.root.module : programModuleByName(scopeResult, symbol.moduleName);
-      if (!mod)
-        return null;
-      return { symbol, module: mod, span: symbol.span };
-    }
-    function programModuleByName(scopeResult, name) {
-      if (!scopeResult.root)
-        return null;
-      const queue = [scopeResult.root];
-      while (queue.length) {
-        const current = queue.shift();
-        if (current.module.name === name)
-          return current.module;
-        queue.push(...current.children);
-      }
-      return null;
-    }
-    function referenceFromNode(node, scopeResult, currentMod) {
-      if (node.type === "identifier") {
-        const id = node;
-        const qualifier = id.qualified?.name;
-        return resolveName(scopeResult, currentMod, id.name, qualifier);
-      }
-      if (node.type === "field_access") {
-        const fa = node;
-        if (fa.object.type === "identifier") {
-          const modName = fa.object.name;
-          return resolveName(scopeResult, currentMod, fa.field, modName);
-        }
-      }
-      if (node.type === "type_decl" || node.type === "var_decl" || node.type === "const_decl") {
-        return null;
-      }
-      if (node.type === "process" || node.type === "function") {
-        return null;
-      }
-      return null;
-    }
-    function resolveReference3(program, scopeResult, offset) {
-      const currentMod = moduleAtOffset(program, offset);
-      if (!currentMod)
-        return null;
-      const node = (0, walk_js_1.findNodeAtOffset)(program, offset);
-      if (!node)
-        return null;
-      return referenceFromNode(node, scopeResult, currentMod);
-    }
-    function resolveDeclarationAtOffset3(program, scopeResult, offset) {
-      const node = (0, walk_js_1.findNodeAtOffset)(program, offset);
-      if (!node)
-        return null;
-      const currentMod = moduleAtOffset(program, offset);
-      if (!currentMod)
-        return null;
-      if (node.type === "type_decl") {
-        const sym = scopeForModule(scopeResult, currentMod)?.symbols.get(node.name);
-        if (sym)
-          return { symbol: sym, module: currentMod, span: node.span };
-      }
-      if (node.type === "var_decl") {
-        const sym = scopeForModule(scopeResult, currentMod)?.symbols.get(node.variable.name);
-        if (sym)
-          return { symbol: sym, module: currentMod, span: node.variable.span };
-      }
-      if (node.type === "const_decl") {
-        const sym = scopeForModule(scopeResult, currentMod)?.symbols.get(node.name);
-        if (sym)
-          return { symbol: sym, module: currentMod, span: node.span };
-      }
-      if (node.type === "process") {
-        const sym = scopeForModule(scopeResult, currentMod)?.symbols.get(node.name);
-        if (sym)
-          return { symbol: sym, module: currentMod, span: node.span };
-      }
-      if (node.type === "function") {
-        const sym = scopeForModule(scopeResult, currentMod)?.symbols.get(node.name);
-        if (sym)
-          return { symbol: sym, module: currentMod, span: node.span };
-      }
-      return resolveReference3(program, scopeResult, offset);
-    }
-  }
-});
-
 // ../../dist/lexer/lexer.js
 var require_lexer = __commonJS({
   "../../dist/lexer/lexer.js"(exports2) {
@@ -25005,6 +26279,7 @@ var require_report = __commonJS({
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.inspect = inspect;
     exports2.formatInspectReport = formatInspectReport;
+    var nodes_js_1 = require_nodes();
     var codes_js_1 = require_codes();
     var parse_js_1 = require_parse();
     var resolver_js_1 = require_resolver();
@@ -25127,11 +26402,13 @@ var require_report = __commonJS({
             lines.push(`      ${(0, ansi_js_1.color)("others", ansi_js_1.ansi.yellow)}     =>  ${summarizePredicate(proc.body.fsf.others)}`);
           }
         }
-        if (proc.body?.decomposition) {
-          lines.push(`    decom: ${proc.body.decomposition}`);
+        const decom = (0, nodes_js_1.textOf)(proc.body?.decomposition);
+        if (decom) {
+          lines.push(`    decom: ${decom}`);
         }
-        if (proc.body?.comment) {
-          lines.push(`    comment: ${proc.body.comment}`);
+        const comment = (0, nodes_js_1.textOf)(proc.body?.comment);
+        if (comment) {
+          lines.push(`    comment: ${comment}`);
         }
       }
       for (const fn of mod.functions) {
@@ -25225,12 +26502,162 @@ var require_report = __commonJS({
   }
 });
 
+// ../../dist/inspect/symbolSummary.js
+var require_symbolSummary = __commonJS({
+  "../../dist/inspect/symbolSummary.js"(exports2) {
+    "use strict";
+    Object.defineProperty(exports2, "__esModule", { value: true });
+    exports2.formatSymbolSummary = formatSymbolSummary2;
+    exports2.formatInformalSummary = formatInformalSummary2;
+    exports2.formatTextFieldSummary = formatTextFieldSummary2;
+    exports2.textFieldSpan = textFieldSpan2;
+    var nodes_js_1 = require_nodes();
+    var types_js_1 = require_types();
+    function md(text, markdown, kind = "code") {
+      if (!markdown)
+        return text;
+      return kind === "bold" ? `**${text}**` : `\`${text}\``;
+    }
+    function buildTypeEnv(module3) {
+      const env = /* @__PURE__ */ new Map();
+      for (const t of module3.types) {
+        env.set(t.name, (0, types_js_1.typeExprToInternal)(t.typeExpr));
+      }
+      for (const t of module3.types) {
+        env.set(t.name, (0, types_js_1.resolveInternalType)(env.get(t.name), env));
+      }
+      for (const v of module3.vars) {
+        env.set(v.variable.name, (0, types_js_1.resolveInternalType)((0, types_js_1.typeExprToInternal)(v.typeExpr), env));
+      }
+      return env;
+    }
+    function formatParamGroups(groups, env) {
+      const parts = [];
+      for (const g of groups) {
+        const typeStr = (0, types_js_1.typeToString)((0, types_js_1.resolveInternalType)((0, types_js_1.typeExprToInternal)(g.typeExpr), env));
+        for (const name of g.names) {
+          parts.push(`${name}: ${typeStr}`);
+        }
+      }
+      return parts.join(", ");
+    }
+    function symbolTypeString(input) {
+      const { symbol, module: module3, process: process2, function: fn } = input;
+      const env = buildTypeEnv(module3);
+      if (symbol.kind === "type") {
+        const decl = module3.types.find((t) => t.name === symbol.name);
+        if (decl)
+          return (0, types_js_1.typeToString)((0, types_js_1.resolveInternalType)((0, types_js_1.typeExprToInternal)(decl.typeExpr), env));
+      }
+      if (symbol.kind === "var") {
+        const decl = module3.vars.find((v) => v.variable.name === symbol.name);
+        if (decl)
+          return (0, types_js_1.typeToString)((0, types_js_1.resolveInternalType)((0, types_js_1.typeExprToInternal)(decl.typeExpr), env));
+        if (process2) {
+          for (const group of [...process2.inputs, ...process2.outputs]) {
+            if (group.names.includes(symbol.name)) {
+              return (0, types_js_1.typeToString)((0, types_js_1.resolveInternalType)((0, types_js_1.typeExprToInternal)(group.typeExpr), env));
+            }
+          }
+          for (const ext of process2.body?.ext ?? []) {
+            if (ext.name === symbol.name && ext.typeExpr) {
+              return (0, types_js_1.typeToString)((0, types_js_1.resolveInternalType)((0, types_js_1.typeExprToInternal)(ext.typeExpr), env));
+            }
+          }
+        }
+      }
+      if (symbol.kind === "function" && fn) {
+        return (0, types_js_1.typeToString)((0, types_js_1.resolveInternalType)((0, types_js_1.typeExprToInternal)(fn.returnType), env));
+      }
+      return void 0;
+    }
+    function processIoLines(process2, env, markdown) {
+      const lines = [];
+      if (process2.inputs.length) {
+        lines.push(`${md("inputs", markdown, "bold")}: ${formatParamGroups(process2.inputs, env)}`);
+      }
+      if (process2.outputs.length) {
+        lines.push(`${md("outputs", markdown, "bold")}: ${formatParamGroups(process2.outputs, env)}`);
+      }
+      if (process2.body?.ext.length) {
+        const extParts = process2.body.ext.map((e) => {
+          const t = e.typeExpr ? (0, types_js_1.typeToString)((0, types_js_1.resolveInternalType)((0, types_js_1.typeExprToInternal)(e.typeExpr), env)) : "?";
+          return `${e.access} ${e.name}: ${t}`;
+        });
+        lines.push(`${md("ext", markdown, "bold")}: ${extParts.join(", ")}`);
+      }
+      return lines;
+    }
+    function fsfSummary(process2, markdown) {
+      const fsf = process2.body?.fsf;
+      if (!fsf)
+        return void 0;
+      const count = fsf.scenarios.length + (fsf.others ? 1 : 0);
+      return `${md("FSF", markdown, "bold")}: ${count} branch${count === 1 ? "" : "es"} (${fsf.scenarios.length} scenario${fsf.scenarios.length === 1 ? "" : "s"}${fsf.others ? " + others" : ""})`;
+    }
+    function functionSignature(fn, env) {
+      const params = formatParamGroups(fn.params, env);
+      const ret = (0, types_js_1.typeToString)((0, types_js_1.resolveInternalType)((0, types_js_1.typeExprToInternal)(fn.returnType), env));
+      return `${fn.name}(${params}): ${ret}`;
+    }
+    function formatSymbolSummary2(input) {
+      const { symbol, module: module3, process: process2, function: fn, markdown = true } = input;
+      const env = buildTypeEnv(module3);
+      const lines = [];
+      lines.push(`${md(symbol.kind, markdown, "bold")} ${md(symbol.name, markdown)} in module ${md(symbol.moduleName, markdown)}`);
+      const typeStr = symbolTypeString(input);
+      if (typeStr) {
+        lines.push(`${md("type", markdown, "bold")}: ${typeStr}`);
+      }
+      if (symbol.kind === "process" && process2) {
+        lines.push(...processIoLines(process2, env, markdown));
+        const fsf = fsfSummary(process2, markdown);
+        if (fsf)
+          lines.push(fsf);
+        const decom = (0, nodes_js_1.textOf)(process2.body?.decomposition);
+        if (decom)
+          lines.push(`${md("decom", markdown, "bold")}: ${decom}`);
+        const comment = (0, nodes_js_1.textOf)(process2.body?.comment);
+        if (comment)
+          lines.push(`${md("comment", markdown, "bold")}: ${comment}`);
+      }
+      if (symbol.kind === "function" && fn) {
+        lines.push(`${md("signature", markdown, "bold")}: ${functionSignature(fn, env)}`);
+        const fsf = fn.fsf;
+        if (fsf) {
+          const count = fsf.scenarios.length + (fsf.others ? 1 : 0);
+          lines.push(`${md("FSF", markdown, "bold")}: ${count} branch${count === 1 ? "" : "es"}`);
+        }
+      }
+      return lines.join("\n\n");
+    }
+    function formatInformalSummary2(text, markdown = true) {
+      return `${md("informal", markdown, "bold")} predicate
+
+${text}`;
+    }
+    function formatTextFieldSummary2(field, value, markdown = true) {
+      const text = (0, nodes_js_1.textOf)(value);
+      if (!text)
+        return void 0;
+      return `${md(field, markdown, "bold")}
+
+${text}`;
+    }
+    function textFieldSpan2(value) {
+      if (value === void 0)
+        return void 0;
+      return typeof value === "string" ? void 0 : value.span;
+    }
+  }
+});
+
 // ../../dist/index.js
 var require_dist = __commonJS({
   "../../dist/index.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.formatInspectReport = exports2.inspect = exports2.resolveDeclarationAtOffset = exports2.resolveReference = exports2.formatDiagnostic = exports2.findNodeAtOffset = exports2.getNodeAtOffset = exports2.walk = exports2.printProgram = exports2.stripSpans = exports2.astEqual = exports2.normalizeAST = exports2.resolveScope = exports2.classifyFsf = exports2.typeCheck = exports2.parseModule = exports2.parse = void 0;
+    exports2.typesCompatibleStrict = exports2.typesCompatible = exports2.resolveInternalType = exports2.typeExprToInternal = exports2.typeToString = exports2.textFieldSpan = exports2.formatTextFieldSummary = exports2.formatInformalSummary = exports2.formatSymbolSummary = exports2.formatInspectReport = exports2.inspect = exports2.checkReferences = exports2.resolveReferenceByName = exports2.resolveDeclarationAtOffset = exports2.resolveReference = exports2.formatDiagnostic = exports2.collectHybridRegions = exports2.findNodeAtOffset = exports2.getNodeAtOffset = exports2.walk = exports2.printProgram = exports2.stripSpans = exports2.astEqual = exports2.normalizeAST = exports2.lookupModuleScope = exports2.resolveScope = exports2.classifyFsf = exports2.typeCheck = exports2.parseModule = exports2.parseStrict = exports2.parse = exports2.textOf = void 0;
     exports2.parseSpecification = parseSpecification;
     exports2.parseSingleModule = parseSingleModule;
     exports2.check = check3;
@@ -25241,6 +26668,9 @@ var require_dist = __commonJS({
     } });
     Object.defineProperty(exports2, "parseModule", { enumerable: true, get: function() {
       return parse_js_1.parseModule;
+    } });
+    Object.defineProperty(exports2, "parseStrict", { enumerable: true, get: function() {
+      return parse_js_1.parseStrict;
     } });
     var checker_js_1 = require_checker();
     Object.defineProperty(exports2, "typeCheck", { enumerable: true, get: function() {
@@ -25254,6 +26684,10 @@ var require_dist = __commonJS({
     Object.defineProperty(exports2, "resolveScope", { enumerable: true, get: function() {
       return resolver_js_1.resolveScope;
     } });
+    Object.defineProperty(exports2, "lookupModuleScope", { enumerable: true, get: function() {
+      return resolver_js_1.lookupModuleScope;
+    } });
+    var referenceChecker_js_1 = require_referenceChecker();
     var normalize_js_1 = require_normalize();
     Object.defineProperty(exports2, "normalizeAST", { enumerable: true, get: function() {
       return normalize_js_1.normalizeAST;
@@ -25278,33 +26712,42 @@ var require_dist = __commonJS({
     Object.defineProperty(exports2, "findNodeAtOffset", { enumerable: true, get: function() {
       return walk_js_1.findNodeAtOffset;
     } });
+    Object.defineProperty(exports2, "collectHybridRegions", { enumerable: true, get: function() {
+      return walk_js_1.collectHybridRegions;
+    } });
     var codes_js_1 = require_codes();
     Object.defineProperty(exports2, "formatDiagnostic", { enumerable: true, get: function() {
       return codes_js_1.formatDiagnostic;
     } });
+    var nodes_js_1 = require_nodes();
+    Object.defineProperty(exports2, "textOf", { enumerable: true, get: function() {
+      return nodes_js_1.textOf;
+    } });
     function parseSpecification(source) {
-      const result = (0, parse_js_1.parse)(source);
+      const result = (0, parse_js_1.parseStrict)(source);
       if (!result.ast || result.ast.type !== "program") {
         return { ast: null, diagnostics: result.diagnostics };
       }
       if (result.diagnostics.some((d) => d.severity === "error")) {
-        return { ast: result.ast, diagnostics: result.diagnostics };
+        return { ast: null, diagnostics: result.diagnostics };
       }
       const scopeResult = (0, resolver_js_1.resolveScope)(result.ast);
-      const typeResult = (0, checker_js_1.typeCheck)(result.ast);
+      const refResult = (0, referenceChecker_js_1.checkReferences)(result.ast, scopeResult);
+      const typeResult = (0, checker_js_1.typeCheck)(result.ast, scopeResult);
       const fsfResult = (0, classifier_js_1.classifyFsf)(result.ast);
       return {
         ast: result.ast,
         diagnostics: [
           ...result.diagnostics,
           ...scopeResult.diagnostics,
+          ...refResult.diagnostics,
           ...typeResult.diagnostics,
           ...fsfResult.diagnostics
         ]
       };
     }
     function parseSingleModule(source) {
-      const result = (0, parse_js_1.parseModule)(source);
+      const result = (0, parse_js_1.parseModule)(source, { tolerant: false });
       if (!result.ast || result.ast.type !== "module") {
         return { ast: null, diagnostics: result.diagnostics };
       }
@@ -25314,13 +26757,15 @@ var require_dist = __commonJS({
         modules: [result.ast]
       };
       const scopeResult = (0, resolver_js_1.resolveScope)(program);
-      const typeResult = (0, checker_js_1.typeCheck)(program);
+      const refResult = (0, referenceChecker_js_1.checkReferences)(program, scopeResult);
+      const typeResult = (0, checker_js_1.typeCheck)(program, scopeResult);
       const fsfResult = (0, classifier_js_1.classifyFsf)(program);
       return {
         ast: program,
         diagnostics: [
           ...result.diagnostics,
           ...scopeResult.diagnostics,
+          ...refResult.diagnostics,
           ...typeResult.diagnostics,
           ...fsfResult.diagnostics
         ]
@@ -25342,6 +26787,13 @@ var require_dist = __commonJS({
     Object.defineProperty(exports2, "resolveDeclarationAtOffset", { enumerable: true, get: function() {
       return reference_js_1.resolveDeclarationAtOffset;
     } });
+    Object.defineProperty(exports2, "resolveReferenceByName", { enumerable: true, get: function() {
+      return reference_js_1.resolveReferenceByName;
+    } });
+    var referenceChecker_js_2 = require_referenceChecker();
+    Object.defineProperty(exports2, "checkReferences", { enumerable: true, get: function() {
+      return referenceChecker_js_2.checkReferences;
+    } });
     var report_js_1 = require_report();
     Object.defineProperty(exports2, "inspect", { enumerable: true, get: function() {
       return report_js_1.inspect;
@@ -25349,11 +26801,40 @@ var require_dist = __commonJS({
     Object.defineProperty(exports2, "formatInspectReport", { enumerable: true, get: function() {
       return report_js_1.formatInspectReport;
     } });
+    var symbolSummary_js_1 = require_symbolSummary();
+    Object.defineProperty(exports2, "formatSymbolSummary", { enumerable: true, get: function() {
+      return symbolSummary_js_1.formatSymbolSummary;
+    } });
+    Object.defineProperty(exports2, "formatInformalSummary", { enumerable: true, get: function() {
+      return symbolSummary_js_1.formatInformalSummary;
+    } });
+    Object.defineProperty(exports2, "formatTextFieldSummary", { enumerable: true, get: function() {
+      return symbolSummary_js_1.formatTextFieldSummary;
+    } });
+    Object.defineProperty(exports2, "textFieldSpan", { enumerable: true, get: function() {
+      return symbolSummary_js_1.textFieldSpan;
+    } });
+    var types_js_1 = require_types();
+    Object.defineProperty(exports2, "typeToString", { enumerable: true, get: function() {
+      return types_js_1.typeToString;
+    } });
+    Object.defineProperty(exports2, "typeExprToInternal", { enumerable: true, get: function() {
+      return types_js_1.typeExprToInternal;
+    } });
+    Object.defineProperty(exports2, "resolveInternalType", { enumerable: true, get: function() {
+      return types_js_1.resolveInternalType;
+    } });
+    Object.defineProperty(exports2, "typesCompatible", { enumerable: true, get: function() {
+      return types_js_1.typesCompatible;
+    } });
+    Object.defineProperty(exports2, "typesCompatibleStrict", { enumerable: true, get: function() {
+      return types_js_1.typesCompatibleStrict;
+    } });
   }
 });
 
 // ../language-server/src/server.ts
-var import_node8 = __toESM(require_node3());
+var import_node10 = __toESM(require_node3());
 
 // ../../node_modules/vscode-languageserver-textdocument/lib/esm/main.js
 var FullTextDocument = class _FullTextDocument {
@@ -25579,34 +27060,28 @@ function getWellformedEdit(textEdit) {
   return textEdit;
 }
 
+// ../language-server/src/diagnosticCache.ts
+var import_node_crypto = require("node:crypto");
+
 // ../language-server/src/diagnostics.ts
 var import_parser14 = __toESM(require_dist());
 
 // ../language-server/src/lsp-utils.ts
+var import_node2 = __toESM(require_node3());
+
+// ../language-server/src/position.ts
 var import_node = __toESM(require_node3());
-function columnToUtf16(document, line, column) {
-  if (column <= 0)
-    return 0;
-  const lines = document.getText().split(/\r\n|\r|\n/);
-  const lineText = lines[line] ?? "";
-  return Math.min(column, lineText.length);
-}
-function spanToRange(span, document) {
-  if (!Number.isFinite(span.line) || span.line < 1) {
-    return import_node.Range.create(import_node.Position.create(0, 0), import_node.Position.create(0, 1));
+function spanToRange(document, span) {
+  if (span.end <= span.start) {
+    return import_node.Range.create(document.positionAt(0), document.positionAt(1));
   }
-  const startLine = Math.max(0, span.line - 1);
-  const endLine = Math.max(0, span.line - 1);
-  const startChar = columnToUtf16(document, startLine, span.column - 1);
-  const endChar = columnToUtf16(document, endLine, span.column);
-  return import_node.Range.create(
-    import_node.Position.create(startLine, startChar),
-    import_node.Position.create(endLine, Math.max(startChar + 1, endChar))
-  );
+  return import_node.Range.create(document.positionAt(span.start), document.positionAt(span.end));
 }
+
+// ../language-server/src/lsp-utils.ts
 function diagnosticToLsp(d, document) {
-  return import_node.Diagnostic.create(
-    spanToRange(d.span, document),
+  return import_node2.Diagnostic.create(
+    spanToRange(document, d.span),
     d.message,
     severityToLsp(d),
     d.code,
@@ -25615,16 +27090,16 @@ function diagnosticToLsp(d, document) {
 }
 function severityToLsp(d) {
   if (d.code === "ASFL_FSF_001")
-    return import_node.DiagnosticSeverity.Warning;
+    return import_node2.DiagnosticSeverity.Warning;
   if (d.code === "ASFL_FSF_002" || d.code === "ASFL_FSF_003")
-    return import_node.DiagnosticSeverity.Information;
+    return import_node2.DiagnosticSeverity.Information;
   switch (d.severity) {
     case "warning":
-      return import_node.DiagnosticSeverity.Warning;
+      return import_node2.DiagnosticSeverity.Warning;
     case "info":
-      return import_node.DiagnosticSeverity.Information;
+      return import_node2.DiagnosticSeverity.Information;
     default:
-      return import_node.DiagnosticSeverity.Error;
+      return import_node2.DiagnosticSeverity.Error;
   }
 }
 
@@ -25634,10 +27109,28 @@ function collectDiagnostics(document) {
   return diagnostics.map((d) => diagnosticToLsp(d, document));
 }
 
+// ../language-server/src/diagnosticCache.ts
+var diagnosticCache = /* @__PURE__ */ new Map();
+function contentHash(text) {
+  return (0, import_node_crypto.createHash)("sha256").update(text).digest("hex");
+}
+function diagnosticsForDocument(document) {
+  const uri = document.uri;
+  const text = document.getText();
+  const hash = contentHash(text);
+  const cached = diagnosticCache.get(uri);
+  if (cached && cached.version === document.version && cached.contentHash === hash) {
+    return cached.diagnostics;
+  }
+  const diagnostics = collectDiagnostics(document);
+  diagnosticCache.set(uri, { version: document.version, contentHash: hash, diagnostics });
+  return diagnostics;
+}
+
 // ../language-server/src/formatting.ts
 var import_parser15 = __toESM(require_dist());
-var import_node2 = __toESM(require_node3());
 var import_node3 = __toESM(require_node3());
+var import_node4 = __toESM(require_node3());
 function formatDocument(document) {
   const source = document.getText();
   const { source: formatted, diagnostics } = (0, import_parser15.format)(source);
@@ -25647,18 +27140,18 @@ function formatDocument(document) {
   if (formatted === source) {
     return [];
   }
-  const fullRange = import_node3.Range.create(
+  const fullRange = import_node4.Range.create(
     { line: 0, character: 0 },
     document.positionAt(source.length)
   );
-  return [import_node2.TextEdit.replace(fullRange, formatted)];
+  return [import_node3.TextEdit.replace(fullRange, formatted)];
 }
 
 // ../language-server/src/symbols.ts
 var import_parser16 = __toESM(require_dist());
-var import_node4 = __toESM(require_node3());
+var import_node5 = __toESM(require_node3());
 function collectDocumentSymbols(document) {
-  const { ast } = (0, import_parser16.check)(document.getText());
+  const { ast } = (0, import_parser16.parse)(document.getText());
   if (!ast || ast.type !== "program") {
     return [];
   }
@@ -25669,51 +27162,74 @@ function collectDocumentSymbols(document) {
       symbols.push({
         name: mod.isSystem ? `SYSTEM_${mod.name}` : mod.name,
         detail: mod.parent ? `/${mod.parent.name}` : void 0,
-        kind: import_node4.SymbolKind.Module,
-        range: spanToRange(mod.span, document),
-        selectionRange: spanToRange(mod.span, document),
+        kind: import_node5.SymbolKind.Module,
+        range: spanToRange(document, mod.span),
+        selectionRange: spanToRange(document, mod.nameSpan ?? mod.span),
         children
       });
-      const moduleSymbol = symbols[symbols.length - 1];
       for (const c of mod.consts) {
         children.push({
           name: c.name,
-          kind: import_node4.SymbolKind.Constant,
-          range: spanToRange(c.span, document),
-          selectionRange: spanToRange(c.span, document)
+          kind: import_node5.SymbolKind.Constant,
+          range: spanToRange(document, c.span),
+          selectionRange: spanToRange(document, c.span)
         });
       }
       for (const t of mod.types) {
         children.push({
           name: t.name,
-          kind: import_node4.SymbolKind.Class,
-          range: spanToRange(t.span, document),
-          selectionRange: spanToRange(t.span, document)
+          kind: import_node5.SymbolKind.Class,
+          range: spanToRange(document, t.span),
+          selectionRange: spanToRange(document, t.span)
         });
       }
       for (const v of mod.vars) {
         children.push({
           name: v.variable.name,
-          kind: import_node4.SymbolKind.Variable,
-          range: spanToRange(v.span, document),
-          selectionRange: spanToRange(v.variable.span, document)
+          kind: import_node5.SymbolKind.Variable,
+          range: spanToRange(document, v.span),
+          selectionRange: spanToRange(document, v.variable.span)
         });
       }
       for (const p of mod.processes) {
+        const procChildren = [];
+        const fsf = p.body?.fsf;
+        if (fsf) {
+          const count = fsf.scenarios.length + (fsf.others ? 1 : 0);
+          procChildren.push({
+            name: "FSF",
+            detail: `${count} branch${count === 1 ? "" : "es"}`,
+            kind: import_node5.SymbolKind.Event,
+            range: spanToRange(document, fsf.span),
+            selectionRange: spanToRange(document, fsf.span)
+          });
+        }
+        const comment = (0, import_parser16.textOf)(p.body?.comment);
+        if (comment) {
+          const commentSpan = p.body?.comment && typeof p.body.comment === "object" && "span" in p.body.comment ? p.body.comment.span : p.span;
+          procChildren.push({
+            name: "comment",
+            detail: comment.length > 40 ? comment.slice(0, 39) + "\u2026" : comment,
+            kind: import_node5.SymbolKind.String,
+            range: spanToRange(document, commentSpan),
+            selectionRange: spanToRange(document, commentSpan)
+          });
+        }
         children.push({
           name: p.name,
           detail: p.alias ? `equal ${p.alias.module ? p.alias.module + "." : ""}${p.alias.name}` : void 0,
-          kind: import_node4.SymbolKind.Method,
-          range: spanToRange(p.span, document),
-          selectionRange: spanToRange(p.span, document)
+          kind: import_node5.SymbolKind.Method,
+          range: spanToRange(document, p.span),
+          selectionRange: spanToRange(document, p.nameSpan ?? p.span),
+          children: procChildren.length ? procChildren : void 0
         });
       }
       for (const f of mod.functions) {
         children.push({
           name: f.name,
-          kind: import_node4.SymbolKind.Function,
-          range: spanToRange(f.span, document),
-          selectionRange: spanToRange(f.span, document)
+          kind: import_node5.SymbolKind.Function,
+          range: spanToRange(document, f.span),
+          selectionRange: spanToRange(document, f.nameSpan ?? f.span)
         });
       }
     }
@@ -25722,61 +27238,416 @@ function collectDocumentSymbols(document) {
 }
 
 // ../language-server/src/definition.ts
-var import_parser17 = __toESM(require_dist());
 var import_parser18 = __toESM(require_dist());
 
-// ../language-server/src/position.ts
-var import_node5 = __toESM(require_node3());
-function spanToRange2(document, span) {
-  if (span.end <= span.start) {
-    return import_node5.Range.create(document.positionAt(0), document.positionAt(1));
-  }
-  return import_node5.Range.create(document.positionAt(span.start), document.positionAt(span.end));
+// ../language-server/src/parseGuard.ts
+var import_parser17 = __toESM(require_dist());
+function hasParseError(source) {
+  const { diagnostics } = (0, import_parser17.parse)(source);
+  return diagnostics.some((d) => d.code === "ASFL_PARSE_001");
 }
 
 // ../language-server/src/definition.ts
 function getDefinition(document, position) {
   const source = document.getText();
+  if (hasParseError(source))
+    return null;
   const offset = document.offsetAt(position);
-  const { ast } = (0, import_parser17.parse)(source);
+  const { ast } = (0, import_parser18.parse)(source);
   if (!ast || ast.type !== "program")
     return null;
-  const scopeResult = (0, import_parser17.resolveScope)(ast);
+  const scopeResult = (0, import_parser18.resolveScope)(ast);
   const target = (0, import_parser18.resolveReference)(ast, scopeResult, offset) ?? (0, import_parser18.resolveDeclarationAtOffset)(ast, scopeResult, offset);
   if (!target || target.span.end <= target.span.start)
     return null;
   return {
     uri: document.uri,
-    range: spanToRange2(document, target.span)
+    range: spanToRange(document, target.span)
   };
 }
 
 // ../language-server/src/hover.ts
 var import_parser19 = __toESM(require_dist());
-var import_parser20 = __toESM(require_dist());
-function formatSymbolSummary(kind, moduleName, name) {
-  return `**${kind}** \`${name}\` in module \`${moduleName}\``;
+
+// ../language-server/src/bindings.ts
+function pushBindings(groups, out) {
+  if (!groups)
+    return;
+  for (const group of groups) {
+    for (const name of group.names) {
+      out.push({ name, typeExpr: group.typeExpr, span: group.span });
+    }
+  }
+}
+function walkQuantifiers(program, offset, onMatch) {
+  for (const mod of program.modules) {
+    for (const inv of mod.invariants) {
+      walkPredicateForQuant(inv.condition, offset, onMatch);
+    }
+    for (const proc of mod.processes) {
+      const fsf = proc.body?.fsf;
+      if (!fsf)
+        continue;
+      for (const sc of fsf.scenarios) {
+        walkPredicateForQuant(sc.test, offset, onMatch);
+        walkPredicateForQuant(sc.def, offset, onMatch);
+      }
+      if (fsf.others)
+        walkPredicateForQuant(fsf.others, offset, onMatch);
+    }
+    for (const fn of mod.functions) {
+      if (fn.fsf) {
+        for (const sc of fn.fsf.scenarios) {
+          walkPredicateForQuant(sc.test, offset, onMatch);
+        }
+      }
+      if (fn.body)
+        walkExpressionForComprehension(fn.body, offset, onMatch);
+    }
+    for (const c of mod.consts) {
+      walkExpressionForComprehension(c.value, offset, onMatch);
+    }
+  }
+}
+function walkPredicateForQuant(pred, offset, onMatch) {
+  for (const conj of pred.disjuncts) {
+    for (const atom of conj.atoms) {
+      walkAtomForQuant(atom, offset, onMatch);
+    }
+  }
+}
+function walkAtomForQuant(atom, offset, onMatch) {
+  if (atom.type === "quantified") {
+    if (offset >= atom.span.start && offset <= atom.span.end) {
+      onMatch(atom);
+    }
+    walkPredicateForQuant(atom.body, offset, onMatch);
+    for (const nested of atom.nestedQuantifiers) {
+      walkAtomForQuant(nested, offset, onMatch);
+    }
+    return;
+  }
+  if (atom.type === "not_predicate") {
+    walkAtomForQuant(atom.operand, offset, onMatch);
+    return;
+  }
+  if (atom.type === "paren_predicate") {
+    walkAtomForQuant(atom.inner, offset, onMatch);
+  } else if (atom.type !== "informal_text" && atom.type !== "boolean_literal") {
+    walkExpressionForComprehension(atom, offset, onMatch);
+  }
+}
+function visitComprehensionExpr(expr, offset, onMatch) {
+  if (expr.kind !== "comprehension" || offset < expr.span.start || offset > expr.span.end)
+    return;
+  const pseudo = {
+    type: "quantified",
+    span: expr.span,
+    quantifier: "forall",
+    bindings: expr.compBindings ?? [],
+    nestedQuantifiers: [],
+    body: { type: "predicate", span: expr.span, disjuncts: [] }
+  };
+  onMatch(pseudo);
+  if (expr.compGuard)
+    walkPredicateForQuant(expr.compGuard, offset, onMatch);
+  if (expr.compExpr)
+    walkExpressionForComprehension(expr.compExpr, offset, onMatch);
+  if (expr.compKey)
+    walkExpressionForComprehension(expr.compKey, offset, onMatch);
+  if (expr.compValue)
+    walkExpressionForComprehension(expr.compValue, offset, onMatch);
+}
+function walkExpressionForComprehension(expr, offset, onMatch) {
+  switch (expr.type) {
+    case "binary_op":
+      walkExpressionForComprehension(expr.left, offset, onMatch);
+      walkExpressionForComprehension(expr.right, offset, onMatch);
+      break;
+    case "paren_expr":
+      walkExpressionForComprehension(expr.inner, offset, onMatch);
+      break;
+    case "if_expr":
+      walkPredicateForQuant(expr.condition, offset, onMatch);
+      walkExpressionForComprehension(expr.thenExpr, offset, onMatch);
+      walkExpressionForComprehension(expr.elseExpr, offset, onMatch);
+      break;
+    case "let_expr":
+      for (const b of expr.bindings) {
+        if (b.value)
+          walkExpressionForComprehension(b.value, offset, onMatch);
+      }
+      walkExpressionForComprehension(expr.body, offset, onMatch);
+      break;
+    case "relational_expr":
+      walkExpressionForComprehension(expr.left, offset, onMatch);
+      if (expr.chainMid)
+        walkExpressionForComprehension(expr.chainMid, offset, onMatch);
+      if (expr.chainHigh)
+        walkExpressionForComprehension(expr.chainHigh, offset, onMatch);
+      walkExpressionForComprehension(expr.right, offset, onMatch);
+      break;
+    case "unary_minus":
+      walkExpressionForComprehension(expr.operand, offset, onMatch);
+      break;
+    case "index_access":
+      walkExpressionForComprehension(expr.object, offset, onMatch);
+      walkExpressionForComprehension(expr.index, offset, onMatch);
+      break;
+    case "mk_expr":
+      for (const a of expr.args)
+        walkExpressionForComprehension(a, offset, onMatch);
+      break;
+    case "modify_expr":
+      walkExpressionForComprehension(expr.target, offset, onMatch);
+      for (const f of expr.fields) {
+        walkExpressionForComprehension(f.value, offset, onMatch);
+      }
+      break;
+    case "set_expr":
+    case "seq_expr":
+    case "map_expr":
+      visitComprehensionExpr(expr, offset, onMatch);
+      if (expr.elements) {
+        for (const el of expr.elements)
+          walkExpressionForComprehension(el, offset, onMatch);
+      }
+      break;
+    case "call":
+      if (typeof expr.callee !== "string") {
+        walkExpressionForComprehension(expr.callee, offset, onMatch);
+      }
+      for (const a of expr.args)
+        walkExpressionForComprehension(a, offset, onMatch);
+      break;
+    case "case_expr":
+      walkExpressionForComprehension(expr.scrutinee, offset, onMatch);
+      for (const alt of expr.alternatives) {
+        walkExpressionForComprehension(alt.expr, offset, onMatch);
+      }
+      if (expr.default)
+        walkExpressionForComprehension(expr.default, offset, onMatch);
+      break;
+    default:
+      break;
+  }
+}
+function identifierAtOffset(source, offset) {
+  if (offset < 0 || offset >= source.length)
+    return null;
+  let start = offset;
+  while (start > 0 && /[A-Za-z0-9_]/.test(source[start - 1]))
+    start--;
+  let end = offset;
+  while (end < source.length && /[A-Za-z0-9_]/.test(source[end]))
+    end++;
+  if (start >= end)
+    return null;
+  const name = source.slice(start, end);
+  if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name))
+    return null;
+  return { name, start, end };
+}
+function bindingsAtOffset(program, offset) {
+  const bindings = [];
+  walkQuantifiers(program, offset, (q) => {
+    pushBindings(q.bindings, bindings);
+    for (const nested of q.nestedQuantifiers) {
+      pushBindings(nested.bindings, bindings);
+    }
+  });
+  return bindings;
+}
+function bindingAtOffset(program, offset, source) {
+  const id = identifierAtOffset(source, offset);
+  if (!id)
+    return null;
+  const binding = bindingsAtOffset(program, offset).find((b) => b.name === id.name);
+  if (!binding)
+    return null;
+  return { ...binding, span: { ...binding.span, start: id.start, end: id.end, line: binding.span.line, column: binding.span.column } };
+}
+function bindingNamesAtOffset(program, offset) {
+  return [...new Set(bindingsAtOffset(program, offset).map((b) => b.name))];
+}
+
+// ../language-server/src/hover.ts
+function moduleAtOffset(modules, offset) {
+  let best = null;
+  let bestLen = Infinity;
+  for (const mod of modules) {
+    const { span } = mod;
+    if (span.end <= span.start)
+      continue;
+    if (offset >= span.start && offset <= span.end && span.end - span.start < bestLen) {
+      best = mod;
+      bestLen = span.end - span.start;
+    }
+  }
+  return best;
+}
+function processAtOffset(mod, offset) {
+  for (const proc of mod.processes) {
+    if (offset >= proc.span.start && offset <= proc.span.end)
+      return proc;
+  }
+  return null;
+}
+function functionAtOffset(mod, offset) {
+  for (const fn of mod.functions) {
+    if (offset >= fn.span.start && offset <= fn.span.end)
+      return fn;
+  }
+  return null;
+}
+function walkAtomInformal(atom, offset, best) {
+  if (atom.type === "informal_text") {
+    const { span } = atom;
+    if (span.end > span.start && offset >= span.start && offset <= span.end && span.end - span.start < best.len) {
+      best.node = atom;
+      best.len = span.end - span.start;
+    }
+    return;
+  }
+  if (atom.type === "not_predicate") {
+    walkAtomInformal(atom.operand, offset, best);
+    return;
+  }
+  if (atom.type === "paren_predicate") {
+    walkAtomInformal(atom.inner, offset, best);
+    return;
+  }
+  if (atom.type === "quantified") {
+    walkPredicateInformal(atom.body, offset, best);
+    for (const nested of atom.nestedQuantifiers) {
+      walkPredicateInformal(nested.body, offset, best);
+    }
+  }
+}
+function walkPredicateInformal(pred, offset, best) {
+  for (const conj of pred.disjuncts) {
+    for (const atom of conj.atoms) {
+      walkAtomInformal(atom, offset, best);
+    }
+  }
+}
+function findInformalAtOffset(program, offset) {
+  const best = { node: null, len: Infinity };
+  for (const mod of program.modules) {
+    for (const inv of mod.invariants) {
+      walkPredicateInformal(inv.condition, offset, best);
+    }
+    for (const proc of mod.processes) {
+      const fsf = proc.body?.fsf;
+      if (!fsf)
+        continue;
+      for (const sc of fsf.scenarios) {
+        walkPredicateInformal(sc.test, offset, best);
+        walkPredicateInformal(sc.def, offset, best);
+      }
+      if (fsf.others)
+        walkPredicateInformal(fsf.others, offset, best);
+    }
+    for (const fn of mod.functions) {
+      if (!fn.fsf)
+        continue;
+      for (const sc of fn.fsf.scenarios) {
+        walkPredicateInformal(sc.test, offset, best);
+      }
+    }
+  }
+  return best.node;
+}
+function hoverForTextFields(document, mod, offset) {
+  for (const proc of mod.processes) {
+    const decom = proc.body?.decomposition;
+    const decomSpan = (0, import_parser19.textFieldSpan)(decom);
+    if (decomSpan && offset >= decomSpan.start && offset <= decomSpan.end) {
+      const content = (0, import_parser19.formatTextFieldSummary)("decom", decom);
+      if (content) {
+        return { contents: { kind: "markdown", value: content }, range: spanToRange(document, decomSpan) };
+      }
+    }
+    const comment = proc.body?.comment;
+    const commentSpan = (0, import_parser19.textFieldSpan)(comment);
+    if (commentSpan && offset >= commentSpan.start && offset <= commentSpan.end) {
+      const content = (0, import_parser19.formatTextFieldSummary)("comment", comment);
+      if (content) {
+        return { contents: { kind: "markdown", value: content }, range: spanToRange(document, commentSpan) };
+      }
+    }
+  }
+  return null;
 }
 function getHover(document, position) {
   const source = document.getText();
+  if (hasParseError(source))
+    return null;
   const offset = document.offsetAt(position);
   const { ast } = (0, import_parser19.parse)(source);
   if (!ast || ast.type !== "program")
     return null;
+  const informal = findInformalAtOffset(ast, offset);
+  if (informal) {
+    return {
+      contents: { kind: "markdown", value: (0, import_parser19.formatInformalSummary)(informal.text) },
+      range: spanToRange(document, informal.span)
+    };
+  }
+  const currentMod = moduleAtOffset(ast.modules, offset);
+  if (currentMod) {
+    const fieldHover = hoverForTextFields(document, currentMod, offset);
+    if (fieldHover)
+      return fieldHover;
+  }
+  const compBinding = bindingAtOffset(ast, offset, source);
+  if (compBinding && currentMod) {
+    const env = /* @__PURE__ */ new Map();
+    for (const t of currentMod.types) {
+      env.set(t.name, (0, import_parser19.typeExprToInternal)(t.typeExpr));
+    }
+    for (const t of currentMod.types) {
+      env.set(t.name, (0, import_parser19.resolveInternalType)(env.get(t.name), env));
+    }
+    for (const v of currentMod.vars) {
+      env.set(v.variable.name, (0, import_parser19.resolveInternalType)((0, import_parser19.typeExprToInternal)(v.typeExpr), env));
+    }
+    const typeStr = (0, import_parser19.typeToString)((0, import_parser19.resolveInternalType)((0, import_parser19.typeExprToInternal)(compBinding.typeExpr), env));
+    return {
+      contents: {
+        kind: "markdown",
+        value: `**comprehension binding** \`${compBinding.name}\`
+
+**type**: ${typeStr}`
+      },
+      range: spanToRange(document, compBinding.span)
+    };
+  }
   const scopeResult = (0, import_parser19.resolveScope)(ast);
-  const target = (0, import_parser20.resolveReference)(ast, scopeResult, offset) ?? (0, import_parser20.resolveDeclarationAtOffset)(ast, scopeResult, offset);
+  let target = (0, import_parser19.resolveReference)(ast, scopeResult, offset) ?? (0, import_parser19.resolveDeclarationAtOffset)(ast, scopeResult, offset);
+  if (!target) {
+    const node = (0, import_parser19.findNodeAtOffset)(ast, offset);
+    if (node?.type === "call" && typeof node.callee !== "string" && node.callee.type === "identifier") {
+      const currentMod2 = moduleAtOffset(ast.modules, offset);
+      if (currentMod2) {
+        target = (0, import_parser19.resolveReferenceByName)(scopeResult, currentMod2, node.callee.name, node.callee.qualified?.module, offset);
+      }
+    }
+  }
   if (!target)
     return null;
-  const { symbol } = target;
-  const content = formatSymbolSummary(symbol.kind, symbol.moduleName, symbol.name);
+  const { symbol, module: module2 } = target;
+  const process2 = symbol.kind === "process" ? module2.processes.find((p) => p.name === symbol.name) ?? processAtOffset(module2, offset) : processAtOffset(module2, offset);
+  const fn = symbol.kind === "function" ? module2.functions.find((f) => f.name === symbol.name) ?? functionAtOffset(module2, offset) : functionAtOffset(module2, offset);
+  const content = (0, import_parser19.formatSymbolSummary)({ symbol, module: module2, process: process2, function: fn, markdown: true });
   return {
     contents: { kind: "markdown", value: content },
-    range: spanToRange2(document, target.span)
+    range: spanToRange(document, target.span)
   };
 }
 
 // ../language-server/src/completion.ts
-var import_parser21 = __toESM(require_dist());
+var import_parser20 = __toESM(require_dist());
 var import_node6 = __toESM(require_node3());
 var BASIC_TYPES = ["nat", "int", "bool", "char", "string", "real", "given"];
 var PROCESS_KEYWORDS = ["FSF", "ext", "decom", "comment", "end_process"];
@@ -25788,34 +27659,120 @@ function linePrefix(document, position) {
   });
   return line;
 }
-function moduleScopeSymbols(document, position) {
-  const { ast } = (0, import_parser21.parse)(document.getText());
-  if (!ast || ast.type !== "program")
-    return [];
-  const scopeResult = (0, import_parser21.resolveScope)(ast);
-  const offset = document.offsetAt(position);
-  let currentMod = ast.modules[0];
-  for (const mod of ast.modules) {
-    if (mod.span.start <= offset && offset <= mod.span.end)
-      currentMod = mod;
+function moduleAtOffset2(program, offset) {
+  let best = null;
+  let bestStart = -1;
+  for (const mod of program.modules) {
+    const { span } = mod;
+    if (span.end <= span.start)
+      continue;
+    if (offset >= span.start && span.start >= bestStart) {
+      best = mod;
+      bestStart = span.start;
+    }
   }
-  const scope = scopeResult.root?.module.name === currentMod.name ? scopeResult.root : scopeResult.root;
+  return best;
+}
+function processAtOffset2(mod, offset) {
+  let best = null;
+  let bestStart = -1;
+  for (const proc of mod.processes) {
+    if (offset >= proc.span.start && proc.span.start >= bestStart) {
+      best = proc;
+      bestStart = proc.span.start;
+    }
+  }
+  return best;
+}
+function collectScopeSymbols(program, scopeResult, offset) {
+  const currentMod = moduleAtOffset2(program, offset);
+  if (!currentMod)
+    return [];
+  const scope = (0, import_parser20.lookupModuleScope)(scopeResult, currentMod.name);
   if (!scope)
     return [];
-  const names = [];
+  const symbols = /* @__PURE__ */ new Map();
   for (const sym of scope.symbols.values()) {
-    if (sym.moduleName === currentMod.name)
-      names.push(sym.name);
+    symbols.set(sym.name, sym);
   }
-  return names;
+  if (scope.parent) {
+    for (const sym of scope.parent.symbols.values()) {
+      if (sym.kind === "type" || sym.kind === "var" || sym.kind === "const" || sym.kind === "function") {
+        symbols.set(sym.name, sym);
+      }
+    }
+  }
+  const proc = processAtOffset2(currentMod, offset);
+  if (proc) {
+    for (const group of [...proc.inputs, ...proc.outputs]) {
+      for (const name of group.names) {
+        symbols.set(name, { kind: "var", name, moduleName: currentMod.name, span: group.span });
+      }
+    }
+    for (const ext of proc.body?.ext ?? []) {
+      symbols.set(ext.name, { kind: "var", name: ext.name, moduleName: currentMod.name, span: ext.span });
+    }
+  }
+  return [...symbols.values()];
+}
+function symbolToCompletionKind(kind) {
+  switch (kind) {
+    case "function":
+      return import_node6.CompletionItemKind.Function;
+    case "type":
+      return import_node6.CompletionItemKind.TypeParameter;
+    case "process":
+      return import_node6.CompletionItemKind.Method;
+    case "const":
+      return import_node6.CompletionItemKind.Constant;
+    default:
+      return import_node6.CompletionItemKind.Variable;
+  }
+}
+function collectTypeNames(program, scopeResult, offset) {
+  const currentMod = moduleAtOffset2(program, offset);
+  if (!currentMod)
+    return [];
+  const scope = (0, import_parser20.lookupModuleScope)(scopeResult, currentMod.name);
+  const names = new Set(BASIC_TYPES);
+  if (scope) {
+    for (const sym of scope.symbols.values()) {
+      if (sym.kind === "type")
+        names.add(sym.name);
+    }
+    if (scope.parent) {
+      for (const sym of scope.parent.symbols.values()) {
+        if (sym.kind === "type")
+          names.add(sym.name);
+      }
+    }
+  }
+  return [...names];
+}
+function quantifierBindingsAtOffset(program, offset) {
+  return bindingNamesAtOffset(program, offset);
+}
+function inBindingCompletionContext(prefix) {
+  return prefix.includes("|") || /\{[^\}]*$/.test(prefix) || /\[[^\]]*$/.test(prefix);
 }
 function getCompletions(document, position) {
   const prefix = linePrefix(document, position);
   const trimmed = prefix.trimStart();
-  if (/:\s*[A-Za-z_]*$/.test(prefix)) {
+  const source = document.getText();
+  const offset = document.offsetAt(position);
+  const { ast } = (0, import_parser20.parse)(source);
+  const scopeResult = ast && ast.type === "program" ? (0, import_parser20.resolveScope)(ast) : null;
+  if (ast?.type === "program") {
+    const bindings = quantifierBindingsAtOffset(ast, offset);
+    if (bindings.length && inBindingCompletionContext(prefix)) {
+      const partial = prefix.match(/([A-Za-z_][A-Za-z0-9_]*)\s*$/)?.[1] ?? "";
+      return bindings.filter((name) => name.startsWith(partial)).map((name) => ({ label: name, kind: import_node6.CompletionItemKind.Variable }));
+    }
+  }
+  if (/:\s*[A-Za-z_]*$/.test(prefix) && ast?.type === "program" && scopeResult) {
     const partial = prefix.match(/:\s*([A-Za-z_]*)$/)?.[1] ?? "";
-    const scopeTypes = moduleScopeSymbols(document, position);
-    return [...BASIC_TYPES, ...scopeTypes].filter((name) => name.startsWith(partial)).map((name) => ({ label: name, kind: import_node6.CompletionItemKind.TypeParameter }));
+    const scopeTypes = collectTypeNames(ast, scopeResult, offset);
+    return scopeTypes.filter((name) => name.startsWith(partial)).map((name) => ({ label: name, kind: import_node6.CompletionItemKind.TypeParameter }));
   }
   if (/^\s*(process|function)\b/.test(trimmed) === false && /^\s*(FSF|ext|decom|comment)\b/.test(trimmed)) {
     return PROCESS_KEYWORDS.filter((k) => k.startsWith(trimmed.split(/\s+/).pop() ?? "")).map((k) => ({
@@ -25823,7 +27780,7 @@ function getCompletions(document, position) {
       kind: import_node6.CompletionItemKind.Keyword
     }));
   }
-  if (/\bFSF\s*:\s*/.test(prefix) || prefix.includes("others")) {
+  if (/^\s*FSF\s*:\s*$/.test(trimmed) || /^\s*others\b/.test(trimmed) && !/&&/.test(trimmed.replace(/^\s*others\s*/, ""))) {
     const items = FSF_KEYWORDS.map((k) => ({ label: k, kind: import_node6.CompletionItemKind.Keyword }));
     items.push({
       label: "FSF others branch",
@@ -25834,17 +27791,22 @@ function getCompletions(document, position) {
     return items;
   }
   if (/module\s+[A-Za-z_][A-Za-z0-9_]*\s*\/\s*[A-Za-z_]*$/.test(prefix)) {
-    const { ast } = (0, import_parser21.parse)(document.getText());
     if (ast?.type === "program") {
       return ast.modules.map((m) => ({ label: m.name, kind: import_node6.CompletionItemKind.Module }));
     }
   }
-  const scopeNames = moduleScopeSymbols(document, position);
-  return scopeNames.map((name) => ({ label: name, kind: import_node6.CompletionItemKind.Variable }));
+  if (ast?.type === "program" && scopeResult) {
+    const scopeSymbols = collectScopeSymbols(ast, scopeResult, offset);
+    return scopeSymbols.map((sym) => ({
+      label: sym.name,
+      kind: symbolToCompletionKind(sym.kind)
+    }));
+  }
+  return [];
 }
 
 // ../language-server/src/semanticTokens.ts
-var import_parser22 = __toESM(require_dist());
+var import_parser21 = __toESM(require_dist());
 var import_node7 = __toESM(require_node3());
 var SEMANTIC_TOKEN_TYPES = [
   "namespace",
@@ -25867,40 +27829,26 @@ var TYPE_INDEX = {
   string: 6,
   keyword: 7
 };
-function moduleSlice(source, mod) {
-  const header = mod.isSystem ? `module SYSTEM_${mod.name}` : `module ${mod.name}`;
-  const start = source.indexOf(header);
-  if (start < 0)
-    return mod.span;
-  const endIdx = source.indexOf("end_module", start);
-  const end = endIdx >= 0 ? endIdx + "end_module".length : source.length;
-  return { start, end, line: mod.span.line, column: mod.span.column };
+function pushSpan(records, span, type, modifiers, text) {
+  if (!span || span.end <= span.start)
+    return;
+  records.push({
+    start: span.start,
+    length: span.end - span.start,
+    type,
+    modifiers,
+    text
+  });
 }
-function processSlice(source, proc) {
-  const header = proc.isInit ? "process Init" : `process ${proc.name}`;
-  const start = source.indexOf(header);
-  if (start < 0)
-    return proc.span;
-  const endIdx = source.indexOf("end_process", start);
-  const end = endIdx >= 0 ? endIdx + "end_process".length : source.length;
-  return { start, end, line: proc.span.line, column: proc.span.column };
-}
-function indexOfWord(text, name) {
-  const re = new RegExp(`\\b${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`);
-  const match = re.exec(text);
-  return match ? match.index : -1;
-}
-function pushNameInSpan(records, source, span, name, type, modifiers) {
-  const slice = source.slice(span.start, span.end);
-  const idx = indexOfWord(slice, name);
+function pushWordInText(records, span, text, word, type) {
+  const idx = text.indexOf(word);
   if (idx < 0)
     return;
   records.push({
     start: span.start + idx,
-    length: name.length,
+    length: word.length,
     type,
-    modifiers,
-    text: name
+    text: word
   });
 }
 function walkAtom(atom, visit) {
@@ -25923,31 +27871,18 @@ function walkAtom(atom, visit) {
     }
   }
 }
-function pushInformalAtom(records, source, containerStart, containerEnd, atom) {
+function pushInformalAtom(records, atom) {
   if (atom.type !== "informal_text")
     return;
   const informal = atom;
-  if (!informal.text)
+  if (!informal.text || informal.span.end <= informal.span.start)
     return;
-  if (informal.span.end > informal.span.start) {
-    records.push({
-      start: informal.span.start,
-      length: informal.span.end - informal.span.start,
-      type: "string",
-      text: informal.text
-    });
-    return;
-  }
-  const slice = source.slice(containerStart, containerEnd);
-  const idx = slice.indexOf(informal.text);
-  if (idx >= 0) {
-    records.push({
-      start: containerStart + idx,
-      length: informal.text.length,
-      type: "string",
-      text: informal.text
-    });
-  }
+  records.push({
+    start: informal.span.start,
+    length: informal.span.end - informal.span.start,
+    type: "string",
+    text: informal.text
+  });
 }
 function walkPredicate(pred, visit) {
   for (const conj of pred.disjuncts) {
@@ -25956,102 +27891,78 @@ function walkPredicate(pred, visit) {
     }
   }
 }
-function collectProcessTokens(proc, source, records) {
-  const procSpan = processSlice(source, proc);
-  pushNameInSpan(records, source, procSpan, proc.name, "method", ["declaration"]);
-  if (proc.body?.fsf) {
-    const fsfSpan = proc.body.fsf.span.end > proc.body.fsf.span.start ? proc.body.fsf.span : procSpan;
-    for (const scenario of proc.body.fsf.scenarios) {
-      walkPredicate(scenario.test, (atom) => {
-        pushInformalAtom(records, source, fsfSpan.start, fsfSpan.end, atom);
-      });
-      walkPredicate(scenario.def, (atom) => {
-        pushInformalAtom(records, source, fsfSpan.start, fsfSpan.end, atom);
-      });
-    }
-    if (proc.body.fsf.others) {
-      walkPredicate(proc.body.fsf.others, (atom) => {
-        pushInformalAtom(records, source, fsfSpan.start, fsfSpan.end, atom);
-      });
-    }
-  }
-  if (proc.body?.comment) {
-    const comment = proc.body.comment;
-    const informalIdx = comment.indexOf("informal");
-    if (informalIdx >= 0) {
-      const base = source.indexOf(comment, procSpan.start);
-      if (base >= 0) {
-        records.push({
-          start: base + informalIdx,
-          length: "informal".length,
-          type: "keyword",
-          text: "informal"
-        });
+function pushParamNames(records, groups) {
+  for (const group of groups) {
+    if (group.nameSpans) {
+      for (const ns of group.nameSpans) {
+        pushSpan(records, ns.span, "parameter", ["declaration"], ns.name);
       }
     }
   }
+}
+function collectProcessTokens(proc, records) {
+  pushSpan(records, proc.nameSpan, "method", ["declaration"], proc.name);
+  pushParamNames(records, proc.inputs);
+  pushParamNames(records, proc.outputs);
+  if (proc.body?.fsf) {
+    for (const scenario of proc.body.fsf.scenarios) {
+      walkPredicate(scenario.test, (atom) => pushInformalAtom(records, atom));
+      walkPredicate(scenario.def, (atom) => pushInformalAtom(records, atom));
+    }
+    if (proc.body.fsf.others) {
+      walkPredicate(proc.body.fsf.others, (atom) => pushInformalAtom(records, atom));
+    }
+  }
+  const decom = proc.body?.decomposition;
+  if (decom && typeof decom === "object" && "span" in decom) {
+    pushSpan(records, decom.span, "parameter", ["readonly"], decom.text);
+  }
+  const comment = proc.body?.comment;
+  const commentText = (0, import_parser21.textOf)(comment);
+  if (commentText && comment && typeof comment === "object" && "span" in comment) {
+    pushWordInText(records, comment.span, commentText, "informal", "keyword");
+  }
   for (const ext of proc.body?.ext ?? []) {
-    pushNameInSpan(records, source, ext.span, ext.name, "parameter", ["readonly"]);
+    pushSpan(records, ext.span, "parameter", ["readonly"], ext.name);
   }
 }
-function collectModuleTokens(mod, source, records) {
-  const modSpan = moduleSlice(source, mod);
+function collectModuleTokens(mod, records) {
   if (mod.isSystem) {
-    const sysIdx = source.indexOf("SYSTEM_", modSpan.start);
-    if (sysIdx >= 0) {
-      records.push({
-        start: sysIdx,
-        length: 7,
-        type: "keyword",
-        text: "SYSTEM_"
-      });
-      records.push({
-        start: sysIdx + 7,
-        length: mod.name.length,
-        type: "namespace",
-        modifiers: ["declaration"],
-        text: mod.name
-      });
-    }
+    pushSpan(records, mod.systemPrefixSpan, "keyword", void 0, "SYSTEM_");
+    pushSpan(records, mod.nameSpan, "namespace", ["declaration"], mod.name);
   } else {
-    pushNameInSpan(records, source, modSpan, mod.name, "namespace", ["declaration"]);
+    pushSpan(records, mod.nameSpan, "namespace", ["declaration"], mod.name);
   }
   for (const t of mod.types) {
-    pushNameInSpan(records, source, modSpan, t.name, "type", ["declaration"]);
+    pushSpan(records, t.span, "type", ["declaration"], t.name);
   }
   for (const v of mod.vars) {
-    pushNameInSpan(records, source, modSpan, v.variable.name, "variable", ["declaration"]);
+    pushSpan(records, v.variable.span, "variable", ["declaration"], v.variable.name);
   }
   for (const c of mod.consts) {
-    pushNameInSpan(records, source, modSpan, c.name, "variable", ["declaration"]);
+    pushSpan(records, c.span, "variable", ["declaration"], c.name);
   }
   for (const p of mod.processes) {
-    collectProcessTokens(p, source, records);
+    collectProcessTokens(p, records);
   }
   for (const f of mod.functions) {
-    const fnHeader = `function ${f.name}`;
-    const fnStart = source.indexOf(fnHeader, modSpan.start);
-    const fnEnd = source.indexOf("end_function", fnStart);
-    const fnSpan = fnStart >= 0 ? { start: fnStart, end: fnEnd >= 0 ? fnEnd + "end_function".length : modSpan.end, line: 1, column: 1 } : modSpan;
-    pushNameInSpan(records, source, fnSpan, f.name, "function", ["declaration"]);
+    pushSpan(records, f.nameSpan, "function", ["declaration"], f.name);
+    pushParamNames(records, f.params);
     if (f.fsf) {
-      const fsfSpan = f.fsf.span;
       for (const scenario of f.fsf.scenarios) {
-        walkPredicate(scenario.test, (atom) => {
-          pushInformalAtom(records, source, fsfSpan.start, fsfSpan.end, atom);
-        });
+        walkPredicate(scenario.test, (atom) => pushInformalAtom(records, atom));
       }
     }
   }
 }
 function buildSemanticTokenRecords(source, ast) {
-  const parsed = ast ?? (0, import_parser22.parse)(source).ast;
+  const parsed = ast ?? (0, import_parser21.parse)(source).ast;
   if (!parsed || parsed.type !== "program")
     return [];
   const records = [];
-  (0, import_parser22.walk)(parsed, {
+  (0, import_parser21.walk)(parsed, {
     enterModule(mod) {
-      collectModuleTokens(mod, source, records);
+      collectModuleTokens(mod, records);
     }
   });
   return dedupeRecords(records);
@@ -26086,30 +27997,125 @@ function semanticTokenRecordsToLsp(records, document) {
 }
 function buildSemanticTokens(document) {
   const source = document.getText();
-  const { ast } = (0, import_parser22.parse)(source);
+  const { ast } = (0, import_parser21.parse)(source);
   const program = ast && ast.type === "program" ? ast : null;
   const records = buildSemanticTokenRecords(source, program);
   return semanticTokenRecordsToLsp(records, document);
 }
 
+// ../language-server/src/folding.ts
+var import_parser22 = __toESM(require_dist());
+var import_node8 = __toESM(require_node3());
+function collectFoldingRanges(document) {
+  const source = document.getText();
+  const { ast } = (0, import_parser22.parse)(source);
+  if (!ast || ast.type !== "program")
+    return [];
+  const ranges = [];
+  for (const mod of ast.modules) {
+    if (mod.span.end > mod.span.start) {
+      ranges.push({
+        startLine: document.positionAt(mod.span.start).line,
+        endLine: document.positionAt(mod.span.end).line,
+        kind: import_node8.FoldingRangeKind.Region
+      });
+    }
+    for (const proc of mod.processes) {
+      if (proc.span.end > proc.span.start) {
+        ranges.push({
+          startLine: document.positionAt(proc.span.start).line,
+          endLine: document.positionAt(proc.span.end).line,
+          kind: import_node8.FoldingRangeKind.Region
+        });
+      }
+      const fsf = proc.body?.fsf;
+      if (fsf && fsf.span.end > fsf.span.start) {
+        ranges.push({
+          startLine: document.positionAt(fsf.span.start).line,
+          endLine: document.positionAt(fsf.span.end).line,
+          kind: import_node8.FoldingRangeKind.Region
+        });
+      }
+    }
+    for (const fn of mod.functions) {
+      if (fn.span.end > fn.span.start) {
+        ranges.push({
+          startLine: document.positionAt(fn.span.start).line,
+          endLine: document.positionAt(fn.span.end).line,
+          kind: import_node8.FoldingRangeKind.Region
+        });
+      }
+    }
+  }
+  return ranges.sort((a, b) => a.startLine - b.startLine || a.endLine - b.endLine);
+}
+
+// ../language-server/src/workspaceSymbols.ts
+var import_parser23 = __toESM(require_dist());
+var import_node9 = __toESM(require_node3());
+var KIND_MAP = {
+  const: import_node9.SymbolKind.Constant,
+  type: import_node9.SymbolKind.Class,
+  var: import_node9.SymbolKind.Variable,
+  process: import_node9.SymbolKind.Method,
+  function: import_node9.SymbolKind.Function
+};
+function collectWorkspaceSymbols(document, query) {
+  const { ast } = (0, import_parser23.check)(document.getText());
+  if (!ast || ast.type !== "program")
+    return [];
+  const needle = query?.trim().toLowerCase() ?? "";
+  const symbols = [];
+  for (const mod of ast.modules) {
+    const modLabel = mod.isSystem ? `SYSTEM_${mod.name}` : mod.name;
+    if (!needle || modLabel.toLowerCase().includes(needle)) {
+      symbols.push({
+        name: modLabel,
+        kind: import_node9.SymbolKind.Module,
+        location: { uri: document.uri, range: spanToRange(document, mod.span) },
+        containerName: void 0
+      });
+    }
+    for (const sym of [
+      ...mod.consts.map((c) => ({ kind: "const", name: c.name, span: c.span })),
+      ...mod.types.map((t) => ({ kind: "type", name: t.name, span: t.span })),
+      ...mod.vars.map((v) => ({ kind: "var", name: v.variable.name, span: v.variable.span })),
+      ...mod.processes.map((p) => ({ kind: "process", name: p.name, span: p.span })),
+      ...mod.functions.map((f) => ({ kind: "function", name: f.name, span: f.span }))
+    ]) {
+      if (needle && !sym.name.toLowerCase().includes(needle))
+        continue;
+      symbols.push({
+        name: sym.name,
+        kind: KIND_MAP[sym.kind],
+        location: { uri: document.uri, range: spanToRange(document, sym.span) },
+        containerName: modLabel
+      });
+    }
+  }
+  return symbols;
+}
+
 // ../language-server/src/server.ts
-var connection = (0, import_node8.createConnection)(import_node8.ProposedFeatures.all);
-var documents = new import_node8.TextDocuments(TextDocument);
+var connection = (0, import_node10.createConnection)(import_node10.ProposedFeatures.all);
+var documents = new import_node10.TextDocuments(TextDocument);
 var debounceMs = 300;
 var pendingTimers = /* @__PURE__ */ new Map();
 connection.onInitialize(() => ({
   capabilities: {
     textDocumentSync: {
       openClose: true,
-      change: import_node8.TextDocumentSyncKind.Incremental
+      change: import_node10.TextDocumentSyncKind.Incremental
     },
     documentFormattingProvider: true,
     documentSymbolProvider: true,
     definitionProvider: true,
     hoverProvider: true,
     completionProvider: {
-      triggerCharacters: [":", ".", "/"]
+      triggerCharacters: [":", ".", "/", "[", "|"]
     },
+    foldingRangeProvider: true,
+    workspaceSymbolProvider: true,
     semanticTokensProvider: {
       legend: {
         tokenTypes: [...SEMANTIC_TOKEN_TYPES],
@@ -26120,7 +28126,7 @@ connection.onInitialize(() => ({
   }
 }));
 connection.onInitialized(() => {
-  connection.client.register(import_node8.DidChangeConfigurationNotification.type, void 0);
+  connection.client.register(import_node10.DidChangeConfigurationNotification.type, void 0);
 });
 connection.onDidChangeConfiguration((change) => {
   const settings = change.settings;
@@ -26140,7 +28146,7 @@ function scheduleDiagnostics(document) {
       const doc = documents.get(uri);
       if (!doc)
         return;
-      connection.sendDiagnostics({ uri, diagnostics: collectDiagnostics(doc) });
+      connection.sendDiagnostics({ uri, diagnostics: diagnosticsForDocument(doc) });
     }, debounceMs)
   );
 }
@@ -26150,7 +28156,7 @@ documents.onDidChangeContent((change) => {
 documents.onDidOpen((event) => {
   connection.sendDiagnostics({
     uri: event.document.uri,
-    diagnostics: collectDiagnostics(event.document)
+    diagnostics: diagnosticsForDocument(event.document)
   });
 });
 connection.onDocumentFormatting((params) => {
@@ -26188,6 +28194,19 @@ connection.onCompletion((params) => {
   if (!doc)
     return [];
   return getCompletions(doc, params.position);
+});
+connection.onFoldingRanges((params) => {
+  const doc = documents.get(params.textDocument.uri);
+  if (!doc)
+    return [];
+  return collectFoldingRanges(doc);
+});
+connection.onWorkspaceSymbol((params) => {
+  const results = [];
+  for (const doc of documents.all()) {
+    results.push(...collectWorkspaceSymbols(doc, params.query));
+  }
+  return results;
 });
 documents.listen(connection);
 connection.listen();

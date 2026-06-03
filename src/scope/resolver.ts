@@ -25,6 +25,8 @@ export interface ModuleScope {
 
 export interface ScopeResult {
   root: ModuleScope | null
+  /** Flat map of module name → scope (sibling / cross-module lookup). */
+  scopes: Map<string, ModuleScope>
   symbols: SymbolEntry[]
   diagnostics: Diagnostic[]
 }
@@ -64,12 +66,14 @@ function buildModuleScope(module: ModuleNode, parent?: ModuleScope): ModuleScope
 function linkParentChild(scopes: Map<string, ModuleScope>): void {
   for (const scope of scopes.values()) {
     const parentName = scope.module.parent?.name
-    if (parentName) {
-      const parent = scopes.get(parentName)
-      if (parent) {
-        scope.parent = parent
-        parent.children.push(scope)
-      }
+    if (!parentName) continue
+    let parent = scopes.get(parentName)
+    if (!parent) {
+      parent = [...scopes.values()].find((s) => s.module.name.endsWith(`_${parentName}`))
+    }
+    if (parent) {
+      scope.parent = parent
+      parent.children.push(scope)
     }
   }
 }
@@ -104,21 +108,55 @@ export function resolveScope(program: ProgramNode): ScopeResult {
     }
   }
 
-  return { root: rootScope ?? null, symbols: allSymbols, diagnostics }
+  return { root: rootScope ?? null, scopes, symbols: allSymbols, diagnostics }
+}
+
+/** Resolve a module scope by name using the flat scope map when available. */
+export function lookupModuleScope(
+  scopeResult: ScopeResult,
+  moduleName: string
+): ModuleScope | undefined {
+  const direct = scopeResult.scopes.get(moduleName)
+  if (direct) return direct
+  for (const scope of scopeResult.scopes.values()) {
+    if (scope.module.parent?.name === moduleName && scope.parent) {
+      return scope.parent
+    }
+  }
+  if (!moduleName.includes('_')) {
+    const suffix = `_${moduleName}`
+    for (const scope of scopeResult.scopes.values()) {
+      if (scope.module.name.endsWith(suffix)) return scope
+    }
+  }
+  if (!scopeResult.root) return undefined
+  const queue = [scopeResult.root, ...scopeResult.root.children]
+  while (queue.length) {
+    const current = queue.shift()!
+    if (current.module.name === moduleName) return current
+    queue.push(...current.children)
+  }
+  return undefined
 }
 
 export function lookupSymbol(
   scope: ModuleScope,
   name: string,
-  moduleQualifier?: string
+  moduleQualifier?: string,
+  scopeResult?: ScopeResult
 ): SymbolEntry | undefined {
   if (moduleQualifier) {
     let current: ModuleScope | undefined = scope
     while (current) {
-      if (current.module.name === moduleQualifier || current.module.name.endsWith(moduleQualifier)) {
-        return current.symbols.get(name)
+      if (current.module.name === moduleQualifier) {
+        const sym = current.symbols.get(name)
+        if (sym) return sym
       }
       current = findChildModule(current, moduleQualifier) ?? current.parent
+    }
+    if (scopeResult) {
+      const modScope = lookupModuleScope(scopeResult, moduleQualifier)
+      if (modScope) return modScope.symbols.get(name)
     }
     return undefined
   }

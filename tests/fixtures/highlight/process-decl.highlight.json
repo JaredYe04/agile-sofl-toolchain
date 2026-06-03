@@ -1,0 +1,22 @@
+{
+  "source": "process-decl.asfl",
+  "lineNumber": 1,
+  "segments": [
+    {
+      "text": "process",
+      "colorClass": "kwCtrl"
+    },
+    {
+      "text": "P",
+      "colorClass": "entityFn"
+    },
+    {
+      "text": "(",
+      "colorClass": "punct"
+    },
+    {
+      "text": ")",
+      "colorClass": "punct"
+    }
+  ]
+}

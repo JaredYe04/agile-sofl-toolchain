@@ -1,0 +1,7 @@
+module SYSTEM_Bad;
+process P ()
+ext rd
+FSF :
+others && true
+end_process
+end_module

@@ -9,6 +9,19 @@ export interface WithSpan {
   span: Span
 }
 
+/** Text payload with source span (e.g. process comment/decomposition). */
+export interface TextWithSpan {
+  text: string
+  span: Span
+}
+
+export type MaybeTextWithSpan = string | TextWithSpan
+
+export function textOf(value: MaybeTextWithSpan | undefined): string | undefined {
+  if (value === undefined) return undefined
+  return typeof value === 'string' ? value : value.text
+}
+
 // --- Program & Module ---
 
 export interface ProgramNode extends WithSpan {
@@ -20,6 +33,10 @@ export interface ProgramNode extends WithSpan {
 export interface ModuleNode extends WithSpan {
   type: 'module'
   name: string
+  /** Span of module name identifier (excludes SYSTEM_ prefix). */
+  nameSpan?: Span
+  /** Span of SYSTEM_ prefix token on system modules. */
+  systemPrefixSpan?: Span
   isSystem: boolean
   parent?: QualifiedNameNode
   consts: ConstDeclNode[]
@@ -71,12 +88,16 @@ export interface InvariantNode extends WithSpan {
 export interface ParamGroupNode extends WithSpan {
   type: 'param_group'
   names: string[]
+  /** Per-name spans parallel to names[]; optional for backward compatibility. */
+  nameSpans?: Array<{ name: string; span: Span }>
   typeExpr: TypeExprNode
 }
 
 export interface ProcessNode extends WithSpan {
   type: 'process'
   name: string
+  /** Span of process name (or Init keyword). */
+  nameSpan?: Span
   isInit: boolean
   inputs: ParamGroupNode[]
   outputs: ParamGroupNode[]
@@ -88,8 +109,8 @@ export interface ProcessBodyNode extends WithSpan {
   type: 'process_body'
   ext: ExtVarNode[]
   fsf?: FsfSpecNode
-  decomposition?: string
-  comment?: string
+  decomposition?: MaybeTextWithSpan
+  comment?: MaybeTextWithSpan
 }
 
 export interface ExtVarNode extends WithSpan {
@@ -102,6 +123,8 @@ export interface ExtVarNode extends WithSpan {
 export interface FunctionNode extends WithSpan {
   type: 'function'
   name: string
+  /** Span of function name identifier. */
+  nameSpan?: Span
   params: ParamGroupNode[]
   returnType: TypeExprNode
   fsf?: FsfSpecNode

@@ -1,0 +1,10 @@
+{
+  "source": "end-function.asfl",
+  "lineNumber": 1,
+  "segments": [
+    {
+      "text": "end_function",
+      "colorClass": "kwCtrl"
+    }
+  ]
+}

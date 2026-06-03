@@ -1,0 +1,22 @@
+{
+  "source": "map-to-type.asfl",
+  "lineNumber": 1,
+  "segments": [
+    {
+      "text": "map",
+      "colorClass": "identifier"
+    },
+    {
+      "text": "string",
+      "colorClass": "type"
+    },
+    {
+      "text": "to",
+      "colorClass": "operator"
+    },
+    {
+      "text": "nat",
+      "colorClass": "type"
+    }
+  ]
+}

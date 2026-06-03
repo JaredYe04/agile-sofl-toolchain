@@ -21,7 +21,8 @@
     "cli": "npm run build && node dist/cli.js",
     "highlight:check": "vitest run tests/vscode/highlight.test.ts tests/vscode/semantic-highlight.test.ts",
     "highlight:preview": "node scripts/highlight-report.mjs --ansi examples/keyword-traps.asfl",
-    "highlight:update": "node scripts/highlight-report.mjs --write-snapshots examples/keyword-traps.asfl examples/highlight-edge-cases.asfl examples/type-showcase.asfl"
+    "highlight:update": "node scripts/highlight-report.mjs --write-snapshots examples/keyword-traps.asfl examples/highlight-edge-cases.asfl examples/type-showcase.asfl",
+    "bench:parse": "npm run build && node scripts/bench-parse.mjs"
   },
   "dependencies": {
     "chevrotain": "^11.0.3"

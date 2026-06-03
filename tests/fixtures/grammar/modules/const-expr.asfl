@@ -1,0 +1,9 @@
+module SYSTEM_Const;
+const limit = 10;
+      offset = limit + 1;
+var x: nat;
+process P ()
+FSF :
+others && x > offset
+end_process
+end_module

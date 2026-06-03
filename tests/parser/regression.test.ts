@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { parse } from '../../src/index'
+import { textOf } from '../../src/ast/nodes'
 import { tokenize } from '../../src/lexer/lexer'
 import { isProgramNode } from '../../src/ast/guards'
 
@@ -38,7 +39,7 @@ end_module`
     const { ast, diagnostics } = parse(source)
     expect(diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0)
     if (isProgramNode(ast)) {
-      expect(ast.modules[0].processes[0].body?.comment).toContain('informal')
+      expect(textOf(ast.modules[0].processes[0].body?.comment)).toContain('informal')
     }
   })
 
@@ -51,5 +52,16 @@ end_module`
     if (isProgramNode(ast)) {
       expect(ast.modules[0].types[0].typeExpr.type).toBe('map_type')
     }
+  })
+
+  it('parses function with others-only fsf before body', () => {
+    const source = `module SYSTEM_FsfFn;
+function guarded (x: nat): bool
+others && true
+== x
+end_function
+end_module`
+    const { diagnostics } = parse(source)
+    expect(diagnostics.filter((d) => d.severity === 'error').map((d) => d.message)).toEqual([])
   })
 })

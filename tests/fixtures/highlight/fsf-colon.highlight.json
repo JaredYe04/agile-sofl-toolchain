@@ -1,0 +1,14 @@
+{
+  "source": "fsf-colon.asfl",
+  "lineNumber": 1,
+  "segments": [
+    {
+      "text": "FSF",
+      "colorClass": "kwCtrl"
+    },
+    {
+      "text": ":",
+      "colorClass": "punct"
+    }
+  ]
+}

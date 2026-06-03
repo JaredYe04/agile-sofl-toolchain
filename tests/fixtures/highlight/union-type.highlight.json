@@ -1,0 +1,18 @@
+{
+  "source": "union-type.asfl",
+  "lineNumber": 1,
+  "segments": [
+    {
+      "text": "nat",
+      "colorClass": "type"
+    },
+    {
+      "text": " | ",
+      "colorClass": "plain"
+    },
+    {
+      "text": "int",
+      "colorClass": "type"
+    }
+  ]
+}

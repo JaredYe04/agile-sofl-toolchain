@@ -1,0 +1,26 @@
+{
+  "source": "const-decl.asfl",
+  "lineNumber": 1,
+  "segments": [
+    {
+      "text": "const",
+      "colorClass": "kwDecl"
+    },
+    {
+      "text": "c",
+      "colorClass": "entityType"
+    },
+    {
+      "text": "=",
+      "colorClass": "punct"
+    },
+    {
+      "text": "1",
+      "colorClass": "number"
+    },
+    {
+      "text": ";",
+      "colorClass": "plain"
+    }
+  ]
+}

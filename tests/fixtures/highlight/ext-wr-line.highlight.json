@@ -1,0 +1,22 @@
+{
+  "source": "ext-wr-line.asfl",
+  "lineNumber": 1,
+  "segments": [
+    {
+      "text": "wr",
+      "colorClass": "kwDecl"
+    },
+    {
+      "text": "subtotal",
+      "colorClass": "identifier"
+    },
+    {
+      "text": ":",
+      "colorClass": "punct"
+    },
+    {
+      "text": "int",
+      "colorClass": "type"
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "source": "real-literal.asfl",
+  "lineNumber": 1,
+  "segments": [
+    {
+      "text": "1.5",
+      "colorClass": "number"
+    }
+  ]
+}

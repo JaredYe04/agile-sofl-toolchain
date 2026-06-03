@@ -3,6 +3,7 @@
  */
 
 import type { ProgramNode, ProcessNode, FunctionNode, FsfSpecNode, AtomicPredicateNode } from '../ast/nodes.js'
+import { textOf } from '../ast/nodes.js'
 import type { Diagnostic } from '../diagnostics/codes.js'
 import { createDiagnostic, DiagnosticCodes } from '../diagnostics/codes.js'
 import { isInformalText } from '../ast/guards.js'
@@ -47,7 +48,7 @@ function checkProcessFsf(process: ProcessNode): Diagnostic[] {
   if (!process.body?.fsf) return diagnostics
 
   const formal = fsfIsFormal(process.body.fsf)
-  const hasDecom = !!process.body.decomposition
+  const hasDecom = !!textOf(process.body.decomposition)
   const isBottom = !hasDecom
 
   if (isBottom && !formal) {
@@ -61,11 +62,11 @@ function checkProcessFsf(process: ProcessNode): Diagnostic[] {
     )
   }
 
-  if (hasDecom && formal && process.body.comment) {
+  if (hasDecom && formal && textOf(process.body.comment)) {
     // semi-formal expected for non-bottom with decom - informal text in comment is ok
   }
 
-  if (hasDecom && formal && !process.body.comment) {
+  if (hasDecom && formal && !textOf(process.body.comment)) {
     diagnostics.push(
       createDiagnostic(
         DiagnosticCodes.FSF_FORMAL_NON_BOTTOM,

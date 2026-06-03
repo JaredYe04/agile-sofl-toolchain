@@ -1,0 +1,26 @@
+{
+  "source": "inv-line.asfl",
+  "lineNumber": 1,
+  "segments": [
+    {
+      "text": "inv",
+      "colorClass": "kwDecl"
+    },
+    {
+      "text": "x",
+      "colorClass": "identifier"
+    },
+    {
+      "text": " > ",
+      "colorClass": "plain"
+    },
+    {
+      "text": "0",
+      "colorClass": "number"
+    },
+    {
+      "text": ";",
+      "colorClass": "plain"
+    }
+  ]
+}

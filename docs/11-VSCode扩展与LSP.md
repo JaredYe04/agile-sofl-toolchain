@@ -41,7 +41,7 @@
 | 能力 | 说明 |
 |------|------|
 | 语法高亮 | TextMate grammar + **语义 token**（模块/过程/变量/informal 等分层着色） |
-| 实时诊断 | LSP `publishDiagnostics`，默认 debounce 300ms，调用 `check()` |
+| 实时诊断 | LSP `publishDiagnostics`，默认 debounce 300ms，调用 `check()`（按 document version + content hash 缓存） |
 | 格式化 | **Format Document**，4 空格语义缩进 |
 | 大纲 | **Outline**，`documentSymbol`（模块 / 类型 / 变量 / 进程 / 函数） |
 | 语言配置 | 块注释 `/* */`、括号配对、`indentationRules` 输入缩进 |
@@ -51,8 +51,8 @@
 | 能力 | 快捷键 / 触发 | 说明 |
 |------|----------------|------|
 | **跳转定义** | `F12` | 变量/类型/进程/函数声明处；单文件多模块 |
-| **悬停** | `Ctrl+Hover` | Markdown：符号 kind + 模块名 |
-| **补全** | `Ctrl+Space` | 类型位置（`nat`/`int`/作用域类型名）、FSF/`others` snippet、作用域符号 |
+| **悬停** | `Ctrl+Hover` | Markdown：符号 kind + 类型/签名；informal/comment/decom 模板；comprehension 绑定类型 |
+| **补全** | `Ctrl+Space` | 类型位置、作用域符号（含用户函数）、量词/comprehension 绑定、FSF/`others` snippet |
 
 扩展设置：
 
@@ -61,11 +61,27 @@
 
 ### 3.0 特性覆盖矩阵
 
-| 层级 | 已实现 | 后续 |
-|------|--------|------|
-| **Parser** | 多模块、FSF、informal、case/let/if、量词、类型构造、**AST span** | `forevery`/`forsome` 语法路径 |
-| **LSP** | diagnostics、format、documentSymbol、semanticTokens、**definition/hover/completion** | workspace/symbol、增量解析 |
-| **高亮** | TextMate + tokenColors + `highlight:check` + snapshot fixture、**SYSTEM_ 三色分色** | 复杂嵌套表达式 AST 驱动着色 |
+| 能力 | Parser | LSP 扩展 | 备注 |
+|------|:------:|:--------:|------|
+| 多模块 / `Child / Parent` | ✅ | ✅ | `documentSymbol` 大纲 |
+| FSF + `others` + informal | ✅ | ✅ | 诊断 + FSF snippet |
+| `forevery` / `forsome` | ✅ | ✅ | 量词绑定补全/hover |
+| 类型 union/product 优先级 | ✅ | — | 见 [03-文法参考](./03-文法参考.md) |
+| set/seq/map comprehension | ✅ | ✅ | `{ e \| x:T & P }` 绑定补全/hover |
+| `parse` 容错 / `parseStrict` | ✅ | ✅ | 编辑用 `parse`；`check` 用 strict |
+| 实时诊断 `check()` | ✅ | ✅ | debounce 可配置；含 `ASFL_SCOPE_001`；结果缓存 |
+| Format Document | ✅ | ✅ | 4 空格语义缩进 |
+| semanticTokens | ✅ | ✅ | informal / 模块 / 参数等 |
+| Go to Definition | ✅ | ✅ | `F12`，单文件多模块 |
+| Hover | ✅ | ✅ | kind + 类型/签名 + comprehension 绑定 |
+| Completion | ✅ | ✅ | 类型、符号、函数、量词/comprehension 绑定、FSF/`others` |
+| `highlight:check` 快照 | — | ✅ | CI 与本地无需打开 VS Code |
+| Hybrid 区域 (`collectHybridRegions`) | ✅ | 🔶 | API 就绪；编辑器装饰 POC 在 M3 |
+| workspace/symbol | — | ✅ | 按 query 过滤；`ProjectIndex` 聚合已打开文档 |
+| 跨文件 definition | ✅ | ✅ | 库级 `ProjectIndex` + LSP 同步 |
+| 增量 check | ✅ | ✅ | `checkIncremental` + diagnosticCache |
+| FSF / 模块图 Webview | — | ❌ | **不在 VS Code 扩展范围**；由 Electron+Vue + `editor-api` 实现 |
+| 增量解析（语法树复用） | — | ❌ | 后续优化；当前为模块 hash + 全量 check 缓存 |
 
 Parser 权威范围见 [03-文法参考.md](./03-文法参考.md) §6；路线图见 [10-编辑器路线图.md](./10-编辑器路线图.md)。
 
@@ -188,7 +204,7 @@ npm run package --prefix packages/vscode
 
 | 工作流 | 范围 |
 |--------|------|
-| `ci.yml` | parser：`src/`、`tests/` |
+| `ci.yml` | parser：`src/`、`tests/`；LSP 测试；banking + ecommerce P95 基准（阻塞）；fuzz smoke |
 | `ci-editor.yml` | `packages/**`、`examples/**`：LSP 测试 + `vsce package` 编译检查 |
 
 ## 7. Monaco / 其他编辑器
@@ -197,6 +213,8 @@ Language Server 入口：`packages/language-server/src/server.ts`（stdio）。M
 
 1. 从扩展 `.vsix` 或源码 bundle 引用 `server/server.js`；或
 2. 直接依赖 `@agile-sofl/parser` 在浏览器侧调用 `check()` / `format()`（无 LSP）。
+
+浏览器 POC：`packages/monaco-demo`（见该目录 `README.md`）。
 
 详见 [10-编辑器路线图.md](./10-编辑器路线图.md) 中长期能力规划。
 

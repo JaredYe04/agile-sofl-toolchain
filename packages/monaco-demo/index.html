@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Agile-SOFL Monaco Demo</title>
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: system-ui, sans-serif;
+        background: #1e1e1e;
+        color: #d4d4d4;
+        height: 100vh;
+        display: grid;
+        grid-template-rows: auto 1fr auto;
+      }
+      header, footer { padding: 0.75rem 1rem; background: #252526; }
+      #layout {
+        display: grid;
+        grid-template-columns: 1fr 320px;
+        min-height: 0;
+      }
+      #editor { min-height: 0; }
+      #sidebar {
+        border-left: 1px solid #3c3c3c;
+        padding: 0.75rem;
+        overflow: auto;
+        font-size: 12px;
+      }
+      #status { font-weight: 600; }
+      .diag { margin: 0.35rem 0; white-space: pre-wrap; }
+      .diag.error { color: #f48771; }
+      .diag.warning { color: #cca700; }
+      .diag.info { color: #75beff; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <strong>Agile-SOFL Monaco Demo</strong> — validation via <code>check()</code>
+    </header>
+    <div id="layout">
+      <div id="editor"></div>
+      <aside id="sidebar">
+        <div id="status">Checking…</div>
+        <div id="diagnostics"></div>
+      </aside>
+    </div>
+    <footer>Build: <code>npm run build --prefix packages/monaco-demo</code> then open this file or <code>npm start</code></footer>
+    <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.52.2/min/vs/loader.js"></script>
+    <script>
+      require.config({
+        paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.52.2/min/vs' }
+      })
+      require(['vs/editor/editor.main'], function () {
+        const s = document.createElement('script')
+        s.src = 'dist/demo.js'
+        s.onerror = () => {
+          document.getElementById('status').textContent =
+            'Run npm run build in packages/monaco-demo first.'
+        }
+        document.body.appendChild(s)
+      })
+    </script>
+  </body>
+</html>

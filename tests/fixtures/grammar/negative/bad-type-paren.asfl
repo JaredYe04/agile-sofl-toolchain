@@ -1,0 +1,3 @@
+module SYSTEM_Bad;
+type T = (nat |;
+end_module

@@ -16,8 +16,20 @@ describe('Lexer boundaries', () => {
   })
 
   it('tokenizes enum angle brackets', () => {
-    const r = tokenize('const c = <red, green>;')
+    const r = tokenize('const c = <red>;')
     expect(r.tokens.some((t) => t.tokenType.name === 'EnumValue')).toBe(true)
+    expect(r.tokens.filter((t) => t.tokenType.name === 'EnumValue').map((t) => t.image)).toEqual([
+      '<red>'
+    ])
+  })
+
+  it('does not treat comparison as enum when > appears later in source', () => {
+    const r = tokenize('k < 5; others && x > 0')
+    const lt = r.tokens.filter((t) => t.tokenType.name === 'LessThan')
+    const gt = r.tokens.filter((t) => t.tokenType.name === 'GreaterThan')
+    expect(lt).toHaveLength(1)
+    expect(gt).toHaveLength(1)
+    expect(r.tokens.some((t) => t.tokenType.name === 'EnumValue')).toBe(false)
   })
 
   it('tokenizes real literals', () => {

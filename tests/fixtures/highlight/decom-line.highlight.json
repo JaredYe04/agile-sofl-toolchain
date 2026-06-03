@@ -1,0 +1,14 @@
+{
+  "source": "decom-line.asfl",
+  "lineNumber": 1,
+  "segments": [
+    {
+      "text": "decom",
+      "colorClass": "kwDecl"
+    },
+    {
+      "text": "My_Decom",
+      "colorClass": "identifier"
+    }
+  ]
+}

@@ -1,0 +1,3 @@
+module SYSTEM_C;
+var x: R.Item;
+end_module

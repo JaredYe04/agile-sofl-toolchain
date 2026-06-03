@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { TextDocument } from 'vscode-languageserver-textdocument'
 import { collectDiagnostics } from '../src/diagnostics.js'
 import { formatDocument } from '../src/formatting.js'
+import { SymbolKind } from 'vscode-languageserver/node.js'
 import { collectDocumentSymbols } from '../src/symbols.js'
 import { readFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
@@ -32,11 +33,14 @@ describe('Language server', () => {
     expect(edits.length).toBeGreaterThan(0)
     expect(edits[0].newText).toContain('module SYSTEM_T')
   })
+})
 
-  it('collects document symbols for banking', () => {
+describe('Document symbols', () => {
+  it('includes FSF and comment children under process', () => {
     const source = readFileSync(bankingPath, 'utf8')
     const symbols = collectDocumentSymbols(doc(source))
-    expect(symbols.length).toBeGreaterThan(0)
-    expect(symbols[0].children?.some((c) => c.name === 'A')).toBe(true)
+    const proc = symbols[0].children?.find((c) => c.name === 'A' && c.kind === SymbolKind.Method)
+    expect(proc?.children?.some((c) => c.name === 'FSF')).toBe(true)
+    expect(proc?.children?.some((c) => c.name === 'comment')).toBe(true)
   })
 })

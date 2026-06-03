@@ -1,0 +1,14 @@
+{
+  "source": "undefined-fn.asfl",
+  "lineNumber": 1,
+  "segments": [
+    {
+      "text": "==",
+      "colorClass": "operator"
+    },
+    {
+      "text": "undefined",
+      "colorClass": "kwCtrl"
+    }
+  ]
+}

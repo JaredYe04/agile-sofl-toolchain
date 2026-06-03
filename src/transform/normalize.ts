@@ -23,7 +23,7 @@ export function stripSpans<T>(node: T): T {
   }
   const result: Record<string, unknown> = {}
   for (const [key, value] of Object.entries(node as Record<string, unknown>)) {
-    if (key === 'span') continue
+    if (key === 'span' || key.endsWith('Span')) continue
     result[key] = stripSpans(value)
   }
   return result as T

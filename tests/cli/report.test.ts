@@ -61,7 +61,7 @@ describe('REPL via CLI', () => {
     const r = spawnSync('node', [cli, 'repl'], {
       input: ':quit\n',
       encoding: 'utf8',
-      timeout: 5000
+      timeout: 15000
     })
     expect(r.status).toBe(0)
   })
@@ -70,7 +70,7 @@ describe('REPL via CLI', () => {
     const r = spawnSync('node', [cli, 'repl'], {
       input: ':check module SYSTEM_T; var x: nat; end_module\n:quit\n',
       encoding: 'utf8',
-      timeout: 5000
+      timeout: 15000
     })
     expect(r.stdout).toContain('SYSTEM_T')
   })

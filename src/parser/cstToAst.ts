@@ -29,7 +29,7 @@ import type {
   LetBindingNode
 } from '../ast/nodes.js'
 import { mergeSpans, EMPTY_SPAN } from '../ast/span.js'
-import { spanOfToken, spanOfChildren, spanFromLocation } from '../ast/spanHelpers.js'
+import { spanOfToken, spanOfChildren, spanFromLocation, spanOfTokens } from '../ast/spanHelpers.js'
 
 function spanOf(node: CstNode | IToken | undefined): typeof EMPTY_SPAN {
   if (!node) return EMPTY_SPAN
@@ -122,12 +122,15 @@ function cstToModules(cst: CstNode): ModuleNode[] {
 
 function cstToTopModule(cst: CstNode): ModuleNode {
   const id = tokensOf(cst, 'Identifier')[0]
+  const sysPrefix = tokensOf(cst, 'SystemPrefix')[0]
   const body = singleChild(cst, 'moduleBody')
   const endMod = tokensOf(cst, 'EndModule')[0]
   return {
     type: 'module',
     span: endMod ? mergeSpans(spanOf(cst), spanOfToken(endMod)) : spanOf(cst),
     name: id?.image ?? 'SYSTEM_',
+    nameSpan: id ? spanOfToken(id) : undefined,
+    systemPrefixSpan: sysPrefix ? spanOfToken(sysPrefix) : undefined,
     isSystem: true,
     consts: body ? extractConsts(body) : [],
     types: body ? extractTypes(body) : [],
@@ -147,6 +150,7 @@ function cstToRegularModule(cst: CstNode): ModuleNode {
     type: 'module',
     span: endMod ? mergeSpans(spanOf(cst), spanOfToken(endMod)) : spanOf(cst),
     name: ids[0]?.image ?? '',
+    nameSpan: ids[0] ? spanOfToken(ids[0]) : undefined,
     isSystem: false,
     parent: parent
       ? { type: 'qualified_name', span: spanOf(parent), name: parent.image }
@@ -166,12 +170,12 @@ function extractConsts(body: CstNode): ConstDeclNode[] {
   for (const d of decls) {
     for (const item of allRuleInstances(d, 'constItem')) {
       const id = tokensOf(item, 'Identifier')[0]
-      const constant = singleChild(item, 'constant')
+      const expr = singleChild(item, 'expression')
       result.push({
         type: 'const_decl',
         span: id ? spanOfToken(id) : spanOf(item),
         name: id?.image ?? '',
-        value: constant ? cstToConstant(constant) : { type: 'nil', span: EMPTY_SPAN }
+        value: expr ? cstToExpression(expr) : { type: 'nil', span: EMPTY_SPAN }
       })
     }
   }
@@ -269,11 +273,13 @@ function cstToProcess(cst: CstNode): ProcessNode {
   const ids = tokensOf(cst, 'Identifier')
   const paramDecls = childNodes(cst, 'paramDecls')
   const body = singleChild(cst, 'processBody')
+  const nameTok = init[0] ?? ids[0]
 
   return {
     type: 'process',
     span: spanOf(cst),
     name: init.length > 0 ? 'Init' : (ids[0]?.image ?? ''),
+    nameSpan: nameTok ? spanOfToken(nameTok) : undefined,
     isInit: init.length > 0,
     inputs: paramDecls[0] ? cstToParamDecls(paramDecls[0]) : [],
     outputs: paramDecls[1] ? cstToParamDecls(paramDecls[1]) : [],
@@ -289,23 +295,30 @@ function cstToParamDecls(cst: CstNode): ParamGroupNode[] {
       type: 'param_group',
       span: spanOf(g),
       names: ids.map((t) => t.image),
+      nameSpans: ids.map((t) => ({ name: t.image, span: spanOfToken(t) })),
       typeExpr: typeExpr ? cstToTypeExpr(typeExpr) : { type: 'basic_type', span: EMPTY_SPAN, name: 'given' }
     }
   })
 }
 
+function decomIdentifier(cst: CstNode): IToken | undefined {
+  const decomTok = tokensOf(cst, 'Decom')[0]
+  if (!decomTok) return undefined
+  return tokensOf(cst, 'Identifier').find((id) => id.startOffset > decomTok.startOffset)
+}
+
 function cstToProcessBody(cst: CstNode): ProcessBodyNode {
   const extVars = singleChild(cst, 'extVars')
   const fsfSpec = singleChild(cst, 'fsfSpec')
-  const decomId = tokensOf(cst, 'Identifier')
+  const decomId = decomIdentifier(cst)
   const commentText = singleChild(cst, 'text')
   return {
     type: 'process_body',
     span: spanOf(cst),
     ext: extVars ? cstToExtVars(extVars) : [],
     fsf: fsfSpec ? cstToFsfSpec(fsfSpec) : undefined,
-    decomposition: decomId[0]?.image,
-    comment: commentText ? cstToText(commentText) : undefined
+    decomposition: decomId ? { text: decomId.image, span: spanOfToken(decomId) } : undefined,
+    comment: commentText ? cstToTextWithSpan(commentText) : undefined
   }
 }
 
@@ -316,7 +329,7 @@ function cstToExtVars(cst: CstNode): ExtVarNode[] {
     const typeExpr = singleChild(ev, 'typeExpr')
     return {
       type: 'ext_var',
-      span: spanOf(ev),
+      span: id ? spanOfToken(id) : spanOf(ev),
       access: rd.length > 0 ? 'rd' : 'wr',
       name: id?.image ?? '',
       typeExpr: typeExpr ? cstToTypeExpr(typeExpr) : undefined
@@ -370,6 +383,7 @@ function cstToFunction(cst: CstNode): FunctionNode {
     type: 'function',
     span: spanOf(cst),
     name: id?.image ?? '',
+    nameSpan: id ? spanOfToken(id) : undefined,
     params: paramDecls ? cstToParamDecls(paramDecls) : [],
     returnType: typeExpr ? cstToTypeExpr(typeExpr) : { type: 'basic_type', span: EMPTY_SPAN, name: 'given' },
     fsf: fsfSpec ? cstToFsfSpec(fsfSpec) : undefined,
@@ -392,30 +406,42 @@ function cstToQualifiedName(cst: CstNode): QualifiedNameNode {
 }
 
 function cstToTypeExpr(cst: CstNode): TypeExprNode {
-  const product = singleChild(cst, 'productType')
-  if (product) {
-    const elements = childNodes(product, 'typeAtomic').map(cstToTypeAtomic)
-    return { type: 'product_type', span: spanOf(cst), elements }
-  }
   const union = singleChild(cst, 'unionType')
-  if (union) {
-    const universal = tokensOf(union, 'Universal')
-    if (universal.length > 0) {
-      return { type: 'union_type', span: spanOf(cst), variants: [], isUniversal: true }
-    }
-    const variants = childNodes(union, 'typeAtomic').map(cstToTypeAtomic)
-    return { type: 'union_type', span: spanOf(cst), variants }
-  }
-  const atomic = singleChild(cst, 'typeAtomic')
-  if (atomic) return cstToTypeAtomic(atomic)
-  const primary = singleChild(cst, 'typePrimary')
-  if (primary) return cstToTypeAtomic(primary)
-  const other = singleChild(cst, 'otherType')
-  if (other) return cstToTypeExpr(other)
+  if (union) return cstToUnionType(union)
   const access = singleChild(cst, 'moduleOrFieldAccess')
   if (access) {
     return { type: 'named_type', span: spanOf(cst), qualified: cstToQualifiedName(access) }
   }
+  const product = singleChild(cst, 'productType')
+  if (product) return cstToProductType(product)
+  const primary = singleChild(cst, 'typePrimary')
+  if (primary) return cstToTypePrimary(primary)
+  const atomic = singleChild(cst, 'typeAtomic')
+  if (atomic) return cstToTypeAtomic(atomic)
+  return { type: 'basic_type', span: spanOf(cst), name: 'given' }
+}
+
+function cstToUnionType(cst: CstNode): TypeExprNode {
+  const universal = tokensOf(cst, 'Universal')
+  if (universal.length > 0) {
+    return { type: 'union_type', span: spanOf(cst), variants: [], isUniversal: true }
+  }
+  const products = allRuleInstances(cst, 'productType').map(cstToProductType)
+  if (products.length === 1) return products[0]
+  return { type: 'union_type', span: spanOf(cst), variants: products }
+}
+
+function cstToProductType(cst: CstNode): TypeExprNode {
+  const primaries = allRuleInstances(cst, 'typePrimary').map(cstToTypePrimary)
+  if (primaries.length === 1) return primaries[0]
+  return { type: 'product_type', span: spanOf(cst), elements: primaries }
+}
+
+function cstToTypePrimary(cst: CstNode): TypeExprNode {
+  const inner = singleChild(cst, 'typeExpr')
+  if (inner) return cstToTypeExpr(inner)
+  const atomic = singleChild(cst, 'typeAtomic')
+  if (atomic) return cstToTypeAtomic(atomic)
   return { type: 'basic_type', span: spanOf(cst), name: 'given' }
 }
 
@@ -501,11 +527,14 @@ function cstToAtomicPredicate(cst: CstNode): AtomicPredicateNode {
     return {
       type: 'not_predicate',
       span: spanOf(cst),
-      operand: inner ? cstToAtomicPredicate(inner) : { type: 'informal_text', span: EMPTY_SPAN, text: '' }
+      operand: inner ? cstToAtomicPredicate(inner) : { type: 'informal_text', span: spanOf(cst), text: '' }
     }
   }
   const text = singleChild(cst, 'text')
-  if (text) return { type: 'informal_text', span: spanOf(cst), text: cstToText(text) }
+  if (text) {
+    const withSpan = cstToTextWithSpan(text)
+    return { type: 'informal_text', span: withSpan.span, text: withSpan.text }
+  }
   const boolVal = singleChild(cst, 'booleanValue')
   if (boolVal) {
     const t = tokensOf(boolVal, 'True')
@@ -537,14 +566,18 @@ function cstToAtomicPredicate(cst: CstNode): AtomicPredicateNode {
 
 function cstToQuantified(cst: CstNode): QuantifiedNode {
   const forall = tokensOf(cst, 'Forall')
+  const forevery = tokensOf(cst, 'Forevery')
   const exists = tokensOf(cst, 'Exists')
+  const forsome = tokensOf(cst, 'Forsome')
   const notTok = tokensOf(cst, 'Not')
   const bindingList = singleChild(cst, 'bindingList')
   const predicate = singleChild(cst, 'predicate')
+  const isForall = forall.length > 0 || forevery.length > 0
+  const isExists = exists.length > 0 || forsome.length > 0
   return {
     type: 'quantified',
     span: spanOf(cst),
-    quantifier: forall.length > 0 ? 'forall' : notTok.length > 0 && exists.length > 0 ? 'exists_unique' : 'exists',
+    quantifier: isForall ? 'forall' : notTok.length > 0 && isExists ? 'exists_unique' : 'exists',
     bindings: bindingList ? cstToBindingList(bindingList) : [],
     nestedQuantifiers: childNodes(cst, 'quantifierList').map((q) => cstToQuantifiedFromList(q)),
     body: predicate ? cstToPredicate(predicate) : { type: 'predicate', span: EMPTY_SPAN, disjuncts: [] }
@@ -553,11 +586,12 @@ function cstToQuantified(cst: CstNode): QuantifiedNode {
 
 function cstToQuantifiedFromList(cst: CstNode): QuantifiedNode {
   const forall = tokensOf(cst, 'Forall')
+  const forevery = tokensOf(cst, 'Forevery')
   const bindingList = singleChild(cst, 'bindingList')
   return {
     type: 'quantified',
     span: spanOf(cst),
-    quantifier: forall.length > 0 ? 'forall' : 'exists',
+    quantifier: forall.length > 0 || forevery.length > 0 ? 'forall' : 'exists',
     bindings: bindingList ? cstToBindingList(bindingList) : [],
     nestedQuantifiers: [],
     body: { type: 'predicate', span: EMPTY_SPAN, disjuncts: [] }
@@ -577,15 +611,21 @@ function cstToBindingList(cst: CstNode): BindingGroupNode[] {
   })
 }
 
-function cstToText(cst: CstNode): string {
+function cstToTextWithSpan(cst: CstNode): { text: string; span: typeof EMPTY_SPAN } {
+  const strTokens = tokensOf(cst, 'StringLiteral')
+  const idTokens = tokensOf(cst, 'Identifier')
+  const allTokens = [...strTokens, ...idTokens].sort((a, b) => a.startOffset - b.startOffset)
   const parts: string[] = []
-  for (const str of tokensOf(cst, 'StringLiteral')) {
+  for (const str of strTokens) {
     parts.push(str.image.slice(1, -1))
   }
-  for (const id of tokensOf(cst, 'Identifier')) {
+  for (const id of idTokens) {
     parts.push(id.image)
   }
-  return parts.join(' ')
+  return {
+    text: parts.join(' '),
+    span: allTokens.length > 0 ? spanOfTokens(allTokens) : spanOfChildren(cst)
+  }
 }
 
 function cstToConstant(cst: CstNode): ExpressionNode {
@@ -640,6 +680,8 @@ function cstToNumber(cst: CstNode): ExpressionNode {
 }
 
 function cstToExpression(cst: CstNode): ExpressionNode {
+  const constNode = singleChild(cst, 'constant')
+  if (constNode) return cstToConstant(constNode)
   const num = singleChild(cst, 'numberExpr')
   if (num) return cstToNumberExpr(num)
   const char = singleChild(cst, 'charExpr')

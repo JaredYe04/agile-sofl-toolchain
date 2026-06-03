@@ -1,0 +1,42 @@
+{
+  "source": "forall-line.asfl",
+  "lineNumber": 1,
+  "segments": [
+    {
+      "text": "forall",
+      "colorClass": "kwDecl"
+    },
+    {
+      "text": "[",
+      "colorClass": "plain"
+    },
+    {
+      "text": "i",
+      "colorClass": "param"
+    },
+    {
+      "text": ":",
+      "colorClass": "punct"
+    },
+    {
+      "text": "s",
+      "colorClass": "identifier"
+    },
+    {
+      "text": "]",
+      "colorClass": "punct"
+    },
+    {
+      "text": " | ",
+      "colorClass": "plain"
+    },
+    {
+      "text": " > ",
+      "colorClass": "plain"
+    },
+    {
+      "text": "0",
+      "colorClass": "number"
+    }
+  ]
+}

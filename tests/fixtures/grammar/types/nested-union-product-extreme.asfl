@@ -1,0 +1,5 @@
+module SYSTEM_Extreme;
+type
+PairMix = (nat | int) * (bool | string);
+Wide = universal;
+end_module

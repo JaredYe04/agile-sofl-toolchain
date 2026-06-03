@@ -1,0 +1,9 @@
+module SYSTEM_MapComp;
+const empty = {->};
+      doubled = {k -> k * 2 | k: nat & k < 5};
+type Scores = map string to nat;
+process MapComp ()
+FSF :
+others && {x -> x | x: nat & x > 0 } = empty
+end_process
+end_module

@@ -1,0 +1,10 @@
+{
+  "source": "double-amp.asfl",
+  "lineNumber": 1,
+  "segments": [
+    {
+      "text": "&&",
+      "colorClass": "operator"
+    }
+  ]
+}

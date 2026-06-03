@@ -1,0 +1,10 @@
+{
+  "source": "enum-value.asfl",
+  "lineNumber": 1,
+  "segments": [
+    {
+      "text": "<on>",
+      "colorClass": "enum"
+    }
+  ]
+}

@@ -84,7 +84,8 @@
     "configurationDefaults": {
       "[agile-sofl]": {
         "editor.defaultFormatter": "JaredYe.agile-sofl",
-        "editor.semanticHighlighting.enabled": true
+        "editor.semanticHighlighting.enabled": true,
+        "editor.quickSuggestions.strings": false
       },
       "files.associations": {
         "*.asfl": "agile-sofl"

@@ -1,0 +1,3 @@
+module SYSTEM_Bad;
+var x: nat;
+end_module @@@ invalid

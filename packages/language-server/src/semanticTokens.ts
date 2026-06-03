@@ -2,7 +2,7 @@
  * Semantic token builder for LSP and tests.
  */
 
-import { parse, walk } from '@agile-sofl/parser'
+import { parse, textOf, walk } from '@agile-sofl/parser'
 import type {
   ProgramNode,
   AtomicPredicateNode,
@@ -10,7 +10,8 @@ import type {
   ProcessNode,
   ModuleNode,
   Span,
-  InformalTextNode
+  InformalTextNode,
+  ParamGroupNode
 } from '@agile-sofl/parser'
 import type { TextDocument } from 'vscode-languageserver-textdocument'
 import { SemanticTokens, SemanticTokensBuilder } from 'vscode-languageserver/node.js'
@@ -49,47 +50,37 @@ const TYPE_INDEX: Record<SemanticTokenTypeName, number> = {
   keyword: 7
 }
 
-function moduleSlice(source: string, mod: ModuleNode): Span {
-  const header = mod.isSystem ? `module SYSTEM_${mod.name}` : `module ${mod.name}`
-  const start = source.indexOf(header)
-  if (start < 0) return mod.span
-  const endIdx = source.indexOf('end_module', start)
-  const end = endIdx >= 0 ? endIdx + 'end_module'.length : source.length
-  return { start, end, line: mod.span.line, column: mod.span.column }
-}
-
-function processSlice(source: string, proc: ProcessNode): Span {
-  const header = proc.isInit ? 'process Init' : `process ${proc.name}`
-  const start = source.indexOf(header)
-  if (start < 0) return proc.span
-  const endIdx = source.indexOf('end_process', start)
-  const end = endIdx >= 0 ? endIdx + 'end_process'.length : source.length
-  return { start, end, line: proc.span.line, column: proc.span.column }
-}
-
-function indexOfWord(text: string, name: string): number {
-  const re = new RegExp(`\\b${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`)
-  const match = re.exec(text)
-  return match ? match.index : -1
-}
-
-function pushNameInSpan(
+function pushSpan(
   records: SemanticTokenRecord[],
-  source: string,
-  span: Span,
-  name: string,
+  span: Span | undefined,
   type: SemanticTokenTypeName,
-  modifiers?: string[]
+  modifiers?: string[],
+  text?: string
 ): void {
-  const slice = source.slice(span.start, span.end)
-  const idx = indexOfWord(slice, name)
+  if (!span || span.end <= span.start) return
+  records.push({
+    start: span.start,
+    length: span.end - span.start,
+    type,
+    modifiers,
+    text
+  })
+}
+
+function pushWordInText(
+  records: SemanticTokenRecord[],
+  span: Span,
+  text: string,
+  word: string,
+  type: SemanticTokenTypeName
+): void {
+  const idx = text.indexOf(word)
   if (idx < 0) return
   records.push({
     start: span.start + idx,
-    length: name.length,
+    length: word.length,
     type,
-    modifiers,
-    text: name
+    text: word
   })
 }
 
@@ -114,35 +105,16 @@ function walkAtom(atom: AtomicPredicateNode, visit: (node: AtomicPredicateNode) 
   }
 }
 
-function pushInformalAtom(
-  records: SemanticTokenRecord[],
-  source: string,
-  containerStart: number,
-  containerEnd: number,
-  atom: AtomicPredicateNode
-): void {
+function pushInformalAtom(records: SemanticTokenRecord[], atom: AtomicPredicateNode): void {
   if (atom.type !== 'informal_text') return
   const informal = atom as InformalTextNode
-  if (!informal.text) return
-  if (informal.span.end > informal.span.start) {
-    records.push({
-      start: informal.span.start,
-      length: informal.span.end - informal.span.start,
-      type: 'string',
-      text: informal.text
-    })
-    return
-  }
-  const slice = source.slice(containerStart, containerEnd)
-  const idx = slice.indexOf(informal.text)
-  if (idx >= 0) {
-    records.push({
-      start: containerStart + idx,
-      length: informal.text.length,
-      type: 'string',
-      text: informal.text
-    })
-  }
+  if (!informal.text || informal.span.end <= informal.span.start) return
+  records.push({
+    start: informal.span.start,
+    length: informal.span.end - informal.span.start,
+    type: 'string',
+    text: informal.text
+  })
 }
 
 function walkPredicate(pred: PredicateNode, visit: (node: AtomicPredicateNode) => void): void {
@@ -153,96 +125,74 @@ function walkPredicate(pred: PredicateNode, visit: (node: AtomicPredicateNode) =
   }
 }
 
-function collectProcessTokens(proc: ProcessNode, source: string, records: SemanticTokenRecord[]): void {
-  const procSpan = processSlice(source, proc)
-  pushNameInSpan(records, source, procSpan, proc.name, 'method', ['declaration'])
-  if (proc.body?.fsf) {
-    const fsfSpan = proc.body.fsf.span.end > proc.body.fsf.span.start
-      ? proc.body.fsf.span
-      : procSpan
-    for (const scenario of proc.body.fsf.scenarios) {
-      walkPredicate(scenario.test, (atom) => {
-        pushInformalAtom(records, source, fsfSpan.start, fsfSpan.end, atom)
-      })
-      walkPredicate(scenario.def, (atom) => {
-        pushInformalAtom(records, source, fsfSpan.start, fsfSpan.end, atom)
-      })
-    }
-    if (proc.body.fsf.others) {
-      walkPredicate(proc.body.fsf.others, (atom) => {
-        pushInformalAtom(records, source, fsfSpan.start, fsfSpan.end, atom)
-      })
-    }
-  }
-  if (proc.body?.comment) {
-    const comment = proc.body.comment
-    const informalIdx = comment.indexOf('informal')
-    if (informalIdx >= 0) {
-      const base = source.indexOf(comment, procSpan.start)
-      if (base >= 0) {
-        records.push({
-          start: base + informalIdx,
-          length: 'informal'.length,
-          type: 'keyword',
-          text: 'informal'
-        })
+function pushParamNames(records: SemanticTokenRecord[], groups: ParamGroupNode[]): void {
+  for (const group of groups) {
+    if (group.nameSpans) {
+      for (const ns of group.nameSpans) {
+        pushSpan(records, ns.span, 'parameter', ['declaration'], ns.name)
       }
     }
   }
+}
+
+function collectProcessTokens(proc: ProcessNode, records: SemanticTokenRecord[]): void {
+  pushSpan(records, proc.nameSpan, 'method', ['declaration'], proc.name)
+
+  pushParamNames(records, proc.inputs)
+  pushParamNames(records, proc.outputs)
+
+  if (proc.body?.fsf) {
+    for (const scenario of proc.body.fsf.scenarios) {
+      walkPredicate(scenario.test, (atom) => pushInformalAtom(records, atom))
+      walkPredicate(scenario.def, (atom) => pushInformalAtom(records, atom))
+    }
+    if (proc.body.fsf.others) {
+      walkPredicate(proc.body.fsf.others, (atom) => pushInformalAtom(records, atom))
+    }
+  }
+
+  const decom = proc.body?.decomposition
+  if (decom && typeof decom === 'object' && 'span' in decom) {
+    pushSpan(records, decom.span, 'parameter', ['readonly'], decom.text)
+  }
+
+  const comment = proc.body?.comment
+  const commentText = textOf(comment)
+  if (commentText && comment && typeof comment === 'object' && 'span' in comment) {
+    pushWordInText(records, comment.span, commentText, 'informal', 'keyword')
+  }
+
   for (const ext of proc.body?.ext ?? []) {
-    pushNameInSpan(records, source, ext.span, ext.name, 'parameter', ['readonly'])
+    pushSpan(records, ext.span, 'parameter', ['readonly'], ext.name)
   }
 }
 
-function collectModuleTokens(mod: ModuleNode, source: string, records: SemanticTokenRecord[]): void {
-  const modSpan = moduleSlice(source, mod)
+function collectModuleTokens(mod: ModuleNode, records: SemanticTokenRecord[]): void {
   if (mod.isSystem) {
-    const sysIdx = source.indexOf('SYSTEM_', modSpan.start)
-    if (sysIdx >= 0) {
-      records.push({
-        start: sysIdx,
-        length: 7,
-        type: 'keyword',
-        text: 'SYSTEM_'
-      })
-      records.push({
-        start: sysIdx + 7,
-        length: mod.name.length,
-        type: 'namespace',
-        modifiers: ['declaration'],
-        text: mod.name
-      })
-    }
+    pushSpan(records, mod.systemPrefixSpan, 'keyword', undefined, 'SYSTEM_')
+    pushSpan(records, mod.nameSpan, 'namespace', ['declaration'], mod.name)
   } else {
-    pushNameInSpan(records, source, modSpan, mod.name, 'namespace', ['declaration'])
+    pushSpan(records, mod.nameSpan, 'namespace', ['declaration'], mod.name)
   }
 
   for (const t of mod.types) {
-    pushNameInSpan(records, source, modSpan, t.name, 'type', ['declaration'])
+    pushSpan(records, t.span, 'type', ['declaration'], t.name)
   }
   for (const v of mod.vars) {
-    pushNameInSpan(records, source, modSpan, v.variable.name, 'variable', ['declaration'])
+    pushSpan(records, v.variable.span, 'variable', ['declaration'], v.variable.name)
   }
   for (const c of mod.consts) {
-    pushNameInSpan(records, source, modSpan, c.name, 'variable', ['declaration'])
+    pushSpan(records, c.span, 'variable', ['declaration'], c.name)
   }
   for (const p of mod.processes) {
-    collectProcessTokens(p, source, records)
+    collectProcessTokens(p, records)
   }
   for (const f of mod.functions) {
-    const fnHeader = `function ${f.name}`
-    const fnStart = source.indexOf(fnHeader, modSpan.start)
-    const fnEnd = source.indexOf('end_function', fnStart)
-    const fnSpan: Span = fnStart >= 0
-      ? { start: fnStart, end: fnEnd >= 0 ? fnEnd + 'end_function'.length : modSpan.end, line: 1, column: 1 }
-      : modSpan
-    pushNameInSpan(records, source, fnSpan, f.name, 'function', ['declaration'])
+    pushSpan(records, f.nameSpan, 'function', ['declaration'], f.name)
+    pushParamNames(records, f.params)
     if (f.fsf) {
-      const fsfSpan = f.fsf.span
       for (const scenario of f.fsf.scenarios) {
-        walkPredicate(scenario.test, (atom) => {
-          pushInformalAtom(records, source, fsfSpan.start, fsfSpan.end, atom)
-        })
+        walkPredicate(scenario.test, (atom) => pushInformalAtom(records, atom))
       }
     }
   }
@@ -255,7 +205,7 @@ export function buildSemanticTokenRecords(source: string, ast?: ProgramNode | nu
   const records: SemanticTokenRecord[] = []
   walk(parsed, {
     enterModule(mod) {
-      collectModuleTokens(mod, source, records)
+      collectModuleTokens(mod, records)
     }
   })
   return dedupeRecords(records)

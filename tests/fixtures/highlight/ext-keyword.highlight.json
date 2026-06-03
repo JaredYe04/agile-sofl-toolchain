@@ -1,0 +1,10 @@
+{
+  "source": "ext-keyword.asfl",
+  "lineNumber": 1,
+  "segments": [
+    {
+      "text": "ext",
+      "colorClass": "kwDecl"
+    }
+  ]
+}

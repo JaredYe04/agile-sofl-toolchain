@@ -22,7 +22,13 @@ jobs:
         run: npm run build
       - name: Test
         run: npm test
+      - name: Language server tests
+        run: npm test --prefix packages/language-server
+      - name: Editor API contract tests
+        run: npm test --prefix packages/editor-api
       - name: Highlight tests
         run: npm run highlight:check
       - name: Coverage
         run: npm run coverage
+      - name: Parse benchmark (banking + ecommerce P95)
+        run: node scripts/bench-parse.mjs --assert-p95=100 --assert-ecommerce-p95=150

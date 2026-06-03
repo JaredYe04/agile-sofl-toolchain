@@ -15,6 +15,7 @@ import type {
   ParamGroupNode,
   ExtVarNode
 } from '../ast/nodes.js'
+import { textOf } from '../ast/nodes.js'
 
 const INDENT = '    '
 
@@ -28,6 +29,14 @@ class IndentWriter {
   toString(): string {
     return this.lines.join('\n')
   }
+}
+
+function needsTypeParens(type: TypeExprNode): boolean {
+  return type.type === 'union_type' && !type.isUniversal && type.variants.length > 1
+}
+
+function printTypeOperand(type: TypeExprNode): string {
+  return needsTypeParens(type) ? `(${printType(type)})` : printType(type)
 }
 
 function printType(type: TypeExprNode): string {
@@ -47,7 +56,7 @@ function printType(type: TypeExprNode): string {
     case 'composed_type':
       return `composed of ${type.fields.map((f) => `${f.name}: ${printType(f.typeExpr)}`).join(' ')} end`
     case 'product_type':
-      return type.elements.map(printType).join(' * ')
+      return type.elements.map(printTypeOperand).join(' * ')
     case 'map_type':
       return `map ${printType(type.domain)} to ${printType(type.range)}`
     case 'union_type':
@@ -244,10 +253,10 @@ function printProcess(writer: IndentWriter, level: number, p: ProcessNode): void
       printFsf(writer, bodyLevel, p.body.fsf)
     }
     if (p.body.decomposition) {
-      writer.line(bodyLevel, `decom: ${p.body.decomposition}`)
+      writer.line(bodyLevel, `decom: ${textOf(p.body.decomposition)}`)
     }
     if (p.body.comment) {
-      writer.line(bodyLevel, `comment: ${p.body.comment}`)
+      writer.line(bodyLevel, `comment: ${textOf(p.body.comment)}`)
     }
   }
 

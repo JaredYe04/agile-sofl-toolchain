@@ -1,0 +1,6 @@
+module SYSTEM_Quant;
+var items: set of nat;
+inv
+forevery[i: items] | i > 0 and
+forsome[j: items] | j <> i or not (j = 0);
+end_module
