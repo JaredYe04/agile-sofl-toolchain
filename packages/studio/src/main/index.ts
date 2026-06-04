@@ -9,7 +9,8 @@ import {
   sendToLanguageServer,
   setLspWindow,
   startLanguageServer,
-  stopLanguageServer
+  stopLanguageServer,
+  setLspWindow
 } from './lspBridge'
 
 let mainWindow: BrowserWindow | null = null
@@ -37,6 +38,11 @@ function createWindow(): void {
   })
 
   setLspWindow(mainWindow)
+
+  mainWindow.on('closed', () => {
+    setLspWindow(null)
+    mainWindow = null
+  })
 
   mainWindow.on('close', (e) => {
     if (allowClose) return
@@ -87,6 +93,8 @@ app.whenReady().then(() => {
 
   ipcMain.on('studio:confirm-close', () => {
     allowClose = true
+    stopLanguageServer()
+    setLspWindow(null)
     mainWindow?.close()
   })
 

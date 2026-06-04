@@ -1,4 +1,5 @@
 import { createI18n } from 'vue-i18n'
+import { initMonacoNlsFromStudioLocale } from '../monaco/nls'
 import en from './en.json'
 import zhCN from './zh-CN.json'
 
@@ -16,6 +17,7 @@ export const i18n = createI18n({
 export function setLocale(locale: Locale): void {
   i18n.global.locale.value = locale
   localStorage.setItem('studio-locale', locale)
+  initMonacoNlsFromStudioLocale(locale)
 }
 
 export async function initLocaleFromSystem(): Promise<void> {

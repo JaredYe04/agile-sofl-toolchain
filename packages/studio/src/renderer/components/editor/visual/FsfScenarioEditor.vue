@@ -49,6 +49,8 @@ function removeScenario(index: number): void {
 function save(): void {
   emit('save', scenarios.value, others.value || undefined)
 }
+
+defineExpose({ save, addScenario })
 </script>
 
 <template>
@@ -57,7 +59,7 @@ function save(): void {
       <h3 class="text-sm font-medium text-content-primary">{{ t('visual.fsfTitle') }}</h3>
       <button
         type="button"
-        class="rounded-md bg-accent px-3 py-1 text-xs font-medium text-white hover:bg-accent/90"
+        class="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-white hover:bg-accent/90"
         @click="save"
       >
         {{ t('visual.fsfSave') }}
@@ -68,46 +70,46 @@ function save(): void {
       <div
         v-for="(scenario, index) in scenarios"
         :key="scenario.id"
-        class="rounded-md border border-border-subtle p-3"
+        class="rounded-md border border-border-subtle bg-surface-raised p-3"
       >
         <div class="mb-2 flex items-center justify-between">
-          <span class="text-xs font-medium text-content-muted">{{ t('visual.scenario') }} {{ index + 1 }}</span>
+          <span class="text-sm font-medium text-content-secondary">{{ t('visual.scenario') }} {{ index + 1 }}</span>
           <button
             type="button"
-            class="text-xs text-content-muted hover:text-danger"
+            class="text-sm text-content-secondary hover:text-danger"
             @click="removeScenario(index)"
           >
             {{ t('visual.remove') }}
           </button>
         </div>
-        <label class="mb-1 block text-xs text-content-secondary">{{ t('visual.fsfTest') }}</label>
+        <label class="mb-1 block text-sm text-content-secondary">{{ t('visual.fsfTest') }}</label>
         <input
           v-model="scenario.test"
           type="text"
-          class="mb-2 w-full rounded border border-border-subtle bg-surface-raised px-2 py-1 font-mono text-xs"
+          class="mb-2 w-full rounded border border-border-subtle bg-surface-base px-3 py-2 font-mono text-sm text-content-primary"
         />
-        <label class="mb-1 block text-xs text-content-secondary">{{ t('visual.fsfDef') }}</label>
+        <label class="mb-1 block text-sm text-content-secondary">{{ t('visual.fsfDef') }}</label>
         <input
           v-model="scenario.def"
           type="text"
-          class="w-full rounded border border-border-subtle bg-surface-raised px-2 py-1 font-mono text-xs"
+          class="w-full rounded border border-border-subtle bg-surface-base px-3 py-2 font-mono text-sm text-content-primary"
         />
       </div>
 
       <button
         type="button"
-        class="text-xs text-accent hover:underline"
+        class="text-sm text-accent hover:underline"
         @click="addScenario"
       >
         {{ t('visual.addScenario') }}
       </button>
 
       <div>
-        <label class="mb-1 block text-xs text-content-secondary">{{ t('visual.fsfOthers') }}</label>
+        <label class="mb-1 block text-sm text-content-secondary">{{ t('visual.fsfOthers') }}</label>
         <input
           v-model="others"
           type="text"
-          class="w-full rounded border border-border-subtle bg-surface-raised px-2 py-1 font-mono text-xs"
+          class="w-full rounded border border-border-subtle bg-surface-base px-3 py-2 font-mono text-sm text-content-primary"
         />
       </div>
     </div>

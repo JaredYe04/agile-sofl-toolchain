@@ -18,13 +18,28 @@ let statusMessage = ''
 let mainWindow: BrowserWindow | null = null
 let readyTimer: ReturnType<typeof setTimeout> | null = null
 let markedReady = false
+let isShuttingDown = false
+
+function canSendToRenderer(): boolean {
+  return (
+    !isShuttingDown &&
+    mainWindow !== null &&
+    !mainWindow.isDestroyed() &&
+    !mainWindow.webContents.isDestroyed()
+  )
+}
+
+function safeSend(channel: string, ...args: unknown[]): void {
+  if (!canSendToRenderer()) return
+  mainWindow!.webContents.send(channel, ...args)
+}
 
 function resolveServerEntry(): string {
   const pkgRoot = dirname(require.resolve('@agile-sofl/language-server/package.json'))
   return join(pkgRoot, 'dist', 'server.js')
 }
 
-export function setLspWindow(win: BrowserWindow): void {
+export function setLspWindow(win: BrowserWindow | null): void {
   mainWindow = win
 }
 
@@ -39,7 +54,7 @@ export function getLspStatusMessage(): string {
 function broadcastStatus(runningNow: boolean, message?: string): void {
   running = runningNow
   if (message !== undefined) statusMessage = message
-  mainWindow?.webContents.send('studio:lsp-status-changed', {
+  safeSend('studio:lsp-status-changed', {
     running: runningNow,
     message: statusMessage
   })
@@ -122,7 +137,7 @@ function wireProcess(label: string): boolean {
     const { messages, rest } = parseMessages(stdoutBuffer)
     stdoutBuffer = rest
     for (const msg of messages) {
-      mainWindow?.webContents.send('studio:lsp-message', msg)
+      safeSend('studio:lsp-message', msg)
     }
   })
 
@@ -134,10 +149,13 @@ function wireProcess(label: string): boolean {
 
   attachExit((code) => {
     clearReadyTimer()
-    console.error(`[studio] language server exited (${label})`, code)
-    if (stderrBuf.trim()) console.error('[studio] lsp stderr summary:', stderrBuf.trim().slice(0, 500))
+    if (!isShuttingDown) {
+      console.error(`[studio] language server exited (${label})`, code)
+      if (stderrBuf.trim()) console.error('[studio] lsp stderr summary:', stderrBuf.trim().slice(0, 500))
+    }
     lspHandle = null
     markedReady = false
+    if (isShuttingDown) return
     const hint =
       stderrBuf.trim().slice(0, 200) ||
       'Run: npm run bundle --workspace @agile-sofl/language-server'
@@ -203,6 +221,7 @@ function tryElectronAsNode(serverEntry: string): boolean {
 export function startLanguageServer(): boolean {
   if (lspHandle) return isLspRunning()
 
+  isShuttingDown = false
   const serverEntry = resolveServerEntry()
   if (!existsSync(serverEntry)) {
     statusMessage =
@@ -232,10 +251,15 @@ export function sendToLanguageServer(jsonBody: string): void {
 }
 
 export function stopLanguageServer(): void {
+  isShuttingDown = true
   clearReadyTimer()
   if (!lspHandle) return
   killHandle()
   lspHandle = null
   running = false
   markedReady = false
+}
+
+export function resetLspShutdownState(): void {
+  isShuttingDown = false
 }

@@ -15,10 +15,10 @@ const label = computed(() => {
 </script>
 
 <template>
-  <div class="titlebar-no-drag flex flex-1 items-center justify-center px-4">
+  <div class="flex h-full w-full items-center justify-center px-4">
     <button
       type="button"
-      class="flex h-[22px] max-w-md flex-1 items-center gap-2 rounded-md border border-border-subtle bg-surface-base/50 px-3 text-xs text-content-muted transition-colors duration-150 hover:border-accent/40 hover:text-content-secondary"
+      class="titlebar-no-drag flex h-[22px] max-w-md flex-1 items-center gap-2 rounded-md border border-border-subtle bg-surface-base/50 px-3 text-xs text-content-muted transition-colors duration-150 hover:border-accent/40 hover:text-content-secondary"
     >
       <svg class="h-3.5 w-3.5 shrink-0 opacity-60" viewBox="0 0 16 16" fill="none">
         <circle cx="7" cy="7" r="4.5" stroke="currentColor" stroke-width="1.2" />

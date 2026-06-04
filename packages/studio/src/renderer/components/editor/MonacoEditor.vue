@@ -4,16 +4,31 @@ import type * as Monaco from 'monaco-editor'
 import { monaco, initMonacoBase } from '../../monaco/setup'
 import { registerLanguageConfiguration, registerTextMateTokens } from '../../monaco/textmate'
 import { uriForTab } from '../../monaco/languageClient'
+import { buildMinimapOptions } from '../../monaco/minimapOptions'
+import { registerAgileSoflFormatProvider } from '../../monaco/formatProvider'
+import { EDIT_COMMAND_IDS } from '../../composables/editCommands'
 import { useDocumentStore } from '../../stores/document'
+import { useDocumentHistoryStore } from '../../stores/documentHistory'
 import { useLspStore } from '../../stores/lsp'
 import { useEditorUiStore } from '../../stores/editorUi'
+
+export type SerializableSpan = {
+  start: number
+  end: number
+  line: number
+  column: number
+}
 
 const container = ref<HTMLElement | null>(null)
 const editor = shallowRef<Monaco.editor.IStandaloneCodeEditor | null>(null)
 const models = new Map<string, Monaco.editor.ITextModel>()
 let markerSub: Monaco.IDisposable | null = null
+let highlightDecorations: string[] = []
+let highlightClearTimer: ReturnType<typeof setTimeout> | null = null
+let suppressHistory = false
 
 const doc = useDocumentStore()
+const history = useDocumentHistoryStore()
 const lsp = useLspStore()
 const editorUi = useEditorUiStore()
 
@@ -21,12 +36,75 @@ const activeDocumentTab = computed(() =>
   doc.activeTab?.kind === 'document' ? doc.activeTab : null
 )
 
+function runCommand(cmd: string): void {
+  const ed = editor.value
+  if (!ed) return
+  ed.focus()
+  const actionId = EDIT_COMMAND_IDS[cmd] ?? cmd
+  void ed.getAction(actionId)?.run()
+}
+
 defineExpose({
-  runEditCommand(cmd: string) {
+  runEditCommand: runCommand,
+  async formatDocument() {
+    const { formatEditorInstance } = await import('../../composables/useFormatDocument')
+    return formatEditorInstance(editor.value)
+  },
+  applyContent(content: string, fromHistory = false): void {
+    const tab = activeDocumentTab.value
     const ed = editor.value
-    if (!ed) return
-    ed.focus()
-    ed.trigger('menu', cmd, null)
+    if (!tab || !ed) return
+    suppressHistory = true
+    doc.setContent(tab.id, content, tab.isDirty)
+    const model = getOrCreateModel(tab.id, tab.uri, content)
+    if (ed.getModel()?.uri.toString() !== model.uri.toString()) {
+      ed.setModel(model)
+    }
+    if (model.getValue() !== content) {
+      model.setValue(content)
+    }
+    model.pushStackElement()
+    model.pushEditOperations([], [], () => null)
+    if (fromHistory) {
+      history.applyExternalContent(tab.id, content)
+    }
+    suppressHistory = false
+  },
+  revealSpan(span: SerializableSpan): void {
+    const ed = editor.value
+    const model = ed?.getModel()
+    if (!ed || !model) return
+    const start = model.getPositionAt(span.start)
+    const end = model.getPositionAt(span.end)
+    ed.revealRangeInCenter(
+      new monaco.Range(start.lineNumber, start.column, end.lineNumber, end.column)
+    )
+    ed.setSelection(
+      new monaco.Selection(
+        start.lineNumber,
+        start.column,
+        end.lineNumber,
+        end.column
+      )
+    )
+    highlightDecorations = ed.deltaDecorations(highlightDecorations, [
+      {
+        range: new monaco.Range(start.lineNumber, 1, end.lineNumber, 1),
+        options: {
+          isWholeLine: true,
+          className: 'studio-code-highlight-line',
+          overviewRuler: {
+            color: 'rgba(55, 148, 255, 0.6)',
+            position: monaco.editor.OverviewRulerLane.Center
+          }
+        }
+      }
+    ])
+    if (highlightClearTimer) clearTimeout(highlightClearTimer)
+    highlightClearTimer = setTimeout(() => {
+      highlightDecorations = ed.deltaDecorations(highlightDecorations, [])
+      highlightClearTimer = null
+    }, 2000)
   }
 })
 
@@ -35,12 +113,13 @@ function getOrCreateModel(tabId: string, uri: string, content: string): Monaco.e
   if (model) return model
   model = monaco.editor.createModel(content, 'agile-sofl', uriForTab(uri))
   models.set(tabId, model)
+  history.initTab(tabId, content)
   return model
 }
 
 function applyEditorOptions(): void {
   editor.value?.updateOptions({
-    minimap: { enabled: editorUi.showMinimap },
+    minimap: buildMinimapOptions(editorUi.showMinimap),
     lineNumbers: editorUi.showLineNumbers ? 'on' : 'off'
   })
 }
@@ -66,13 +145,17 @@ function updateErrorCount(): void {
 function onContentChange(): void {
   const tab = activeDocumentTab.value
   const ed = editor.value
-  if (!tab || !ed) return
+  if (!tab || !ed || suppressHistory) return
   const value = ed.getValue()
-  if (value !== tab.content) doc.updateContent(tab.id, value)
+  if (value !== tab.content) {
+    history.pushSnapshot(tab.id, value)
+    doc.updateContent(tab.id, value)
+  }
 }
 
 onMounted(async () => {
   initMonacoBase()
+  registerAgileSoflFormatProvider()
   try {
     await registerTextMateTokens()
     await registerLanguageConfiguration()
@@ -86,7 +169,7 @@ onMounted(async () => {
       theme: isDark ? 'agile-sofl-dark' : 'agile-sofl-light',
       automaticLayout: true,
       fontSize: 14,
-      minimap: { enabled: editorUi.showMinimap },
+      minimap: buildMinimapOptions(editorUi.showMinimap),
       lineNumbers: editorUi.showLineNumbers ? 'on' : 'off',
       scrollBeyondLastLine: false,
       wordWrap: 'off',
@@ -113,6 +196,7 @@ onMounted(async () => {
 watch(() => doc.activeTabId, () => {
   syncModel()
   updateErrorCount()
+  highlightDecorations = editor.value?.deltaDecorations(highlightDecorations, []) ?? []
 })
 
 watch(
@@ -121,7 +205,11 @@ watch(
     for (const tab of doc.documentTabs) {
       const model = models.get(tab.id)
       if (model && model.getValue() !== tab.content) {
+        suppressHistory = true
         model.setValue(tab.content)
+        model.pushStackElement()
+        history.applyExternalContent(tab.id, tab.content)
+        suppressHistory = false
       }
     }
   }
@@ -138,5 +226,11 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div ref="container" class="h-full min-h-0 flex-1" />
+  <div ref="container" class="studio-scroll h-full min-h-0 flex-1" />
 </template>
+
+<style>
+.monaco-editor .studio-code-highlight-line {
+  background: rgba(55, 148, 255, 0.12);
+}
+</style>

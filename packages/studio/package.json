@@ -19,6 +19,7 @@
     "@agile-sofl/language-server": "file:../language-server",
     "@agile-sofl/parser": "file:../parser",
     "monaco-editor": "^0.52.2",
+    "monaco-editor-nls-adapter": "^2.2.1",
     "monaco-languageclient": "^8.8.3",
     "pinia": "^2.1.7",
     "vscode-jsonrpc": "^8.2.0",

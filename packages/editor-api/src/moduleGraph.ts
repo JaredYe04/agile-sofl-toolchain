@@ -4,11 +4,14 @@ import { toSerializableSpan, type SerializableSpan } from './span.js'
 
 export type ModuleGraphNodeKind = 'module' | 'process' | 'function'
 
+export type ModuleGraphNodeRole = 'system' | 'submodule' | 'process' | 'function'
+
 export interface ModuleGraphNode {
   id: string
   kind: ModuleGraphNodeKind
   name: string
   parentId?: string
+  moduleRole?: ModuleGraphNodeRole
   span: SerializableSpan
 }
 
@@ -36,6 +39,7 @@ export function buildModuleGraph(ast: ProgramNode): ModuleGraph {
         kind: 'process',
         name: proc.name,
         parentId: mod.name,
+        moduleRole: 'process',
         span: toSerializableSpan(proc.span)
       })
       if (textOf(proc.body?.decomposition)) {
@@ -48,6 +52,7 @@ export function buildModuleGraph(ast: ProgramNode): ModuleGraph {
         kind: 'function',
         name: fn.name,
         parentId: mod.name,
+        moduleRole: 'function',
         span: toSerializableSpan(fn.span)
       })
     }
@@ -62,6 +67,7 @@ function addModuleNode(mod: ModuleNode, nodes: ModuleGraphNode[], edges: ModuleG
     kind: 'module',
     name: mod.isSystem ? `SYSTEM_${mod.name}` : mod.name,
     parentId: mod.parent?.name,
+    moduleRole: mod.isSystem ? 'system' : 'submodule',
     span: toSerializableSpan(mod.span)
   })
   if (mod.parent?.name) {

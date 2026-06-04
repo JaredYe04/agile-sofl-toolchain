@@ -1,18 +1,37 @@
 import { onMounted, onUnmounted } from 'vue'
 import { useFileActions } from './useFileActions'
+import { useDocumentStore } from '../stores/document'
+import { useDocumentHistoryStore } from '../stores/documentHistory'
+import { isMonacoFocused, isEditableFieldFocused, shouldUseNativeClipboard } from './editCommands'
 
 export function useKeyboardShortcuts(
   onEdit: (cmd: string) => void,
   onDevTools?: () => void,
-  onNewFile?: () => void
+  onNewFile?: () => void,
+  onFormat?: () => void,
+  onUndoRedo?: (cmd: 'undo' | 'redo') => boolean
 ): void {
   const files = useFileActions()
+  const doc = useDocumentStore()
+  const history = useDocumentHistoryStore()
 
   function handler(e: KeyboardEvent): void {
     const mod = e.ctrlKey || e.metaKey
+    const key = e.key.toLowerCase()
+
+    if (e.shiftKey && e.altKey && key === 'f') {
+      e.preventDefault()
+      onFormat?.()
+      return
+    }
+
     if (!mod) return
 
-    const key = e.key.toLowerCase()
+    const clipboardKeys = ['c', 'v', 'x', 'a']
+    if (clipboardKeys.includes(key) && shouldUseNativeClipboard()) {
+      return
+    }
+
     if (key === 'n') {
       e.preventDefault()
       onNewFile?.()
@@ -33,9 +52,11 @@ export function useKeyboardShortcuts(
       onDevTools?.()
     } else if (key === 'z' && !e.shiftKey) {
       e.preventDefault()
+      if (onUndoRedo?.('undo')) return
       onEdit('undo')
     } else if ((key === 'z' && e.shiftKey) || key === 'y') {
       e.preventDefault()
+      if (onUndoRedo?.('redo')) return
       onEdit('redo')
     } else if (key === 'a') {
       e.preventDefault()
@@ -52,6 +73,6 @@ export function useKeyboardShortcuts(
     }
   }
 
-  onMounted(() => window.addEventListener('keydown', handler))
-  onUnmounted(() => window.removeEventListener('keydown', handler))
+  onMounted(() => window.addEventListener('keydown', handler, true))
+  onUnmounted(() => window.removeEventListener('keydown', handler, true))
 }

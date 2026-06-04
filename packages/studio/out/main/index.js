@@ -103,6 +103,14 @@ let statusMessage = "";
 let mainWindow$1 = null;
 let readyTimer = null;
 let markedReady = false;
+let isShuttingDown = false;
+function canSendToRenderer() {
+  return !isShuttingDown && mainWindow$1 !== null && !mainWindow$1.isDestroyed() && !mainWindow$1.webContents.isDestroyed();
+}
+function safeSend(channel, ...args) {
+  if (!canSendToRenderer()) return;
+  mainWindow$1.webContents.send(channel, ...args);
+}
 function resolveServerEntry() {
   const pkgRoot = node_path.dirname(require$1.resolve("@agile-sofl/language-server/package.json"));
   return node_path.join(pkgRoot, "dist", "server.js");
@@ -118,7 +126,7 @@ function getLspStatusMessage() {
 }
 function broadcastStatus(runningNow, message) {
   running = runningNow;
-  mainWindow$1?.webContents.send("studio:lsp-status-changed", {
+  safeSend("studio:lsp-status-changed", {
     running: runningNow,
     message: statusMessage
   });
@@ -190,7 +198,7 @@ function wireProcess(label) {
     const { messages, rest } = parseMessages(stdoutBuffer);
     stdoutBuffer = rest;
     for (const msg of messages) {
-      mainWindow$1?.webContents.send("studio:lsp-message", msg);
+      safeSend("studio:lsp-message", msg);
     }
   });
   attachStderr((chunk) => {
@@ -200,10 +208,13 @@ function wireProcess(label) {
   });
   attachExit((code) => {
     clearReadyTimer();
-    console.error(`[studio] language server exited (${label})`, code);
-    if (stderrBuf.trim()) console.error("[studio] lsp stderr summary:", stderrBuf.trim().slice(0, 500));
+    if (!isShuttingDown) {
+      console.error(`[studio] language server exited (${label})`, code);
+      if (stderrBuf.trim()) console.error("[studio] lsp stderr summary:", stderrBuf.trim().slice(0, 500));
+    }
     lspHandle = null;
     markedReady = false;
+    if (isShuttingDown) return;
     const hint = stderrBuf.trim().slice(0, 200) || "Run: npm run bundle --workspace @agile-sofl/language-server";
     statusMessage = `Language server failed (${label}): ${hint}`;
     broadcastStatus(false);
@@ -261,6 +272,7 @@ function tryElectronAsNode(serverEntry) {
 }
 function startLanguageServer() {
   if (lspHandle) return isLspRunning();
+  isShuttingDown = false;
   const serverEntry = resolveServerEntry();
   if (!node_fs.existsSync(serverEntry)) {
     statusMessage = "Language server not built — run: npm run bundle --workspace @agile-sofl/language-server";
@@ -284,6 +296,7 @@ function sendToLanguageServer(jsonBody) {
   writeStdin(frameMessage(jsonBody));
 }
 function stopLanguageServer() {
+  isShuttingDown = true;
   clearReadyTimer();
   if (!lspHandle) return;
   killHandle();
@@ -313,6 +326,10 @@ function createWindow() {
     title: "Agile-SOFL Studio"
   });
   setLspWindow(mainWindow);
+  mainWindow.on("closed", () => {
+    setLspWindow(null);
+    mainWindow = null;
+  });
   mainWindow.on("close", (e) => {
     if (allowClose) return;
     e.preventDefault();
@@ -349,6 +366,8 @@ electron.app.whenReady().then(() => {
   });
   electron.ipcMain.on("studio:confirm-close", () => {
     allowClose = true;
+    stopLanguageServer();
+    setLspWindow(null);
     mainWindow?.close();
   });
   createWindow();

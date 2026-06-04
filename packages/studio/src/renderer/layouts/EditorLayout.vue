@@ -18,6 +18,10 @@ const files = useFileActions()
 const doc = useDocumentStore()
 const newFileDialog = useNewFileDialog()
 
+function onUndoRedo(cmd: 'undo' | 'redo'): boolean {
+  return workspaceRef.value?.[cmd]() ?? false
+}
+
 const showDocumentEditor = computed(
   () => doc.activeTab?.kind === 'document' && !doc.showWelcomeFallback
 )
@@ -26,11 +30,21 @@ function onEdit(cmd: string): void {
   workspaceRef.value?.runEditCommand(cmd)
 }
 
+function onFormat(): void {
+  void workspaceRef.value?.formatDocument()
+}
+
 function onDevTools(): void {
   window.studio?.openDevTools()
 }
 
-useKeyboardShortcuts((cmd) => onEdit(cmd), onDevTools, () => newFileDialog.show())
+useKeyboardShortcuts(
+  (cmd) => onEdit(cmd),
+  onDevTools,
+  () => newFileDialog.show(),
+  onFormat,
+  onUndoRedo
+)
 
 let unsubClose: (() => void) | undefined
 
@@ -47,13 +61,13 @@ onUnmounted(() => {
 
 <template>
   <div class="flex h-full flex-col overflow-hidden">
-    <TitleBar @edit="onEdit" @dev-tools="onDevTools" />
+    <TitleBar @edit="onEdit" @dev-tools="onDevTools" @format="onFormat" />
     <EditorTabs />
     <main class="flex min-h-0 flex-1 flex-col bg-surface-raised">
       <HomeView v-if="doc.isHomeActive" />
       <WelcomeView v-else-if="doc.showWelcomeFallback" />
       <template v-else-if="showDocumentEditor">
-        <EditorToolbar />
+        <EditorToolbar @format="onFormat" />
         <EditorWorkspace ref="workspaceRef" class="min-h-0 flex-1" />
       </template>
     </main>

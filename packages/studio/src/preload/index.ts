@@ -54,11 +54,45 @@ const studio = {
   resetVisualChannel: (channelId: string) =>
     ipcRenderer.invoke('studio:reset-visual-channel', channelId) as Promise<void>,
   patchDocument: (payload: PatchDocumentPayload) =>
-    ipcRenderer.invoke('studio:patch-document', payload) as Promise<string>
+    ipcRenderer.invoke('studio:patch-document', payload) as Promise<string>,
+  formatDocument: (source: string) =>
+    ipcRenderer.invoke('studio:format-document', source) as Promise<string>,
+  patchDeclaration: (payload: PatchDeclarationPayload) =>
+    ipcRenderer.invoke('studio:patch-declaration', payload) as Promise<string>,
+  patchProcess: (payload: PatchProcessPayload) =>
+    ipcRenderer.invoke('studio:patch-process', payload) as Promise<string>
+}
+
+export type SerializableSpan = {
+  start: number
+  end: number
+  line: number
+  column: number
+}
+
+export type DiagnosticSummary = {
+  code: string
+  message: string
+  severity: string
+  span: SerializableSpan
+}
+
+export type VisualDeclarationItem = {
+  name: string
+  text: string
+  span: { start: number; end: number; line: number; column: number }
+}
+
+export type VisualFunctionItem = VisualDeclarationItem
+
+export type VisualInvariantItem = {
+  text: string
+  span: SerializableSpan
 }
 
 export type VisualModuleProcess = {
   name: string
+  span?: SerializableSpan
   decom: string
   comment: string
   hasFsf: boolean
@@ -72,19 +106,41 @@ export type VisualModuleSummary = {
   typeCount: number
   varCount: number
   invCount: number
+  invariants: VisualInvariantItem[]
   processes: VisualModuleProcess[]
-  functions: string[]
-  consts: string[]
-  types: string[]
-  vars: string[]
+  functions: VisualFunctionItem[]
+  consts: VisualDeclarationItem[]
+  types: VisualDeclarationItem[]
+  vars: VisualDeclarationItem[]
 }
 
 export type VisualModelPayload = {
   parseFailed: boolean
+  hasDiagnostics: boolean
   documentModel: unknown
+  diagnostics: DiagnosticSummary[]
   moduleGraph: unknown
   fsfModels: unknown[]
   modules: VisualModuleSummary[]
+}
+
+export type PatchProcessPayload = {
+  source: string
+  moduleName: string
+  kind: 'process' | 'function'
+  action: 'add' | 'remove' | 'rename'
+  name: string
+  newName?: string
+  template?: string
+}
+
+export type PatchDeclarationPayload = {
+  source: string
+  moduleName: string
+  kind: 'const' | 'type' | 'var'
+  action: 'patch' | 'add' | 'remove'
+  name?: string
+  text?: string
 }
 
 export type PatchDocumentPayload = {

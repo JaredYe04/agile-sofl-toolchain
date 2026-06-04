@@ -21,7 +21,16 @@ export {
 export type { FsfScenarioDto, FsfModelDto } from './fsfModel.js'
 
 export { buildModuleGraph } from './moduleGraph.js'
-export type { ModuleGraph, ModuleGraphNode, ModuleGraphEdge, ModuleGraphNodeKind } from './moduleGraph.js'
+export type {
+  ModuleGraph,
+  ModuleGraphNode,
+  ModuleGraphEdge,
+  ModuleGraphNodeKind,
+  ModuleGraphNodeRole
+} from './moduleGraph.js'
+
+export { buildVisualModelTolerant } from './visualParse.js'
+export type { VisualModelResult, VisualParseDiagnostic } from './visualParse.js'
 
 export {
   patchFsfSpec,
@@ -31,6 +40,23 @@ export {
   formatDocument,
   getInformalSpans
 } from './patch.js'
+
+export {
+  patchConst,
+  addConst,
+  removeConst,
+  patchType,
+  addType,
+  removeType,
+  patchVar,
+  addVar,
+  removeVar,
+  patchDeclaration
+} from './declarationPatch.js'
+export type { DeclarationKind } from './declarationPatch.js'
+
+export { addProcess, removeProcess, renameProcess, addFunction, removeFunction, patchProcess } from './processPatch.js'
+export type { ProcessPatchAction, FunctionPatchAction } from './processPatch.js'
 
 export { toSerializableSpan, sliceText } from './span.js'
 export type { SerializableSpan } from './span.js'

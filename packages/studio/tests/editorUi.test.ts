@@ -4,6 +4,7 @@ import { useEditorUiStore } from '../src/renderer/stores/editorUi'
 
 describe('editorUi store', () => {
   beforeEach(() => {
+    localStorage.clear()
     setActivePinia(createPinia())
   })
 
@@ -38,5 +39,28 @@ describe('editorUi store', () => {
     ui.setShowLineNumbers(false)
     expect(localStorage.getItem('studio-show-minimap')).toBe('false')
     expect(localStorage.getItem('studio-show-linenumbers')).toBe('false')
+  })
+
+  it('defaults graph nav ratio to 0.5 when sideView is graph', () => {
+    localStorage.setItem('studio-visual-side-view', 'graph')
+    const ui = useEditorUiStore()
+    expect(ui.sideView).toBe('graph')
+    expect(ui.visualNavRatio).toBe(0.5)
+  })
+
+  it('sets tree ratio when switching to tree without manual resize', () => {
+    const ui = useEditorUiStore()
+    ui.setSideView('graph')
+    expect(ui.visualNavRatio).toBe(0.5)
+    ui.setSideView('tree')
+    expect(ui.visualNavRatio).toBe(0.22)
+  })
+
+  it('persists graph zoom and tool', () => {
+    const ui = useEditorUiStore()
+    ui.setGraphZoom(75)
+    ui.setGraphTool('pan')
+    expect(localStorage.getItem('studio-graph-zoom-percent')).toBe('75')
+    expect(localStorage.getItem('studio-graph-tool')).toBe('pan')
   })
 })

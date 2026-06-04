@@ -1,23 +1,34 @@
 import { beforeEach } from 'vitest'
 
-const store = new Map<string, string>()
+const localStore = new Map<string, string>()
+const sessionStore = new Map<string, string>()
 
-Object.defineProperty(globalThis, 'localStorage', {
-  value: {
-    getItem: (key: string) => store.get(key) ?? null,
+function makeStorageApi(map: Map<string, string>) {
+  return {
+    getItem: (key: string) => map.get(key) ?? null,
     setItem: (key: string, value: string) => {
-      store.set(key, value)
+      map.set(key, value)
     },
     removeItem: (key: string) => {
-      store.delete(key)
+      map.delete(key)
     },
     clear: () => {
-      store.clear()
+      map.clear()
     }
-  },
+  }
+}
+
+Object.defineProperty(globalThis, 'localStorage', {
+  value: makeStorageApi(localStore),
+  writable: true
+})
+
+Object.defineProperty(globalThis, 'sessionStorage', {
+  value: makeStorageApi(sessionStore),
   writable: true
 })
 
 beforeEach(() => {
-  store.clear()
+  localStore.clear()
+  sessionStore.clear()
 })

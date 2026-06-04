@@ -6,7 +6,7 @@ import { useAppStore } from '../../stores/app'
 import { useFileActions } from '../../composables/useFileActions'
 import { useNewFileDialog } from '../../composables/useNewFileDialog'
 
-const emit = defineEmits<{ edit: [cmd: string]; devTools: [] }>()
+const emit = defineEmits<{ edit: [cmd: string]; devTools: []; format: [] }>()
 
 const { t } = useI18n()
 const app = useAppStore()
@@ -31,7 +31,9 @@ const editItems = computed<MenuItem[]>(() => [
   { id: 'cut', label: t('menu.edit.cut'), shortcut: 'Ctrl+X', action: () => emit('edit', 'cut') },
   { id: 'copy', label: t('menu.edit.copy'), shortcut: 'Ctrl+C', action: () => emit('edit', 'copy') },
   { id: 'paste', label: t('menu.edit.paste'), shortcut: 'Ctrl+V', action: () => emit('edit', 'paste') },
-  { id: 'selectAll', label: t('menu.edit.selectAll'), shortcut: 'Ctrl+A', action: () => emit('edit', 'selectAll') }
+  { id: 'selectAll', label: t('menu.edit.selectAll'), shortcut: 'Ctrl+A', action: () => emit('edit', 'selectAll') },
+  { id: 'sep2', label: '', separator: true },
+  { id: 'format', label: t('menu.edit.format'), shortcut: 'Shift+Alt+F', action: () => emit('format') }
 ])
 
 const viewItems = computed<MenuItem[]>(() => [

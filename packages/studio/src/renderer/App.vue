@@ -13,9 +13,18 @@ const lsp = useLspStore()
 onMounted(async () => {
   await initLocaleFromSystem()
   await app.init()
-  doc.initHome()
+  if (!doc.restoreFromSession()) {
+    doc.initHome()
+  }
+  doc.saveSession()
   lsp.init()
 })
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeunload', () => {
+    doc.saveSession()
+  })
+}
 </script>
 
 <template>

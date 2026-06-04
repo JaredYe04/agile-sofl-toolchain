@@ -38,6 +38,9 @@ const studio = {
   getLspStatus: () => electron.ipcRenderer.invoke("studio:lsp-status"),
   buildVisualModel: (source, channelId) => electron.ipcRenderer.invoke("studio:build-visual-model", source, channelId),
   resetVisualChannel: (channelId) => electron.ipcRenderer.invoke("studio:reset-visual-channel", channelId),
-  patchDocument: (payload) => electron.ipcRenderer.invoke("studio:patch-document", payload)
+  patchDocument: (payload) => electron.ipcRenderer.invoke("studio:patch-document", payload),
+  formatDocument: (source) => electron.ipcRenderer.invoke("studio:format-document", source),
+  patchDeclaration: (payload) => electron.ipcRenderer.invoke("studio:patch-declaration", payload),
+  patchProcess: (payload) => electron.ipcRenderer.invoke("studio:patch-process", payload)
 };
 electron.contextBridge.exposeInMainWorld("studio", studio);

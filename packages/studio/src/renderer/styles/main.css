@@ -12,18 +12,25 @@
   --accent: #0078d4;
   --border-subtle: #e5e5e5;
   --danger: #e81123;
+  --scrollbar-size: 6px;
+  --scrollbar-track: rgba(0, 0, 0, 0.04);
+  --scrollbar-thumb: rgba(0, 0, 0, 0.22);
+  --scrollbar-thumb-hover: rgba(0, 0, 0, 0.35);
 }
 
 .dark {
   --surface-base: #1e1e1e;
   --surface-raised: #252526;
   --surface-overlay: #2d2d2d;
-  --text-primary: #cccccc;
-  --text-secondary: #858585;
-  --text-muted: #6e6e6e;
+  --text-primary: #e8e8e8;
+  --text-secondary: #b0b0b0;
+  --text-muted: #8a8a8a;
   --accent: #3794ff;
   --border-subtle: #3c3c3c;
   --danger: #f14c4c;
+  --scrollbar-track: rgba(255, 255, 255, 0.04);
+  --scrollbar-thumb: rgba(255, 255, 255, 0.18);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.32);
 }
 
 html,
@@ -44,4 +51,79 @@ body,
 
 .titlebar-no-drag {
   -webkit-app-region: no-drag;
+}
+
+.visual-panel {
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.studio-text-selectable,
+.studio-text-selectable * {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.visual-panel input,
+.visual-panel textarea {
+  color: var(--text-primary);
+  background: var(--surface-raised);
+}
+
+/* Global custom scrollbars */
+.studio-scroll,
+.visual-panel,
+html,
+body {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+.studio-scroll::-webkit-scrollbar,
+.visual-panel::-webkit-scrollbar,
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  width: var(--scrollbar-size);
+  height: var(--scrollbar-size);
+}
+
+.studio-scroll::-webkit-scrollbar-track,
+.visual-panel::-webkit-scrollbar-track,
+html::-webkit-scrollbar-track,
+body::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+  border-radius: 999px;
+}
+
+.studio-scroll::-webkit-scrollbar-thumb,
+.visual-panel::-webkit-scrollbar-thumb,
+html::-webkit-scrollbar-thumb,
+body::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background-clip: padding-box;
+}
+
+.studio-scroll::-webkit-scrollbar-thumb:hover,
+.visual-panel::-webkit-scrollbar-thumb:hover,
+html::-webkit-scrollbar-thumb:hover,
+body::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+  background-clip: padding-box;
+}
+
+/* Monaco editor scrollbars */
+.monaco-editor .scrollbar.vertical,
+.monaco-editor .scrollbar.horizontal {
+  border-radius: 999px;
+}
+
+.monaco-editor .scrollbar .slider {
+  border-radius: 999px !important;
+  background: var(--scrollbar-thumb) !important;
+}
+
+.monaco-editor .scrollbar:hover .slider {
+  background: var(--scrollbar-thumb-hover) !important;
 }
