@@ -30,6 +30,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   select: [selection: TreeSelection]
+  revealDecom: [payload: { moduleName: string; processName: string }]
   contextmenu: [payload: { x: number; y: number; selection: TreeSelection }]
 }>()
 
@@ -61,6 +62,13 @@ const MIN_MODULE_H = 120
 const RESIZE_HANDLE = 10
 
 const activeFilePath = computed(() => doc.activeTab?.filePath ?? '')
+const graphEnabled = computed(() => editorUi.sideView === 'graph')
+
+function normalizeModuleSize(size: ModuleGraphModuleSize): ModuleGraphModuleSize | null {
+  if (size.width != null) return size
+  // Legacy aspect-only entries cannot drive layout; drop them.
+  return null
+}
 
 function loadModuleSizes(filePath: string): void {
   if (!filePath) {
@@ -72,7 +80,13 @@ function loadModuleSizes(filePath: string): void {
       string,
       Record<string, ModuleGraphModuleSize>
     >
-    moduleSizes.value = { ...(all[filePath] ?? {}) }
+    const raw = all[filePath] ?? {}
+    const normalized: Record<string, ModuleGraphModuleSize> = {}
+    for (const [id, size] of Object.entries(raw)) {
+      const n = normalizeModuleSize(size)
+      if (n) normalized[id] = n
+    }
+    moduleSizes.value = normalized
   } catch {
     moduleSizes.value = {}
   }
@@ -95,8 +109,6 @@ function persistModuleSizes(filePath: string, sizes: Record<string, ModuleGraphM
 
 watch(activeFilePath, (path) => loadModuleSizes(path), { immediate: true })
 
-const graphEnabled = computed(() => editorUi.sideView === 'graph')
-
 /** Paint order: lower depth first (parent behind children). */
 const paintOrderCompounds = computed(() => {
   if (!layout.value) return []
@@ -113,11 +125,13 @@ function cloneForIpc<T>(value: T): T {
 }
 
 function layoutOptions(): ModuleGraphLayoutOptions {
+  const aspectEntry = Object.entries(moduleSizes.value).find(([, s]) => s.aspect != null)
   return cloneForIpc({
     searchQuery: props.searchQuery ?? '',
     tidy: tidyLayout.value,
     orientation: 'portrait' as const,
     moduleSizes: moduleSizes.value,
+    layoutAspect: aspectEntry?.[1]?.aspect,
     processMeta: props.processMeta
   })
 }
@@ -142,7 +156,16 @@ function rebuildLayout(): void {
 }
 
 watch(
-  () => [props.graph, props.searchQuery, props.processMeta, graphEnabled.value, tidyLayout.value] as const,
+  () =>
+    [
+      props.graph,
+      props.searchQuery,
+      props.processMeta,
+      graphEnabled.value,
+      tidyLayout.value,
+      activeFilePath.value,
+      moduleSizes.value
+    ] as const,
   () => rebuildLayout(),
   { immediate: true, deep: true }
 )
@@ -264,6 +287,9 @@ function processChipStyle(row: CompoundRow): ProcessChipStyle {
 function rowFill(row: CompoundRow, compound: CompoundModule): string {
   if (isRowSelected(row)) return 'color-mix(in srgb, var(--accent) 18%, transparent)'
   if (hoveredId.value === row.nodeId) return 'color-mix(in srgb, var(--accent) 8%, var(--surface-raised))'
+  if (moduleLinkContext.value?.relatedNodeIds.has(row.nodeId)) {
+    return 'color-mix(in srgb, var(--accent) 6%, var(--surface-raised))'
+  }
   if (isModuleCascade(compound) && !isRowSelected(row)) {
     return 'color-mix(in srgb, var(--accent) 5%, transparent)'
   }
@@ -315,11 +341,57 @@ function graphNodeIdFromSelection(sel: TreeSelection | null): string | null {
   return null
 }
 
+function selectionFromGraphNodeId(nodeId: string): TreeSelection | null {
+  const parts = nodeId.split('::')
+  if (parts.length !== 3) return null
+  const [moduleName, kind, name] = parts
+  if (kind === 'process') return { kind: 'process', moduleName, processName: name }
+  if (kind === 'function') return { kind: 'function', moduleName, functionName: name }
+  return null
+}
+
+function moduleIdFromGraphNodeId(nodeId: string): string | null {
+  const node = props.graph?.nodes.find((n) => n.id === nodeId)
+  if (!node) return null
+  if (node.kind === 'module') return node.id
+  return node.parentId ?? null
+}
+
+function processNodeIdsForModule(moduleId: string): string[] {
+  if (!props.graph) return []
+  return props.graph.nodes
+    .filter((n) => (n.kind === 'process' || n.kind === 'function') && n.parentId === moduleId)
+    .map((n) => n.id)
+}
+
+const moduleLinkContext = computed(() => {
+  const sel = props.selected
+  if (!sel || sel.kind !== 'module' || !layout.value) return null
+  const procIds = new Set(processNodeIdsForModule(sel.moduleName))
+  if (procIds.size === 0) return null
+  const linkedEdges = layout.value.edges.filter((e) => procIds.has(e.from) || procIds.has(e.to))
+  if (linkedEdges.length === 0) return null
+  const relatedModules = new Set<string>()
+  const relatedNodeIds = new Set<string>()
+  for (const e of linkedEdges) {
+    relatedNodeIds.add(e.from)
+    relatedNodeIds.add(e.to)
+    const fromMod = moduleIdFromGraphNodeId(e.from)
+    const toMod = moduleIdFromGraphNodeId(e.to)
+    if (fromMod && fromMod !== sel.moduleName) relatedModules.add(fromMod)
+    if (toMod && toMod !== sel.moduleName) relatedModules.add(toMod)
+  }
+  return { linkedEdges, relatedModules, relatedNodeIds, procIds }
+})
+
 const edgeHighlightNodeIds = computed(() => {
   const ids = new Set<string>()
   if (hoveredId.value) ids.add(hoveredId.value)
   const selectedId = graphNodeIdFromSelection(props.selected)
   if (selectedId) ids.add(selectedId)
+  if (moduleLinkContext.value) {
+    for (const id of moduleLinkContext.value.relatedNodeIds) ids.add(id)
+  }
   if (hoveredEdgeIndex.value !== null && layout.value?.edges[hoveredEdgeIndex.value]) {
     const edge = layout.value.edges[hoveredEdgeIndex.value]
     ids.add(edge.from)
@@ -329,7 +401,10 @@ const edgeHighlightNodeIds = computed(() => {
 })
 
 const hasEdgeHighlight = computed(
-  () => edgeHighlightNodeIds.value.size > 0 || hoveredEdgeIndex.value !== null
+  () =>
+    edgeHighlightNodeIds.value.size > 0 ||
+    hoveredEdgeIndex.value !== null ||
+    moduleLinkContext.value !== null
 )
 
 type LayoutEdge = NonNullable<ModuleGraphLayoutPayload>['edges'][0]
@@ -339,20 +414,43 @@ function edgeVisualState(edge: LayoutEdge, index: number): {
   strokeWidth: number
   showLabel: boolean
 } {
-  const highlighted =
+  const directHighlight =
     hoveredEdgeIndex.value === index ||
-    edgeHighlightNodeIds.value.has(edge.from) ||
-    edgeHighlightNodeIds.value.has(edge.to)
-  if (highlighted) {
+    (graphNodeIdFromSelection(props.selected) &&
+      (edge.from === graphNodeIdFromSelection(props.selected) ||
+        edge.to === graphNodeIdFromSelection(props.selected)))
+  const moduleLinked =
+    moduleLinkContext.value &&
+    (moduleLinkContext.value.procIds.has(edge.from) ||
+      moduleLinkContext.value.procIds.has(edge.to))
+  const hoverHighlight =
+    edgeHighlightNodeIds.value.has(edge.from) || edgeHighlightNodeIds.value.has(edge.to)
+
+  if (directHighlight || hoveredEdgeIndex.value === index) {
     return { opacity: 1, strokeWidth: 2.5, showLabel: true }
   }
-  if (hasEdgeHighlight.value) {
-    return { opacity: 0.1, strokeWidth: 1.5, showLabel: false }
+  if (moduleLinked) {
+    return { opacity: 0.72, strokeWidth: 2, showLabel: true }
   }
-  return { opacity: 0.32, strokeWidth: 1.5, showLabel: false }
+  if (hoverHighlight) {
+    return { opacity: 0.9, strokeWidth: 2, showLabel: true }
+  }
+  if (hasEdgeHighlight.value) {
+    return { opacity: 0.08, strokeWidth: 1.5, showLabel: false }
+  }
+  return { opacity: 0.28, strokeWidth: 1.5, showLabel: false }
 }
 
-function onEdgeHover(index: number, edge: LayoutEdge): void {
+function onEdgeClick(edge: LayoutEdge, e: MouseEvent): void {
+  e.stopPropagation()
+  const sel = selectionFromGraphNodeId(edge.from)
+  if (sel?.kind === 'process') {
+    emit('select', sel)
+    emit('revealDecom', { moduleName: sel.moduleName, processName: sel.processName })
+  }
+}
+
+function onEdgeHover(index: number): void {
   hoveredEdgeIndex.value = index
   hoveredId.value = null
   tooltip.value = null
@@ -360,6 +458,15 @@ function onEdgeHover(index: number, edge: LayoutEdge): void {
 
 function onEdgeLeave(): void {
   hoveredEdgeIndex.value = null
+}
+
+function isModuleSoftHighlighted(compound: CompoundModule): boolean {
+  return moduleLinkContext.value?.relatedModules.has(compound.moduleId) ?? false
+}
+
+function moduleSoftHighlightFill(compound: CompoundModule): string | undefined {
+  if (!isModuleSoftHighlighted(compound)) return undefined
+  return 'color-mix(in srgb, var(--accent) 7%, var(--surface-raised))'
 }
 
 const CHAR_W = 7
@@ -422,11 +529,14 @@ function onResizePointerMove(e: PointerEvent): void {
   if (!resizing.value) return
   const dx = (e.clientX - resizing.value.startX) / viewport.scale.value
   const dy = (e.clientY - resizing.value.startY) / viewport.scale.value
+  const dragW = Math.max(MIN_MODULE_W, Math.round(resizing.value.startW + dx))
+  const dragH = Math.max(MIN_MODULE_H, Math.round(resizing.value.startH + dy))
   moduleSizes.value = {
     ...moduleSizes.value,
     [resizing.value.moduleId]: {
-      width: Math.max(MIN_MODULE_W, Math.round(resizing.value.startW + dx)),
-      height: Math.max(MIN_MODULE_H, Math.round(resizing.value.startH + dy))
+      width: dragW,
+      height: dragH,
+      aspect: Math.max(0.35, Math.min(2.5, dragW / dragH))
     }
   }
   scheduleResizeRebuild()
@@ -489,9 +599,10 @@ function onResizePointerUp(e: PointerEvent): void {
             :width="compound.width"
             :height="compound.height"
             :rx="(compound as CompoundModule & { depth?: number }).depth ? 6 : 10"
-            fill="var(--surface-raised)"
-            stroke="var(--border-subtle)"
-            stroke-width="1"
+            :fill="moduleSoftHighlightFill(compound as CompoundModule) ?? 'var(--surface-raised)'"
+            :stroke="isModuleSoftHighlighted(compound as CompoundModule) ? 'var(--accent)' : 'var(--border-subtle)'"
+            :stroke-width="isModuleSoftHighlighted(compound as CompoundModule) ? 1.5 : 1"
+            :stroke-opacity="isModuleSoftHighlighted(compound as CompoundModule) ? 0.45 : 1"
             class="pointer-events-none"
           />
           <template v-if="!(compound as CompoundModule & { compact?: boolean }).compact">
@@ -681,6 +792,19 @@ function onResizePointerUp(e: PointerEvent): void {
             stroke-width="2"
             class="pointer-events-none"
           />
+          <rect
+            v-else-if="isModuleSoftHighlighted(compound as CompoundModule)"
+            :x="compound.x"
+            :y="compound.y"
+            :width="compound.width"
+            :height="compound.height"
+            :rx="(compound as CompoundModule & { depth?: number }).depth ? 6 : 10"
+            fill="none"
+            stroke="var(--accent)"
+            stroke-width="1.5"
+            stroke-opacity="0.4"
+            class="pointer-events-none"
+          />
 
           <g v-if="isRootCompound(compound as CompoundModule)">
             <rect
@@ -712,8 +836,9 @@ function onResizePointerUp(e: PointerEvent): void {
           v-for="(edge, i) in layout.edges"
           :key="`e-${i}`"
           data-graph-edge
-          @mouseenter="onEdgeHover(i, edge)"
+          @mouseenter="onEdgeHover(i)"
           @mouseleave="onEdgeLeave"
+          @click="onEdgeClick(edge, $event)"
         >
           <line
             :x1="edge.x1"
@@ -724,6 +849,7 @@ function onResizePointerUp(e: PointerEvent): void {
             stroke-width="14"
             stroke-linecap="round"
             class="cursor-pointer"
+            @click="onEdgeClick(edge, $event)"
           />
           <line
             :x1="edge.x1"

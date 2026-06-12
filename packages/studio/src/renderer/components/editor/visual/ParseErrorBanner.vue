@@ -61,4 +61,4 @@ function isTruncated(msg: string): boolean {
     </ul>
   </div>
 </template>
-
+

@@ -182,6 +182,26 @@ const breadcrumb = computed(() => {
   return modLabel
 })
 
+function revealDecomInSource(moduleName: string, processName: string): void {
+  const mod = modules.value.find((m) => m.name === moduleName)
+  const proc = mod?.processes.find((p) => p.name === processName)
+  if (!proc?.span) return
+  const source = doc.activeTab?.content ?? ''
+  const searchFrom = Math.max(0, proc.span.start - 20)
+  const decomIdx = source.indexOf('decom:', searchFrom)
+  if (decomIdx >= 0 && decomIdx <= proc.span.end + 80) {
+    const end = Math.min(source.length, decomIdx + 48)
+    emit('revealSpan', {
+      start: decomIdx,
+      end,
+      line: proc.span.line,
+      column: proc.span.column
+    })
+    return
+  }
+  emit('revealSpan', proc.span)
+}
+
 function revealForSelection(sel: TreeSelection): void {
   const mod = modules.value.find((m) => m.name === sel.moduleName)
   if (!mod) return
@@ -582,6 +602,7 @@ onUnmounted(() => document.removeEventListener('click', onGlobalClick))
           :node-hints="graphHints"
           :process-meta="graphProcessMeta"
           @select="selected = $event"
+          @reveal-decom="revealDecomInSource($event.moduleName, $event.processName)"
           @contextmenu="openContextMenu"
         />
       </template>

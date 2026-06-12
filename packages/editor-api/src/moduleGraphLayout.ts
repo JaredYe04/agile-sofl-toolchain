@@ -63,8 +63,10 @@ export type DrawableGraphEdge = ModuleGraphEdge & {
 export type ModuleGraphLayoutOrientation = 'portrait' | 'landscape'
 
 export type ModuleGraphModuleSize = {
-  width: number
+  width?: number
   height?: number
+  /** Target width/height ratio for aspect-driven resize (width ÷ height). */
+  aspect?: number
 }
 
 export type ProcessNodeMeta = {
@@ -81,6 +83,8 @@ export type ModuleGraphLayoutOptions = {
   orientation?: ModuleGraphLayoutOrientation
   /** User-resized root module dimensions keyed by module id. */
   moduleSizes?: Record<string, ModuleGraphModuleSize>
+  /** Active resize aspect (width ÷ height); biases grid column picks. */
+  layoutAspect?: number
   /** Optional per-process metadata for graph chip labels (ext, alias). */
   processMeta?: Record<string, ProcessNodeMeta>
 }
@@ -123,29 +127,43 @@ function layoutOrientation(options: ModuleGraphLayoutOptions): ModuleGraphLayout
   return options.orientation ?? 'portrait'
 }
 
-/** Score a column count: prefer full grids (2×2, 1×3) over ragged last rows (3+1). */
+/** Score a column count: prefer full grids (2×2, 1×3); allow transitional 2+1 for n=3. */
 function scoreColLayout(n: number, cols: number): number {
   const rows = Math.ceil(n / cols)
   const lastRow = n % cols || cols
   const orphans = cols - lastRow
   let score = 0
   if (orphans === 0) score += 100
-  else score -= orphans * 28
+  else {
+    score -= orphans * 14
+    if (n === 3 && cols === 2 && orphans === 1) score += 10
+    if (n === 5 && cols === 2 && orphans === 1) score += 4
+  }
   score -= Math.abs(rows - cols) * 6
   if (rows === 1 && n > 3) score -= (n - 3) * 4
   if (cols === 1 && n > 3) score -= (n - 3) * 6
   return score
 }
 
-/** Pick the most balanced column count that fits inner width. */
-function chooseBalancedCols(n: number, innerWidth: number): number {
+/** Pick the most balanced column count that fits inner width (width is primary). */
+function chooseBalancedCols(
+  n: number,
+  innerWidth: number,
+  layoutAspect?: number,
+  rowHeightEstimate = CHIP_H
+): number {
   if (n <= 1) return 1
   let best = 1
   let bestScore = -Infinity
   for (let cols = Math.min(n, MAX_FLEX_COLS); cols >= 1; cols--) {
     const cellW = (innerWidth - GRID_GAP * (cols - 1)) / cols
     if (cellW < MIN_CELL_W) continue
-    const score = scoreColLayout(n, cols)
+    const rows = Math.ceil(n / cols)
+    let score = scoreColLayout(n, cols)
+    if (layoutAspect && layoutAspect > 0) {
+      const gridAspect = (cols * cellW) / Math.max(rows * rowHeightEstimate, 1)
+      score -= Math.abs(Math.log(gridAspect) - Math.log(layoutAspect)) * 1.5
+    }
     if (score > bestScore || (score === bestScore && cols > best)) {
       bestScore = score
       best = cols
@@ -184,10 +202,11 @@ function chooseGridCols(
   n: number,
   innerWidth: number,
   _itemHeights: number[],
-  orientation: ModuleGraphLayoutOrientation
+  orientation: ModuleGraphLayoutOrientation,
+  layoutAspect?: number
 ): number {
   if (n <= 1) return 1
-  if (orientation === 'portrait') return chooseBalancedCols(n, innerWidth)
+  if (orientation === 'portrait') return chooseBalancedCols(n, innerWidth, layoutAspect)
   const target = targetLandscapeCols(n)
   let cols = target
   while (cols > 1) {
@@ -203,12 +222,13 @@ function layoutGrid(
   originX: number,
   originY: number,
   innerWidth: number,
-  orientation: ModuleGraphLayoutOrientation
+  orientation: ModuleGraphLayoutOrientation,
+  layoutAspect?: number
 ): { placements: Record<string, { x: number; y: number; w: number; h: number }>; height: number; cols: number } {
   const n = items.length
   if (n === 0) return { placements: {}, height: 0, cols: 1 }
   const heights = items.map((i) => i.h)
-  const cols = chooseGridCols(n, innerWidth, heights, orientation)
+  const cols = chooseGridCols(n, innerWidth, heights, orientation, layoutAspect)
   const cellW = (innerWidth - GRID_GAP * (cols - 1)) / cols
   const rows = Math.ceil(n / cols)
   const placements: Record<string, { x: number; y: number; w: number; h: number }> = {}
@@ -244,6 +264,7 @@ function submoduleGridItems(
 ): { items: GridItem[]; cols: number; innerW: number; height: number } {
   const n = childModuleIds.length
   if (n === 0) return { items: [], cols: 1, innerW: availInner, height: 0 }
+  // Submodule grid: column count is width-driven only (cells are tall nested modules).
   const cols = chooseBalancedCols(n, availInner)
   const cellW = (availInner - GRID_GAP * Math.max(0, cols - 1)) / cols
   const items: GridItem[] = childModuleIds.map((id) => {
@@ -462,6 +483,56 @@ function measureAll(
   return { cache, natural }
 }
 
+type SectionLayoutPlan = {
+  sec: CompoundSection
+  contentH: number
+  cols: number
+  subItems?: GridItem[]
+}
+
+function planSectionLayouts(
+  sections: CompoundSection[],
+  innerW: number,
+  graph: ModuleGraph,
+  childrenByParent: Map<string, ModuleGraphNode[]>,
+  naturalCache: Map<string, MeasuredModule>,
+  options: ModuleGraphLayoutOptions,
+  orientation: ModuleGraphLayoutOrientation
+): SectionLayoutPlan[] {
+  const plans: SectionLayoutPlan[] = []
+  for (const sec of sections) {
+    const visible = sec.rows.filter((r) => !r.hidden)
+    if (sec.key === 'submodules') {
+      const { items, cols } = submoduleGridItems(
+        visible.map((row) => row.moduleName),
+        innerW,
+        graph,
+        childrenByParent,
+        naturalCache,
+        options,
+        orientation
+      )
+      const { height: gridH } = layoutGrid(items, 0, 0, innerW, orientation)
+      plans.push({ sec, contentH: gridH, cols, subItems: items })
+    } else {
+      const items: GridItem[] = visible.map((row) => ({
+        nodeId: row.nodeId,
+        w: textWidth(row.label),
+        h: CHIP_H
+      }))
+      const { height: gridH, cols } = layoutGrid(items, 0, 0, innerW, orientation)
+      plans.push({ sec, contentH: gridH, cols })
+    }
+  }
+  return plans
+}
+
+function naturalCompoundHeight(plans: SectionLayoutPlan[]): number {
+  if (plans.length === 0) return HEADER_H + PAD
+  const body = plans.reduce((sum, p) => sum + SECTION_TITLE_H + p.contentH, 0)
+  return HEADER_H + PAD + body
+}
+
 function layoutCompound(
   moduleId: string,
   absX: number,
@@ -473,16 +544,47 @@ function layoutCompound(
   childrenByParent: Map<string, ModuleGraphNode[]>,
   options: ModuleGraphLayoutOptions,
   out: CompoundModule[],
-  cellBounds?: { w: number; h: number },
+  cellBounds?: { w: number; h?: number },
   forceCompact?: boolean
 ): CompoundModule | null {
-  const measured = measureCache.get(moduleId)
-  if (!measured) return null
-
   const mod = graph.nodes.find((n) => n.id === moduleId)!
-  const width = cellBounds?.w ?? measured.width
-  const height = cellBounds?.h ?? measured.height
+  const width = cellBounds?.w ?? measureCache.get(moduleId)?.width ?? MIN_W
+
+  const fresh = measureCompound(
+    moduleId,
+    graph,
+    childrenByParent,
+    naturalCache,
+    options,
+    undefined,
+    width
+  )
+  if (!fresh) return null
+  measureCache.set(moduleId, fresh)
+  const measured = fresh
   const isCompact = forceCompact ?? measured.compact
+
+  const boundH = cellBounds?.h
+  const innerW = width - PAD * 2
+  const orientation = layoutOrientation(options)
+
+  const plans = isCompact
+    ? []
+    : planSectionLayouts(
+        measured.sections,
+        innerW,
+        graph,
+        childrenByParent,
+        naturalCache,
+        options,
+        orientation
+      )
+
+  const naturalH = naturalCompoundHeight(plans)
+  const height = boundH != null ? Math.max(naturalH, boundH) : naturalH
+  const extra = height - naturalH
+  const gapCount = plans.length + 1
+  const gap = extra > 0 && gapCount > 0 ? extra / gapCount : 0
 
   const compound: CompoundModule = {
     moduleId,
@@ -494,7 +596,7 @@ function layoutCompound(
     height,
     depth,
     compact: isCompact,
-    sections: isCompact ? [] : measured.sections,
+    sections: [],
     rowByNodeId: {}
   }
 
@@ -502,38 +604,24 @@ function layoutCompound(
 
   if (isCompact) return compound
 
-  const innerW = width - PAD * 2
+  let y = absY + HEADER_H + gap
+  for (const plan of plans) {
+    const visible = plan.sec.rows.filter((r) => !r.hidden)
+    const secY = y - absY
+    compound.sections.push({
+      ...plan.sec,
+      y: secY,
+      height: SECTION_TITLE_H + plan.contentH,
+      cols: plan.cols
+    })
+    const originY = y + SECTION_TITLE_H
 
-  for (const sec of measured.sections) {
-    const visible = sec.rows.filter((r) => !r.hidden)
-    const originY = absY + sec.y + SECTION_TITLE_H
-
-    if (sec.key === 'submodules') {
-      const orientation = layoutOrientation(options)
-      const { items } = submoduleGridItems(
-        visible.map((row) => row.moduleName),
-        innerW,
-        graph,
-        childrenByParent,
-        naturalCache,
-        options,
-        orientation
-      )
-      const { placements } = layoutGrid(items, absX + PAD, originY, innerW, orientation)
+    if (plan.sec.key === 'submodules' && plan.subItems) {
+      const { placements } = layoutGrid(plan.subItems, absX + PAD, originY, innerW, orientation)
       for (const row of visible) {
         const pl = placements[row.nodeId]
         if (!pl) continue
         compound.rowByNodeId[row.nodeId] = pl
-        const childMeasured = measureCompound(
-          row.moduleName,
-          graph,
-          childrenByParent,
-          naturalCache,
-          options,
-          undefined,
-          pl.w
-        )
-        if (childMeasured) measureCache.set(row.moduleName, childMeasured)
         layoutCompound(
           row.moduleName,
           pl.x,
@@ -545,7 +633,7 @@ function layoutCompound(
           childrenByParent,
           options,
           out,
-          { w: pl.w, h: pl.h }
+          { w: pl.w }
         )
       }
     } else {
@@ -554,9 +642,11 @@ function layoutCompound(
         w: textWidth(row.label),
         h: CHIP_H
       }))
-      const { placements } = layoutGrid(items, absX + PAD, originY, innerW, layoutOrientation(options))
+      const { placements } = layoutGrid(items, absX + PAD, originY, innerW, orientation)
       Object.assign(compound.rowByNodeId, placements)
     }
+
+    y += SECTION_TITLE_H + plan.contentH + gap
   }
 
   return compound
@@ -641,27 +731,41 @@ export function buildModuleGraphLayout(
   const { cache: measureCache, natural: naturalCache } = measureAll(graph, childrenByParent, options)
   const compounds: CompoundModule[] = []
 
+  const layoutAspect =
+    options.layoutAspect ??
+    Object.values(options.moduleSizes ?? {}).find((s) => s.aspect != null)?.aspect
+
   let y = LAYOUT_ORIGIN_Y
   for (const root of roots) {
     const sizeOverride = options.moduleSizes?.[root.id]
-    const rootW =
-      sizeOverride?.width ??
-      suggestDefaultRootWidth(root.id, graph, childrenByParent, naturalCache, options)
-    const remeasured = measureCompound(
+    const aspectOpts: ModuleGraphLayoutOptions = layoutAspect
+      ? { ...options, layoutAspect }
+      : options
+
+    let rootW: number
+
+    if (sizeOverride?.width != null) {
+      rootW = Math.max(MIN_W, sizeOverride.width)
+    } else {
+      rootW = suggestDefaultRootWidth(root.id, graph, childrenByParent, naturalCache, aspectOpts)
+    }
+
+    const finalMeasure = measureCompound(
       root.id,
       graph,
       childrenByParent,
       naturalCache,
-      options,
+      aspectOpts,
       undefined,
       rootW
     )
-    if (remeasured) measureCache.set(root.id, remeasured)
-    if (!measureCache.has(root.id)) continue
-    const measured = measureCache.get(root.id)!
-    const rootH = sizeOverride
-      ? Math.max(measured.height, sizeOverride.height ?? 0)
-      : measured.height
+    if (!finalMeasure) continue
+    measureCache.set(root.id, finalMeasure)
+    const contentH = finalMeasure.height
+    const targetH =
+      sizeOverride?.height != null
+        ? Math.max(HEADER_H + PAD, sizeOverride.height)
+        : contentH
     layoutCompound(
       root.id,
       40,
@@ -671,9 +775,9 @@ export function buildModuleGraphLayout(
       measureCache,
       naturalCache,
       childrenByParent,
-      options,
+      aspectOpts,
       compounds,
-      { w: rootW, h: rootH }
+      { w: rootW, h: targetH }
     )
     const placed = compounds.find((c) => c.moduleId === root.id)
     if (placed) y += placed.height + MODULE_GAP_Y

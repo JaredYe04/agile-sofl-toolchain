@@ -267,7 +267,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div ref="container" class="studio-scroll h-full min-h-0 flex-1" />
+  <div ref="container" class="h-full min-h-0 flex-1" />
 </template>
 
 <style>

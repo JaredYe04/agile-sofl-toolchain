@@ -152,17 +152,3 @@ body::-webkit-scrollbar-thumb:hover {
   background-clip: padding-box;
 }
 
-/* Monaco editor scrollbars */
-.monaco-editor .scrollbar.vertical,
-.monaco-editor .scrollbar.horizontal {
-  border-radius: 999px;
-}
-
-.monaco-editor .scrollbar .slider {
-  border-radius: 999px !important;
-  background: var(--scrollbar-thumb) !important;
-}
-
-.monaco-editor .scrollbar:hover .slider {
-  background: var(--scrollbar-thumb-hover) !important;
-}

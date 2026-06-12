@@ -185,6 +185,97 @@ describe('buildModuleGraphLayout', () => {
     expect(procSection?.cols).toBe(2)
   })
 
+  it('allows transitional 2+1 layout for three items at medium width', () => {
+    const { ast } = parse(hospital)
+    const graph = buildModuleGraph(ast!)
+    const layout = buildModuleGraphLayout(graph, { moduleSizes: { Hospital: { width: 280 } } })
+    const procSection = layout.compounds
+      .find((c) => c.moduleId === 'Hospital')
+      ?.sections.find((s) => s.key === 'processes')
+    expect(procSection?.cols).toBe(2)
+  })
+
+  it('reflows nested submodule processes when parent width changes', () => {
+    const { ast } = parse(graphShowcase)
+    const graph = buildModuleGraph(ast!)
+    const wide = buildModuleGraphLayout(graph, {
+      orientation: 'landscape',
+      moduleSizes: { SmartCity: { width: 720 } }
+    })
+    const narrow = buildModuleGraphLayout(graph, {
+      orientation: 'landscape',
+      moduleSizes: { SmartCity: { width: 280 } }
+    })
+    const trafficWide = wide.compounds.find((c) => c.moduleId === 'Traffic')
+    const trafficNarrow = narrow.compounds.find((c) => c.moduleId === 'Traffic')
+    expect(trafficWide).toBeDefined()
+    expect(trafficNarrow).toBeDefined()
+    expect(trafficNarrow!.width).toBeLessThan(trafficWide!.width)
+    const firstProcId = trafficWide!.sections
+      .find((s) => s.key === 'processes')!
+      .rows.find((r) => !r.hidden)!.nodeId
+    const wideChip = trafficWide!.rowByNodeId[firstProcId]
+    const narrowChip = trafficNarrow!.rowByNodeId[firstProcId]
+    expect(wideChip).toBeDefined()
+    expect(narrowChip).toBeDefined()
+    expect(wideChip!.w).not.toBe(narrowChip!.w)
+    const wideProcCols =
+      trafficWide?.sections.find((s) => s.key === 'processes')?.cols ?? 1
+    const narrowProcCols =
+      trafficNarrow?.sections.find((s) => s.key === 'processes')?.cols ?? 1
+    expect(wideProcCols).toBeGreaterThanOrEqual(narrowProcCols)
+  })
+
+  it('stretches root height when user resizes taller than content', () => {
+    const { ast } = parse(graphShowcase)
+    const graph = buildModuleGraph(ast!)
+    const natural = buildModuleGraphLayout(graph)
+    const rootNatural = natural.compounds.find((c) => c.moduleId === 'SmartCity' && c.depth === 0)
+    const stretched = buildModuleGraphLayout(graph, {
+      moduleSizes: {
+        SmartCity: { width: rootNatural!.width, height: rootNatural!.height + 200, aspect: 0.8 }
+      }
+    })
+    const root = stretched.compounds.find((c) => c.moduleId === 'SmartCity' && c.depth === 0)
+    expect(root!.height).toBe(rootNatural!.height + 200)
+    expect(root!.width).toBe(rootNatural!.width)
+  })
+
+  it('does not inflate submodule height or overlap sections when root is stretched taller', () => {
+    const { ast } = parse(graphShowcase)
+    const graph = buildModuleGraph(ast!)
+    const natural = buildModuleGraphLayout(graph)
+    const stretched = buildModuleGraphLayout(graph, {
+      moduleSizes: {
+        SmartCity: { width: natural.compounds.find((c) => c.moduleId === 'SmartCity')!.width, height: natural.compounds.find((c) => c.moduleId === 'SmartCity')!.height + 240 }
+      }
+    })
+    const root = stretched.compounds.find((c) => c.moduleId === 'SmartCity' && c.depth === 0)!
+    const rootNatural = natural.compounds.find((c) => c.moduleId === 'SmartCity' && c.depth === 0)!
+    const subSection = root.sections.find((s) => s.key === 'submodules')!
+    const procSection = root.sections.find((s) => s.key === 'processes')!
+    const subNatural = rootNatural.sections.find((s) => s.key === 'submodules')!
+    expect(subSection.height).toBe(subNatural.height)
+    expect(procSection.y).toBeGreaterThan(subSection.y + subSection.height - 1)
+    for (const child of stretched.compounds.filter((c) => c.depth === 1)) {
+      const naturalChild = natural.compounds.find((c) => c.moduleId === child.moduleId)!
+      expect(child.height).toBe(naturalChild.height)
+      expect(child.y + child.height).toBeLessThanOrEqual(root.y + procSection.y + 1)
+    }
+  })
+
+  it('uses dragged width for resize and keeps submodule multi-column grid', () => {
+    const { ast } = parse(graphShowcase)
+    const graph = buildModuleGraph(ast!)
+    const resized = buildModuleGraphLayout(graph, {
+      moduleSizes: { SmartCity: { width: 520, height: 600, aspect: 520 / 600 } }
+    })
+    const root = resized.compounds.find((c) => c.moduleId === 'SmartCity' && c.depth === 0)
+    expect(root?.width).toBe(520)
+    const subCols = root?.sections.find((s) => s.key === 'submodules')?.cols ?? 1
+    expect(subCols).toBeGreaterThanOrEqual(2)
+  })
+
   it('prefers 2x2 over 3+1 for four process chips at sufficient width', () => {
     const { ast } = parse(hospital)
     const graph = buildModuleGraph(ast!)
@@ -208,6 +299,25 @@ describe('buildModuleGraphLayout', () => {
     const narrowSubCols = root?.sections.find((s) => s.key === 'submodules')?.cols ?? 1
     expect(wideSubCols).toBeGreaterThan(narrowSubCols)
     expect((root?.height ?? 0)).toBeGreaterThan(0)
+  })
+
+  it('uses multi-column grid for functions when module is wide enough', () => {
+    const { ast } = parse(graphShowcase)
+    const graph = buildModuleGraph(ast!)
+    const layout = buildModuleGraphLayout(graph, { moduleSizes: { SmartCity: { width: 520 } } })
+    const root = layout.compounds.find((c) => c.moduleId === 'SmartCity' && c.depth === 0)
+    const procSection = root?.sections.find((s) => s.key === 'processes')
+    const fnSection = root?.sections.find((s) => s.key === 'functions')
+    expect(fnSection).toBeDefined()
+    expect(fnSection!.rows.filter((r) => !r.hidden).length).toBeGreaterThan(1)
+    expect((procSection?.cols ?? 1)).toBeGreaterThan(1)
+    expect((fnSection?.cols ?? 1)).toBeGreaterThan(1)
+    const placements = fnSection!.rows
+      .filter((r) => !r.hidden)
+      .map((r) => root!.rowByNodeId[r.nodeId])
+      .filter(Boolean)
+    const xs = new Set(placements.map((p) => p!.x))
+    expect(xs.size).toBeGreaterThan(1)
   })
 
   it('lays out graph-showcase with nested submodules and portrait sections', () => {
