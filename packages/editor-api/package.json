@@ -4,6 +4,16 @@
   "description": "Stable JSON editor models and patch APIs for Agile-SOFL visual editors",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./moduleGraphLayout": {
+      "types": "./dist/moduleGraphLayout.d.ts",
+      "default": "./dist/moduleGraphLayout.js"
+    }
+  },
   "files": ["dist", "README.md"],
   "scripts": {
     "build": "tsc",

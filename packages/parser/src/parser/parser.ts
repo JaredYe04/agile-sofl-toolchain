@@ -96,6 +96,7 @@ import {
   CharLiteral,
   RealLiteral,
   IntegerLiteral,
+  TextWord,
   Nat0,
   Nat,
   Int,
@@ -727,7 +728,10 @@ export class AgileSoflParser extends CstParser {
       $.AT_LEAST_ONE(() => {
         $.OR([
           { ALT: () => $.CONSUME(StringLiteral) },
-          { ALT: () => $.CONSUME(Identifier) }
+          { ALT: () => $.CONSUME(Identifier) },
+          { ALT: () => $.CONSUME(IntegerLiteral) },
+          { ALT: () => $.CONSUME(RealLiteral) },
+          { ALT: () => $.CONSUME(TextWord) }
         ])
       })
     })

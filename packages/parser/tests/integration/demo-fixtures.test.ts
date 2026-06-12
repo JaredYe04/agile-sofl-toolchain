@@ -16,6 +16,7 @@ const demoFiles = [
   'library-system',
   'ecommerce',
   'hospital-registration',
+  'graph-showcase',
   'keyword-traps',
   'highlight-edge-cases',
   'type-showcase'

@@ -1,11 +1,12 @@
 #!/usr/bin/env node
-import { copyFileSync, mkdirSync, existsSync } from 'node:fs'
+import { copyFileSync, mkdirSync, existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createRequire } from 'node:module'
 
 const require = createRequire(import.meta.url)
 const onigWasm = join(dirname(require.resolve('vscode-oniguruma/package.json')), 'release', 'onig.wasm')
+const { formatDocument } = require('@agile-sofl/editor-api')
 
 const studioRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
 const vscodeRoot = join(studioRoot, '..', 'vscode')
@@ -59,7 +60,14 @@ for (const outDir of templateOutDirs) {
       console.error(`Missing template source: ${from}`)
       process.exit(1)
     }
-    copyFileSync(from, join(outDir, dest))
+    const outPath = join(outDir, dest)
+    if (dest.endsWith('.asfl')) {
+      const raw = readFileSync(from, 'utf8')
+      const formatted = formatDocument(raw).replace(/\r\n/g, '\n').replace(/\n+$/, '') + '\n'
+      writeFileSync(outPath, formatted, 'utf8')
+    } else {
+      copyFileSync(from, outPath)
+    }
     console.log(`Copied template ${dest} -> ${outDir.replace(studioRoot, 'packages/studio')}`)
   }
 }

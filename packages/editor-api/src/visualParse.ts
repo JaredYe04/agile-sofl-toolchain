@@ -1,13 +1,24 @@
-import { parse, textOf, type ProgramNode } from '@agile-sofl/parser'
+import { parse, textOf, isFsfFormal, classifyFsf, type ProgramNode } from '@agile-sofl/parser'
 import { buildModuleGraph } from './moduleGraph.js'
 import { buildAllFsfModels } from './fsfModel.js'
 import { sliceText, toSerializableSpan } from './span.js'
+import {
+  processSignatureText,
+  functionSignatureText,
+  paramGroupsFromNodes,
+  type ParamGroupDto
+} from './signatureUtils.js'
+import type { ExtVarDto } from './extPatch.js'
+import { printType } from '@agile-sofl/parser'
+
+export type FsfFormalStatus = 'formal' | 'semi-formal' | null
 
 export type VisualParseDiagnostic = {
   code: string
   message: string
   severity: string
   span: ReturnType<typeof toSerializableSpan>
+  source: 'parse' | 'fsf'
 }
 
 export type VisualModelResult = {
@@ -21,6 +32,7 @@ export type VisualModelResult = {
     name: string
     isSystem: boolean
     parentName?: string
+    span: ReturnType<typeof toSerializableSpan>
     constCount: number
     typeCount: number
     varCount: number
@@ -32,11 +44,25 @@ export type VisualModelResult = {
       decom: string
       comment: string
       hasFsf: boolean
+      isAlias: boolean
+      aliasTarget?: string
+      isInit: boolean
+      signature: string
+      inputs: ParamGroupDto[]
+      outputs: ParamGroupDto[]
+      ext: ExtVarDto[]
+      fsfFormal: FsfFormalStatus
     }>
     functions: Array<{
       name: string
       text: string
       span: ReturnType<typeof toSerializableSpan>
+      hasFsf: boolean
+      body: string
+      signature: string
+      params: ParamGroupDto[]
+      returnType: string
+      fsfFormal: FsfFormalStatus
     }>
     consts: Array<{ name: string; text: string; span: ReturnType<typeof toSerializableSpan> }>
     types: Array<{ name: string; text: string; span: ReturnType<typeof toSerializableSpan> }>
@@ -45,14 +71,25 @@ export type VisualModelResult = {
 }
 
 function mapDiagnostics(
-  items: Array<{ code: string; message: string; severity: string; span: { start: number; end: number; line: number; column: number } }>
+  items: Array<{ code: string; message: string; severity: string; span: { start: number; end: number; line: number; column: number } }>,
+  source: 'parse' | 'fsf'
 ): VisualParseDiagnostic[] {
   return items.map((d) => ({
     code: d.code,
     message: d.message,
     severity: d.severity,
-    span: toSerializableSpan(d.span)
+    span: toSerializableSpan(d.span),
+    source
   }))
+}
+
+function aliasTargetText(alias: { module?: string; name: string }): string {
+  return alias.module ? `${alias.module}.${alias.name}` : alias.name
+}
+
+function fsfFormalStatus(fsf: Parameters<typeof isFsfFormal>[0] | undefined): FsfFormalStatus {
+  if (!fsf) return null
+  return isFsfFormal(fsf) ? 'formal' : 'semi-formal'
 }
 
 /** Tolerant parse for visual editor — keeps partial AST when possible. */
@@ -67,8 +104,24 @@ export function buildVisualModelTolerant(source: string): VisualModelResult {
       message: d.message,
       severity: d.severity,
       span: d.span
-    }))
+    })),
+    'parse'
   )
+
+  if (program) {
+    const fsfDiags = classifyFsf(program).diagnostics
+    allDiagnostics.push(
+      ...mapDiagnostics(
+        fsfDiags.map((d) => ({
+          code: d.code,
+          message: d.message,
+          severity: d.severity,
+          span: d.span
+        })),
+        'fsf'
+      )
+    )
+  }
 
   const hasDiagnostics = allDiagnostics.some((d) => d.severity === 'error')
 
@@ -95,6 +148,7 @@ export function buildVisualModelTolerant(source: string): VisualModelResult {
       name: mod.name,
       isSystem: mod.isSystem,
       parentName: mod.parent?.name,
+      span: toSerializableSpan(mod.span),
       constCount: mod.consts.length,
       typeCount: mod.types.length,
       varCount: mod.vars.length,
@@ -108,12 +162,34 @@ export function buildVisualModelTolerant(source: string): VisualModelResult {
         span: toSerializableSpan(p.span),
         decom: textOf(p.body?.decomposition) ?? '',
         comment: textOf(p.body?.comment) ?? '',
-        hasFsf: Boolean(p.body?.fsf)
+        hasFsf: Boolean(p.body?.fsf),
+        isAlias: Boolean(p.alias),
+        aliasTarget: p.alias ? aliasTargetText(p.alias) : undefined,
+        isInit: p.isInit,
+        signature: processSignatureText(p),
+        inputs: paramGroupsFromNodes(p.inputs),
+        outputs: paramGroupsFromNodes(p.outputs),
+        ext: (p.body?.ext ?? []).map((e) => ({
+          access: e.access,
+          name: e.name,
+          type: e.typeExpr ? sliceText(source, e.typeExpr.span).trim() : undefined
+        })),
+        fsfFormal: p.body?.fsf ? fsfFormalStatus(p.body.fsf) : null
       })),
       functions: mod.functions.map((f) => ({
         name: f.name,
         text: sliceText(source, f.span).trim(),
-        span: toSerializableSpan(f.span)
+        span: toSerializableSpan(f.span),
+        hasFsf: Boolean(f.fsf),
+        body: f.isUndefined
+          ? 'undefined'
+          : f.body
+            ? sliceText(source, f.body.span).trim()
+            : '',
+        signature: functionSignatureText(f),
+        params: paramGroupsFromNodes(f.params),
+        returnType: printType(f.returnType),
+        fsfFormal: f.fsf ? fsfFormalStatus(f.fsf) : null
       })),
       consts: mod.consts.map((c) => ({
         name: c.name,

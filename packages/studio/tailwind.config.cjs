@@ -17,7 +17,21 @@ module.exports = {
         },
         accent: 'var(--accent)',
         border: {
-          subtle: 'var(--border-subtle)'
+          subtle: 'var(--border-subtle)',
+          field: 'var(--field-border)'
+        },
+        field: {
+          bg: 'var(--field-bg)',
+          border: 'var(--field-border)',
+          'border-focus': 'var(--field-border-focus)'
+        },
+        role: {
+          process: 'var(--role-process)',
+          function: 'var(--role-function)'
+        },
+        semantic: {
+          warning: 'var(--semantic-warning)',
+          error: 'var(--semantic-error)'
         },
         danger: 'var(--danger)'
       }

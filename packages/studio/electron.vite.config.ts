@@ -36,6 +36,7 @@ export default defineConfig({
     },
     resolve: {
       alias: {
+        '@agile-sofl/editor-api': resolve(__dirname, 'src/renderer/lib/editorApiRenderer.ts'),
         'monaco-editor-nls-adapter/proxy': resolve(
           __dirname,
           '../../node_modules/monaco-editor-nls-adapter/proxy.js'
@@ -49,10 +50,7 @@ export default defineConfig({
         }
       }
     },
-    plugins: [
-      vue(),
-      monacoNlsPlugin({ languages: ['zh-hans'] })
-    ],
+    plugins: [vue(), monacoNlsPlugin({ languages: ['zh-hans'] })],
     css: {
       postcss: resolve(__dirname, 'postcss.config.cjs')
     },

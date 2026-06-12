@@ -1,0 +1,261 @@
+module SYSTEM_SmartCity;
+const
+    max_alerts = 100;
+    peak_hour_start = 7;
+    peak_hour_end = 9;
+    citizen_timeout = 300;
+type
+    SensorId = nat;
+    ZoneId = nat;
+    CitizenId = nat;
+    AlertLevel = {<info>, <warning>, <critical>};
+    Sensor = composed of
+        id: SensorId
+        zone: ZoneId
+        active: bool
+    end;
+    Citizen = composed of
+        id: CitizenId
+        verified: bool
+    end;
+    SensorSet = set of SensorId;
+    ZoneMap = map nat to bool;
+    CitizenSet = set of CitizenId;
+    AlertQueue = seq of SensorId;
+var
+    sensors: SensorSet;
+    zones: ZoneMap;
+    citizens: CitizenSet;
+    alert_queue: AlertQueue;
+    open_alerts: nat;
+inv
+    forall[s: sensors] | s > 0 and open_alerts >= 0 and max_alerts > 0;
+process InitCity ()
+    FSF :
+    others && open_alerts = 0
+    decom: WarmSensors
+    comment: informal bootstrap city subsystems on startup
+end_process
+process DispatchAlert (sensor: SensorId, level: nat) ticket: nat
+    ext
+    rd sensors: SensorSet
+    wr alert_queue: AlertQueue
+    wr open_alerts: nat
+    FSF :
+    sensor > 0 && ticket = 1 ||
+    level = 0 && ticket = 0 ||
+    others && ticket = 0
+    decom: HandleAlert
+end_process
+process RegisterCitizen (citizen: CitizenId) ok: nat
+    ext
+    rd citizens: CitizenSet
+    wr citizens: CitizenSet
+    FSF :
+    citizen > 0 && ok = 1 ||
+    others && ok = 0
+    decom: Register
+end_process
+process PublishNotice (zone: ZoneId, urgent: nat) sent: nat
+    FSF :
+    zone > 0 && sent = 1 ||
+    others && sent = 0
+    decom: Publish
+end_process
+process AggregateMetrics (window: nat) samples: nat
+    ext
+    rd alert_queue: AlertQueue
+    FSF :
+    window > 0 && samples = 1 ||
+    others && samples = 0
+    decom: Ingest
+end_process
+process ReconcileZones ()
+    ext
+    rd zones: ZoneMap
+    wr zones: ZoneMap
+    FSF :
+    others && open_alerts = open_alerts
+end_process
+function peak_hour_check(hour: nat): nat
+    == hour
+end_function
+function alert_priority(level: nat): nat
+    == level
+end_function
+function citizen_active(id: CitizenId): nat
+    == id
+end_function
+end_module;
+module Traffic / SmartCity;
+const
+    green_duration = 45;
+    yellow_duration = 5;
+type
+    IntersectionId = nat;
+    SignalState = {<red>, <yellow>, <green>};
+    Intersection = composed of
+        id: IntersectionId
+        state: SignalState
+    end;
+    SignalMap = map nat to bool;
+var
+    signals: SignalMap;
+    congested: nat;
+inv
+    congested >= 0;
+process HandleAlert (sensor: SensorId, level: nat) rerouted: nat
+    ext
+    rd sensors: SensorSet
+    wr signals: SignalMap
+    FSF :
+    level > 0 && rerouted = 1 ||
+    others && rerouted = 0
+end_process
+process AdjustSignals (intersection: IntersectionId, phase: nat) ok: nat
+    FSF :
+    intersection > 0 && ok = 1 ||
+    others && ok = 0
+end_process
+process ReportCongestion (count: nat)
+    ext
+    wr congested: nat
+    FSF :
+    count >= 0 && count = count ||
+    others && count = 0
+end_process
+process SyncSensors ()
+    ext
+    rd sensors: SensorSet
+    FSF :
+    true && congested = congested
+end_process
+function phase_duration(phase: nat): nat
+    == phase
+end_function
+end_module;
+module Utilities / SmartCity;
+var
+    power_load: nat;
+    water_pressure: nat;
+process ShedLoad (amount: nat) ok: nat
+    ext
+    wr power_load: nat
+    FSF :
+    amount > 0 && ok = 1 ||
+    others && ok = 0
+    decom: Shed
+end_process
+process BoostPressure (delta: nat) ok: nat
+    ext
+    wr water_pressure: nat
+    FSF :
+    delta > 0 && ok = 1 ||
+    others && ok = 0
+end_process
+process ReadMeters (count: nat)
+    FSF :
+    count > 0 && count = 1 ||
+    others && count = 0
+end_process
+end_module;
+module Emergency / SmartCity;
+var
+    active_incidents: nat;
+    standby_units: nat;
+process Shed equal Utilities.ShedLoad end_process
+process DispatchUnit (zone: ZoneId, severity: nat) dispatched: nat
+    ext
+    wr active_incidents: nat
+    wr standby_units: nat
+    FSF :
+    severity > 0 && dispatched = 1 ||
+    others && dispatched = 0
+end_process
+process CloseIncident (incident: nat) closed: nat
+    FSF :
+    incident > 0 && closed = 1 ||
+    others && closed = 0
+end_process
+process PageResponders (count: nat)
+    FSF :
+    count > 0 && count = 1 ||
+    others && count = 0
+end_process
+end_module;
+module Portal / SmartCity;
+var
+    pending_notices: nat;
+    verified_count: nat;
+process Register (citizen: CitizenId) ok: nat
+    ext
+    rd citizens: CitizenSet
+    wr verified_count: nat
+    FSF :
+    citizen > 0 && ok = 1 ||
+    others && ok = 0
+end_process
+process Publish (zone: ZoneId, urgent: nat) sent: nat
+    ext
+    wr pending_notices: nat
+    FSF :
+    zone > 0 && sent = 1 ||
+    others && sent = 0
+end_process
+process VerifySession (citizen: CitizenId) ok: nat
+    FSF :
+    citizen > 0 && ok = 1 ||
+    others && ok = 0
+end_process
+process DrainNotices (remaining: nat)
+    FSF :
+    pending_notices > 0 && remaining = pending_notices - 1 ||
+    others && remaining = 0
+end_process
+function notice_ttl(urgent: nat): nat
+    == urgent
+end_function
+end_module;
+module Analytics / SmartCity;
+const
+    rollup_window = 60;
+var
+    sample_count: nat;
+    last_rollup: nat;
+process Ingest (window: nat) samples: nat
+    ext
+    rd alert_queue: AlertQueue
+    wr sample_count: nat
+    FSF :
+    window > 0 && samples = 1 ||
+    others && samples = 0
+end_process
+process RollupHourly ()
+    ext
+    wr last_rollup: nat
+    FSF :
+    sample_count > 0 && last_rollup = 1 ||
+    others && last_rollup = 0
+end_process
+process ExportDashboard (rows: nat)
+    FSF :
+    rows > 0 && rows = 1 ||
+    others && rows = 0
+end_process
+end_module;
+module City_Bootstrap / SmartCity;
+process WarmSensors ()
+    ext
+    rd sensors: SensorSet
+    wr sensors: SensorSet
+    FSF :
+    true && open_alerts = 0
+    decom: SyncSensors
+end_process
+process SeedZones ()
+    ext
+    wr zones: ZoneMap
+    FSF :
+    true && open_alerts = 0
+end_process
+end_module

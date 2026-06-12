@@ -5,11 +5,11 @@
 
 import { parse, parseModule, parseStrict } from './parser/parse.js'
 import { typeCheck } from './typecheck/checker.js'
-import { classifyFsf } from './fsf/classifier.js'
+import { classifyFsf, isFsfFormal } from './fsf/classifier.js'
 import { resolveScope, lookupModuleScope } from './scope/resolver.js'
 import { checkReferences } from './scope/referenceChecker.js'
 import { normalizeAST, astEqual, stripSpans } from './transform/normalize.js'
-import { printProgram } from './transform/print.js'
+import { printProgram, printPredicate, printType, printExpr } from './transform/print.js'
 import { walk, getNodeAtOffset, findNodeAtOffset, collectHybridRegions } from './visitor/walk.js'
 import type { ProgramNode } from './ast/nodes.js'
 import type { Diagnostic } from './diagnostics/codes.js'
@@ -117,12 +117,16 @@ export {
   parseModule,
   typeCheck,
   classifyFsf,
+  isFsfFormal,
   resolveScope,
   lookupModuleScope,
   normalizeAST,
   astEqual,
   stripSpans,
   printProgram,
+  printPredicate,
+  printType,
+  printExpr,
   walk,
   getNodeAtOffset,
   findNodeAtOffset,

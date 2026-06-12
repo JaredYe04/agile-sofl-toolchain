@@ -5,6 +5,7 @@ import DropdownMenu, { type MenuItem } from '../ui/DropdownMenu.vue'
 import { useAppStore } from '../../stores/app'
 import { useFileActions } from '../../composables/useFileActions'
 import { useNewFileDialog } from '../../composables/useNewFileDialog'
+import { useModalStore } from '../../stores/modal'
 
 const emit = defineEmits<{ edit: [cmd: string]; devTools: []; format: [] }>()
 
@@ -12,6 +13,14 @@ const { t } = useI18n()
 const app = useAppStore()
 const files = useFileActions()
 const newFileDialog = useNewFileDialog()
+const modal = useModalStore()
+
+const accessKeys: Record<string, string> = {
+  file: 'f',
+  edit: 'e',
+  view: 'v',
+  help: 'h'
+}
 
 const fileItems = computed<MenuItem[]>(() => [
   { id: 'new', label: t('menu.file.new'), shortcut: 'Ctrl+N', action: () => newFileDialog.show() },
@@ -57,10 +66,10 @@ const helpItems = computed<MenuItem[]>(() => [
     id: 'about',
     label: t('menu.help.about'),
     action: () => {
-      window.studio?.showMessageBox({
-        type: 'info',
+      void modal.show({
         title: t('menu.help.about'),
-        message: t('about.message')
+        message: t('about.message'),
+        buttons: [t('dialog.ok')]
       })
     }
   },
@@ -68,10 +77,10 @@ const helpItems = computed<MenuItem[]>(() => [
     id: 'docs',
     label: t('menu.help.docs'),
     action: () => {
-      window.studio?.showMessageBox({
-        type: 'info',
+      void modal.show({
         title: t('menu.help.docs'),
-        message: 'https://github.com/agile-sofl/agile-sofl-parser/tree/main/docs'
+        message: 'https://github.com/agile-sofl/agile-sofl-parser/tree/main/docs',
+        buttons: [t('dialog.ok')]
       })
     }
   }
@@ -92,10 +101,12 @@ const menus = computed(() => [
         <button
           type="button"
           role="menuitem"
+          :accesskey="accessKeys[menu.key]"
           class="rounded-md px-2.5 py-0.5 text-[13px] text-content-secondary transition-colors duration-150 hover:bg-surface-overlay hover:text-content-primary active:scale-[0.98]"
           @click="toggle"
         >
-          {{ menu.label }}
+          <span class="underline decoration-content-muted underline-offset-2">{{ menu.label[0] }}</span
+          >{{ menu.label.slice(1) }}
         </button>
       </template>
     </DropdownMenu>

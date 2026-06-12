@@ -41,6 +41,13 @@
       "descriptionKey": "template.types.description",
       "file": "type-showcase.asfl",
       "category": "example"
+    },
+    {
+      "id": "graph-showcase",
+      "titleKey": "template.graphShowcase.title",
+      "descriptionKey": "template.graphShowcase.description",
+      "file": "graph-showcase.asfl",
+      "category": "example"
     }
   ]
 }

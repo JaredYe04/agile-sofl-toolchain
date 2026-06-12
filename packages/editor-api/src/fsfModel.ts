@@ -11,6 +11,9 @@ export interface FsfScenarioDto {
 
 export interface FsfModelDto {
   processName: string
+  /** Set when FSF belongs to a function rather than a process. */
+  functionName?: string
+  moduleName?: string
   span: SerializableSpan
   scenarios: FsfScenarioDto[]
   others?: string
@@ -48,7 +51,15 @@ export function buildAllFsfModels(ast: ProgramNode, source: string): FsfModelDto
   for (const mod of ast.modules) {
     for (const proc of mod.processes) {
       const model = buildFsfModel(proc, source)
-      if (model) models.push(model)
+      if (model) models.push({ ...model, moduleName: mod.name })
+    }
+    for (const fn of mod.functions) {
+      if (!fn.fsf) continue
+      models.push({
+        ...buildFsfModelFromSpec(fn.name, fn.fsf, source),
+        functionName: fn.name,
+        moduleName: mod.name
+      })
     }
   }
   return models

@@ -124,6 +124,22 @@ function onDblClick(selection: TreeSelection): void {
   emit('select', selection)
 }
 
+function processHint(mod: VisualModuleSummary, procName: string): string {
+  const proc = mod.processes.find((p) => p.name === procName)
+  if (!proc) return ''
+  const lines: string[] = []
+  const comment = proc.comment?.replace(/^comment:\s*/i, '').trim()
+  const decom = proc.decom?.replace(/^decom:\s*/i, '').trim()
+  if (comment) lines.push(comment)
+  if (decom) lines.push(`decom: ${decom}`)
+  return lines.join('\n')
+}
+
+function functionHint(mod: VisualModuleSummary, fnName: string): string {
+  const fn = mod.functions.find((f) => f.name === fnName)
+  return fn?.text.split('\n').slice(0, 2).join(' ').trim() ?? ''
+}
+
 function matchesSearch(text: string): boolean {
   if (!q.value) return true
   return text.toLowerCase().includes(q.value)
@@ -166,10 +182,10 @@ function matchesSearch(text: string): boolean {
           <li v-if="mod.consts.length && matchesSearch('const')">
             <button
               type="button"
-              class="flex w-full items-center gap-1.5 rounded px-2 py-1 text-left text-xs text-amber-600 dark:text-amber-400 hover:bg-surface-overlay"
+              class="flex w-full items-center gap-1.5 rounded px-2 py-1 text-left text-xs text-semantic-warning hover:bg-surface-overlay"
               @click="emit('select', { kind: 'module', moduleName: mod.name })"
             >
-              <span class="rounded bg-amber-500/15 px-1.5 py-0.5 font-medium">{{ t('visual.section.const') }}</span>
+              <span class="rounded bg-semantic-warning/15 px-1.5 py-0.5 font-medium">{{ t('visual.section.const') }}</span>
               <span class="text-content-muted">({{ mod.consts.length }})</span>
             </button>
           </li>
@@ -196,10 +212,10 @@ function matchesSearch(text: string): boolean {
           <li v-if="mod.invCount && matchesSearch('inv')">
             <button
               type="button"
-              class="flex w-full items-center gap-1.5 rounded px-2 py-1 text-left text-xs text-rose-600 dark:text-rose-400 hover:bg-surface-overlay"
+              class="flex w-full items-center gap-1.5 rounded px-2 py-1 text-left text-xs text-semantic-error hover:bg-surface-overlay"
               @click="emit('select', { kind: 'module', moduleName: mod.name })"
             >
-              <span class="rounded bg-rose-500/15 px-1.5 py-0.5 font-medium">{{ t('visual.section.inv') }}</span>
+              <span class="rounded bg-semantic-error/15 px-1.5 py-0.5 font-medium">{{ t('visual.section.inv') }}</span>
               <span class="text-content-muted">({{ mod.invCount }})</span>
             </button>
           </li>
@@ -218,14 +234,15 @@ function matchesSearch(text: string): boolean {
               class="flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-sm transition-colors"
               :class="
                 isProcessSelected(mod.name, proc.name)
-                  ? 'bg-sky-500/20 text-sky-400'
+                  ? 'bg-role-process/20 text-role-process'
                   : 'text-content-secondary hover:bg-surface-overlay hover:text-content-primary'
               "
+              :title="processHint(mod, proc.name) || undefined"
               @click="emit('select', { kind: 'process', moduleName: mod.name, processName: proc.name })"
               @dblclick="onDblClick({ kind: 'process', moduleName: mod.name, processName: proc.name })"
               @contextmenu="onContext($event, { kind: 'process', moduleName: mod.name, processName: proc.name })"
             >
-              <svg class="h-3.5 w-3.5 shrink-0 text-sky-500" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+              <svg class="h-3.5 w-3.5 shrink-0 text-role-process" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
                 <circle cx="8" cy="8" r="5" />
                 <path d="M8 5v3l2 1" stroke-linecap="round" />
               </svg>
@@ -239,14 +256,15 @@ function matchesSearch(text: string): boolean {
               class="flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-sm transition-colors"
               :class="
                 isFunctionSelected(mod.name, fn.name)
-                  ? 'bg-orange-500/20 text-orange-400'
+                  ? 'bg-role-function/20 text-role-function'
                   : 'text-content-secondary hover:bg-surface-overlay hover:text-content-primary'
               "
+              :title="functionHint(mod, fn.name) || undefined"
               @click="emit('select', { kind: 'function', moduleName: mod.name, functionName: fn.name })"
               @dblclick="onDblClick({ kind: 'function', moduleName: mod.name, functionName: fn.name })"
               @contextmenu="onContext($event, { kind: 'function', moduleName: mod.name, functionName: fn.name })"
             >
-              <svg class="h-3.5 w-3.5 shrink-0 text-orange-500" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+              <svg class="h-3.5 w-3.5 shrink-0 text-role-function" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
                 <path d="M3 12h10M6 4h4v4H6z" stroke-linecap="round" stroke-linejoin="round" />
               </svg>
               <span class="truncate font-mono">{{ fn.name }}</span>

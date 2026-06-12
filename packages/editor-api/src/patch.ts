@@ -8,6 +8,24 @@ function replaceSpan(source: string, span: { start: number; end: number }, repla
   return source.slice(0, span.start) + replacement + source.slice(span.end)
 }
 
+/** Replace the full source line containing valueSpan (keeps leading indent). */
+function replaceFieldLine(
+  source: string,
+  valueSpan: { start: number; end: number },
+  lineText: string
+): string {
+  let lineStart = valueSpan.start
+  while (lineStart > 0 && source[lineStart - 1] !== '\n') {
+    lineStart -= 1
+  }
+  let lineEnd = valueSpan.end
+  while (lineEnd < source.length && source[lineEnd] !== '\n') {
+    lineEnd += 1
+  }
+  const indent = source.slice(lineStart, valueSpan.start).match(/^(\s*)/)?.[1] ?? ''
+  return source.slice(0, lineStart) + indent + lineText + source.slice(lineEnd)
+}
+
 function buildFsfBody(scenarios: FsfScenarioDto[], others?: string): string {
   const lines = scenarios.map((s) => `${s.test.trim()} && ${s.def.trim()}`)
   if (others?.trim()) {
@@ -49,7 +67,7 @@ export function patchComment(source: string, processName: string, text: string):
   if (!proc?.body) return source
   const replacement = `comment: ${text}`
   if (proc.body.comment) {
-    return replaceSpan(source, textSpan(proc.body.comment), replacement)
+    return replaceFieldLine(source, textSpan(proc.body.comment), replacement)
   }
   const insertAt = proc.body.fsf?.span.end ?? proc.body.ext.at(-1)?.span.end ?? proc.span.end
   return source.slice(0, insertAt) + `\n${replacement}` + source.slice(insertAt)
@@ -62,7 +80,7 @@ export function patchDecom(source: string, processName: string, text: string): s
   if (!proc?.body) return source
   const replacement = `decom: ${text}`
   if (proc.body.decomposition) {
-    return replaceSpan(source, textSpan(proc.body.decomposition), replacement)
+    return replaceFieldLine(source, textSpan(proc.body.decomposition), replacement)
   }
   const insertAt = proc.body.fsf?.span.end ?? proc.body.ext.at(-1)?.span.end ?? proc.span.end
   return source.slice(0, insertAt) + `\n${replacement}` + source.slice(insertAt)
@@ -74,6 +92,14 @@ export function patchInformal(
   text: string
 ): string {
   return replaceSpan(source, span, text)
+}
+
+export function patchInvariant(
+  source: string,
+  span: { start: number; end: number },
+  text: string
+): string {
+  return replaceSpan(source, span, text.trim())
 }
 
 export function formatDocument(source: string): string {

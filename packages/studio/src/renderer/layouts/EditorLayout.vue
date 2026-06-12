@@ -12,10 +12,13 @@ import { useFileActions } from '../composables/useFileActions'
 import NewFileDialog from '../components/home/NewFileDialog.vue'
 import { useNewFileDialog } from '../composables/useNewFileDialog'
 import { useDocumentStore } from '../stores/document'
+import { useModalStore } from '../stores/modal'
+import Modal from '../components/ui/Modal.vue'
 
 const workspaceRef = ref<InstanceType<typeof EditorWorkspace> | null>(null)
 const files = useFileActions()
 const doc = useDocumentStore()
+const modalStore = useModalStore()
 const newFileDialog = useNewFileDialog()
 
 function onUndoRedo(cmd: 'undo' | 'redo'): boolean {
@@ -73,5 +76,20 @@ onUnmounted(() => {
     </main>
     <StatusBar />
     <NewFileDialog />
+    <Modal
+      v-if="modalStore.request"
+      :open="!!modalStore.request"
+      :title="modalStore.request.title"
+      :message="modalStore.request.message"
+      :buttons="modalStore.request.buttons"
+      :input="modalStore.request.input"
+      :input-value="modalStore.request.inputValue"
+      :input-placeholder="modalStore.request.inputPlaceholder"
+      :checkbox="modalStore.request.checkbox"
+      :checkbox-label="modalStore.request.checkboxLabel"
+      :checkbox-value="modalStore.request.checkboxValue"
+      @action="(i, v, c) => modalStore.respond(i, v, c)"
+      @close="modalStore.dismiss"
+    />
   </div>
 </template>

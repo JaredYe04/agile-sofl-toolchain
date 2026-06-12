@@ -39,7 +39,7 @@ function printTypeOperand(type: TypeExprNode): string {
   return needsTypeParens(type) ? `(${printType(type)})` : printType(type)
 }
 
-function printType(type: TypeExprNode): string {
+export function printType(type: TypeExprNode): string {
   switch (type.type) {
     case 'basic_type':
       return type.name
@@ -106,7 +106,7 @@ function relKindToSymbol(kind: string): string {
   }
 }
 
-function printExpr(expr: ExpressionNode): string {
+export function printExpr(expr: ExpressionNode): string {
   switch (expr.type) {
     case 'nil':
       return 'nil'
@@ -165,7 +165,27 @@ function printExpr(expr: ExpressionNode): string {
   }
 }
 
-function printPredicate(pred: PredicateNode): string {
+function printQuantifiedAtom(atom: import('../ast/nodes.js').QuantifiedNode): string {
+  const q =
+    atom.quantifier === 'forall'
+      ? 'forall'
+      : atom.quantifier === 'exists_unique'
+        ? 'exists!'
+        : 'exists'
+  const segments: string[] = [`${q}[${atom.bindings.map((b) => `${b.names.join(',')}: ${printType(b.typeExpr)}`).join(', ')}]`]
+  for (const nested of atom.nestedQuantifiers) {
+    const nq =
+      nested.quantifier === 'forall'
+        ? 'forall'
+        : nested.quantifier === 'exists_unique'
+          ? 'exists!'
+          : 'exists'
+    segments.push(`${nq}[${nested.bindings.map((b) => `${b.names.join(',')}: ${printType(b.typeExpr)}`).join(', ')}]`)
+  }
+  return `${segments.join(' ')} | ${printPredicate(atom.body)}`
+}
+
+export function printPredicate(pred: PredicateNode): string {
   return pred.disjuncts
     .map((conj) =>
       conj.atoms
@@ -173,13 +193,10 @@ function printPredicate(pred: PredicateNode): string {
           if (atom.type === 'informal_text') return atom.text
           if (atom.type === 'relational_expr') return printExpr(atom)
           if (atom.type === 'boolean_literal') return atom.value ? 'true' : 'false'
+          if (atom.type === 'paren_predicate') return `(${printAtom(atom.inner)})`
           if (isExpressionNode(atom)) return printExpr(atom as ExpressionNode)
           if (atom.type === 'not_predicate') return `not ${printAtom(atom.operand)}`
-          if (atom.type === 'quantified') {
-            const q = atom.quantifier === 'forall' ? 'forall' : atom.quantifier === 'exists_unique' ? 'exists!' : 'exists'
-            const binds = atom.bindings.map((b) => `${b.names.join(',')}: ${printType(b.typeExpr)}`).join(', ')
-            return `${q}[${binds}] | ${printPredicate(atom.body)}`
-          }
+          if (atom.type === 'quantified') return printQuantifiedAtom(atom)
           return ''
         })
         .filter(Boolean)
@@ -191,6 +208,11 @@ function printPredicate(pred: PredicateNode): string {
 
 function printAtom(atom: import('../ast/nodes.js').AtomicPredicateNode): string {
   if (atom.type === 'informal_text') return atom.text
+  if (atom.type === 'relational_expr') return printExpr(atom)
+  if (atom.type === 'boolean_literal') return atom.value ? 'true' : 'false'
+  if (atom.type === 'paren_predicate') return `(${printAtom(atom.inner)})`
+  if (atom.type === 'not_predicate') return `not ${printAtom(atom.operand)}`
+  if (atom.type === 'quantified') return printQuantifiedAtom(atom)
   if (isExpressionNode(atom)) return printExpr(atom as ExpressionNode)
   return ''
 }

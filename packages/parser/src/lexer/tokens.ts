@@ -160,6 +160,12 @@ export const IntegerLiteral = createToken({
   pattern: /-?\d+/
 })
 
+/** Non-ASCII run for comment/informal text (e.g. Chinese phrases). ASCII words use Identifier. */
+export const TextWord = createToken({
+  name: 'TextWord',
+  pattern: /[\u0080-\uFFFF]+/u
+})
+
 export const Identifier = createToken({
   name: 'Identifier',
   pattern: /[A-Za-z_][A-Za-z0-9_]*/
@@ -311,6 +317,7 @@ export const allTokens: TokenType[] = [
   RBrace,
   Hash,
   Tilde,
+  TextWord,
   Identifier
 ]
 

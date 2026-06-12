@@ -1,0 +1,98 @@
+{
+  "dark": {
+    "editor": {
+      "background": "#1e1e1e",
+      "foreground": "#d4d4d4"
+    },
+    "field": {
+      "background": "#252526",
+      "foreground": "#d4d4d4"
+    },
+    "rules": [
+      { "token": "keyword.control.asfl", "foreground": "C586C0" },
+      { "token": "keyword.control.system-prefix.asfl", "foreground": "D7BA7D", "fontStyle": "bold" },
+      { "token": "keyword.control.fsf.asfl", "foreground": "DCDCAA", "fontStyle": "bold" },
+      { "token": "keyword.declaration.asfl", "foreground": "569CD6" },
+      { "token": "keyword.modifier.rdwr.asfl", "foreground": "4EC9B0" },
+      { "token": "keyword.other.informal-marker.asfl", "foreground": "CE9178", "fontStyle": "italic" },
+      { "token": "keyword.other.fsf.asfl", "foreground": "B5CEA8" },
+      { "token": "keyword.other.fsf-branch.asfl", "foreground": "D7BA7D" },
+      { "token": "keyword.operator.logical.asfl", "foreground": "D4D4D4" },
+      { "token": "keyword.operator.comparison.asfl", "foreground": "D4D4D4" },
+      { "token": "keyword.operator.word.asfl", "foreground": "D4D4D4" },
+      { "token": "storage.type.asfl", "foreground": "4EC9B0" },
+      { "token": "entity.name.namespace.asfl", "foreground": "4FC1FF" },
+      { "token": "entity.name.function.asfl", "foreground": "DCDCAA" },
+      { "token": "entity.name.type.asfl", "foreground": "4EC9B0" },
+      { "token": "entity.name.tag.asfl", "foreground": "9CDCFE" },
+      { "token": "variable.parameter.asfl", "foreground": "9CDCFE" },
+      { "token": "variable.other.asfl", "foreground": "9CDCFE" },
+      { "token": "string.unquoted.informal.asfl", "foreground": "CE9178" },
+      { "token": "string.quoted.double.asfl", "foreground": "CE9178" },
+      { "token": "constant.other.enum.asfl", "foreground": "D7BA7D" },
+      { "token": "constant.numeric", "foreground": "B5CEA8" },
+      { "token": "constant.language", "foreground": "4EC9B0" },
+      { "token": "comment.block.asfl", "foreground": "6A9955" },
+      { "token": "meta.fsf.asfl", "foreground": "D4D4D4" },
+      { "token": "meta.comment.informal.asfl", "foreground": "CE9178" }
+    ],
+    "semantic": {
+      "namespace": "#4FC1FF",
+      "function": "#DCDCAA",
+      "method": "#DCDCAA",
+      "type": "#4EC9B0",
+      "parameter": "#9CDCFE",
+      "variable": "#9CDCFE",
+      "string": "#CE9178",
+      "keyword": "#569CD6"
+    }
+  },
+  "light": {
+    "editor": {
+      "background": "#ffffff",
+      "foreground": "#1e1e1e"
+    },
+    "field": {
+      "background": "#ffffff",
+      "foreground": "#1e1e1e"
+    },
+    "rules": [
+      { "token": "keyword.control.asfl", "foreground": "AF00DB" },
+      { "token": "keyword.control.system-prefix.asfl", "foreground": "B8860B", "fontStyle": "bold" },
+      { "token": "keyword.control.fsf.asfl", "foreground": "795E26", "fontStyle": "bold" },
+      { "token": "keyword.declaration.asfl", "foreground": "0000FF" },
+      { "token": "keyword.modifier.rdwr.asfl", "foreground": "267F99" },
+      { "token": "keyword.other.informal-marker.asfl", "foreground": "A31515", "fontStyle": "italic" },
+      { "token": "keyword.other.fsf.asfl", "foreground": "098658" },
+      { "token": "keyword.other.fsf-branch.asfl", "foreground": "B8860B" },
+      { "token": "keyword.operator.logical.asfl", "foreground": "333333" },
+      { "token": "keyword.operator.comparison.asfl", "foreground": "333333" },
+      { "token": "keyword.operator.word.asfl", "foreground": "333333" },
+      { "token": "storage.type.asfl", "foreground": "267F99" },
+      { "token": "entity.name.namespace.asfl", "foreground": "267F99" },
+      { "token": "entity.name.function.asfl", "foreground": "795E26" },
+      { "token": "entity.name.type.asfl", "foreground": "267F99" },
+      { "token": "entity.name.tag.asfl", "foreground": "001080" },
+      { "token": "variable.parameter.asfl", "foreground": "001080" },
+      { "token": "variable.other.asfl", "foreground": "001080" },
+      { "token": "string.unquoted.informal.asfl", "foreground": "A31515" },
+      { "token": "string.quoted.double.asfl", "foreground": "A31515" },
+      { "token": "constant.other.enum.asfl", "foreground": "B8860B" },
+      { "token": "constant.numeric", "foreground": "098658" },
+      { "token": "constant.language", "foreground": "267F99" },
+      { "token": "comment.block.asfl", "foreground": "008000" },
+      { "token": "meta.fsf.asfl", "foreground": "333333" },
+      { "token": "meta.comment.informal.asfl", "foreground": "A31515" }
+    ],
+    "semantic": {
+      "namespace": "#267F99",
+      "function": "#795E26",
+      "method": "#795E26",
+      "type": "#267F99",
+      "parameter": "#001080",
+      "variable": "#001080",
+      "string": "#A31515",
+      "keyword": "#0000FF"
+    }
+  }
+}

@@ -10,6 +10,8 @@ import { EDIT_COMMAND_IDS } from '../../composables/editCommands'
 import { useDocumentStore } from '../../stores/document'
 import { useDocumentHistoryStore } from '../../stores/documentHistory'
 import { useLspStore } from '../../stores/lsp'
+import { useLspDiagnosticsStore } from '../../stores/lspDiagnostics'
+import type { DiagnosticSummary } from '../../preload/index'
 import { useEditorUiStore } from '../../stores/editorUi'
 
 export type SerializableSpan = {
@@ -30,6 +32,7 @@ let suppressHistory = false
 const doc = useDocumentStore()
 const history = useDocumentHistoryStore()
 const lsp = useLspStore()
+const lspDiagnostics = useLspDiagnosticsStore()
 const editorUi = useEditorUiStore()
 
 const activeDocumentTab = computed(() =>
@@ -134,12 +137,50 @@ function syncModel(): void {
   }
 }
 
-function updateErrorCount(): void {
+function markerSeverityLabel(severity: Monaco.MarkerSeverity): string {
+  if (severity === monaco.MarkerSeverity.Error) return 'error'
+  if (severity === monaco.MarkerSeverity.Warning) return 'warning'
+  if (severity === monaco.MarkerSeverity.Info) return 'info'
+  return 'info'
+}
+
+function markersToDiagnostics(
+  model: Monaco.editor.ITextModel,
+  markers: Monaco.editor.IMarker[]
+): DiagnosticSummary[] {
+  return markers.map((m) => ({
+    code: m.code?.toString() ?? 'LSP',
+    message: m.message,
+    severity: markerSeverityLabel(m.severity),
+    source: 'lsp' as const,
+    span: {
+      start: model.getOffsetAt({ lineNumber: m.startLineNumber, column: m.startColumn }),
+      end: model.getOffsetAt({ lineNumber: m.endLineNumber, column: m.endColumn }),
+      line: m.startLineNumber,
+      column: m.startColumn
+    }
+  }))
+}
+
+function updateMarkerDiagnostics(): void {
   const tab = activeDocumentTab.value
-  if (!tab) return
+  const ed = editor.value
+  if (!tab || !ed) {
+    lspDiagnostics.clear()
+    lsp.setErrorCount(0)
+    return
+  }
+  const model = ed.getModel()
+  if (!model) {
+    lspDiagnostics.clear()
+    lsp.setErrorCount(0)
+    return
+  }
   const uri = uriForTab(tab.uri)
   const markers = monaco.editor.getModelMarkers({ resource: uri })
-  lsp.setErrorCount(markers.filter((m) => m.severity === monaco.MarkerSeverity.Error).length)
+  const items = markersToDiagnostics(model, markers)
+  lspDiagnostics.setMarkers(items)
+  lsp.setErrorCount(items.filter((d) => d.severity === 'error').length)
 }
 
 function onContentChange(): void {
@@ -190,12 +231,12 @@ onMounted(async () => {
     })
   }
 
-  markerSub = monaco.editor.onDidChangeMarkers(() => updateErrorCount())
+  markerSub = monaco.editor.onDidChangeMarkers(() => updateMarkerDiagnostics())
 })
 
 watch(() => doc.activeTabId, () => {
   syncModel()
-  updateErrorCount()
+  updateMarkerDiagnostics()
   highlightDecorations = editor.value?.deltaDecorations(highlightDecorations, []) ?? []
 })
 

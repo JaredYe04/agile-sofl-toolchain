@@ -612,19 +612,18 @@ function cstToBindingList(cst: CstNode): BindingGroupNode[] {
 }
 
 function cstToTextWithSpan(cst: CstNode): { text: string; span: typeof EMPTY_SPAN } {
-  const strTokens = tokensOf(cst, 'StringLiteral')
-  const idTokens = tokensOf(cst, 'Identifier')
-  const allTokens = [...strTokens, ...idTokens].sort((a, b) => a.startOffset - b.startOffset)
-  const parts: string[] = []
-  for (const str of strTokens) {
-    parts.push(str.image.slice(1, -1))
-  }
-  for (const id of idTokens) {
-    parts.push(id.image)
-  }
+  const kinds = ['StringLiteral', 'Identifier', 'IntegerLiteral', 'RealLiteral', 'TextWord'] as const
+  const collected = kinds.flatMap((kind) => tokensOf(cst, kind))
+  collected.sort((a, b) => a.startOffset - b.startOffset)
+  const parts = collected.map((tok) => {
+    if (tok.image.startsWith('"') && tok.image.endsWith('"')) {
+      return tok.image.slice(1, -1)
+    }
+    return tok.image
+  })
   return {
     text: parts.join(' '),
-    span: allTokens.length > 0 ? spanOfTokens(allTokens) : spanOfChildren(cst)
+    span: collected.length > 0 ? spanOfTokens(collected) : spanOfChildren(cst)
   }
 }
 

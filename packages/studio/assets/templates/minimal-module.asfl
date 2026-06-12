@@ -1,3 +1,4 @@
 module SYSTEM_Test;
-var x: nat;
+var
+    x: nat;
 end_module

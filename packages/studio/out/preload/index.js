@@ -23,7 +23,6 @@ const studio = {
   fileSaveDialog: (defaultName) => electron.ipcRenderer.invoke("studio:file-save-dialog", defaultName),
   fileRead: (path) => electron.ipcRenderer.invoke("studio:file-read", path),
   fileWrite: (path, content) => electron.ipcRenderer.invoke("studio:file-write", path, content),
-  showMessageBox: (options) => electron.ipcRenderer.invoke("studio:show-message-box", options),
   lspSend: (jsonBody) => electron.ipcRenderer.send("studio:lsp-send", jsonBody),
   lspOnMessage: (cb) => {
     const handler = (_, message) => cb(message);
@@ -37,10 +36,30 @@ const studio = {
   },
   getLspStatus: () => electron.ipcRenderer.invoke("studio:lsp-status"),
   buildVisualModel: (source, channelId) => electron.ipcRenderer.invoke("studio:build-visual-model", source, channelId),
+  buildModuleGraphLayout: (graph, options) => {
+    const safeGraph = JSON.parse(JSON.stringify(graph));
+    const safeOptions = options ? JSON.parse(JSON.stringify(options)) : void 0;
+    return electron.ipcRenderer.invoke(
+      "studio:build-module-graph-layout",
+      safeGraph,
+      safeOptions
+    );
+  },
   resetVisualChannel: (channelId) => electron.ipcRenderer.invoke("studio:reset-visual-channel", channelId),
   patchDocument: (payload) => electron.ipcRenderer.invoke("studio:patch-document", payload),
   formatDocument: (source) => electron.ipcRenderer.invoke("studio:format-document", source),
   patchDeclaration: (payload) => electron.ipcRenderer.invoke("studio:patch-declaration", payload),
-  patchProcess: (payload) => electron.ipcRenderer.invoke("studio:patch-process", payload)
+  patchProcess: (payload) => electron.ipcRenderer.invoke("studio:patch-process", payload),
+  patchFunction: (payload) => electron.ipcRenderer.invoke("studio:patch-function", payload),
+  patchInvariant: (payload) => electron.ipcRenderer.invoke("studio:patch-invariant", payload),
+  patchExt: (payload) => electron.ipcRenderer.invoke("studio:patch-ext", payload),
+  patchProcessSignature: (payload) => electron.ipcRenderer.invoke("studio:patch-process-signature", payload),
+  patchFunctionSignature: (payload) => electron.ipcRenderer.invoke("studio:patch-function-signature", payload),
+  patchAlias: (payload) => electron.ipcRenderer.invoke("studio:patch-alias", payload),
+  patchModule: (payload) => electron.ipcRenderer.invoke("studio:patch-module", payload),
+  patchProcessInit: (payload) => electron.ipcRenderer.invoke("studio:patch-process-init", payload),
+  parsePredicateUi: (text) => electron.ipcRenderer.invoke("studio:parse-predicate-ui", text),
+  uiToPredicateText: (node) => electron.ipcRenderer.invoke("studio:ui-to-predicate-text", node),
+  validateSignature: (kind, signature) => electron.ipcRenderer.invoke("studio:validate-signature", kind, signature)
 };
 electron.contextBridge.exposeInMainWorld("studio", studio);

@@ -1,35 +1,62 @@
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue'
+import { ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import type { PatchDocumentPayload } from '../../../preload/index'
+import type { ExtVarItem, PatchDocumentPayload, VisualModuleProcess } from '../../../preload/index'
 import type { FsfModelDto } from './FsfScenarioEditor.vue'
 import FsfScenarioEditor from './FsfScenarioEditor.vue'
+import ExtBlockEditor from './ExtBlockEditor.vue'
+import SignatureEditor from './SignatureEditor.vue'
+import SectionCard from './ui/SectionCard.vue'
+import FormField from './ui/FormField.vue'
+import TextField from './ui/TextField.vue'
+import Badge from './ui/Badge.vue'
+import InlineRename from './ui/InlineRename.vue'
 
 const props = defineProps<{
+  process: VisualModuleProcess
   processName: string
+  moduleName: string
   initialDecom?: string
   initialComment?: string
   fsfModel: FsfModelDto | null
+  disabled?: boolean
+  writeDisabledReason?: 'parseFailed' | 'diagnostics' | null
+  symbols?: import('./predicate/predicateTypes').SymbolHint[]
 }>()
 
 const emit = defineEmits<{
   patch: [payload: Omit<PatchDocumentPayload, 'source'>]
-  applyAll: []
+  patchExt: [vars: ExtVarItem[]]
+  patchSignature: [signature: string]
+  patchInit: [isInit: boolean]
+  rename: [name: string]
 }>()
 
-defineExpose({
-  applyAll() {
-    applyDecom()
-    applyComment()
-    fsfRef.value?.save()
+const isInitDraft = ref(false)
+
+watch(
+  () => props.process.isInit,
+  (init) => {
+    isInitDraft.value = Boolean(init)
   },
-  addScenario() {
-    fsfRef.value?.addScenario()
-  }
+  { immediate: true }
+)
+
+watch(isInitDraft, (init) => {
+  if (props.disabled) return
+  if (init === Boolean(props.process.isInit)) return
+  emit('patchInit', init)
 })
 
 const { t } = useI18n()
 const fsfRef = ref<InstanceType<typeof FsfScenarioEditor> | null>(null)
+const renaming = ref(false)
+
+defineExpose({
+  addScenario() {
+    fsfRef.value?.addScenario()
+  }
+})
 
 function stripFieldPrefix(text: string, prefix: string): string {
   const trimmed = text.trim()
@@ -41,92 +68,116 @@ function stripFieldPrefix(text: string, prefix: string): string {
 
 const decomText = ref('')
 const commentText = ref('')
-const decomOriginal = ref('')
-const commentOriginal = ref('')
 
 watch(
   () => [props.initialDecom, props.initialComment] as const,
   ([decom, comment]) => {
-    decomOriginal.value = stripFieldPrefix(decom ?? '', 'decom:')
-    commentOriginal.value = stripFieldPrefix(comment ?? '', 'comment:')
-    decomText.value = decomOriginal.value
-    commentText.value = commentOriginal.value
+    decomText.value = stripFieldPrefix(decom ?? '', 'decom:')
+    commentText.value = stripFieldPrefix(comment ?? '', 'comment:')
   },
   { immediate: true }
 )
 
-const decomDirty = computed(() => decomText.value !== decomOriginal.value)
-const commentDirty = computed(() => commentText.value !== commentOriginal.value)
+watch(decomText, (text) => {
+  if (props.disabled) return
+  const original = stripFieldPrefix(props.initialDecom ?? '', 'decom:')
+  if (text === original) return
+  emit('patch', { kind: 'decom', processName: props.processName, text })
+})
 
-function applyDecom(): void {
-  if (!decomDirty.value) return
-  emit('patch', { kind: 'decom', processName: props.processName, text: decomText.value })
-  decomOriginal.value = decomText.value
-}
-
-function applyComment(): void {
-  if (!commentDirty.value) return
-  emit('patch', { kind: 'comment', processName: props.processName, text: commentText.value })
-  commentOriginal.value = commentText.value
-}
+watch(commentText, (text) => {
+  if (props.disabled) return
+  const original = stripFieldPrefix(props.initialComment ?? '', 'comment:')
+  if (text === original) return
+  emit('patch', { kind: 'comment', processName: props.processName, text })
+})
 
 function onFsfPatch(scenarios: FsfModelDto['scenarios'], others?: string): void {
   emit('patch', { kind: 'fsf', processName: props.processName, scenarios, others })
 }
+
+const disabledMessage = () => {
+  if (props.writeDisabledReason === 'parseFailed') return t('visual.writeDisabledParseFailed')
+  if (props.writeDisabledReason === 'diagnostics') return t('visual.writeDisabledDiagnostics')
+  return t('visual.writeDisabled')
+}
 </script>
 
 <template>
-  <div class="visual-panel space-y-6 p-4">
-    <header>
-      <h2 class="text-lg font-semibold text-content-primary">{{ t('visual.process') }} {{ processName }}</h2>
+  <div class="visual-panel space-y-4 p-4">
+    <header class="flex flex-wrap items-center gap-2">
+      <h2 class="flex min-w-0 items-center gap-2 text-lg font-semibold text-content-primary">
+        <span class="shrink-0">{{ t('visual.process') }}</span>
+        <InlineRename
+          v-if="!process.isInit"
+          :model-value="processName"
+          :editing="renaming"
+          :disabled="disabled"
+          @update:editing="renaming = $event"
+          @commit="emit('rename', $event)"
+        />
+        <span v-else class="text-lg font-semibold">Init</span>
+      </h2>
+      <Badge variant="process">{{ t('visual.nodeRole.process') }}</Badge>
+      <Badge v-if="process.isInit" variant="neutral">{{ t('visual.init.badge') }}</Badge>
+      <Badge v-if="process.fsfFormal === 'formal'" variant="formal">{{ t('visual.fsfFormal') }}</Badge>
+      <Badge v-else-if="process.fsfFormal === 'semi-formal'" variant="semi-formal">{{ t('visual.fsfSemiFormal') }}</Badge>
     </header>
 
-    <section>
-      <div class="mb-2 flex items-center justify-between">
-        <label class="text-sm font-medium text-content-secondary">{{ t('visual.decom') }}</label>
-        <button
-          type="button"
-          class="rounded px-2 py-0.5 text-xs text-accent hover:bg-accent/10 disabled:opacity-40"
-          :disabled="!decomDirty"
-          @click="applyDecom"
-        >
-          {{ t('visual.apply') }}
-        </button>
-      </div>
-      <input
-        v-model="decomText"
-        type="text"
-        class="w-full rounded-md border border-border-subtle bg-surface-raised px-3 py-2 text-sm text-content-primary"
-        :placeholder="t('visual.decomPlaceholder')"
-        @keydown.enter.prevent="applyDecom"
-      />
-      <span v-if="decomDirty" class="mt-1 block text-xs text-accent">{{ t('visual.unsaved') }}</span>
-    </section>
+    <div
+      v-if="disabled"
+      class="rounded-md border border-semantic-warning/40 bg-semantic-warning/10 px-3 py-2 text-sm text-semantic-warning"
+    >
+      {{ disabledMessage() }}
+    </div>
 
-    <section>
-      <div class="mb-2 flex items-center justify-between">
-        <label class="text-sm font-medium text-content-secondary">{{ t('visual.comment') }}</label>
-        <button
-          type="button"
-          class="rounded px-2 py-0.5 text-xs text-accent hover:bg-accent/10 disabled:opacity-40"
-          :disabled="!commentDirty"
-          @click="applyComment"
-        >
-          {{ t('visual.apply') }}
-        </button>
-      </div>
-      <textarea
-        v-model="commentText"
-        rows="3"
-        class="w-full rounded-md border border-border-subtle bg-surface-raised px-3 py-2 text-sm text-content-primary"
-        :placeholder="t('visual.commentPlaceholder')"
-        @keydown.ctrl.enter.prevent="applyComment"
-        @keydown.meta.enter.prevent="applyComment"
+    <SectionCard>
+      <label class="mb-3 flex items-center gap-2 text-sm text-content-primary">
+        <input v-model="isInitDraft" type="checkbox" class="rounded border-border-subtle" :disabled="disabled" />
+        <span>{{ t('visual.init.label') }}</span>
+      </label>
+      <SignatureEditor
+        :signature="process.signature ?? '()'"
+        :inputs="process.inputs"
+        :outputs="process.outputs"
+        kind="process"
+        :disabled="disabled"
+        @patch="emit('patchSignature', $event)"
       />
-      <span v-if="commentDirty" class="mt-1 block text-xs text-accent">{{ t('visual.unsaved') }}</span>
-    </section>
+    </SectionCard>
 
-    <FsfScenarioEditor v-if="fsfModel" ref="fsfRef" :model="fsfModel" @save="onFsfPatch" />
+    <ExtBlockEditor
+      :vars="process.ext ?? []"
+      :disabled="disabled"
+      @patch="emit('patchExt', $event)"
+    />
+
+    <SectionCard>
+      <FormField :label="t('visual.decom')">
+        <TextField
+          v-model="decomText"
+          :disabled="disabled"
+          :placeholder="t('visual.decomPlaceholder')"
+        />
+      </FormField>
+      <FormField :label="t('visual.comment')" class="mt-4">
+        <TextField
+          v-model="commentText"
+          :rows="3"
+          :disabled="disabled"
+          :placeholder="t('visual.commentPlaceholder')"
+        />
+      </FormField>
+    </SectionCard>
+
+    <FsfScenarioEditor
+      v-if="fsfModel"
+      ref="fsfRef"
+      :model="fsfModel"
+      :symbols="symbols"
+      :disabled="disabled"
+      @save="onFsfPatch"
+    />
     <p v-else class="text-sm text-content-secondary">{{ t('visual.noFsf') }}</p>
   </div>
 </template>

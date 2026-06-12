@@ -7,9 +7,9 @@
   "scripts": {
     "copy-assets": "node scripts/copy-editor-assets.mjs",
     "bundle:parse-bridge": "node scripts/bundle-parse-bridge.mjs",
-    "predev": "npm run copy-assets && npm run bundle:parse-bridge",
+    "predev": "npm run copy-assets && node scripts/fix-monaco-sourcemap.mjs && node scripts/format-templates.mjs && npm run bundle:parse-bridge",
     "dev": "electron-vite dev",
-    "prebuild": "npm run copy-assets && npm run bundle:parse-bridge",
+    "prebuild": "npm run copy-assets && node scripts/fix-monaco-sourcemap.mjs && node scripts/format-templates.mjs && npm run bundle:parse-bridge",
     "build": "electron-vite build",
     "preview": "electron-vite preview",
     "test": "vitest run"

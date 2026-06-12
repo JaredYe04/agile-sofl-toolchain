@@ -32,9 +32,6 @@ const studio = {
   fileRead: (path: string) => ipcRenderer.invoke('studio:file-read', path) as Promise<FileOpenResult>,
   fileWrite: (path: string, content: string) =>
     ipcRenderer.invoke('studio:file-write', path, content) as Promise<{ filePath: string; title: string }>,
-  showMessageBox: (options: Electron.MessageBoxOptions) =>
-    ipcRenderer.invoke('studio:show-message-box', options) as Promise<Electron.MessageBoxReturnValue>,
-
   lspSend: (jsonBody: string) => ipcRenderer.send('studio:lsp-send', jsonBody),
   lspOnMessage: (cb: (message: string) => void) => {
     const handler = (_: unknown, message: string) => cb(message)
@@ -51,6 +48,24 @@ const studio = {
 
   buildVisualModel: (source: string, channelId: string) =>
     ipcRenderer.invoke('studio:build-visual-model', source, channelId) as Promise<VisualModelPayload>,
+  buildModuleGraphLayout: (
+    graph: ModuleGraphPayload,
+    options?: {
+      searchQuery?: string
+      tidy?: boolean
+      orientation?: 'portrait' | 'landscape'
+      moduleSizes?: Record<string, { width: number; height?: number }>
+      processMeta?: Record<string, { isAlias?: boolean; aliasTarget?: string; hasExt?: boolean }>
+    }
+  ) => {
+    const safeGraph = JSON.parse(JSON.stringify(graph)) as ModuleGraphPayload
+    const safeOptions = options ? JSON.parse(JSON.stringify(options)) : undefined
+    return ipcRenderer.invoke(
+      'studio:build-module-graph-layout',
+      safeGraph,
+      safeOptions
+    ) as Promise<ModuleGraphLayoutPayload>
+  },
   resetVisualChannel: (channelId: string) =>
     ipcRenderer.invoke('studio:reset-visual-channel', channelId) as Promise<void>,
   patchDocument: (payload: PatchDocumentPayload) =>
@@ -60,7 +75,34 @@ const studio = {
   patchDeclaration: (payload: PatchDeclarationPayload) =>
     ipcRenderer.invoke('studio:patch-declaration', payload) as Promise<string>,
   patchProcess: (payload: PatchProcessPayload) =>
-    ipcRenderer.invoke('studio:patch-process', payload) as Promise<string>
+    ipcRenderer.invoke('studio:patch-process', payload) as Promise<string>,
+  patchFunction: (payload: PatchFunctionPayload) =>
+    ipcRenderer.invoke('studio:patch-function', payload) as Promise<string>,
+  patchInvariant: (payload: PatchInvariantPayload) =>
+    ipcRenderer.invoke('studio:patch-invariant', payload) as Promise<string>,
+  patchExt: (payload: PatchExtPayload) =>
+    ipcRenderer.invoke('studio:patch-ext', payload) as Promise<string>,
+  patchProcessSignature: (payload: PatchProcessSignaturePayload) =>
+    ipcRenderer.invoke('studio:patch-process-signature', payload) as Promise<string>,
+  patchFunctionSignature: (payload: PatchFunctionSignaturePayload) =>
+    ipcRenderer.invoke('studio:patch-function-signature', payload) as Promise<string>,
+  patchAlias: (payload: PatchAliasPayload) =>
+    ipcRenderer.invoke('studio:patch-alias', payload) as Promise<string>,
+  patchModule: (payload: PatchModulePayload) =>
+    ipcRenderer.invoke('studio:patch-module', payload) as Promise<string>,
+  patchProcessInit: (payload: PatchProcessInitPayload) =>
+    ipcRenderer.invoke('studio:patch-process-init', payload) as Promise<string>,
+  parsePredicateUi: (text: string) =>
+    ipcRenderer.invoke('studio:parse-predicate-ui', text) as Promise<{
+      ui: import('@agile-sofl/editor-api').PredicateUiNode | null
+      error: string | null
+    }>,
+  uiToPredicateText: (node: import('@agile-sofl/editor-api').PredicateUiNode) =>
+    ipcRenderer.invoke('studio:ui-to-predicate-text', node) as Promise<string>,
+  validateSignature: (kind: 'process' | 'function', signature: string) =>
+    ipcRenderer.invoke('studio:validate-signature', kind, signature) as Promise<
+      { ok: true } | { ok: false; error: string }
+    >
 }
 
 export type SerializableSpan = {
@@ -75,6 +117,7 @@ export type DiagnosticSummary = {
   message: string
   severity: string
   span: SerializableSpan
+  source?: 'parse' | 'fsf' | 'lsp'
 }
 
 export type VisualDeclarationItem = {
@@ -83,11 +126,29 @@ export type VisualDeclarationItem = {
   span: { start: number; end: number; line: number; column: number }
 }
 
-export type VisualFunctionItem = VisualDeclarationItem
+export type VisualFunctionItem = VisualDeclarationItem & {
+  hasFsf?: boolean
+  body?: string
+  signature?: string
+  params?: ParamGroupItem[]
+  returnType?: string
+  fsfFormal?: 'formal' | 'semi-formal' | null
+}
 
 export type VisualInvariantItem = {
   text: string
   span: SerializableSpan
+}
+
+export type ExtVarItem = {
+  access: 'rd' | 'wr'
+  name: string
+  type?: string
+}
+
+export type ParamGroupItem = {
+  names: string
+  type: string
 }
 
 export type VisualModuleProcess = {
@@ -96,12 +157,21 @@ export type VisualModuleProcess = {
   decom: string
   comment: string
   hasFsf: boolean
+  isAlias?: boolean
+  aliasTarget?: string
+  isInit?: boolean
+  signature?: string
+  inputs?: ParamGroupItem[]
+  outputs?: ParamGroupItem[]
+  ext?: ExtVarItem[]
+  fsfFormal?: 'formal' | 'semi-formal' | null
 }
 
 export type VisualModuleSummary = {
   name: string
   isSystem: boolean
   parentName?: string
+  span: { start: number; end: number; line: number; column: number }
   constCount: number
   typeCount: number
   varCount: number
@@ -112,6 +182,50 @@ export type VisualModuleSummary = {
   consts: VisualDeclarationItem[]
   types: VisualDeclarationItem[]
   vars: VisualDeclarationItem[]
+}
+
+export type ModuleGraphLayoutPayload = {
+  compounds: Array<{
+    moduleId: string
+    name: string
+    moduleRole?: string
+    depth?: number
+    x: number
+    y: number
+    width: number
+    height: number
+    sections: Array<{
+      key: string
+      titleKey: string
+      rows: Array<{
+        nodeId: string
+        kind: string
+        label: string
+        moduleName: string
+        processName?: string
+        functionName?: string
+        hidden?: boolean
+      }>
+      y: number
+      height: number
+    }>
+    rowByNodeId: Record<string, { x: number; y: number; w: number; h: number }>
+  }>
+  edges: Array<{
+    from: string
+    to: string
+    kind: string
+    x1: number
+    y1: number
+    x2: number
+    y2: number
+  }>
+  bbox: { minX: number; minY: number; maxX: number; maxY: number }
+}
+
+export type ModuleGraphPayload = {
+  nodes: Array<{ id: string; kind: string; name: string; parentId?: string; moduleRole?: string }>
+  edges: Array<{ from: string; to: string; kind: string }>
 }
 
 export type VisualModelPayload = {
@@ -150,6 +264,68 @@ export type PatchDocumentPayload = {
   scenarios?: Array<{ id: string; test: string; def: string; span: unknown }>
   others?: string
   text?: string
+}
+
+export type PatchInvariantPayload = {
+  source: string
+  span: SerializableSpan
+  text: string
+}
+
+export type PatchFunctionPayload = {
+  source: string
+  moduleName: string
+  name: string
+  body?: string
+  fsf?: {
+    scenarios: Array<{ id: string; test: string; def: string; span: unknown }>
+    others?: string
+  }
+}
+
+export type PatchExtPayload = {
+  source: string
+  moduleName: string
+  processName: string
+  vars: ExtVarItem[]
+}
+
+export type PatchProcessSignaturePayload = {
+  source: string
+  moduleName: string
+  processName: string
+  signature: string
+}
+
+export type PatchFunctionSignaturePayload = {
+  source: string
+  moduleName: string
+  functionName: string
+  signature: string
+}
+
+export type PatchAliasPayload = {
+  source: string
+  moduleName: string
+  processName: string
+  aliasTarget: string
+}
+
+export type PatchModulePayload = {
+  source: string
+  action: 'add' | 'remove' | 'rename'
+  moduleName: string
+  newName?: string
+  parentName?: string
+  isSystem?: boolean
+}
+
+export type PatchProcessInitPayload = {
+  source: string
+  moduleName: string
+  processName: string
+  isInit: boolean
+  fallbackName?: string
 }
 
 contextBridge.exposeInMainWorld('studio', studio)

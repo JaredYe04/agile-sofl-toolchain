@@ -5,6 +5,33 @@ const promises = require("node:fs/promises");
 const node_child_process = require("node:child_process");
 const node_fs = require("node:fs");
 const node_module = require("node:module");
+let cached = {};
+let loaded = false;
+function statePath() {
+  return node_path.join(electron.app.getPath("userData"), "dialog-state.json");
+}
+async function ensureLoaded() {
+  if (loaded) return;
+  loaded = true;
+  try {
+    const raw = await promises.readFile(statePath(), "utf8");
+    cached = JSON.parse(raw);
+  } catch {
+    cached = {};
+  }
+}
+async function getLastDialogDir() {
+  await ensureLoaded();
+  return cached.lastDir;
+}
+async function rememberDialogPath(filePath) {
+  await ensureLoaded();
+  cached.lastDir = node_path.dirname(filePath);
+  try {
+    await promises.writeFile(statePath(), JSON.stringify(cached), "utf8");
+  } catch {
+  }
+}
 function registerFileHandlers(getWindow2) {
   electron.ipcMain.handle("studio:file-read", async (_event, filePath) => {
     const content = await promises.readFile(filePath, "utf-8");
@@ -16,27 +43,28 @@ function registerFileHandlers(getWindow2) {
   });
   electron.ipcMain.handle("studio:file-open-dialog", async () => {
     const win = getWindow2();
+    const lastDir = await getLastDialogDir();
     const result = await electron.dialog.showOpenDialog(win ?? void 0, {
       filters: [{ name: "Agile-SOFL", extensions: ["asfl"] }],
-      properties: ["openFile"]
+      properties: ["openFile"],
+      defaultPath: lastDir
     });
     if (result.canceled || result.filePaths.length === 0) return null;
     const filePath = result.filePaths[0];
+    await rememberDialogPath(filePath);
     const content = await promises.readFile(filePath, "utf-8");
     return { filePath, content, title: node_path.basename(filePath) };
   });
   electron.ipcMain.handle("studio:file-save-dialog", async (_event, defaultName) => {
     const win = getWindow2();
+    const lastDir = await getLastDialogDir();
     const result = await electron.dialog.showSaveDialog(win ?? void 0, {
       filters: [{ name: "Agile-SOFL", extensions: ["asfl"] }],
-      defaultPath: defaultName ?? "untitled.asfl"
+      defaultPath: lastDir ? joinLastDir(lastDir, defaultName ?? "untitled.asfl") : defaultName ?? "untitled.asfl"
     });
     if (result.canceled || !result.filePath) return null;
+    await rememberDialogPath(result.filePath);
     return result.filePath;
-  });
-  electron.ipcMain.handle("studio:show-message-box", async (_event, options) => {
-    const win = getWindow2();
-    return electron.dialog.showMessageBox(win ?? void 0, options);
   });
 }
 function registerWindowHandlers(getWindow2) {

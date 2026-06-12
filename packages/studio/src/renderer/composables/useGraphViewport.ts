@@ -14,10 +14,7 @@ export function useGraphViewport(
   const dragging = ref(false)
   let dragStart = { x: 0, y: 0, panX: 0, panY: 0 }
 
-  const cursorClass = computed(() => {
-    if (editorUi.graphTool === 'pan' || dragging.value) return 'cursor-grabbing'
-    return 'cursor-grab'
-  })
+  const cursorClass = computed(() => (dragging.value ? 'cursor-grabbing' : 'cursor-grab'))
 
   const viewportTransform = computed(
     () => `translate(${pan.value.x},${pan.value.y}) scale(${scale.value})`
@@ -41,8 +38,8 @@ export function useGraphViewport(
     const w = el.clientWidth
     const h = el.clientHeight
     if (w <= 0 || h <= 0) return
-    const bw = box.maxX - box.minX + 80
-    const bh = box.maxY - box.minY + 80
+    const bw = box.maxX - box.minX + 48
+    const bh = box.maxY - box.minY + 40
     const s = Math.min(w / bw, h / bh, 2)
     scale.value = Math.max(0.25, s)
     const cx = (box.minX + box.maxX) / 2
@@ -54,8 +51,22 @@ export function useGraphViewport(
     syncZoomPercent()
   }
 
+  function isGraphUiTarget(e: Event): boolean {
+    return Boolean((e.target as Element | null)?.closest('[data-graph-ui]'))
+  }
+
+  function isGraphNodeTarget(e: Event): boolean {
+    const el = e.target as Element | null
+    return Boolean(el?.closest('[data-graph-node]') || el?.closest('[data-graph-edge]'))
+  }
+
+  function isGraphResizeTarget(e: Event): boolean {
+    return Boolean((e.target as Element | null)?.closest('[data-graph-resize]'))
+  }
+
   function onWheel(e: WheelEvent): void {
     if (!enabled.value) return
+    if (isGraphUiTarget(e)) return
     e.preventDefault()
     const el = containerRef.value
     if (!el) return
@@ -83,7 +94,9 @@ export function useGraphViewport(
 
   function onPointerDown(e: PointerEvent): void {
     if (!enabled.value) return
-    if (editorUi.graphTool === 'select' && (e.target as Element).closest('[data-graph-node]')) return
+    if (isGraphUiTarget(e)) return
+    if (isGraphResizeTarget(e)) return
+    if (isGraphNodeTarget(e)) return
     if (e.button !== 0) return
     dragging.value = true
     dragStart = { x: e.clientX, y: e.clientY, panX: pan.value.x, panY: pan.value.y }

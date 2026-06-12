@@ -12,6 +12,13 @@
   --accent: #0078d4;
   --border-subtle: #e5e5e5;
   --danger: #e81123;
+  --field-bg: var(--surface-raised);
+  --field-border: var(--border-subtle);
+  --field-border-focus: var(--accent);
+  --role-process: #0ea5e9;
+  --role-function: #f97316;
+  --semantic-warning: #d97706;
+  --semantic-error: #e11d48;
   --scrollbar-size: 6px;
   --scrollbar-track: rgba(0, 0, 0, 0.04);
   --scrollbar-thumb: rgba(0, 0, 0, 0.22);
@@ -28,6 +35,13 @@
   --accent: #3794ff;
   --border-subtle: #3c3c3c;
   --danger: #f14c4c;
+  --field-bg: var(--surface-raised);
+  --field-border: var(--border-subtle);
+  --field-border-focus: var(--accent);
+  --role-process: #38bdf8;
+  --role-function: #fb923c;
+  --semantic-warning: #fbbf24;
+  --semantic-error: #fb7185;
   --scrollbar-track: rgba(255, 255, 255, 0.04);
   --scrollbar-thumb: rgba(255, 255, 255, 0.18);
   --scrollbar-thumb-hover: rgba(255, 255, 255, 0.32);
@@ -67,7 +81,32 @@ body,
 .visual-panel input,
 .visual-panel textarea {
   color: var(--text-primary);
-  background: var(--surface-raised);
+  background: var(--field-bg);
+}
+
+.visual-field {
+  width: 100%;
+  border: 1px solid var(--field-border);
+  border-radius: 6px;
+  background: var(--field-bg);
+  color: var(--text-primary);
+  transition: box-shadow 150ms ease, border-color 150ms ease;
+}
+
+.visual-field:focus,
+.visual-field:focus-within {
+  outline: none;
+  border-color: var(--field-border-focus);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--field-border-focus) 35%, transparent);
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 /* Global custom scrollbars */

@@ -3,11 +3,8 @@ import { ref, watch } from 'vue'
 
 export type ViewMode = 'code' | 'visual' | 'split'
 export type VisualSideView = 'tree' | 'graph'
-export type GraphTool = 'select' | 'pan'
-
 const VIEW_KEY = 'studio-view-mode'
 const GRAPH_ZOOM_KEY = 'studio-graph-zoom-percent'
-const GRAPH_TOOL_KEY = 'studio-graph-tool'
 const MINIMAP_KEY = 'studio-show-minimap'
 const LINENUMBERS_KEY = 'studio-show-linenumbers'
 const SPLIT_KEY = 'studio-split-ratio'
@@ -42,7 +39,6 @@ export const useEditorUiStore = defineStore('editorUi', () => {
   const graphZoomPercent = ref(
     Number.parseInt(localStorage.getItem(GRAPH_ZOOM_KEY) ?? '100', 10) || 100
   )
-  const graphTool = ref<GraphTool>((localStorage.getItem(GRAPH_TOOL_KEY) as GraphTool | null) ?? 'select')
   let graphFitHandler: (() => void) | null = null
 
   function setViewMode(mode: ViewMode): void {
@@ -98,11 +94,6 @@ export const useEditorUiStore = defineStore('editorUi', () => {
     localStorage.setItem(GRAPH_ZOOM_KEY, String(graphZoomPercent.value))
   }
 
-  function setGraphTool(tool: GraphTool): void {
-    graphTool.value = tool
-    localStorage.setItem(GRAPH_TOOL_KEY, tool)
-  }
-
   function registerGraphFit(fn: () => void): void {
     graphFitHandler = fn
   }
@@ -144,9 +135,7 @@ export const useEditorUiStore = defineStore('editorUi', () => {
     showMonaco,
     showVisual,
     graphZoomPercent,
-    graphTool,
     setGraphZoom,
-    setGraphTool,
     registerGraphFit,
     fitGraphToView,
     resetGraphView

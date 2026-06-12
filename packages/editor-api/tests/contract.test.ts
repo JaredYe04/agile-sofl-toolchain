@@ -27,7 +27,7 @@ process Demo (x: nat) ok: nat
 FSF :
 x > 0 && ok = 1 ||
 others && ok = 0
-decom: DemoDecom
+decom: Demo
 comment: informal note
 end_process
 end_module`
@@ -135,6 +135,7 @@ describe('editor-api contract', () => {
   it('patchComment updates comment line', () => {
     const next = patchComment(DEMO, 'Demo', 'updated note')
     expect(next).toContain('comment: updated note')
+    expect(next).not.toMatch(/comment:\s*comment:/)
   })
 
   it('patchInformal replaces span text', () => {

@@ -20,7 +20,7 @@ function atomIsFormal(atom: AtomicPredicateNode): boolean {
   return true
 }
 
-function fsfIsFormal(fsf: FsfSpecNode): boolean {
+export function isFsfFormal(fsf: FsfSpecNode): boolean {
   for (const scenario of fsf.scenarios) {
     for (const conj of scenario.test.disjuncts) {
       for (const atom of conj.atoms) {
@@ -47,7 +47,7 @@ function checkProcessFsf(process: ProcessNode): Diagnostic[] {
   const diagnostics: Diagnostic[] = []
   if (!process.body?.fsf) return diagnostics
 
-  const formal = fsfIsFormal(process.body.fsf)
+  const formal = isFsfFormal(process.body.fsf)
   const hasDecom = !!textOf(process.body.decomposition)
   const isBottom = !hasDecom
 
@@ -93,7 +93,7 @@ function checkProcessFsf(process: ProcessNode): Diagnostic[] {
 
 function checkFunctionFsf(fn: FunctionNode): Diagnostic[] {
   if (!fn.fsf) return []
-  const formal = fsfIsFormal(fn.fsf)
+  const formal = isFsfFormal(fn.fsf)
   if (!formal) {
     return [
       createDiagnostic(

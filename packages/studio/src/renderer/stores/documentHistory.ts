@@ -6,6 +6,8 @@ type TabHistory = {
   redoStack: string[]
   lastSnapshot: string
   mergeTimer: ReturnType<typeof setTimeout> | null
+  lastCoalesceKey: string | null
+  lastCoalesceAt: number
 }
 
 const MAX_STACK = 100
@@ -16,7 +18,7 @@ export const useDocumentHistoryStore = defineStore('documentHistory', () => {
   function getOrCreate(tabId: string, initialContent: string): TabHistory {
     let h = histories.value.get(tabId)
     if (!h) {
-      h = { undoStack: [], redoStack: [], lastSnapshot: initialContent, mergeTimer: null }
+      h = { undoStack: [], redoStack: [], lastSnapshot: initialContent, mergeTimer: null, lastCoalesceKey: null, lastCoalesceAt: 0 }
       histories.value.set(tabId, h)
     }
     return h
@@ -27,7 +29,9 @@ export const useDocumentHistoryStore = defineStore('documentHistory', () => {
       undoStack: [],
       redoStack: [],
       lastSnapshot: content,
-      mergeTimer: null
+      mergeTimer: null,
+      lastCoalesceKey: null,
+      lastCoalesceAt: 0
     })
   }
 
@@ -37,7 +41,12 @@ export const useDocumentHistoryStore = defineStore('documentHistory', () => {
     histories.value.delete(tabId)
   }
 
-  function pushSnapshot(tabId: string, content: string, immediate = false): void {
+  function pushSnapshot(
+    tabId: string,
+    content: string,
+    immediate = false,
+    coalesceKey?: string
+  ): void {
     const h = getOrCreate(tabId, content)
     if (content === h.lastSnapshot) return
 
@@ -46,9 +55,18 @@ export const useDocumentHistoryStore = defineStore('documentHistory', () => {
         clearTimeout(h.mergeTimer)
         h.mergeTimer = null
       }
-      h.undoStack.push(h.lastSnapshot)
-      if (h.undoStack.length > MAX_STACK) h.undoStack.shift()
-      h.redoStack = []
+      const now = Date.now()
+      const coalesce =
+        coalesceKey &&
+        h.lastCoalesceKey === coalesceKey &&
+        now - h.lastCoalesceAt < 2000
+      if (!coalesce) {
+        h.undoStack.push(h.lastSnapshot)
+        if (h.undoStack.length > MAX_STACK) h.undoStack.shift()
+        h.redoStack = []
+      }
+      h.lastCoalesceKey = coalesceKey ?? null
+      h.lastCoalesceAt = now
       h.lastSnapshot = content
     }
 

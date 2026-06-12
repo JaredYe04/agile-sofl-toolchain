@@ -1,10 +1,12 @@
 import { useI18n } from 'vue-i18n'
 import { useDocumentStore } from '../stores/document'
+import { useModalStore } from '../stores/modal'
 import { HOME_TAB_ID } from '../stores/tabUtils'
 
 export function useFileActions() {
   const { t } = useI18n()
   const doc = useDocumentStore()
+  const modal = useModalStore()
 
   async function saveTab(tabId?: string): Promise<boolean> {
     const tab = tabId ? doc.tabs.find((x) => x.id === tabId) : doc.activeTab
@@ -42,20 +44,17 @@ export function useFileActions() {
     if (!tab || tab.kind !== 'document') return 'discard'
     if (!tab.isDirty) return 'discard'
 
-    const res = await window.studio!.showMessageBox({
-      type: 'warning',
-      buttons: [t('dialog.unsaved.save'), t('dialog.unsaved.dontSave'), t('dialog.unsaved.cancel')],
-      defaultId: 0,
-      cancelId: 2,
+    const { index: response } = await modal.show({
       title: t('dialog.unsaved.title'),
-      message: t('dialog.unsaved.message', { name: tab.title })
+      message: t('dialog.unsaved.message', { name: tab.title }),
+      buttons: [t('dialog.unsaved.save'), t('dialog.unsaved.dontSave'), t('dialog.unsaved.cancel')]
     })
 
-    if (res.response === 0) {
+    if (response === 0) {
       const saved = await saveTab(tabId)
       return saved ? 'save' : 'cancel'
     }
-    if (res.response === 1) return 'discard'
+    if (response === 1) return 'discard'
     return 'cancel'
   }
 

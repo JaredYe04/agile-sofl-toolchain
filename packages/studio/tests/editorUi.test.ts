@@ -56,11 +56,9 @@ describe('editorUi store', () => {
     expect(ui.visualNavRatio).toBe(0.22)
   })
 
-  it('persists graph zoom and tool', () => {
+  it('persists graph zoom', () => {
     const ui = useEditorUiStore()
     ui.setGraphZoom(75)
-    ui.setGraphTool('pan')
     expect(localStorage.getItem('studio-graph-zoom-percent')).toBe('75')
-    expect(localStorage.getItem('studio-graph-tool')).toBe('pan')
   })
 })

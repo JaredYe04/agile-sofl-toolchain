@@ -100,7 +100,7 @@ end_process
 
 **`decom`**：分解/精化图标识符；**有 decom 即为非底层**，FSF 可半形式。
 
-**`comment`**：自然语言说明（`text`：标识符与字符串序列）。
+**`comment`**：自然语言说明。`text` 可包含：ASCII 标识符、引号字符串、数字、以及**无引号中文等非 ASCII 词**（词之间以空格分隔，与 `informal note here` 相同）。
 
 ```asfl
 process P ()
