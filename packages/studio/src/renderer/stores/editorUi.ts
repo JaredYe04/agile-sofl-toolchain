@@ -11,6 +11,7 @@ const SPLIT_KEY = 'studio-split-ratio'
 const SIDE_VIEW_KEY = 'studio-visual-side-view'
 const VISUAL_NAV_RATIO_KEY = 'studio-visual-nav-ratio'
 const VISUAL_NAV_MANUAL_KEY = 'studio-visual-nav-manual'
+const FSF_STRICT_KEY = 'studio-fsf-strict'
 
 const TREE_DEFAULT_RATIO = 0.22
 const GRAPH_DEFAULT_RATIO = 0.5
@@ -39,6 +40,7 @@ export const useEditorUiStore = defineStore('editorUi', () => {
   const graphZoomPercent = ref(
     Number.parseInt(localStorage.getItem(GRAPH_ZOOM_KEY) ?? '100', 10) || 100
   )
+  const fsfStrictMode = ref(readBool(FSF_STRICT_KEY, false))
   let graphFitHandler: (() => void) | null = null
 
   function setViewMode(mode: ViewMode): void {
@@ -102,6 +104,11 @@ export const useEditorUiStore = defineStore('editorUi', () => {
     graphFitHandler?.()
   }
 
+  function setFsfStrictMode(v: boolean): void {
+    fsfStrictMode.value = v
+    localStorage.setItem(FSF_STRICT_KEY, String(v))
+  }
+
   function resetGraphView(): void {
     setGraphZoom(100)
     fitGraphToView()
@@ -135,7 +142,9 @@ export const useEditorUiStore = defineStore('editorUi', () => {
     showMonaco,
     showVisual,
     graphZoomPercent,
+    fsfStrictMode,
     setGraphZoom,
+    setFsfStrictMode,
     registerGraphFit,
     fitGraphToView,
     resetGraphView

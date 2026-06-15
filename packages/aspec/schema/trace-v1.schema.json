@@ -1,0 +1,28 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://agile-sofl.dev/schema/trace-v1.json",
+  "title": "Agile-SOFL Traceability Sidecar",
+  "type": "object",
+  "required": ["traceVersion", "links"],
+  "properties": {
+    "traceVersion": { "type": "string", "const": "1.0" },
+    "aspecUri": { "type": "string" },
+    "asflUri": { "type": "string" },
+    "contentHash": { "type": "string" },
+    "links": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["aspecId", "kind", "status"],
+        "properties": {
+          "aspecId": { "type": "string" },
+          "kind": {
+            "enum": ["module", "process", "function", "scenario", "type", "variable", "invariant"]
+          },
+          "asflSymbol": { "type": "string" },
+          "status": { "enum": ["covered", "partial", "missing", "stale"] }
+        }
+      }
+    }
+  }
+}

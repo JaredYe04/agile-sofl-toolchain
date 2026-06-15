@@ -11,6 +11,8 @@ export type WorkspaceSnapshot = {
     title: string
     isDirty: boolean
     content: string
+    documentKind?: 'asfl' | 'aspec'
+    linkedDocumentId?: string
   }>
 }
 
@@ -23,7 +25,9 @@ export function persistWorkspace(activeTabId: string, tabs: EditorTab[]): void {
       uri: t.uri,
       title: t.title,
       isDirty: t.isDirty,
-      content: t.content
+      content: t.content,
+      documentKind: t.documentKind,
+      linkedDocumentId: t.linkedDocumentId
     }))
   if (!documentTabs.length) {
     sessionStorage.removeItem(SESSION_KEY)
@@ -48,7 +52,9 @@ export function restoreWorkspace(): { tabs: EditorTab[]; activeTabId: string } |
           uri: d.uri,
           title: d.title,
           isDirty: d.isDirty,
-          content: d.content
+          content: d.content,
+          documentKind: d.documentKind,
+          linkedDocumentId: d.linkedDocumentId
         })
       )
     }

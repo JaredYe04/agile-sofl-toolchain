@@ -5,15 +5,19 @@ import DropdownMenu, { type MenuItem } from '../ui/DropdownMenu.vue'
 import { useAppStore } from '../../stores/app'
 import { useFileActions } from '../../composables/useFileActions'
 import { useNewFileDialog } from '../../composables/useNewFileDialog'
+import { useProjectStore } from '../../stores/projectStore'
+import { useDocumentStore } from '../../stores/document'
 import { useModalStore } from '../../stores/modal'
 
-const emit = defineEmits<{ edit: [cmd: string]; devTools: []; format: [] }>()
+const emit = defineEmits<{ edit: [cmd: string]; devTools: []; format: []; refine: [] }>()
 
 const { t } = useI18n()
 const app = useAppStore()
 const files = useFileActions()
 const newFileDialog = useNewFileDialog()
 const modal = useModalStore()
+const project = useProjectStore()
+const docStore = useDocumentStore()
 
 const accessKeys: Record<string, string> = {
   file: 'f',
@@ -24,8 +28,12 @@ const accessKeys: Record<string, string> = {
 
 const fileItems = computed<MenuItem[]>(() => [
   { id: 'new', label: t('menu.file.new'), shortcut: 'Ctrl+N', action: () => newFileDialog.show() },
+  { id: 'newInformal', label: t('menu.file.newInformal'), action: () => docStore.newTab({ documentKind: 'aspec' }) },
   { id: 'open', label: t('menu.file.open'), shortcut: 'Ctrl+O', action: () => files.openFile() },
+  { id: 'openFolder', label: t('menu.file.openFolder'), action: () => void project.openFolder() },
   { id: 'sep1', label: '', separator: true },
+  { id: 'refine', label: t('menu.tools.refine'), action: () => emit('refine') },
+  { id: 'sep1b', label: '', separator: true },
   { id: 'save', label: t('menu.file.save'), shortcut: 'Ctrl+S', action: () => files.saveTab() },
   { id: 'saveAs', label: t('menu.file.saveAs'), shortcut: 'Ctrl+Shift+S', action: () => files.saveAsTab() },
   { id: 'sep2', label: '', separator: true },

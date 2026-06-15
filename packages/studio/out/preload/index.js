@@ -19,8 +19,8 @@ const studio = {
     return () => electron.ipcRenderer.removeListener("studio:request-close", handler);
   },
   confirmClose: () => electron.ipcRenderer.send("studio:confirm-close"),
-  fileOpenDialog: () => electron.ipcRenderer.invoke("studio:file-open-dialog"),
-  fileSaveDialog: (defaultName) => electron.ipcRenderer.invoke("studio:file-save-dialog", defaultName),
+  fileOpenDialog: (kind) => electron.ipcRenderer.invoke("studio:file-open-dialog", kind),
+  fileSaveDialog: (defaultName, kind) => electron.ipcRenderer.invoke("studio:file-save-dialog", defaultName, kind),
   fileRead: (path) => electron.ipcRenderer.invoke("studio:file-read", path),
   fileWrite: (path, content) => electron.ipcRenderer.invoke("studio:file-write", path, content),
   lspSend: (jsonBody) => electron.ipcRenderer.send("studio:lsp-send", jsonBody),
@@ -62,6 +62,18 @@ const studio = {
   uiToPredicateText: (node) => electron.ipcRenderer.invoke("studio:ui-to-predicate-text", node),
   validateSignature: (kind, signature) => electron.ipcRenderer.invoke("studio:validate-signature", kind, signature),
   searchWorkspaceFiles: (rootDir, query) => electron.ipcRenderer.invoke("studio:search-workspace-files", rootDir, query),
-  searchWorkspaceSymbols: (rootDir, query) => electron.ipcRenderer.invoke("studio:search-workspace-symbols", rootDir, query)
+  searchWorkspaceSymbols: (rootDir, query) => electron.ipcRenderer.invoke("studio:search-workspace-symbols", rootDir, query),
+  openProjectFolder: () => electron.ipcRenderer.invoke("studio:open-project-folder"),
+  buildInformalModel: (source) => electron.ipcRenderer.invoke("studio:build-informal-model", source),
+  patchAspec: (payload) => electron.ipcRenderer.invoke("studio:patch-aspec", payload),
+  refineAspec: (payload) => electron.ipcRenderer.invoke("studio:refine-aspec", payload),
+  buildCoverageReport: (payload) => electron.ipcRenderer.invoke("studio:build-coverage-report", payload),
+  patchInformal: (payload) => electron.ipcRenderer.invoke("studio:patch-informal", payload),
+  buildHybridRegions: (source) => electron.ipcRenderer.invoke("studio:build-hybrid-regions", source),
+  getInformalSpans: (source) => electron.ipcRenderer.invoke("studio:get-informal-spans", source),
+  scanProject: (root) => electron.ipcRenderer.invoke("studio:scan-project", root),
+  writeTraceFile: (filePath, traceJson) => electron.ipcRenderer.invoke("studio:write-trace-file", filePath, traceJson),
+  formatAspec: (source) => electron.ipcRenderer.invoke("studio:format-aspec", source),
+  findHybridSymbolSpan: (payload) => electron.ipcRenderer.invoke("studio:find-hybrid-symbol-span", payload)
 };
 electron.contextBridge.exposeInMainWorld("studio", studio);

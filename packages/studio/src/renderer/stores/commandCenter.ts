@@ -25,6 +25,8 @@ export const useCommandCenterStore = defineStore('commandCenter', () => {
   const saveAsTabHandler = shallowRef<(() => Promise<boolean>) | null>(null)
   const closeActiveTabHandler = shallowRef<(() => Promise<void>) | null>(null)
   const devToolsHandler = shallowRef<(() => void) | null>(null)
+  const refineHandler = shallowRef<(() => void) | null>(null)
+  const coverageHandler = shallowRef<(() => void) | null>(null)
 
   initCommandCenterProviders()
 
@@ -39,6 +41,8 @@ export const useCommandCenterStore = defineStore('commandCenter', () => {
     saveAsTab: () => Promise<boolean>
     closeActiveTab: () => Promise<void>
     openDevTools: () => void
+    openRefine: () => void
+    openCoverage: () => void
   }): void {
     revealSpanHandler.value = handlers.revealSpan
     formatHandler.value = handlers.formatDocument
@@ -50,6 +54,8 @@ export const useCommandCenterStore = defineStore('commandCenter', () => {
     saveAsTabHandler.value = handlers.saveAsTab
     closeActiveTabHandler.value = handlers.closeActiveTab
     devToolsHandler.value = handlers.openDevTools
+    refineHandler.value = handlers.openRefine
+    coverageHandler.value = handlers.openCoverage
   }
 
   function buildContext(t: (key: string, params?: Record<string, unknown>) => string): CommandCenterContext {
@@ -69,6 +75,8 @@ export const useCommandCenterStore = defineStore('commandCenter', () => {
       saveAsTab: () => saveAsTabHandler.value?.() ?? Promise.resolve(false),
       closeActiveTab: () => closeActiveTabHandler.value?.() ?? Promise.resolve(),
       openDevTools: () => devToolsHandler.value?.(),
+      openRefine: () => refineHandler.value?.(),
+      openCoverage: () => coverageHandler.value?.(),
       t
     }
   }

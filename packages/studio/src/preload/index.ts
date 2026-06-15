@@ -26,9 +26,10 @@ const studio = {
   },
   confirmClose: () => ipcRenderer.send('studio:confirm-close'),
 
-  fileOpenDialog: () => ipcRenderer.invoke('studio:file-open-dialog') as Promise<FileOpenResult | null>,
-  fileSaveDialog: (defaultName?: string) =>
-    ipcRenderer.invoke('studio:file-save-dialog', defaultName) as Promise<string | null>,
+  fileOpenDialog: (kind?: 'asfl' | 'aspec' | 'any') =>
+    ipcRenderer.invoke('studio:file-open-dialog', kind) as Promise<FileOpenResult | null>,
+  fileSaveDialog: (defaultName?: string, kind?: 'asfl' | 'aspec') =>
+    ipcRenderer.invoke('studio:file-save-dialog', defaultName, kind) as Promise<string | null>,
   fileRead: (path: string) => ipcRenderer.invoke('studio:file-read', path) as Promise<FileOpenResult>,
   fileWrite: (path: string, content: string) =>
     ipcRenderer.invoke('studio:file-write', path, content) as Promise<{ filePath: string; title: string }>,
@@ -118,6 +119,28 @@ const studio = {
         containerName?: string
       }>
     >
+  ,
+  openProjectFolder: () => ipcRenderer.invoke('studio:open-project-folder') as Promise<string | null>,
+  buildInformalModel: (source: string) =>
+    ipcRenderer.invoke('studio:build-informal-model', source) as Promise<InformalModelPayload>,
+  patchAspec: (payload: PatchAspecPayload) =>
+    ipcRenderer.invoke('studio:patch-aspec', payload) as Promise<string>,
+  refineAspec: (payload: RefineAspecPayload) =>
+    ipcRenderer.invoke('studio:refine-aspec', payload) as Promise<RefineAspecResult>,
+  buildCoverageReport: (payload: { aspecSource: string; asflSource: string; traceJson?: string }) =>
+    ipcRenderer.invoke('studio:build-coverage-report', payload) as Promise<CoverageReportPayload>,
+  patchInformal: (payload: { source: string; span: SerializableSpan; text: string }) =>
+    ipcRenderer.invoke('studio:patch-informal', payload) as Promise<string>,
+  buildHybridRegions: (source: string) =>
+    ipcRenderer.invoke('studio:build-hybrid-regions', source) as Promise<HybridRegionPayload[]>,
+  getInformalSpans: (source: string) =>
+    ipcRenderer.invoke('studio:get-informal-spans', source) as Promise<InformalSpanPayload[]>,
+  scanProject: (root: string) => ipcRenderer.invoke('studio:scan-project', root) as Promise<ProjectScanPayload>,
+  writeTraceFile: (filePath: string, traceJson: string) =>
+    ipcRenderer.invoke('studio:write-trace-file', filePath, traceJson) as Promise<boolean>,
+  formatAspec: (source: string) => ipcRenderer.invoke('studio:format-aspec', source) as Promise<string>,
+  findHybridSymbolSpan: (payload: { source: string; symbolName: string; kind?: 'process' | 'function' }) =>
+    ipcRenderer.invoke('studio:find-hybrid-symbol-span', payload) as Promise<SerializableSpan | null>
 }
 
 export type SerializableSpan = {
@@ -341,6 +364,155 @@ export type PatchProcessInitPayload = {
   processName: string
   isInit: boolean
   fallbackName?: string
+}
+
+export type InformalDiagnostic = {
+  code: string
+  message: string
+  severity: string
+  path?: string
+  line?: number
+  column?: number
+}
+
+export type InformalScenarioPayload = {
+  id: string
+  condition: string
+  outcome: string
+}
+
+export type InformalProcessPayload = {
+  id: string
+  name: string
+  description?: string
+  decomposition?: string
+  notes?: string
+  preconditions?: string
+  postconditions?: string
+  scenarios?: InformalScenarioPayload[]
+  refinementHints?: { bottomLevel?: boolean; expectedFsfLevel?: 'semi-formal' | 'formal' }
+  signature?: {
+    inputs?: Array<{ name: string; typeHint?: string }>
+    outputs?: Array<{ name: string; typeHint?: string }>
+  }
+}
+
+export type InformalModulePayload = {
+  id: string
+  name: string
+  description: string
+  processes?: InformalProcessPayload[]
+  functions?: Array<{ id: string; name: string; description?: string }>
+  types?: Array<{ id: string; name: string; typeHint?: string }>
+  variables?: Array<{ id: string; name: string; typeHint?: string }>
+  invariants?: Array<{ id: string; textHint?: string; description?: string }>
+}
+
+export type BookAlignPayload = {
+  functions?: Array<{ ref: string; description: string }>
+  data?: Array<{ ref: string; description: string; usedBy?: string[] }>
+  constraints?: Array<{ ref: string; description: string; refs?: string[] }>
+}
+
+export type InformalModelPayload = {
+  meta: { id: string; title: string; hybridTarget?: string }
+  system: {
+    name: string
+    purpose: string
+    scope?: string
+    stakeholders?: string[]
+    assumptions?: string
+    glossary?: Array<{ term: string; definition: string }>
+  }
+  modules: InformalModulePayload[]
+  bookAlign?: BookAlignPayload
+  diagnostics: InformalDiagnostic[]
+}
+
+export type PatchAspecPayload = {
+  source: string
+  action:
+    | 'patch-field'
+    | 'patch-by-id'
+    | 'add-process'
+    | 'remove-process'
+    | 'add-scenario'
+    | 'remove-scenario'
+    | 'add-module'
+    | 'remove-module'
+    | 'add-function'
+    | 'remove-function'
+    | 'add-type'
+    | 'remove-type'
+    | 'add-variable'
+    | 'remove-variable'
+    | 'add-invariant'
+    | 'remove-invariant'
+    | 'patch-book-align'
+  path?: string
+  idPath?: string
+  value?: unknown
+  moduleId?: string
+  processId?: string
+  scenarioId?: string
+  functionId?: string
+  typeId?: string
+  variableId?: string
+  invariantId?: string
+  process?: InformalProcessPayload
+  scenario?: InformalScenarioPayload
+  module?: InformalModulePayload
+  function?: { id: string; name: string; description?: string; bodyHint?: string }
+  type?: { id: string; name: string; typeHint?: string; description?: string }
+  variable?: { id: string; name: string; typeHint?: string; description?: string }
+  invariant?: { id: string; textHint?: string; description?: string }
+  bookAlign?: BookAlignPayload
+}
+
+export type RefineAspecPayload = {
+  source: string
+  aspecUri?: string
+  asflUri?: string
+  existingAsfl?: string
+  skeletonOnly?: boolean
+  mergePlans?: Array<{ aspecId: string; processName: string; strategy: string }>
+}
+
+export type RefineAspecResult = {
+  asflText: string
+  traceability: { traceVersion: string; links: Array<{ aspecId: string; kind: string; status: string }> }
+  warnings: InformalDiagnostic[]
+  checkOk: boolean
+  checkDiagnostics?: InformalDiagnostic[]
+}
+
+export type CoverageReportPayload = {
+  total: number
+  covered: number
+  partial: number
+  missing: number
+  stale: number
+  percent: number
+  items: Array<{ aspecId: string; kind: string; name: string; status: string; detail?: string }>
+}
+
+export type HybridRegionPayload = {
+  type: 'fsf' | 'informal' | 'comment' | 'decom'
+  span: SerializableSpan
+}
+
+export type InformalSpanPayload = {
+  processName: string
+  field: 'comment' | 'decom' | 'fsf'
+  text: string
+  span: SerializableSpan
+}
+
+export type ProjectScanPayload = {
+  root: string
+  aspecFiles: string[]
+  asflFiles: string[]
+  pairs: Array<{ aspecPath: string; asflPath?: string; tracePath?: string }>
 }
 
 contextBridge.exposeInMainWorld('studio', studio)

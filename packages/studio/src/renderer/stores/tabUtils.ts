@@ -1,27 +1,57 @@
 export type TabKind = 'home' | 'document'
+export type DocumentKind = 'asfl' | 'aspec'
 
 export const HOME_TAB_ID = 'studio-home'
 
 export interface EditorTab {
   id: string
   kind: TabKind
+  documentKind: DocumentKind
   filePath: string | null
   uri: string
   title: string
   isDirty: boolean
   content: string
+  linkedDocumentId?: string
 }
 
 let untitledCounter = 1
 
-export function createUntitledTitle(): string {
-  return `Untitled-${untitledCounter++}`
+export function createUntitledTitle(kind: DocumentKind = 'asfl'): string {
+  return kind === 'aspec' ? `Untitled-${untitledCounter++}.aspec` : `Untitled-${untitledCounter++}`
+}
+
+export function inferDocumentKind(filePath: string | null, uri?: string): DocumentKind {
+  if (filePath?.toLowerCase().endsWith('.aspec')) return 'aspec'
+  if (uri?.includes('.aspec')) return 'aspec'
+  return 'asfl'
+}
+
+export function defaultContentForKind(kind: DocumentKind): string {
+  if (kind === 'aspec') {
+    return `aspecVersion: "1.0"
+meta:
+  id: "${crypto.randomUUID()}"
+  title: New Informal Spec
+system:
+  name: NewSystem
+  purpose: |
+    Describe the system purpose here.
+modules:
+  - id: mod-main
+    name: SYSTEM_New
+    description: |
+      Main system module.
+`
+  }
+  return 'module SYSTEM_New;\nend_module\n'
 }
 
 export function createHomeTab(): EditorTab {
   return {
     id: HOME_TAB_ID,
     kind: 'home',
+    documentKind: 'asfl',
     filePath: null,
     uri: 'studio://home',
     title: 'Home',
@@ -30,14 +60,14 @@ export function createHomeTab(): EditorTab {
   }
 }
 
-export function tabUriForPath(filePath: string | null, id: string): string {
+export function tabUriForPath(filePath: string | null, id: string, kind: DocumentKind = 'asfl'): string {
   if (filePath) {
     return pathToFileUri(filePath)
   }
-  return `inmemory://studio/${id}.asfl`
+  const ext = kind === 'aspec' ? 'aspec' : 'asfl'
+  return `inmemory://studio/${id}.${ext}`
 }
 
-/** Canonical path for tab dedup and recent-file matching (Windows-safe). */
 export function normalizeFilePath(filePath: string): string {
   let normalized = filePath.replace(/\\/g, '/')
   if (/^[a-zA-Z]:/.test(normalized)) normalized = normalized[0].toLowerCase() + normalized.slice(1)
@@ -57,16 +87,19 @@ export function pathToFileUri(filePath: string): string {
 
 export function createDocumentTab(partial?: Partial<EditorTab>): EditorTab {
   const id = partial?.id ?? crypto.randomUUID()
-  const title = partial?.title ?? createUntitledTitle()
+  const documentKind = partial?.documentKind ?? inferDocumentKind(partial?.filePath ?? null, partial?.uri)
+  const title = partial?.title ?? createUntitledTitle(documentKind)
   const filePath = partial?.filePath ?? null
   return {
     id,
     kind: 'document',
+    documentKind,
     filePath,
-    uri: partial?.uri ?? tabUriForPath(filePath, id),
+    uri: partial?.uri ?? tabUriForPath(filePath, id, documentKind),
     title,
     isDirty: partial?.isDirty ?? false,
-    content: partial?.content ?? 'module SYSTEM_New;\nend_module\n'
+    content: partial?.content ?? defaultContentForKind(documentKind),
+    linkedDocumentId: partial?.linkedDocumentId
   }
 }
 

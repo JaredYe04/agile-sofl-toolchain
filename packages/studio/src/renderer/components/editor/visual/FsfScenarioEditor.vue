@@ -28,6 +28,7 @@ const props = defineProps<{
   model: FsfModelDto
   symbols?: SymbolHint[]
   disabled?: boolean
+  blockInformal?: boolean
 }>()
 
 const emit = defineEmits<{ save: [scenarios: FsfScenarioDto[], others?: string] }>()
@@ -63,8 +64,39 @@ function hasValidationErrors(): boolean {
   return false
 }
 
+function hasInformalText(text: string): boolean {
+  return /\binformal\b/i.test(text.trim())
+}
+
+function validateStrictInformal(): boolean {
+  if (!props.blockInformal) return true
+  let ok = true
+  for (const s of scenarios.value) {
+    if (hasInformalText(s.test)) {
+      setScenarioError(s.id, 'test', t('visual.fsfStrictBlocked'))
+      ok = false
+    } else {
+      setScenarioError(s.id, 'test', null)
+    }
+    if (hasInformalText(s.def)) {
+      setScenarioError(s.id, 'def', t('visual.fsfStrictBlocked'))
+      ok = false
+    } else {
+      setScenarioError(s.id, 'def', null)
+    }
+  }
+  if (hasInformalText(others.value)) {
+    othersError.value = t('visual.fsfStrictBlocked')
+    ok = false
+  } else {
+    othersError.value = null
+  }
+  return ok
+}
+
 function trySave(): void {
   if (props.disabled || serialize() === snapshot.value || hasValidationErrors()) return
+  if (!validateStrictInformal()) return
   emit('save', scenarios.value, others.value || undefined)
   snapshot.value = serialize()
 }
@@ -177,6 +209,7 @@ defineExpose({ addScenario })
               v-model="scenario.test"
               :symbols="symbols"
               :disabled="disabled"
+              :block-informal="blockInformal"
               :label="t('visual.fsfTest')"
               @parse-error="(e) => setScenarioError(scenario.id, 'test', e)"
             />
@@ -186,6 +219,7 @@ defineExpose({ addScenario })
               v-model="scenario.def"
               :symbols="symbols"
               :disabled="disabled"
+              :block-informal="blockInformal"
               :label="t('visual.fsfDef')"
               @parse-error="(e) => setScenarioError(scenario.id, 'def', e)"
             />
@@ -207,6 +241,7 @@ defineExpose({ addScenario })
           v-model="others"
           :symbols="symbols"
           :disabled="disabled"
+          :block-informal="blockInformal"
           :label="t('visual.fsfOthers')"
           @parse-error="(e) => (othersError = e)"
         />

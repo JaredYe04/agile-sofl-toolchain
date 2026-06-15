@@ -36,6 +36,8 @@ export interface CommandCenterContext {
   saveAsTab: () => Promise<boolean>
   closeActiveTab: () => Promise<void>
   openDevTools: () => void
+  openRefine: () => void
+  openCoverage: () => void
   t: (key: string, params?: Record<string, unknown>) => string
 }
 

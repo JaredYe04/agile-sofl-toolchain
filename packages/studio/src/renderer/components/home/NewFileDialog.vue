@@ -25,8 +25,12 @@ onMounted(async () => {
 async function pick(entry: TemplateEntry): Promise<void> {
   try {
     const content = await loadTemplateContent(entry.file)
-    const title = entry.id === 'blank' ? undefined : entry.file.replace(/\.asfl$/, '')
-    doc.newTab({ content, title })
+    const documentKind = entry.file.endsWith('.aspec') ? 'aspec' : 'asfl'
+    const title =
+      entry.id === 'blank' || entry.id === 'informal-blank'
+        ? undefined
+        : entry.file.replace(/\.(asfl|aspec)$/, '')
+    doc.newTab({ content, title, documentKind })
     hide()
   } catch (err) {
     console.error('[studio] failed to open template:', err)

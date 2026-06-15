@@ -6,3 +6,4 @@ coverage/
 .DS_Store
 /packages/studio/out
 /.playwright-mcp
+docs/Aigle-SOFL.pdf

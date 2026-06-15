@@ -1,0 +1,62 @@
+aspecVersion: "1.0"
+meta:
+  id: "lib-informal-001"
+  title: Library System Informal Spec
+  hybridTarget: ./library-system.asfl
+system:
+  name: Library
+  purpose: |
+    Manage books, members, and loans in a library.
+  scope: |
+    In-library circulation only.
+modules:
+  - id: mod-library
+    name: SYSTEM_Library
+    description: |
+      Top-level library management system.
+    types:
+      - id: type-book-id
+        name: BookId
+        typeHint: nat
+    variables:
+      - id: var-books
+        name: book_ids
+        typeHint: set of nat
+    invariants:
+      - id: inv-books
+        textHint: "forall[b: book_ids] | b > 0"
+    processes:
+      - id: proc-borrow
+        name: Borrow
+        description: |
+          Member borrows a book when both ids are valid.
+        signature:
+          inputs:
+            - name: member_id
+              typeHint: nat
+            - name: book_id
+              typeHint: nat
+          outputs:
+            - name: success
+              typeHint: nat
+        scenarios:
+          - id: scen-valid
+            condition: member and book ids are valid
+            outcome: success is 1
+          - id: scen-zero
+            condition: book id is zero
+            outcome: success is 0
+        decomposition: Library_Borrow
+        notes: See circulation submodule
+        refinementHints:
+          bottomLevel: false
+    functions:
+      - id: fn-member
+        name: member_registered
+        signature:
+          inputs:
+            - name: id
+              typeHint: nat
+          outputs:
+            - name: result
+              typeHint: nat

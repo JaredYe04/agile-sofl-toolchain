@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import type { DeclarationKind, SerializableSpan, DiagnosticSummary, VisualModuleSummary } from '../../../preload/index'
 import { useDocumentStore } from '../../../stores/document'
 import { useEditorUiStore } from '../../../stores/editorUi'
+import { useLinkedInformalHints } from '../../../composables/useLinkedInformalHints'
 import { useEditorSelectionStore } from '../../../stores/editorSelection'
 import type { TreeSelection } from '../../../composables/useVisualModel'
 import { VISUAL_MODEL_KEY } from '../../../composables/visualModelContext'
@@ -39,6 +40,7 @@ const { t } = useI18n()
 const modal = useModalStore()
 const doc = useDocumentStore()
 const editorUi = useEditorUiStore()
+const linkedHints = useLinkedInformalHints(computed(() => doc.activeTabId))
 const editorSelection = useEditorSelectionStore()
 const selected = ref<TreeSelection>(null)
 const processEditorRef = ref<InstanceType<typeof ProcessEditor> | null>(null)
@@ -160,6 +162,19 @@ const selectedFunction = computed(() => {
   if (selected.value?.kind !== 'function' || !selectedModule.value) return null
   return selectedModule.value.functions.find((f) => f.name === selected.value!.functionName) ?? null
 })
+
+const blockInformalPredicate = computed(() => {
+  if (!editorUi.fsfStrictMode || selected.value?.kind !== 'process') return false
+  const proc = selectedProcess.value
+  if (!proc) return false
+  return linkedHints.blockInformalForProcess(
+    selected.value.processName,
+    Boolean(proc.decom?.trim()),
+    true
+  )
+})
+
+const blockInformalFunction = computed(() => editorUi.fsfStrictMode && selected.value?.kind === 'function')
 
 const detailPanelKey = computed(() => {
   const tabId = doc.activeTabId
@@ -641,6 +656,7 @@ onUnmounted(() => document.removeEventListener('click', onGlobalClick))
             :symbols="symbolHints"
             :disabled="writeDisabled"
             :write-disabled-reason="writeDisabledReason"
+            :block-informal="blockInformalPredicate"
             @patch="onPatch"
             @patch-ext="onPatchExt"
             @patch-signature="onPatchProcessSignature"
@@ -657,6 +673,7 @@ onUnmounted(() => document.removeEventListener('click', onGlobalClick))
             :symbols="symbolHints"
             :disabled="writeDisabled"
             :write-disabled-reason="writeDisabledReason"
+            :block-informal="blockInformalFunction"
             @patch="onPatchFunction"
             @patch-signature="onPatchFunctionSignature"
             @rename="onRenameFunction"

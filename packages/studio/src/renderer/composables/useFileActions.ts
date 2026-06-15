@@ -13,8 +13,9 @@ export function useFileActions() {
     if (!tab || tab.kind !== 'document') return false
 
     let path = tab.filePath
+    const ext = tab.documentKind === 'aspec' ? 'aspec' : 'asfl'
     if (!path) {
-      path = await window.studio!.fileSaveDialog(`${tab.title}.asfl`)
+      path = await window.studio!.fileSaveDialog(`${tab.title}.${ext}`, tab.documentKind)
       if (!path) return false
     }
 
@@ -26,7 +27,8 @@ export function useFileActions() {
   async function saveAsTab(): Promise<boolean> {
     const tab = doc.activeTab
     if (!tab || tab.kind !== 'document') return false
-    const path = await window.studio!.fileSaveDialog(`${tab.title}.asfl`)
+    const ext = tab.documentKind === 'aspec' ? 'aspec' : 'asfl'
+    const path = await window.studio!.fileSaveDialog(`${tab.title}.${ext}`, tab.documentKind)
     if (!path) return false
     await window.studio!.fileWrite(path, tab.content)
     doc.markSaved(tab.id, path, path.split(/[/\\]/).pop() ?? tab.title)

@@ -64,4 +64,19 @@ describe('document store', () => {
     doc.removeTab(HOME_TAB_ID)
     expect(doc.tabs.some((t) => t.id === HOME_TAB_ID)).toBe(true)
   })
+
+  it('links aspec and asfl tabs for refinement workflow', () => {
+    const doc = useDocumentStore()
+    const aspec = doc.newTab({ documentKind: 'aspec', title: 'spec.aspec' })
+    const asfl = doc.newTab({ documentKind: 'asfl', title: 'spec.asfl' })
+    doc.linkTabs(aspec.id, asfl.id)
+    expect(doc.tabs.find((t) => t.id === aspec.id)?.linkedDocumentId).toBe(asfl.id)
+    expect(doc.tabs.find((t) => t.id === asfl.id)?.linkedDocumentId).toBe(aspec.id)
+  })
+
+  it('infers aspec document kind from file path', () => {
+    const doc = useDocumentStore()
+    const tab = doc.openFromFile('/project/spec.aspec', 'aspecVersion: "1.0"\n', 'spec.aspec')
+    expect(tab.documentKind).toBe('aspec')
+  })
 })

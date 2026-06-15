@@ -21,6 +21,7 @@ const props = defineProps<{
   modelValue: string
   symbols?: SymbolHint[]
   disabled?: boolean
+  blockInformal?: boolean
   label?: string
 }>()
 
@@ -104,6 +105,7 @@ function onUnwrapNot(path: NodePath): void {
 }
 
 function addRootNode(kind: AddNodeKind): void {
+  if (props.blockInformal && kind === 'informal') return
   const child = nodeFromAddKind(kind)
   if (!uiRoot.value || uiRoot.value.kind === 'code') {
     uiRoot.value = child
@@ -163,6 +165,7 @@ void syncFromCode()
         :node="uiRoot"
         :symbols="symbols"
         :disabled="disabled"
+        :block-informal="blockInformal"
         @change="onUiChange"
         @add-child="onAddChild"
         @remove="onRemove"
@@ -171,7 +174,7 @@ void syncFromCode()
         @unwrap-not="onUnwrapNot"
       />
       <div class="mt-3 flex flex-wrap items-center gap-3 border-t border-border-subtle pt-2">
-        <AddNodeMenu :disabled="disabled" @select="addRootNode" />
+        <AddNodeMenu :disabled="disabled" :block-informal="blockInformal" @select="addRootNode" />
         <button
           type="button"
           class="text-xs text-accent hover:underline disabled:opacity-40"

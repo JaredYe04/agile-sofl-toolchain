@@ -15,6 +15,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@agile-sofl/aspec": "file:../aspec",
     "@agile-sofl/editor-api": "file:../editor-api",
     "@agile-sofl/language-server": "file:../language-server",
     "@agile-sofl/parser": "file:../parser",

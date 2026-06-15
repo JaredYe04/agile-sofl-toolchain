@@ -1,0 +1,38 @@
+{
+  "traceVersion": "1.0",
+  "aspecUri": "..\\..\\examples\\library-informal.aspec",
+  "asflUri": "./library-system.asfl",
+  "contentHash": "sha256:e0805ac8d326f0d1df055fe8189e3cbb35e91c63910f6d942e24a181ff985450",
+  "links": [
+    {
+      "aspecId": "mod-library",
+      "kind": "module",
+      "asflSymbol": "SYSTEM_Library",
+      "status": "covered"
+    },
+    {
+      "aspecId": "proc-borrow",
+      "kind": "process",
+      "asflSymbol": "Borrow",
+      "status": "covered"
+    },
+    {
+      "aspecId": "scen-valid",
+      "kind": "scenario",
+      "asflSymbol": "Borrow",
+      "status": "covered"
+    },
+    {
+      "aspecId": "scen-zero",
+      "kind": "scenario",
+      "asflSymbol": "Borrow",
+      "status": "covered"
+    },
+    {
+      "aspecId": "fn-member",
+      "kind": "function",
+      "asflSymbol": "member_registered",
+      "status": "covered"
+    }
+  ]
+}

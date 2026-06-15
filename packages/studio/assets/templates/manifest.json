@@ -48,6 +48,20 @@
       "descriptionKey": "template.graphShowcase.description",
       "file": "graph-showcase.asfl",
       "category": "example"
+    },
+    {
+      "id": "informal-blank",
+      "titleKey": "template.informal.blank.title",
+      "descriptionKey": "template.informal.blank.description",
+      "file": "informal-blank.aspec",
+      "category": "informal"
+    },
+    {
+      "id": "library-informal",
+      "titleKey": "template.informal.library.title",
+      "descriptionKey": "template.informal.library.description",
+      "file": "library-informal.aspec",
+      "category": "informal"
     }
   ]
 }

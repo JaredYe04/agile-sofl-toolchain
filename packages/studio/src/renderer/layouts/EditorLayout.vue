@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import TitleBar from '../components/chrome/TitleBar.vue'
+import Sidebar from '../components/chrome/Sidebar.vue'
 import EditorTabs from '../components/editor/EditorTabs.vue'
 import EditorToolbar from '../components/editor/EditorToolbar.vue'
 import EditorWorkspace from '../components/editor/EditorWorkspace.vue'
+import RefinementWizard from '../components/editor/RefinementWizard.vue'
 import HomeView from '../components/home/HomeView.vue'
 import WelcomeView from '../components/home/WelcomeView.vue'
 import StatusBar from '../components/editor/StatusBar.vue'
@@ -22,6 +24,7 @@ const doc = useDocumentStore()
 const modalStore = useModalStore()
 const newFileDialog = useNewFileDialog()
 const commandCenter = useCommandCenterStore()
+const refineOpen = ref(false)
 
 function onUndoRedo(cmd: 'undo' | 'redo'): boolean {
   return workspaceRef.value?.[cmd]() ?? false
@@ -61,7 +64,9 @@ function registerCommandCenterHandlers(): void {
     saveTab: () => files.saveTab(),
     saveAsTab: () => files.saveAsTab(),
     closeActiveTab: () => files.closeActiveTab(),
-    openDevTools: onDevTools
+    openDevTools: onDevTools,
+    openRefine: () => { refineOpen.value = true },
+    openCoverage: () => { workspaceRef.value?.focusCoverage() }
   })
 }
 
@@ -95,18 +100,22 @@ onUnmounted(() => {
 
 <template>
   <div class="flex h-full flex-col overflow-hidden">
-    <TitleBar @edit="onEdit" @dev-tools="onDevTools" @format="onFormat" />
+    <TitleBar @edit="onEdit" @dev-tools="onDevTools" @format="onFormat" @refine="refineOpen = true" />
     <EditorTabs />
     <main class="flex min-h-0 flex-1 flex-col bg-surface-raised">
       <HomeView v-if="doc.isHomeActive" />
       <WelcomeView v-else-if="doc.showWelcomeFallback" />
       <template v-else-if="showDocumentEditor">
         <EditorToolbar @format="onFormat" />
-        <EditorWorkspace ref="workspaceRef" class="min-h-0 flex-1" />
+        <div class="flex min-h-0 flex-1">
+          <Sidebar v-if="showDocumentEditor" />
+          <EditorWorkspace ref="workspaceRef" class="min-h-0 flex-1" />
+        </div>
       </template>
     </main>
     <StatusBar />
     <NewFileDialog />
+    <RefinementWizard :open="refineOpen" @close="refineOpen = false" />
     <Modal
       v-if="modalStore.request"
       :open="!!modalStore.request"

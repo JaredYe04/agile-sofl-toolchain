@@ -1,0 +1,13 @@
+aspecVersion: "1.0"
+meta:
+  id: "00000000-0000-4000-8000-000000000001"
+  title: New Informal Spec
+system:
+  name: NewSystem
+  purpose: |
+    Describe the system purpose here.
+modules:
+  - id: mod-main
+    name: SYSTEM_New
+    description: |
+      Main system module.

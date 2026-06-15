@@ -11,7 +11,7 @@ import { useDocumentStore } from '../../stores/document'
 import { useDocumentHistoryStore } from '../../stores/documentHistory'
 import { useLspStore } from '../../stores/lsp'
 import { useLspDiagnosticsStore } from '../../stores/lspDiagnostics'
-import type { DiagnosticSummary } from '../../preload/index'
+import type { DiagnosticSummary, HybridRegionPayload } from '../../../preload/index'
 import { useEditorUiStore } from '../../stores/editorUi'
 
 export type SerializableSpan = {
@@ -59,7 +59,8 @@ defineExpose({
     if (!tab || !ed) return
     suppressHistory = true
     doc.setContent(tab.id, content, tab.isDirty)
-    const model = getOrCreateModel(tab.id, tab.uri, content)
+    const language = tab.documentKind === 'aspec' ? 'agile-aspec' : 'agile-sofl'
+    const model = getOrCreateModel(tab.id, tab.uri, content, language)
     if (ed.getModel()?.uri.toString() !== model.uri.toString()) {
       ed.setModel(model)
     }
@@ -111,10 +112,15 @@ defineExpose({
   }
 })
 
-function getOrCreateModel(tabId: string, uri: string, content: string): Monaco.editor.ITextModel {
+function getOrCreateModel(tabId: string, uri: string, content: string, language: string): Monaco.editor.ITextModel {
   let model = models.get(tabId)
-  if (model) return model
-  model = monaco.editor.createModel(content, 'agile-sofl', uriForTab(uri))
+  if (model) {
+    if (model.getLanguageId() !== language) {
+      monaco.editor.setModelLanguage(model, language)
+    }
+    return model
+  }
+  model = monaco.editor.createModel(content, language, uriForTab(uri))
   models.set(tabId, model)
   history.initTab(tabId, content)
   return model
@@ -127,14 +133,57 @@ function applyEditorOptions(): void {
   })
 }
 
+let hybridDecorations: string[] = []
+let hybridTimer: ReturnType<typeof setTimeout> | null = null
+
+const HYBRID_CLASS: Record<string, string> = {
+  fsf: 'studio-hybrid-fsf',
+  informal: 'studio-hybrid-informal',
+  comment: 'studio-hybrid-comment',
+  decom: 'studio-hybrid-decom'
+}
+
+async function refreshHybridDecorations(): Promise<void> {
+  const tab = activeDocumentTab.value
+  const ed = editor.value
+  const model = ed?.getModel()
+  if (!tab || !ed || !model || tab.documentKind !== 'asfl' || !window.studio?.buildHybridRegions) {
+    hybridDecorations = ed?.deltaDecorations(hybridDecorations, []) ?? []
+    return
+  }
+  const regions = await window.studio.buildHybridRegions(tab.content)
+  hybridDecorations = ed.deltaDecorations(
+    hybridDecorations,
+    regions.map((r: HybridRegionPayload) => ({
+      range: new monaco.Range(
+        model.getPositionAt(r.span.start).lineNumber,
+        1,
+        model.getPositionAt(Math.max(r.span.end - 1, r.span.start)).lineNumber,
+        1
+      ),
+      options: {
+        isWholeLine: true,
+        className: HYBRID_CLASS[r.type] ?? 'studio-hybrid-fsf'
+      }
+    }))
+  )
+}
+
+function scheduleHybridDecorations(): void {
+  if (hybridTimer) clearTimeout(hybridTimer)
+  hybridTimer = setTimeout(() => void refreshHybridDecorations(), 300)
+}
+
 function syncModel(): void {
   const tab = activeDocumentTab.value
   const ed = editor.value
   if (!tab || !ed) return
-  const model = getOrCreateModel(tab.id, tab.uri, tab.content)
+  const language = tab.documentKind === 'aspec' ? 'agile-aspec' : 'agile-sofl'
+  const model = getOrCreateModel(tab.id, tab.uri, tab.content, language)
   if (ed.getModel()?.uri.toString() !== model.uri.toString()) {
     ed.setModel(model)
   }
+  scheduleHybridDecorations()
 }
 
 function markerSeverityLabel(severity: Monaco.MarkerSeverity): string {
@@ -165,7 +214,7 @@ function markersToDiagnostics(
 function updateMarkerDiagnostics(): void {
   const tab = activeDocumentTab.value
   const ed = editor.value
-  if (!tab || !ed) {
+  if (!tab || !ed || tab.documentKind === 'aspec') {
     lspDiagnostics.clear()
     lsp.setErrorCount(0)
     return
@@ -191,6 +240,7 @@ function onContentChange(): void {
   if (value !== tab.content) {
     history.pushSnapshot(tab.id, value)
     doc.updateContent(tab.id, value)
+    scheduleHybridDecorations()
   }
 }
 
@@ -223,7 +273,7 @@ onMounted(async () => {
   await lsp.refresh()
   if (lsp.running) await lsp.ensureClient()
   else {
-    const unsub = window.studio?.lspOnStatusChanged(async (s) => {
+    const unsub = window.studio?.lspOnStatusChanged(async (s: { running: boolean; message?: string }) => {
       if (s.running) {
         await lsp.ensureClient()
         unsub?.()
@@ -273,5 +323,17 @@ onUnmounted(() => {
 <style>
 .monaco-editor .studio-code-highlight-line {
   background: rgba(55, 148, 255, 0.12);
+}
+.monaco-editor .studio-hybrid-fsf {
+  border-left: 3px solid rgba(0, 120, 212, 0.5);
+}
+.monaco-editor .studio-hybrid-informal {
+  background: rgba(206, 145, 120, 0.15);
+}
+.monaco-editor .studio-hybrid-comment {
+  background: rgba(106, 153, 85, 0.12);
+}
+.monaco-editor .studio-hybrid-decom {
+  background: rgba(204, 167, 0, 0.12);
 }
 </style>

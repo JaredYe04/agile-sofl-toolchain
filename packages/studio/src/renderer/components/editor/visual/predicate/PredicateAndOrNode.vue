@@ -11,6 +11,7 @@ const props = defineProps<{
   path: NodePath
   symbols?: SymbolHint[]
   disabled?: boolean
+  blockInformal?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -56,7 +57,7 @@ function removeChild(i: number): void {
       >
         {{ t('visual.predicate.wrapNot') }}
       </button>
-      <AddNodeMenu :disabled="disabled" @select="onAdd" />
+      <AddNodeMenu :disabled="disabled" :block-informal="blockInformal" @select="onAdd" />
     </div>
     <div v-for="(child, i) in node.children" :key="i" class="relative ml-3 border-l border-border-subtle pl-3">
       <button
@@ -82,6 +83,7 @@ function removeChild(i: number): void {
         :path="childPath(i)"
         :symbols="symbols"
         :disabled="disabled"
+        :block-informal="blockInformal"
         @change="emit('change')"
         @add-child="(p, k) => emit('add-child', p, k)"
         @remove="(p) => emit('remove', p)"

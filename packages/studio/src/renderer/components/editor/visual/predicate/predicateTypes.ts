@@ -26,3 +26,4 @@ export type AddNodeKind =
   | 'quantified-exists'
   | 'and'
   | 'or'
+  | 'informal'

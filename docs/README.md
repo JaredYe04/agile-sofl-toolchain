@@ -20,6 +20,9 @@
 | [12-Electron编辑器集成.md](./12-Electron编辑器集成.md) | Electron / Studio 架构与 npm 集成 |
 | [13-模块边界与仓库结构.md](./13-模块边界与仓库结构.md) | Monorepo 包布局与依赖边界 |
 | [14-Studio-UI设计规约.md](./14-Studio-UI设计规约.md) | Studio 桌面编辑器 UI 设计 token 与组件规约 |
+| [15-Studio可视化编辑器.md](./15-Studio可视化编辑器.md) | Studio 可视化编辑架构与同步协议 |
+| [16-Studio可视化编辑器迭代.md](./16-Studio可视化编辑器迭代.md) | Studio 各阶段迭代记录 |
+| [17-Informal与Hybrid规格编辑器设计.md](./17-Informal与Hybrid规格编辑器设计.md) | Task 1：`.aspec` 非形式规格（含 `bookAlign` 著作对齐块）、精化/traceability、双文档编辑器 |
 
 ## 快速验证
 

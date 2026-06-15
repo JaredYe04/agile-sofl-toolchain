@@ -6,6 +6,7 @@ import {
   filePathsEqual,
   HOME_TAB_ID,
   pathToFileUri,
+  inferDocumentKind,
   type EditorTab
 } from './tabUtils'
 import { useRecentFilesStore } from './recentFiles'
@@ -58,10 +59,11 @@ export const useDocumentStore = defineStore('document', () => {
     activeTabId.value = HOME_TAB_ID
   }
 
-  function newTab(options?: { content?: string; title?: string }): EditorTab {
+  function newTab(options?: { content?: string; title?: string; documentKind?: import('./tabUtils').DocumentKind }): EditorTab {
     const tab = createDocumentTab({
       content: options?.content,
-      title: options?.title
+      title: options?.title,
+      documentKind: options?.documentKind
     })
     tabs.value.push(tab)
     activeTabId.value = tab.id
@@ -88,7 +90,7 @@ export const useDocumentStore = defineStore('document', () => {
       activeTabId.value = existing.id
       return existing
     }
-    const tab = createDocumentTab({ filePath, content, title, isDirty: false })
+    const tab = createDocumentTab({ filePath, content, title, isDirty: false, documentKind: inferDocumentKind(filePath) })
     tabs.value.push(tab)
     activeTabId.value = tab.id
     saveSession()
@@ -133,6 +135,14 @@ export const useDocumentStore = defineStore('document', () => {
     saveSession()
   }
 
+  function linkTabs(aspecTabId: string, asflTabId: string): void {
+    const aspec = tabs.value.find((t) => t.id === aspecTabId)
+    const asfl = tabs.value.find((t) => t.id === asflTabId)
+    if (aspec) aspec.linkedDocumentId = asflTabId
+    if (asfl) asfl.linkedDocumentId = aspecTabId
+    saveSession()
+  }
+
   return {
     tabs,
     activeTabId,
@@ -152,6 +162,7 @@ export const useDocumentStore = defineStore('document', () => {
     openFromFile,
     updateContent,
     markSaved,
-    removeTab
+    removeTab,
+    linkTabs
   }
 })

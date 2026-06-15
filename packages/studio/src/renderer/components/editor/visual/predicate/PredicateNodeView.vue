@@ -15,6 +15,7 @@ defineProps<{
   path?: NodePath
   symbols?: SymbolHint[]
   disabled?: boolean
+  blockInformal?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -40,6 +41,7 @@ function pathOrEmpty(p: NodePath | undefined): NodePath {
     :path="pathOrEmpty(path)"
     :symbols="symbols"
     :disabled="disabled"
+    :block-informal="blockInformal"
     @change="emit('change')"
     @add-child="(p, k) => emit('add-child', p, k)"
     @remove="(p) => emit('remove', p)"

@@ -20,6 +20,7 @@ const props = defineProps<{
   initialComment?: string
   fsfModel: FsfModelDto | null
   disabled?: boolean
+  blockInformal?: boolean
   writeDisabledReason?: 'parseFailed' | 'diagnostics' | null
   symbols?: import('./predicate/predicateTypes').SymbolHint[]
 }>()
@@ -176,6 +177,7 @@ const disabledMessage = () => {
       :model="fsfModel"
       :symbols="symbols"
       :disabled="disabled"
+      :block-informal="blockInformal"
       @save="onFsfPatch"
     />
     <p v-else class="text-sm text-content-secondary">{{ t('visual.noFsf') }}</p>

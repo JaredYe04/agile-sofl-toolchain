@@ -18,6 +18,7 @@ const props = defineProps<{
   fsfModel: FsfModelDto | null
   symbols?: SymbolHint[]
   disabled?: boolean
+  blockInformal?: boolean
   writeDisabledReason?: 'parseFailed' | 'diagnostics' | null
 }>()
 
@@ -118,6 +119,7 @@ const disabledMessage = () => {
       :model="fsfModel"
       :symbols="symbols"
       :disabled="disabled"
+      :block-informal="blockInformal"
       @save="onFsfPatch"
     />
     <p v-else-if="fn.hasFsf === false" class="text-sm text-content-secondary">{{ t('visual.noFsf') }}</p>

@@ -41,6 +41,12 @@ async function formatViaIpc(source: string): Promise<string | null> {
   return formatted && formatted !== source ? formatted : null
 }
 
+async function formatViaAspec(source: string): Promise<string | null> {
+  if (!window.studio?.formatAspec) return null
+  const formatted = await window.studio.formatAspec(source)
+  return formatted && formatted !== source ? formatted : null
+}
+
 export async function formatActiveDocument(
   editor: Monaco.editor.IStandaloneCodeEditor | null = null
 ): Promise<boolean> {
@@ -52,6 +58,17 @@ export async function formatActiveDocument(
   const model = editor?.getModel() ?? null
   const source = model?.getValue() ?? tab.content
   let formatted: string | null = null
+
+  if (tab.documentKind === 'aspec') {
+    formatted = await formatViaAspec(source)
+    if (!formatted) return false
+    doc.setContent(tab.id, formatted)
+    if (model && model.getValue() !== formatted) {
+      model.setValue(formatted)
+      model.pushStackElement()
+    }
+    return true
+  }
 
   if (lsp.running) {
     try {

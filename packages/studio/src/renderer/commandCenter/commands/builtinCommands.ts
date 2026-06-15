@@ -123,5 +123,35 @@ export const builtinCommands: BuiltinCommand[] = [
     id: 'dev.tools',
     titleKey: 'commandCenter.cmd.devTools',
     run: (ctx) => ctx.openDevTools()
+  },
+  {
+    id: 'tools.refine',
+    titleKey: 'commandCenter.cmd.refine',
+    when: (ctx) => ctx.documentTabs.some((t) => t.documentKind === 'aspec'),
+    run: (ctx) => ctx.openRefine()
+  },
+  {
+    id: 'tools.coverage',
+    titleKey: 'commandCenter.cmd.coverage',
+    when: (ctx) => ctx.activeTab?.documentKind === 'aspec',
+    run: (ctx) => ctx.openCoverage()
+  },
+  {
+    id: 'tools.fsfStrict',
+    titleKey: 'commandCenter.cmd.fsfStrict',
+    when: (ctx) => ctx.activeTab?.documentKind === 'asfl',
+    run: async () => {
+      const { useEditorUiStore } = await import('../../stores/editorUi')
+      const ui = useEditorUiStore()
+      ui.setFsfStrictMode(!ui.fsfStrictMode)
+    }
+  },
+  {
+    id: 'file.openFolder',
+    titleKey: 'commandCenter.cmd.openFolder',
+    run: async () => {
+      const { useProjectStore } = await import('../../stores/projectStore')
+      await useProjectStore().openFolder()
+    }
   }
 ]

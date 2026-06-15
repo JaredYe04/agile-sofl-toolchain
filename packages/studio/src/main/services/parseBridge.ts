@@ -1,5 +1,5 @@
 import { ipcMain } from 'electron'
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { ProjectIndex, walk, textOf } from '@agile-sofl/parser'
@@ -27,8 +27,22 @@ import {
   validateFunctionSignature,
   type FsfScenarioDto,
   type ExtVarDto,
+  patchInformal,
+  buildHybridRegions,
+  getInformalSpans,
   type DeclarationKind
 } from '@agile-sofl/editor-api'
+import {
+  buildInformalModel,
+  patchAspec,
+  refineAspecWithCheck,
+  buildCoverageReport,
+  parseTraceJson,
+  scanProject,
+  formatAspec,
+  type PatchAspecAction
+} from '@agile-sofl/aspec'
+import { parse } from '@agile-sofl/parser'
 import { cloneForIpc } from './ipcClone.js'
 
 function collectAsflFiles(dir: string): string[] {
@@ -350,4 +364,106 @@ export function registerParseHandlers(): void {
 
     return cloneForIpc(results)
   })
+
+  ipcMain.handle('studio:build-informal-model', (_event, source: string) => {
+    return cloneForIpc(buildInformalModel(source))
+  })
+
+  ipcMain.handle('studio:patch-aspec', (_event, payload: { source: string } & PatchAspecAction) => {
+    const { source, ...action } = payload
+    return patchAspec(source, action as PatchAspecAction)
+  })
+
+  ipcMain.handle(
+    'studio:refine-aspec',
+    (
+      _event,
+      payload: {
+        source: string
+        aspecUri?: string
+        asflUri?: string
+        existingAsfl?: string
+        skeletonOnly?: boolean
+        mergePlans?: Array<{ aspecId: string; processName: string; strategy: string }>
+      }
+    ) => {
+      const result = refineAspecWithCheck(payload.source, {
+        aspecUri: payload.aspecUri,
+        asflUri: payload.asflUri,
+        preserveExisting: Boolean(payload.existingAsfl),
+        existingAsfl: payload.existingAsfl,
+        skeletonOnly: payload.skeletonOnly,
+        mergePlans: payload.mergePlans
+      })
+      return cloneForIpc(result)
+    }
+  )
+
+  ipcMain.handle(
+    'studio:build-coverage-report',
+    (_event, payload: { aspecSource: string; asflSource: string; traceJson?: string }) => {
+      const trace = payload.traceJson ? parseTraceJson(payload.traceJson) : null
+      return cloneForIpc(buildCoverageReport(payload.aspecSource, payload.asflSource, trace))
+    }
+  )
+
+  ipcMain.handle('studio:patch-informal', (_event, payload: { source: string; span: { start: number; end: number }; text: string }) => {
+    return patchInformal(payload.source, payload.span, payload.text)
+  })
+
+  ipcMain.handle('studio:build-hybrid-regions', (_event, source: string) => {
+    const { ast } = parse(source)
+    if (!ast || ast.type !== 'program') return []
+    return cloneForIpc(buildHybridRegions(ast))
+  })
+
+  ipcMain.handle('studio:get-informal-spans', (_event, source: string) => {
+    const { ast } = parse(source)
+    if (!ast || ast.type !== 'program') return []
+    return cloneForIpc(getInformalSpans(source, ast))
+  })
+
+  ipcMain.handle('studio:scan-project', async (_event, root: string) => {
+    return cloneForIpc(await scanProject(root))
+  })
+
+  ipcMain.handle('studio:write-trace-file', (_event, filePath: string, traceJson: string) => {
+    writeFileSync(filePath, traceJson, 'utf8')
+    return true
+  })
+
+  ipcMain.handle('studio:format-aspec', (_event, source: string) => formatAspec(source))
+
+  ipcMain.handle(
+    'studio:find-hybrid-symbol-span',
+    (_event, payload: { source: string; symbolName: string; kind?: 'process' | 'function' }) => {
+      const { ast } = parse(payload.source)
+      if (!ast || ast.type !== 'program') return null
+      for (const mod of ast.modules) {
+        if (payload.kind === 'function' || !payload.kind) {
+          const fn = mod.functions.find((f) => f.name === payload.symbolName)
+          if (fn) {
+            return cloneForIpc({
+              start: fn.span.start,
+              end: fn.span.end,
+              line: fn.span.line,
+              column: fn.span.column
+            })
+          }
+        }
+        if (payload.kind === 'process' || !payload.kind) {
+          const proc = findProcess(ast, payload.symbolName)
+          if (proc) {
+            return cloneForIpc({
+              start: proc.span.start,
+              end: proc.span.end,
+              line: proc.span.line,
+              column: proc.span.column
+            })
+          }
+        }
+      }
+      return null
+    }
+  )
 }

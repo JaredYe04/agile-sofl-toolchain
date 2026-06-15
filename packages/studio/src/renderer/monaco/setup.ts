@@ -37,6 +37,34 @@ export function initMonacoBase(): void {
   monaco.editor.defineTheme('agile-sofl-dark-field', withSemanticRules(agileSoflDarkFieldTheme, true))
 
   monaco.languages.register({ id: 'agile-sofl', extensions: ['.asfl'], aliases: ['Agile-SOFL', 'ASFL'] })
+  monaco.languages.register({ id: 'agile-aspec', extensions: ['.aspec'], aliases: ['Agile-ASPEC', 'Informal Spec'] })
+  monaco.languages.setMonarchTokensProvider('agile-aspec', {
+    tokenizer: {
+      root: [
+        [/^[\s-]*[\w]+:/, 'keyword'],
+        [/#.+$/, 'comment'],
+        [/\|.*/, 'string'],
+        [/.*/, 'source']
+      ]
+    }
+  })
+  monaco.languages.registerCompletionItemProvider('agile-aspec', {
+    triggerCharacters: [' ', ':', '\n'],
+    provideCompletionItems: () => ({
+      suggestions: [
+        'aspecVersion', 'meta', 'system', 'modules', 'bookAlign',
+        'id', 'title', 'hybridTarget', 'name', 'purpose', 'scope',
+        'description', 'processes', 'functions', 'types', 'variables',
+        'invariants', 'scenarios', 'condition', 'outcome', 'decomposition',
+        'refinementHints', 'bottomLevel', 'expectedFsfLevel', 'signature',
+        'inputs', 'outputs', 'typeHint', 'bodyHint', 'preconditions', 'postconditions'
+      ].map((label) => ({
+        label,
+        kind: monaco.languages.CompletionItemKind.Property,
+        insertText: `${label}: `
+      }))
+    })
+  })
 }
 
 export function applyMonacoTheme(themeName: 'agile-sofl-light' | 'agile-sofl-dark'): void {

@@ -10,6 +10,8 @@ export function nodeFromAddKind(kind: AddNodeKind): PredicateUiNode {
       return { kind: 'literal', value: 'false' }
     case 'expr':
       return { kind: 'expr', text: '' }
+    case 'informal':
+      return { kind: 'informal', text: 'informal requirement' }
     case 'relational':
       return { kind: 'relational', left: '', op: '=', right: '', text: '' }
     case 'quantified-forall':

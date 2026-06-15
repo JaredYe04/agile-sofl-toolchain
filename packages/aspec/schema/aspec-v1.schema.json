@@ -1,0 +1,218 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://agile-sofl.dev/schema/aspec-v1.json",
+  "title": "Agile-SOFL Informal Specification",
+  "type": "object",
+  "required": ["aspecVersion", "meta", "system", "modules"],
+  "properties": {
+    "aspecVersion": { "type": "string", "const": "1.0" },
+    "meta": {
+      "type": "object",
+      "required": ["id", "title"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "title": { "type": "string", "minLength": 1 },
+        "author": { "type": "string" },
+        "revision": { "type": "string" },
+        "hybridTarget": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "system": {
+      "type": "object",
+      "required": ["name", "purpose"],
+      "properties": {
+        "name": { "type": "string" },
+        "purpose": { "type": "string" },
+        "scope": { "type": "string" },
+        "stakeholders": { "type": "array", "items": { "type": "string" } },
+        "assumptions": { "type": "string" },
+        "glossary": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["term", "definition"],
+            "properties": {
+              "term": { "type": "string" },
+              "definition": { "type": "string" }
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "modules": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/module" }
+    },
+    "bookAlign": {
+      "type": "object",
+      "properties": {
+        "functions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["ref", "description"],
+            "properties": {
+              "ref": { "type": "string" },
+              "description": { "type": "string" }
+            }
+          }
+        },
+        "data": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["ref", "description"],
+            "properties": {
+              "ref": { "type": "string" },
+              "description": { "type": "string" },
+              "usedBy": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        },
+        "constraints": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["ref", "description"],
+            "properties": {
+              "ref": { "type": "string" },
+              "description": { "type": "string" },
+              "refs": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "param": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string" },
+        "typeHint": { "type": "string" },
+        "description": { "type": "string" }
+      }
+    },
+    "signature": {
+      "type": "object",
+      "properties": {
+        "inputs": { "type": "array", "items": { "$ref": "#/definitions/param" } },
+        "outputs": { "type": "array", "items": { "$ref": "#/definitions/param" } }
+      }
+    },
+    "scenario": {
+      "type": "object",
+      "required": ["id", "condition", "outcome"],
+      "properties": {
+        "id": { "type": "string" },
+        "condition": { "type": "string" },
+        "outcome": { "type": "string" }
+      }
+    },
+    "refinementHints": {
+      "type": "object",
+      "properties": {
+        "expectedFsfLevel": { "enum": ["semi-formal", "formal"] },
+        "bottomLevel": { "type": "boolean" }
+      }
+    },
+    "module": {
+      "type": "object",
+      "required": ["id", "name", "description"],
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "parent": { "type": "string" },
+        "description": { "type": "string" },
+        "types": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "name"],
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" },
+              "typeHint": { "type": "string" },
+              "description": { "type": "string" }
+            }
+          }
+        },
+        "constants": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "name"],
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" },
+              "valueHint": { "type": "string" },
+              "description": { "type": "string" }
+            }
+          }
+        },
+        "variables": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "name"],
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" },
+              "typeHint": { "type": "string" },
+              "description": { "type": "string" }
+            }
+          }
+        },
+        "invariants": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id"],
+            "properties": {
+              "id": { "type": "string" },
+              "description": { "type": "string" },
+              "textHint": { "type": "string" }
+            }
+          }
+        },
+        "processes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "name"],
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" },
+              "description": { "type": "string" },
+              "signature": { "$ref": "#/definitions/signature" },
+              "scenarios": { "type": "array", "items": { "$ref": "#/definitions/scenario" } },
+              "preconditions": { "type": "string" },
+              "postconditions": { "type": "string" },
+              "decomposition": { "type": "string" },
+              "notes": { "type": "string" },
+              "refinementHints": { "$ref": "#/definitions/refinementHints" }
+            }
+          }
+        },
+        "functions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "name"],
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" },
+              "description": { "type": "string" },
+              "signature": { "$ref": "#/definitions/signature" },
+              "bodyHint": { "type": "string" },
+              "refinementHints": { "$ref": "#/definitions/refinementHints" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

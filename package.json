@@ -6,12 +6,12 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "npm run build --workspace @agile-sofl/parser && npm run build --workspace @agile-sofl/editor-api && npm run build --workspace @agile-sofl/language-server && npm run build --workspace agile-sofl --if-present && npm run build --workspace @agile-sofl/studio --if-present",
+    "build": "npm run build --workspace @agile-sofl/parser && npm run build --workspace @agile-sofl/aspec && npm run build --workspace @agile-sofl/editor-api && npm run build --workspace @agile-sofl/language-server && npm run build --workspace agile-sofl --if-present && npm run build --workspace @agile-sofl/studio --if-present",
     "build:parser": "npm run build --workspace @agile-sofl/parser",
     "build:lsp": "npm run build --workspace @agile-sofl/language-server",
     "build:vscode": "npm run build --workspace agile-sofl",
     "build:studio": "npm run build --workspace @agile-sofl/studio",
-    "test": "npm run test --workspace @agile-sofl/parser && npm run test --workspace @agile-sofl/editor-api && npm run test --workspace @agile-sofl/language-server && npm run test --workspace agile-sofl --if-present && npm run test --workspace @agile-sofl/studio --if-present",
+    "test": "npm run test --workspace @agile-sofl/parser && npm run test --workspace @agile-sofl/aspec && npm run test --workspace @agile-sofl/editor-api && npm run test --workspace @agile-sofl/language-server && npm run test --workspace agile-sofl --if-present && npm run test --workspace @agile-sofl/studio --if-present",
     "test:parser": "npm run test --workspace @agile-sofl/parser",
     "test:vscode": "npm run test --workspace agile-sofl",
     "bench:parse": "npm run bench:parse --workspace @agile-sofl/parser",

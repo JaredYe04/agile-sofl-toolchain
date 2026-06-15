@@ -33,7 +33,9 @@ const templateFiles = [
   ['ecommerce.asfl', join(examplesRoot, 'ecommerce.asfl')],
   ['hospital-registration.asfl', join(examplesRoot, 'hospital-registration.asfl')],
   ['type-showcase.asfl', join(examplesRoot, 'type-showcase.asfl')],
-  ['manifest.json', join(templatesRoot, 'manifest.json')]
+  ['informal-blank.aspec', join(studioRoot, 'assets', 'templates', 'informal-blank.aspec')],
+  ['library-informal.aspec', join(studioRoot, 'assets', 'templates', 'library-informal.aspec')],
+  ['manifest.json', join(studioRoot, 'assets', 'templates', 'manifest.json')]
 ]
 
 for (const outDir of outDirs) {

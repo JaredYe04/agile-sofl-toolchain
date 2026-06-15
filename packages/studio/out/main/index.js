@@ -41,11 +41,16 @@ function registerFileHandlers(getWindow2) {
     await promises.writeFile(filePath, content, "utf-8");
     return { filePath, title: node_path.basename(filePath) };
   });
-  electron.ipcMain.handle("studio:file-open-dialog", async () => {
+  electron.ipcMain.handle("studio:file-open-dialog", async (_event, kind) => {
     const win = getWindow2();
     const lastDir = await getLastDialogDir();
+    const filters = kind === "aspec" ? [{ name: "Informal Spec", extensions: ["aspec"] }] : kind === "asfl" ? [{ name: "Hybrid Spec", extensions: ["asfl"] }] : [
+      { name: "Agile-SOFL Specs", extensions: ["asfl", "aspec"] },
+      { name: "Hybrid (.asfl)", extensions: ["asfl"] },
+      { name: "Informal (.aspec)", extensions: ["aspec"] }
+    ];
     const result = await electron.dialog.showOpenDialog(win ?? void 0, {
-      filters: [{ name: "Agile-SOFL", extensions: ["asfl"] }],
+      filters,
       properties: ["openFile"],
       defaultPath: lastDir
     });
@@ -55,17 +60,37 @@ function registerFileHandlers(getWindow2) {
     const content = await promises.readFile(filePath, "utf-8");
     return { filePath, content, title: node_path.basename(filePath) };
   });
-  electron.ipcMain.handle("studio:file-save-dialog", async (_event, defaultName) => {
+  electron.ipcMain.handle(
+    "studio:file-save-dialog",
+    async (_event, defaultName, kind = "asfl") => {
+      const win = getWindow2();
+      const lastDir = await getLastDialogDir();
+      const ext = kind === "aspec" ? "aspec" : "asfl";
+      const defaultPath = defaultName ?? `untitled.${ext}`;
+      const result = await electron.dialog.showSaveDialog(win ?? void 0, {
+        filters: [{ name: kind === "aspec" ? "Informal Spec" : "Hybrid Spec", extensions: [ext] }],
+        defaultPath: lastDir ? joinLastDir(lastDir, defaultPath) : defaultPath
+      });
+      if (result.canceled || !result.filePath) return null;
+      await rememberDialogPath(result.filePath);
+      return result.filePath;
+    }
+  );
+  electron.ipcMain.handle("studio:open-project-folder", async () => {
     const win = getWindow2();
     const lastDir = await getLastDialogDir();
-    const result = await electron.dialog.showSaveDialog(win ?? void 0, {
-      filters: [{ name: "Agile-SOFL", extensions: ["asfl"] }],
-      defaultPath: lastDir ? joinLastDir(lastDir, defaultName ?? "untitled.asfl") : defaultName ?? "untitled.asfl"
+    const result = await electron.dialog.showOpenDialog(win ?? void 0, {
+      properties: ["openDirectory"],
+      defaultPath: lastDir
     });
-    if (result.canceled || !result.filePath) return null;
-    await rememberDialogPath(result.filePath);
-    return result.filePath;
+    if (result.canceled || result.filePaths.length === 0) return null;
+    const root = result.filePaths[0];
+    await rememberDialogPath(root);
+    return root;
   });
+}
+function joinLastDir(dir, name) {
+  return node_path.join(dir, name);
 }
 function registerWindowHandlers(getWindow2) {
   electron.ipcMain.handle("studio:window-minimize", () => {

@@ -120,8 +120,33 @@ export function patchProcessCommentFromAst(ast: ProgramNode, source: string, pro
   return patchComment(source, processName, text)
 }
 
+function pushInformalFromPredicate(
+  spans: Array<{
+    processName: string
+    field: 'comment' | 'decom' | 'fsf'
+    text: string
+    span: { start: number; end: number }
+  }>,
+  processName: string,
+  pred: { disjuncts?: Array<{ atoms?: Array<{ type: string; text?: string; span: Span }> }> } | undefined
+): void {
+  if (!pred) return
+  for (const conj of pred.disjuncts ?? []) {
+    for (const a of conj.atoms ?? []) {
+      if (a.type === 'informal_text' && a.text) {
+        spans.push({ processName, field: 'fsf', text: a.text, span: a.span })
+      }
+    }
+  }
+}
+
 export function getInformalSpans(source: string, ast: ProgramNode) {
-  const spans: Array<{ processName: string; field: 'comment' | 'decom'; text: string; span: { start: number; end: number } }> = []
+  const spans: Array<{
+    processName: string
+    field: 'comment' | 'decom' | 'fsf'
+    text: string
+    span: { start: number; end: number }
+  }> = []
   for (const mod of ast.modules) {
     for (const proc of mod.processes) {
       if (proc.body?.comment && textOf(proc.body.comment)) {
@@ -139,6 +164,13 @@ export function getInformalSpans(source: string, ast: ProgramNode) {
           text: textOf(proc.body!.decomposition)!,
           span: textSpan(proc.body!.decomposition)
         })
+      }
+      const fsf = proc.body?.fsf
+      if (fsf) {
+        for (const scen of fsf.scenarios) {
+          pushInformalFromPredicate(spans, proc.name, scen.test)
+        }
+        pushInformalFromPredicate(spans, proc.name, fsf.others)
       }
     }
   }
