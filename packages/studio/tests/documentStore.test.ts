@@ -49,6 +49,16 @@ describe('document store', () => {
     expect(doc.tabs).toHaveLength(3)
   })
 
+  it('reuses tab when opening the same file with a different path separator', () => {
+    const doc = useDocumentStore()
+    const first = doc.openFromFile('D:\\project\\spec.asfl', 'content', 'spec.asfl')
+    const second = doc.openFromFile('D:/project/spec.asfl', 'other', 'spec.asfl')
+    expect(doc.documentTabs).toHaveLength(1)
+    expect(second.id).toBe(first.id)
+    expect(doc.activeTabId).toBe(first.id)
+    expect(doc.activeTab!.content).toBe('content')
+  })
+
   it('does not remove home tab', () => {
     const doc = useDocumentStore()
     doc.removeTab(HOME_TAB_ID)

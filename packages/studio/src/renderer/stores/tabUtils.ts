@@ -37,6 +37,18 @@ export function tabUriForPath(filePath: string | null, id: string): string {
   return `inmemory://studio/${id}.asfl`
 }
 
+/** Canonical path for tab dedup and recent-file matching (Windows-safe). */
+export function normalizeFilePath(filePath: string): string {
+  let normalized = filePath.replace(/\\/g, '/')
+  if (/^[a-zA-Z]:/.test(normalized)) normalized = normalized[0].toLowerCase() + normalized.slice(1)
+  else if (normalized.startsWith('/')) normalized = normalized.toLowerCase()
+  return normalized
+}
+
+export function filePathsEqual(a: string, b: string): boolean {
+  return normalizeFilePath(a) === normalizeFilePath(b)
+}
+
 export function pathToFileUri(filePath: string): string {
   const normalized = filePath.replace(/\\/g, '/')
   if (/^[a-zA-Z]:/.test(normalized)) return `file:///${normalized}`

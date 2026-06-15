@@ -1,4 +1,8 @@
 import { ipcMain } from 'electron'
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
+import { join } from 'node:path'
+import { pathToFileURL } from 'node:url'
+import { ProjectIndex, walk, textOf } from '@agile-sofl/parser'
 import {
   buildModuleGraphLayout,
   buildVisualModelTolerant,
@@ -26,6 +30,26 @@ import {
   type DeclarationKind
 } from '@agile-sofl/editor-api'
 import { cloneForIpc } from './ipcClone.js'
+
+function collectAsflFiles(dir: string): string[] {
+  const out: string[] = []
+  if (!existsSync(dir)) return out
+  for (const entry of readdirSync(dir)) {
+    const full = join(dir, entry)
+    const st = statSync(full)
+    if (st.isDirectory()) out.push(...collectAsflFiles(full))
+    else if (entry.endsWith('.asfl')) out.push(full)
+  }
+  return out
+}
+
+function moduleLabel(mod: { name: string; isSystem: boolean }): string {
+  return mod.isSystem ? `SYSTEM_${mod.name}` : mod.name
+}
+
+function toSerializableSpan(span: { start: number; end: number; line: number; column: number }) {
+  return { start: span.start, end: span.end, line: span.line, column: span.column }
+}
 
 export function registerParseHandlers(): void {
   ipcMain.handle('studio:build-visual-model', (_event, source: string, _channelId: string) => {
@@ -236,4 +260,94 @@ export function registerParseHandlers(): void {
       }
     ) => patchModule(payload.source, payload)
   )
+
+  ipcMain.handle('studio:search-workspace-files', (_event, rootDir: string, query?: string) => {
+    if (!rootDir || !existsSync(rootDir)) return []
+    const needle = query?.trim().toLowerCase() ?? ''
+    const files = collectAsflFiles(rootDir)
+      .filter((path) => !needle || path.toLowerCase().includes(needle))
+      .slice(0, 50)
+    return cloneForIpc(files.map((path) => ({ path })))
+  })
+
+  ipcMain.handle('studio:search-workspace-symbols', (_event, rootDir: string, query?: string) => {
+    if (!rootDir || !existsSync(rootDir)) return []
+    const index = new ProjectIndex()
+    index.scan(rootDir, (p) => pathToFileURL(p.replace(/\\/g, '/')).href)
+
+    const needle = query?.trim().toLowerCase() ?? ''
+    const results: Array<{
+      uri: string
+      name: string
+      kind: string
+      moduleName: string
+      span: ReturnType<typeof toSerializableSpan>
+      containerName?: string
+    }> = []
+
+    for (const sym of index.symbols(query)) {
+      results.push({
+        uri: sym.uri,
+        name: sym.name,
+        kind: sym.kind,
+        moduleName: sym.moduleName,
+        span: toSerializableSpan(sym.span),
+        containerName: sym.containerName
+      })
+    }
+
+    for (const doc of index.documents()) {
+      if (!doc.ast || doc.ast.type !== 'program') continue
+      walk(doc.ast, {
+        enterModule(mod) {
+          const label = moduleLabel(mod)
+          for (const inv of mod.invariants) {
+            const text = textOf(inv.condition).trim()
+            const name = text.length > 48 ? text.slice(0, 47) + '…' : text || 'invariant'
+            if (needle && !name.toLowerCase().includes(needle)) continue
+            results.push({
+              uri: doc.uri,
+              name,
+              kind: 'invariant',
+              moduleName: mod.name,
+              span: toSerializableSpan(inv.span),
+              containerName: label
+            })
+          }
+          for (const proc of mod.processes) {
+            const fsf = proc.body?.fsf
+            if (!fsf) continue
+            const fsfName = `FSF (${proc.name})`
+            if (!needle || fsfName.toLowerCase().includes(needle) || proc.name.toLowerCase().includes(needle)) {
+              results.push({
+                uri: doc.uri,
+                name: fsfName,
+                kind: 'fsf',
+                moduleName: mod.name,
+                span: toSerializableSpan(fsf.span),
+                containerName: label
+              })
+            }
+            fsf.scenarios.forEach((scenario, i) => {
+              const test = textOf(scenario.test).trim()
+              const name = test.length > 40 ? test.slice(0, 39) + '…' : test || `Scenario ${i + 1}`
+              if (needle && !name.toLowerCase().includes(needle) && !proc.name.toLowerCase().includes(needle)) {
+                return
+              }
+              results.push({
+                uri: doc.uri,
+                name: `${proc.name}: ${name}`,
+                kind: 'fsf',
+                moduleName: mod.name,
+                span: toSerializableSpan(scenario.span),
+                containerName: label
+              })
+            })
+          }
+        }
+      })
+    }
+
+    return cloneForIpc(results)
+  })
 }

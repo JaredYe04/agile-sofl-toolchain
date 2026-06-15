@@ -102,6 +102,21 @@ const studio = {
   validateSignature: (kind: 'process' | 'function', signature: string) =>
     ipcRenderer.invoke('studio:validate-signature', kind, signature) as Promise<
       { ok: true } | { ok: false; error: string }
+    >,
+  searchWorkspaceFiles: (rootDir: string, query?: string) =>
+    ipcRenderer.invoke('studio:search-workspace-files', rootDir, query) as Promise<
+      Array<{ path: string }>
+    >,
+  searchWorkspaceSymbols: (rootDir: string, query?: string) =>
+    ipcRenderer.invoke('studio:search-workspace-symbols', rootDir, query) as Promise<
+      Array<{
+        uri: string
+        name: string
+        kind: string
+        moduleName: string
+        span: SerializableSpan
+        containerName?: string
+      }>
     >
 }
 

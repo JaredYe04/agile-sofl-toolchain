@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import TitleBar from '../components/chrome/TitleBar.vue'
 import EditorTabs from '../components/editor/EditorTabs.vue'
 import EditorToolbar from '../components/editor/EditorToolbar.vue'
@@ -14,12 +14,14 @@ import { useNewFileDialog } from '../composables/useNewFileDialog'
 import { useDocumentStore } from '../stores/document'
 import { useModalStore } from '../stores/modal'
 import Modal from '../components/ui/Modal.vue'
+import { useCommandCenterStore } from '../stores/commandCenter'
 
 const workspaceRef = ref<InstanceType<typeof EditorWorkspace> | null>(null)
 const files = useFileActions()
 const doc = useDocumentStore()
 const modalStore = useModalStore()
 const newFileDialog = useNewFileDialog()
+const commandCenter = useCommandCenterStore()
 
 function onUndoRedo(cmd: 'undo' | 'redo'): boolean {
   return workspaceRef.value?.[cmd]() ?? false
@@ -41,12 +43,41 @@ function onDevTools(): void {
   window.studio?.openDevTools()
 }
 
+function registerCommandCenterHandlers(): void {
+  const ws = workspaceRef.value
+  commandCenter.registerHandlers({
+    revealSpan: (span) => {
+      ws?.revealSpan(span)
+    },
+    formatDocument: async () => {
+      if (ws) return ws.formatDocument()
+      const { formatActiveDocument } = await import('../composables/useFormatDocument')
+      return formatActiveDocument(null)
+    },
+    undoRedo: (cmd) => (ws ? ws[cmd]() : false),
+    runEdit: onEdit,
+    openNewFile: () => newFileDialog.show(),
+    openFile: () => files.openFile(),
+    saveTab: () => files.saveTab(),
+    saveAsTab: () => files.saveAsTab(),
+    closeActiveTab: () => files.closeActiveTab(),
+    openDevTools: onDevTools
+  })
+}
+
+watch([workspaceRef, showDocumentEditor], () => registerCommandCenterHandlers(), { immediate: true })
+
 useKeyboardShortcuts(
   (cmd) => onEdit(cmd),
   onDevTools,
   () => newFileDialog.show(),
   onFormat,
-  onUndoRedo
+  onUndoRedo,
+  {
+    openCommandCenter: (q) => commandCenter.open(q),
+    isCommandCenterOpen: () => commandCenter.isOpen,
+    closeCommandCenter: () => commandCenter.close()
+  }
 )
 
 let unsubClose: (() => void) | undefined

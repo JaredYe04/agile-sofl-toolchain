@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import {
   createDocumentTab,
   createHomeTab,
+  filePathsEqual,
   HOME_TAB_ID,
   pathToFileUri,
   type EditorTab
@@ -80,7 +81,9 @@ export const useDocumentStore = defineStore('document', () => {
     const recent = useRecentFilesStore()
     recent.add(filePath, title)
 
-    const existing = documentTabs.value.find((t) => t.filePath === filePath)
+    const existing = documentTabs.value.find(
+      (t) => t.filePath && filePathsEqual(t.filePath, filePath)
+    )
     if (existing) {
       activeTabId.value = existing.id
       return existing

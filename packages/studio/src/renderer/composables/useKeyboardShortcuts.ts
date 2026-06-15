@@ -4,12 +4,19 @@ import { useDocumentStore } from '../stores/document'
 import { useDocumentHistoryStore } from '../stores/documentHistory'
 import { isMonacoFocused, isEditableFieldFocused, shouldUseNativeClipboard } from './editCommands'
 
+export interface CommandCenterShortcutHandlers {
+  openCommandCenter: (initialQuery?: string) => void
+  isCommandCenterOpen: () => boolean
+  closeCommandCenter: () => void
+}
+
 export function useKeyboardShortcuts(
   onEdit: (cmd: string) => void,
   onDevTools?: () => void,
   onNewFile?: () => void,
   onFormat?: () => void,
-  onUndoRedo?: (cmd: 'undo' | 'redo') => boolean
+  onUndoRedo?: (cmd: 'undo' | 'redo') => boolean,
+  commandCenter?: CommandCenterShortcutHandlers
 ): void {
   const files = useFileActions()
   const doc = useDocumentStore()
@@ -18,6 +25,34 @@ export function useKeyboardShortcuts(
   function handler(e: KeyboardEvent): void {
     const mod = e.ctrlKey || e.metaKey
     const key = e.key.toLowerCase()
+
+    if (commandCenter?.isCommandCenterOpen()) {
+      return
+    }
+
+    if (mod && key === 'p' && e.shiftKey) {
+      e.preventDefault()
+      commandCenter?.openCommandCenter('>')
+      return
+    }
+
+    if (mod && key === 'p' && !e.shiftKey) {
+      e.preventDefault()
+      commandCenter?.openCommandCenter('')
+      return
+    }
+
+    if (mod && key === 't') {
+      e.preventDefault()
+      commandCenter?.openCommandCenter('@')
+      return
+    }
+
+    if (mod && key === 'g') {
+      e.preventDefault()
+      commandCenter?.openCommandCenter(':')
+      return
+    }
 
     if (e.shiftKey && e.altKey && key === 'f') {
       e.preventDefault()

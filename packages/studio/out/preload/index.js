@@ -60,6 +60,8 @@ const studio = {
   patchProcessInit: (payload) => electron.ipcRenderer.invoke("studio:patch-process-init", payload),
   parsePredicateUi: (text) => electron.ipcRenderer.invoke("studio:parse-predicate-ui", text),
   uiToPredicateText: (node) => electron.ipcRenderer.invoke("studio:ui-to-predicate-text", node),
-  validateSignature: (kind, signature) => electron.ipcRenderer.invoke("studio:validate-signature", kind, signature)
+  validateSignature: (kind, signature) => electron.ipcRenderer.invoke("studio:validate-signature", kind, signature),
+  searchWorkspaceFiles: (rootDir, query) => electron.ipcRenderer.invoke("studio:search-workspace-files", rootDir, query),
+  searchWorkspaceSymbols: (rootDir, query) => electron.ipcRenderer.invoke("studio:search-workspace-symbols", rootDir, query)
 };
 electron.contextBridge.exposeInMainWorld("studio", studio);

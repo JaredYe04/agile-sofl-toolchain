@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import { filePathsEqual } from './tabUtils'
 
 export interface RecentFile {
   path: string
@@ -28,15 +29,15 @@ export const useRecentFilesStore = defineStore('recentFiles', () => {
   }
 
   function add(path: string, title: string): void {
-    items.value = [{ path, title, openedAt: Date.now() }, ...items.value.filter((f) => f.path !== path)].slice(
-      0,
-      MAX_RECENT
-    )
+    items.value = [
+      { path, title, openedAt: Date.now() },
+      ...items.value.filter((f) => !filePathsEqual(f.path, path))
+    ].slice(0, MAX_RECENT)
     persist()
   }
 
   function remove(path: string): void {
-    items.value = items.value.filter((f) => f.path !== path)
+    items.value = items.value.filter((f) => !filePathsEqual(f.path, path))
     persist()
   }
 
