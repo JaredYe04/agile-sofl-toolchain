@@ -59,7 +59,8 @@ defineExpose({
     if (!tab || !ed) return
     suppressHistory = true
     doc.setContent(tab.id, content, tab.isDirty)
-    const language = tab.documentKind === 'aspec' ? 'agile-aspec' : 'agile-sofl'
+    const language =
+      tab.documentKind === 'aspec' ? 'agile-aspec' : tab.documentKind === 'guispec' ? 'yaml' : 'agile-sofl'
     const model = getOrCreateModel(tab.id, tab.uri, content, language)
     if (ed.getModel()?.uri.toString() !== model.uri.toString()) {
       ed.setModel(model)
@@ -178,7 +179,8 @@ function syncModel(): void {
   const tab = activeDocumentTab.value
   const ed = editor.value
   if (!tab || !ed) return
-  const language = tab.documentKind === 'aspec' ? 'agile-aspec' : 'agile-sofl'
+  const language =
+    tab.documentKind === 'aspec' ? 'agile-aspec' : tab.documentKind === 'guispec' ? 'yaml' : 'agile-sofl'
   const model = getOrCreateModel(tab.id, tab.uri, tab.content, language)
   if (ed.getModel()?.uri.toString() !== model.uri.toString()) {
     ed.setModel(model)
@@ -214,7 +216,7 @@ function markersToDiagnostics(
 function updateMarkerDiagnostics(): void {
   const tab = activeDocumentTab.value
   const ed = editor.value
-  if (!tab || !ed || tab.documentKind === 'aspec') {
+  if (!tab || !ed || tab.documentKind === 'aspec' || tab.documentKind === 'guispec') {
     lspDiagnostics.clear()
     lsp.setErrorCount(0)
     return

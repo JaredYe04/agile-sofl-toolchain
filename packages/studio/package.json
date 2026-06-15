@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@agile-sofl/aspec": "file:../aspec",
+    "@agile-sofl/gui": "file:../gui",
     "@agile-sofl/editor-api": "file:../editor-api",
     "@agile-sofl/language-server": "file:../language-server",
     "@agile-sofl/parser": "file:../parser",

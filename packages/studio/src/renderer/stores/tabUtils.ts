@@ -1,5 +1,5 @@
 export type TabKind = 'home' | 'document'
-export type DocumentKind = 'asfl' | 'aspec'
+export type DocumentKind = 'asfl' | 'aspec' | 'guispec'
 
 export const HOME_TAB_ID = 'studio-home'
 
@@ -18,12 +18,16 @@ export interface EditorTab {
 let untitledCounter = 1
 
 export function createUntitledTitle(kind: DocumentKind = 'asfl'): string {
-  return kind === 'aspec' ? `Untitled-${untitledCounter++}.aspec` : `Untitled-${untitledCounter++}`
+  if (kind === 'aspec') return `Untitled-${untitledCounter++}.aspec`
+  if (kind === 'guispec') return `Untitled-${untitledCounter++}.guispec`
+  return `Untitled-${untitledCounter++}.asfl`
 }
 
 export function inferDocumentKind(filePath: string | null, uri?: string): DocumentKind {
   if (filePath?.toLowerCase().endsWith('.aspec')) return 'aspec'
+  if (filePath?.toLowerCase().endsWith('.guispec')) return 'guispec'
   if (uri?.includes('.aspec')) return 'aspec'
+  if (uri?.includes('.guispec')) return 'guispec'
   return 'asfl'
 }
 
@@ -42,6 +46,29 @@ modules:
     name: SYSTEM_New
     description: |
       Main system module.
+`
+  }
+  if (kind === 'guispec') {
+    return `guispecVersion: "1.0"
+meta:
+  id: "${crypto.randomUUID()}"
+  title: New GUI Spec
+gui:
+  app:
+    name: NewApp
+    description: |
+      Describe the application UI.
+  screens:
+    - id: scr-home
+      name: HomePage
+      title: Home
+      description: |
+        Landing screen.
+      widgets:
+        - id: w-title
+          kind: label
+          label: Welcome
+  flows: []
 `
   }
   return 'module SYSTEM_New;\nend_module\n'
@@ -64,7 +91,7 @@ export function tabUriForPath(filePath: string | null, id: string, kind: Documen
   if (filePath) {
     return pathToFileUri(filePath)
   }
-  const ext = kind === 'aspec' ? 'aspec' : 'asfl'
+  const ext = kind === 'aspec' ? 'aspec' : kind === 'guispec' ? 'guispec' : 'asfl'
   return `inmemory://studio/${id}.${ext}`
 }
 

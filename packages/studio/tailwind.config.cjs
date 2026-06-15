@@ -33,7 +33,16 @@ module.exports = {
           warning: 'var(--semantic-warning)',
           error: 'var(--semantic-error)'
         },
-        danger: 'var(--danger)'
+        danger: 'var(--danger)',
+        gui: {
+          canvas: 'var(--gui-canvas)',
+          'canvas-soft': 'var(--gui-canvas-soft)',
+          ink: 'var(--gui-ink)',
+          body: 'var(--gui-body)',
+          hairline: 'var(--gui-hairline)',
+          primary: 'var(--gui-primary)',
+          'surface-card': 'var(--gui-surface-card)'
+        }
       }
     }
   },

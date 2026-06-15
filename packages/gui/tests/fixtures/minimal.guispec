@@ -1,0 +1,20 @@
+guispecVersion: "1.0"
+meta:
+  id: "gui-minimal-001"
+  title: Minimal GUI Spec
+  informalTarget: ./minimal.aspec
+gui:
+  app:
+    name: MinimalApp
+    description: |
+      Minimal GUI fixture.
+  screens:
+    - id: scr-home
+      name: HomePage
+      title: Home
+      description: Landing screen.
+      widgets:
+        - id: w-nav
+          kind: navigation
+          label: Main Menu
+  flows: []

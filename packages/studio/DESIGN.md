@@ -90,4 +90,20 @@ Design contract for AI agents and contributors. Hybrid strategy: **Shell** keeps
 Visual panel: card-based forms on --surface-raised, hairline borders, 8px grid.
 Fields: FormField + TextField or CodeField (single border). Process orange-blue via --role-process, function via --role-function.
 Shell: keep --accent blue IDE chrome unchanged.
+
+## 8. GUI Preview Zone (Cursor-inspired)
+
+Reference: [VoltAgent awesome-design-md — Cursor](https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/cursor/DESIGN.md).
+
+| Token | Value | Role |
+|-------|-------|------|
+| `--gui-canvas` | `#f7f7f4` | Warm cream preview background |
+| `--gui-ink` | `#26251e` | Titles |
+| `--gui-body` | `#5a5852` | Secondary text |
+| `--gui-hairline` | `#e6e5e0` | 1px borders (no shadow) |
+| `--gui-primary` | `#f54e00` | Primary button (Cursor Orange) |
+| `--gui-surface-card` | `#ffffff` | Screen card |
+| `--gui-timeline-*` | pastel set | Widget kind badges only |
+
+Font: **Inter** (CursorGothic substitute). Scope: `.gui-preview` only — Shell IDE tokens unchanged.
 ```

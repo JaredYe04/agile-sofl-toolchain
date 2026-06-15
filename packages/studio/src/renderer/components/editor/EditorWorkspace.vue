@@ -8,8 +8,10 @@ import { useEditorSelectionStore } from '../../stores/editorSelection'
 import { useDocumentDiagnosticsStore } from '../../stores/documentDiagnostics'
 import { useVisualModel } from '../../composables/useVisualModel'
 import { useInformalModel } from '../../composables/useInformalModel'
+import { useGuiModel } from '../../composables/useGuiModel'
 import { VISUAL_MODEL_KEY } from '../../composables/visualModelContext'
 import { INFORMAL_MODEL_KEY } from '../../composables/informalModelContext'
+import { GUI_MODEL_KEY } from '../../composables/guiModelContext'
 import {
   mergeDiagnostics,
   filterDiagnosticsBySelection,
@@ -21,6 +23,7 @@ import SplitPane from '../ui/SplitPane.vue'
 import MonacoEditor from './MonacoEditor.vue'
 import VisualEditor from './visual/VisualEditor.vue'
 import InformalVisualEditor from './informal/InformalVisualEditor.vue'
+import GuiVisualEditor from './gui/GuiVisualEditor.vue'
 import VisualIssuesPanel from './visual/VisualIssuesPanel.vue'
 import InformalRegionsPanel from './InformalRegionsPanel.vue'
 import CoveragePanel from './CoveragePanel.vue'
@@ -37,12 +40,15 @@ const documentDiagnostics = useDocumentDiagnosticsStore()
 
 const isAspec = computed(() => doc.activeTab?.documentKind === 'aspec')
 const isAsfl = computed(() => doc.activeTab?.documentKind === 'asfl')
+const isGuispec = computed(() => doc.activeTab?.documentKind === 'guispec')
 
 const visual = useVisualModel(computed(() => (isAsfl.value ? doc.activeTabId : undefined)))
 const informal = useInformalModel(computed(() => (isAspec.value ? doc.activeTabId : undefined)))
+const gui = useGuiModel(computed(() => (isGuispec.value ? doc.activeTabId : undefined)))
 
 provide(VISUAL_MODEL_KEY, visual)
 provide(INFORMAL_MODEL_KEY, informal)
+provide(GUI_MODEL_KEY, gui)
 
 const showLeft = computed(() => editorUi.showMonaco())
 const showRight = computed(() => editorUi.showVisual())
@@ -115,11 +121,30 @@ async function refreshCoverage(): Promise<void> {
       traceJson = undefined
     }
   }
+  const guiSource = await resolveGuiSourceForCoverage(tab)
   coverage.value = await window.studio.buildCoverageReport({
     aspecSource: tab.content,
     asflSource: hybrid?.content ?? '',
-    traceJson
+    traceJson,
+    guiSource: guiSource ?? undefined
   })
+}
+
+async function resolveGuiSourceForCoverage(tab: NonNullable<typeof doc.activeTab>): Promise<string | null> {
+  const guiTarget = informal.model.value?.meta.guiTarget
+  if (guiTarget && tab.filePath && window.studio?.fileRead) {
+    try {
+      const base = tab.filePath.replace(/[/\\][^/\\]+$/, '')
+      const file = await window.studio.fileRead(`${base}/${guiTarget.replace(/^\.\//, '')}`.replace(/\\/g, '/'))
+      return file.content
+    } catch {
+      /* no external gui */
+    }
+  }
+  const embedded = tab.content.includes('\ngui:') || tab.content.startsWith('gui:')
+  if (embedded) return tab.content
+  const pair = doc.documentTabs.find((t) => t.documentKind === 'guispec' && t.linkedDocumentId === tab.id)
+  return pair?.content ?? null
 }
 
 watch(
@@ -204,6 +229,7 @@ defineExpose({
       </template>
       <template #right>
         <InformalVisualEditor v-if="showRight && isAspec" />
+        <GuiVisualEditor v-else-if="showRight && isGuispec" />
         <VisualEditor v-else-if="showRight && isAsfl" ref="visualRef" @reveal-span="revealSpan" />
       </template>
     </SplitPane>

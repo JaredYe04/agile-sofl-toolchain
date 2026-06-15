@@ -404,7 +404,8 @@ npx aspec refine spec.aspec -o out.asfl [--check]
 - ~~精化：CoveragePanel 条目列表、hybrid span 跳转、per-process merge 表、目标选择~~ ✅
 - ~~aspec format IPC、LSP skip for .aspec~~ ✅
 - ~~测试：merge 快照、BOOK_ALIGN、patch type/var/inv、bodyHint refine~~ ✅
-- 待后续：GUI 规格模块（Ch.4 §4.2，不阻塞 Task 1）
+- ~~GUI 规格模块：`.guispec`、内嵌 `gui`、GuiVisualEditor、Cursor 线框预览~~ ✅（见 [18-GUI规格模块设计.md](./18-GUI规格模块设计.md)）
+- 待后续：可交互 GUI 原型、ASFL gui 文法
 
 ### D. 迭代记录
 

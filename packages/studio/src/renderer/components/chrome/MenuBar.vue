@@ -29,6 +29,7 @@ const accessKeys: Record<string, string> = {
 const fileItems = computed<MenuItem[]>(() => [
   { id: 'new', label: t('menu.file.new'), shortcut: 'Ctrl+N', action: () => newFileDialog.show() },
   { id: 'newInformal', label: t('menu.file.newInformal'), action: () => docStore.newTab({ documentKind: 'aspec' }) },
+  { id: 'newGui', label: t('menu.file.newGui'), action: () => docStore.newTab({ documentKind: 'guispec' }) },
   { id: 'open', label: t('menu.file.open'), shortcut: 'Ctrl+O', action: () => files.openFile() },
   { id: 'openFolder', label: t('menu.file.openFolder'), action: () => void project.openFolder() },
   { id: 'sep1', label: '', separator: true },

@@ -48,19 +48,25 @@ export async function scanProject(root: string): Promise<ProjectScanResult> {
   const counter = { n: 0 }
   const aspecFiles: string[] = []
   const asflFiles: string[] = []
+  const guispecFiles: string[] = []
   await walk(root, '.aspec', aspecFiles, counter)
   await walk(root, '.asfl', asflFiles, counter)
+  await walk(root, '.guispec', guispecFiles, counter)
 
   const pairs: ProjectPair[] = aspecFiles.map((aspecPath) => {
     const base = basename(aspecPath, '.aspec')
     const tracePath = join(dirname(aspecPath), `${base}.aspec.trace.json`)
     const candidateAsfl = asflFiles.find((p) => basename(p, '.asfl') === base.replace(/-informal$/, ''))
+    const candidateGui =
+      guispecFiles.find((p) => basename(p, '.guispec') === `${base}-gui`) ??
+      guispecFiles.find((p) => basename(p, '.guispec') === base.replace(/-informal$/, '') + '-gui')
     return {
       aspecPath,
       asflPath: candidateAsfl,
+      guispecPath: candidateGui,
       tracePath
     }
   })
 
-  return { root, aspecFiles, asflFiles, pairs }
+  return { root, aspecFiles, asflFiles, guispecFiles, pairs }
 }

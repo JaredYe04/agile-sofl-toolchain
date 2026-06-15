@@ -1,7 +1,11 @@
 <script setup lang="ts">
-import { ref, computed, inject, watch, onMounted } from 'vue'
+import { ref, computed, inject, watch, onMounted, provide } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useDocumentStore } from '../../../stores/document'
 import { INFORMAL_MODEL_KEY } from '../../../composables/informalModelContext'
+import { GUI_MODEL_KEY } from '../../../composables/guiModelContext'
+import { useGuiModel } from '../../../composables/useGuiModel'
+import GuiVisualEditor from '../gui/GuiVisualEditor.vue'
 import SystemOverviewCard from './SystemOverviewCard.vue'
 import InformalModuleCard from './InformalModuleCard.vue'
 import InformalProcessCard from './InformalProcessCard.vue'
@@ -10,8 +14,18 @@ import BookAlignCard from './BookAlignCard.vue'
 import InformalToolbar from './InformalToolbar.vue'
 
 const { t } = useI18n()
+const doc = useDocumentStore()
 const informal = inject(INFORMAL_MODEL_KEY)
 if (!informal) throw new Error('InformalVisualEditor requires INFORMAL_MODEL_KEY')
+
+const panelMode = ref<'informal' | 'gui'>('informal')
+const embeddedFlag = ref(true)
+const informalMeta = computed(() => informal.model.value?.meta)
+const embeddedGui = useGuiModel(computed(() => doc.activeTabId), {
+  embeddedInAspec: embeddedFlag,
+  informalMeta
+})
+provide(GUI_MODEL_KEY, embeddedGui)
 
 const selectedModuleId = ref<string | null>(null)
 const selectedProcessId = ref<string | null>(null)
@@ -123,6 +137,26 @@ function patchStakeholders(raw: string): void {
 
 <template>
   <div class="visual-panel flex h-full min-h-0 flex-col">
+    <div class="flex border-b border-border-subtle px-3 py-1.5 text-xs">
+      <button
+        type="button"
+        class="rounded px-2 py-0.5"
+        :class="panelMode === 'informal' ? 'bg-surface-overlay font-medium' : 'text-content-secondary'"
+        @click="panelMode = 'informal'"
+      >
+        {{ t('informal.modules') }}
+      </button>
+      <button
+        type="button"
+        class="ml-2 rounded px-2 py-0.5"
+        :class="panelMode === 'gui' ? 'bg-surface-overlay font-medium' : 'text-content-secondary'"
+        @click="panelMode = 'gui'"
+      >
+        {{ t('gui.title') }}
+      </button>
+    </div>
+    <GuiVisualEditor v-if="panelMode === 'gui'" embedded />
+    <template v-else>
     <InformalToolbar
       :disabled="writeDisabled"
       :show-remove-process="Boolean(selectedProcess)"
@@ -218,5 +252,6 @@ function patchStakeholders(raw: string): void {
         <p v-else-if="!selectedModule" class="text-sm text-content-muted">{{ t('informal.selectProcess') }}</p>
       </div>
     </div>
+    </template>
   </div>
 </template>

@@ -3,6 +3,8 @@ import type { AspecDocument, InformalDocumentModel } from './model.js'
 import { parseAspec } from './parse.js'
 import { validateAspec } from './validate.js'
 import { resolveModuleParents } from './resolveParents.js'
+import { extractGuiFromAspec } from '@agile-sofl/gui'
+import type { GuiModelSummary } from './model.js'
 import { attachDiagnosticLines } from './sourceSpans.js'
 
 export function buildInformalModel(source: string): InformalDocumentModel {
@@ -17,11 +19,23 @@ export function buildInformalModel(source: string): InformalDocumentModel {
   }
   resolveModuleParents(document)
   const styleDiags = validateAspec(document)
+  const embeddedGui = extractGuiFromAspec(source)
+  let guiSummary: GuiModelSummary | undefined
+  if (embeddedGui || document.meta.guiTarget) {
+    guiSummary = {
+      appName: embeddedGui?.app?.name ?? '',
+      screenCount: embeddedGui?.screens?.length ?? 0,
+      flowCount: embeddedGui?.flows?.length ?? 0,
+      embedded: Boolean(embeddedGui),
+      externalPath: document.meta.guiTarget
+    }
+  }
   return {
     meta: document.meta,
     system: document.system,
     modules: document.modules,
     bookAlign: document.bookAlign,
+    gui: guiSummary,
     diagnostics: attachDiagnosticLines(source, [...parseDiags, ...styleDiags])
   }
 }

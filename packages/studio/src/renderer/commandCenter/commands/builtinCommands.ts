@@ -7,6 +7,14 @@ export const builtinCommands: BuiltinCommand[] = [
     run: (ctx) => ctx.openNewFile()
   },
   {
+    id: 'file.newGui',
+    titleKey: 'commandCenter.cmd.newGui',
+    run: async () => {
+      const { useDocumentStore } = await import('../../stores/document')
+      useDocumentStore().newTab({ documentKind: 'guispec' })
+    }
+  },
+  {
     id: 'file.open',
     titleKey: 'commandCenter.cmd.openFile',
     run: (ctx) => ctx.openFile()

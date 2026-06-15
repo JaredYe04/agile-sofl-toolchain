@@ -1,0 +1,49 @@
+guispecVersion: "1.0"
+meta:
+  id: "lib-gui-001"
+  title: Library System GUI
+  informalTarget: ./library-informal.aspec
+gui:
+  app:
+    name: LibraryApp
+    description: |
+      Staff-facing library circulation UI.
+  screens:
+    - id: scr-home
+      name: HomePage
+      title: Library Home
+      description: |
+        Main navigation for circulation tasks.
+      widgets:
+        - id: w-nav-borrow
+          kind: navigation
+          label: Borrow
+        - id: w-nav-return
+          kind: navigation
+          label: Return
+    - id: scr-borrow
+      name: BorrowPage
+      title: Borrow Book
+      description: |
+        Enter member and book identifiers.
+      triggersProcess: proc-borrow
+      widgets:
+        - id: w-member-id
+          kind: text-input
+          label: Member ID
+          binds:
+            param: member_id
+        - id: w-book-id
+          kind: text-input
+          label: Book ID
+          binds:
+            param: book_id
+        - id: w-submit-borrow
+          kind: button
+          label: Borrow
+          action: submit
+  flows:
+    - from: scr-home
+      to: scr-borrow
+      on: navigate
+      label: Open borrow

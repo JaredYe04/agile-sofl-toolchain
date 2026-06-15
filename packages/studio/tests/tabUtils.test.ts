@@ -19,7 +19,13 @@ describe('tabUtils documentKind', () => {
     expect(inferDocumentKind('C:/x/spec.asfl')).toBe('asfl')
   })
 
-  it('defaultContentForKind aspec has purpose', () => {
-    expect(defaultContentForKind('aspec')).toContain('purpose')
+  it('creates guispec tab', () => {
+    const tab = createDocumentTab({ documentKind: 'guispec' })
+    expect(tab.documentKind).toBe('guispec')
+    expect(tab.content).toContain('guispecVersion')
+  })
+
+  it('infers guispec from path', () => {
+    expect(inferDocumentKind('C:/x/ui.guispec')).toBe('guispec')
   })
 })

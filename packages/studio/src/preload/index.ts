@@ -26,9 +26,9 @@ const studio = {
   },
   confirmClose: () => ipcRenderer.send('studio:confirm-close'),
 
-  fileOpenDialog: (kind?: 'asfl' | 'aspec' | 'any') =>
+  fileOpenDialog: (kind?: 'asfl' | 'aspec' | 'guispec' | 'any') =>
     ipcRenderer.invoke('studio:file-open-dialog', kind) as Promise<FileOpenResult | null>,
-  fileSaveDialog: (defaultName?: string, kind?: 'asfl' | 'aspec') =>
+  fileSaveDialog: (defaultName?: string, kind?: 'asfl' | 'aspec' | 'guispec') =>
     ipcRenderer.invoke('studio:file-save-dialog', defaultName, kind) as Promise<string | null>,
   fileRead: (path: string) => ipcRenderer.invoke('studio:file-read', path) as Promise<FileOpenResult>,
   fileWrite: (path: string, content: string) =>
@@ -127,8 +127,12 @@ const studio = {
     ipcRenderer.invoke('studio:patch-aspec', payload) as Promise<string>,
   refineAspec: (payload: RefineAspecPayload) =>
     ipcRenderer.invoke('studio:refine-aspec', payload) as Promise<RefineAspecResult>,
-  buildCoverageReport: (payload: { aspecSource: string; asflSource: string; traceJson?: string }) =>
-    ipcRenderer.invoke('studio:build-coverage-report', payload) as Promise<CoverageReportPayload>,
+  buildCoverageReport: (payload: {
+    aspecSource: string
+    asflSource: string
+    traceJson?: string
+    guiSource?: string
+  }) => ipcRenderer.invoke('studio:build-coverage-report', payload) as Promise<CoverageReportPayload>,
   patchInformal: (payload: { source: string; span: SerializableSpan; text: string }) =>
     ipcRenderer.invoke('studio:patch-informal', payload) as Promise<string>,
   buildHybridRegions: (source: string) =>
@@ -139,6 +143,15 @@ const studio = {
   writeTraceFile: (filePath: string, traceJson: string) =>
     ipcRenderer.invoke('studio:write-trace-file', filePath, traceJson) as Promise<boolean>,
   formatAspec: (source: string) => ipcRenderer.invoke('studio:format-aspec', source) as Promise<string>,
+  buildGuiModel: (payload: { source: string; informalSource?: string }) =>
+    ipcRenderer.invoke('studio:build-gui-model', payload) as Promise<GuiModelPayload>,
+  patchGui: (payload: PatchGuiPayload & { source: string }) =>
+    ipcRenderer.invoke('studio:patch-gui', payload) as Promise<string>,
+  formatGui: (source: string) => ipcRenderer.invoke('studio:format-gui', source) as Promise<string>,
+  resolveGuiForAspec: (payload: { aspecSource: string; externalGuiSource?: string }) =>
+    ipcRenderer.invoke('studio:resolve-gui-for-aspec', payload) as Promise<GuiModelPayload>,
+  patchAspecGui: (payload: { aspecSource: string; action: PatchGuiActionOnly }) =>
+    ipcRenderer.invoke('studio:patch-aspec-gui', payload) as Promise<string>,
   findHybridSymbolSpan: (payload: { source: string; symbolName: string; kind?: 'process' | 'function' }) =>
     ipcRenderer.invoke('studio:find-hybrid-symbol-span', payload) as Promise<SerializableSpan | null>
 }
@@ -415,7 +428,7 @@ export type BookAlignPayload = {
 }
 
 export type InformalModelPayload = {
-  meta: { id: string; title: string; hybridTarget?: string }
+  meta: { id: string; title: string; hybridTarget?: string; guiTarget?: string }
   system: {
     name: string
     purpose: string
@@ -426,6 +439,7 @@ export type InformalModelPayload = {
   }
   modules: InformalModulePayload[]
   bookAlign?: BookAlignPayload
+  gui?: { appName: string; screenCount: number; flowCount: number; embedded: boolean; externalPath?: string }
   diagnostics: InformalDiagnostic[]
 }
 
@@ -512,8 +526,63 @@ export type ProjectScanPayload = {
   root: string
   aspecFiles: string[]
   asflFiles: string[]
-  pairs: Array<{ aspecPath: string; asflPath?: string; tracePath?: string }>
+  guispecFiles: string[]
+  pairs: Array<{ aspecPath: string; asflPath?: string; guispecPath?: string; tracePath?: string }>
 }
+
+export type GuiWidgetKind =
+  | 'label'
+  | 'text-input'
+  | 'button'
+  | 'checkbox'
+  | 'select'
+  | 'list'
+  | 'table'
+  | 'section'
+  | 'navigation'
+
+export type GuiWidget = {
+  id: string
+  kind: GuiWidgetKind
+  label?: string
+  description?: string
+  action?: string
+  binds?: { param?: string; variable?: string; display?: string }
+  options?: string[]
+}
+
+export type GuiScreenDto = {
+  id: string
+  name: string
+  title?: string
+  description?: string
+  triggersProcess?: string
+  widgets?: GuiWidget[]
+  widgetCount: number
+}
+
+export type GuiModelPayload = {
+  meta: { id: string; title: string; informalTarget?: string }
+  app: { name: string; description?: string }
+  screens: GuiScreenDto[]
+  flows: Array<{ from: string; to: string; on?: string; label?: string }>
+  diagnostics: InformalDiagnostic[]
+  sourceKind: 'guispec' | 'aspec-embedded'
+}
+
+export type PatchGuiActionOnly =
+  | { action: 'patch-by-id'; idPath: string; value: unknown }
+  | { action: 'add-screen'; screen: { id: string; name: string; title?: string; widgets?: GuiWidget[] } }
+  | { action: 'remove-screen'; screenId: string }
+  | { action: 'add-widget'; screenId: string; widget: GuiWidget }
+  | { action: 'remove-widget'; widgetId: string }
+  | { action: 'add-flow'; flow: { from: string; to: string; on?: string } }
+  | { action: 'remove-flow'; from: string; to: string }
+  | { action: 'patch-app'; field: string; value: unknown }
+
+export type PatchGuiPayload = PatchGuiActionOnly
+
+export type InformalProcessOption = { id: string; name: string; moduleId: string }
 
 contextBridge.exposeInMainWorld('studio', studio)
 

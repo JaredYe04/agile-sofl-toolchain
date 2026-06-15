@@ -47,6 +47,23 @@
   --scrollbar-thumb-hover: rgba(255, 255, 255, 0.32);
 }
 
+.gui-preview {
+  --gui-canvas: #f7f7f4;
+  --gui-canvas-soft: #fafaf7;
+  --gui-ink: #26251e;
+  --gui-body: #5a5852;
+  --gui-muted: #807d72;
+  --gui-hairline: #e6e5e0;
+  --gui-primary: #f54e00;
+  --gui-surface-card: #ffffff;
+  --gui-timeline-thinking: #dfa88f;
+  --gui-timeline-grep: #9fc9a2;
+  --gui-timeline-read: #9fbbe0;
+  --gui-timeline-edit: #c0a8dd;
+  --gui-timeline-done: #c08532;
+  font-family: Inter, system-ui, 'Segoe UI', sans-serif;
+}
+
 html,
 body,
 #app {

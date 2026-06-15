@@ -74,6 +74,11 @@ const studio = {
   scanProject: (root) => electron.ipcRenderer.invoke("studio:scan-project", root),
   writeTraceFile: (filePath, traceJson) => electron.ipcRenderer.invoke("studio:write-trace-file", filePath, traceJson),
   formatAspec: (source) => electron.ipcRenderer.invoke("studio:format-aspec", source),
+  buildGuiModel: (payload) => electron.ipcRenderer.invoke("studio:build-gui-model", payload),
+  patchGui: (payload) => electron.ipcRenderer.invoke("studio:patch-gui", payload),
+  formatGui: (source) => electron.ipcRenderer.invoke("studio:format-gui", source),
+  resolveGuiForAspec: (payload) => electron.ipcRenderer.invoke("studio:resolve-gui-for-aspec", payload),
+  patchAspecGui: (payload) => electron.ipcRenderer.invoke("studio:patch-aspec-gui", payload),
   findHybridSymbolSpan: (payload) => electron.ipcRenderer.invoke("studio:find-hybrid-symbol-span", payload)
 };
 electron.contextBridge.exposeInMainWorld("studio", studio);

@@ -42,6 +42,19 @@ import {
   formatAspec,
   type PatchAspecAction
 } from '@agile-sofl/aspec'
+import {
+  buildGuiModel,
+  buildGuiModelFromAspec,
+  patchGui,
+  formatGui,
+  embedGuiInAspec,
+  extractGuiFromAspec,
+  parseGuiSpec,
+  serializeGuiSpec,
+  guispecFromGuiSection,
+  extendCoverageWithGui,
+  type PatchGuiAction
+} from '@agile-sofl/gui'
 import { parse } from '@agile-sofl/parser'
 import { cloneForIpc } from './ipcClone.js'
 
@@ -401,9 +414,34 @@ export function registerParseHandlers(): void {
 
   ipcMain.handle(
     'studio:build-coverage-report',
-    (_event, payload: { aspecSource: string; asflSource: string; traceJson?: string }) => {
+    (_event, payload: { aspecSource: string; asflSource: string; traceJson?: string; guiSource?: string }) => {
       const trace = payload.traceJson ? parseTraceJson(payload.traceJson) : null
-      return cloneForIpc(buildCoverageReport(payload.aspecSource, payload.asflSource, trace))
+      const report = buildCoverageReport(payload.aspecSource, payload.asflSource, trace)
+      if (payload.guiSource || payload.aspecSource.includes('\ngui:')) {
+        const informalModules = buildInformalModel(payload.aspecSource).modules
+        const guiModel = payload.guiSource?.includes('guispecVersion')
+          ? buildGuiModel(payload.guiSource, { informalModules })
+          : buildGuiModelFromAspec(payload.aspecSource, payload.guiSource ?? null, informalModules)
+        const processCovered = new Set(
+          report.items.filter((i) => i.kind === 'process' && i.status === 'covered').map((i) => i.aspecId)
+        )
+        const guiItems = extendCoverageWithGui(guiModel, processCovered)
+        for (const g of guiItems) {
+          report.items.push({
+            aspecId: g.aspecId,
+            kind: g.kind,
+            name: g.name,
+            status: g.status,
+            detail: g.detail
+          })
+          report.total++
+          if (g.status === 'covered') report.covered++
+          else if (g.status === 'partial') report.partial++
+          else if (g.status === 'missing') report.missing++
+        }
+        report.percent = report.total === 0 ? 100 : Math.round((report.covered / report.total) * 100)
+      }
+      return cloneForIpc(report)
     }
   )
 
@@ -433,6 +471,49 @@ export function registerParseHandlers(): void {
   })
 
   ipcMain.handle('studio:format-aspec', (_event, source: string) => formatAspec(source))
+
+  ipcMain.handle('studio:build-gui-model', (_event, payload: { source: string; informalSource?: string }) => {
+    const informalModules = payload.informalSource
+      ? buildInformalModel(payload.informalSource).modules
+      : undefined
+    return cloneForIpc(buildGuiModel(payload.source, { informalModules }))
+  })
+
+  ipcMain.handle('studio:patch-gui', (_event, payload: { source: string } & PatchGuiAction) => {
+    const { source, ...action } = payload
+    return patchGui(source, action as PatchGuiAction)
+  })
+
+  ipcMain.handle('studio:format-gui', (_event, source: string) => formatGui(source))
+
+  ipcMain.handle(
+    'studio:resolve-gui-for-aspec',
+    (_event, payload: { aspecSource: string; externalGuiSource?: string }) => {
+      const model = buildGuiModelFromAspec(payload.aspecSource, payload.externalGuiSource ?? null)
+      return cloneForIpc(model)
+    }
+  )
+
+  ipcMain.handle(
+    'studio:patch-aspec-gui',
+    (_event, payload: { aspecSource: string; action: PatchGuiAction }) => {
+      const embedded = extractGuiFromAspec(payload.aspecSource)
+      const informal = buildInformalModel(payload.aspecSource)
+      const base = embedded ?? {
+        app: { name: informal.system.name || informal.meta.title || 'App' },
+        screens: [],
+        flows: []
+      }
+      const doc = guispecFromGuiSection(base, {
+        id: `${informal.meta.id}-gui`,
+        title: `${informal.meta.title} GUI`
+      })
+      const patched = patchGui(serializeGuiSpec(doc), payload.action)
+      const { document: guiDoc } = parseGuiSpec(patched)
+      if (!guiDoc) return payload.aspecSource
+      return embedGuiInAspec(payload.aspecSource, guiDoc.gui)
+    }
+  )
 
   ipcMain.handle(
     'studio:find-hybrid-symbol-span',

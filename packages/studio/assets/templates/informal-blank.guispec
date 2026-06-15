@@ -1,0 +1,18 @@
+guispecVersion: "1.0"
+meta:
+  id: "gui-blank-001"
+  title: GUI Blank
+gui:
+  app:
+    name: NewApp
+    description: |
+      Application UI specification.
+  screens:
+    - id: scr-home
+      name: HomePage
+      title: Home
+      widgets:
+        - id: w-title
+          kind: label
+          label: Welcome
+  flows: []

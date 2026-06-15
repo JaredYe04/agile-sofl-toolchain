@@ -14,7 +14,8 @@
         "title": { "type": "string", "minLength": 1 },
         "author": { "type": "string" },
         "revision": { "type": "string" },
-        "hybridTarget": { "type": "string" }
+        "hybridTarget": { "type": "string" },
+        "guiTarget": { "type": "string" }
       },
       "additionalProperties": false
     },
@@ -84,7 +85,8 @@
           }
         }
       }
-    }
+    },
+    "gui": { "type": "object" }
   },
   "definitions": {
     "param": {

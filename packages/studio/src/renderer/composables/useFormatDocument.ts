@@ -44,7 +44,12 @@ async function formatViaIpc(source: string): Promise<string | null> {
 async function formatViaAspec(source: string): Promise<string | null> {
   if (!window.studio?.formatAspec) return null
   const formatted = await window.studio.formatAspec(source)
-  return formatted && formatted !== source ? formatted : null
+  return formatted ?? null
+}
+
+async function formatViaGui(source: string): Promise<string | null> {
+  if (!window.studio?.formatGui) return null
+  return window.studio.formatGui(source)
 }
 
 export async function formatActiveDocument(
@@ -61,6 +66,17 @@ export async function formatActiveDocument(
 
   if (tab.documentKind === 'aspec') {
     formatted = await formatViaAspec(source)
+    if (!formatted) return false
+    doc.setContent(tab.id, formatted)
+    if (model && model.getValue() !== formatted) {
+      model.setValue(formatted)
+      model.pushStackElement()
+    }
+    return true
+  }
+
+  if (tab.documentKind === 'guispec') {
+    formatted = await formatViaGui(source)
     if (!formatted) return false
     doc.setContent(tab.id, formatted)
     if (model && model.getValue() !== formatted) {

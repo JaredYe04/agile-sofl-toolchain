@@ -13,7 +13,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "yaml": "^2.6.1"
+    "yaml": "^2.6.1",
+    "@agile-sofl/gui": "file:../gui"
   },
   "devDependencies": {
     "@agile-sofl/parser": "file:../parser",

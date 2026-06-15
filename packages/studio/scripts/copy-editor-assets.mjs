@@ -35,6 +35,8 @@ const templateFiles = [
   ['type-showcase.asfl', join(examplesRoot, 'type-showcase.asfl')],
   ['informal-blank.aspec', join(studioRoot, 'assets', 'templates', 'informal-blank.aspec')],
   ['library-informal.aspec', join(studioRoot, 'assets', 'templates', 'library-informal.aspec')],
+  ['informal-blank.guispec', join(studioRoot, 'public', 'templates', 'informal-blank.guispec')],
+  ['library-gui.guispec', join(examplesRoot, 'library-gui.guispec')],
   ['manifest.json', join(studioRoot, 'assets', 'templates', 'manifest.json')]
 ]
 

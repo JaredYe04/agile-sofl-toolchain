@@ -45,7 +45,9 @@ watch(
           @click="
             item.kind === 'process' || item.kind === 'function'
               ? emit('revealHybrid', { name: item.name, kind: item.kind })
-              : emit('revealInformal', item.aspecId)
+              : item.kind === 'gui-screen' || item.kind === 'gui-widget'
+                ? emit('revealInformal', item.aspecId)
+                : emit('revealInformal', item.aspecId)
           "
         >
           <span

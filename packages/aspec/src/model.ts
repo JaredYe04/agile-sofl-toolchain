@@ -15,6 +15,7 @@ export interface AspecMeta {
   author?: string
   revision?: string
   hybridTarget?: string
+  guiTarget?: string
 }
 
 export interface AspecGlossaryEntry {
@@ -149,11 +150,20 @@ export interface AspecDocument {
 
 export interface InformalModuleDto extends InformalModule {}
 
+export interface GuiModelSummary {
+  appName: string
+  screenCount: number
+  flowCount: number
+  embedded: boolean
+  externalPath?: string
+}
+
 export interface InformalDocumentModel {
   meta: AspecMeta
   system: AspecSystem
   modules: InformalModuleDto[]
   bookAlign?: BookAlignSection
+  gui?: GuiModelSummary
   diagnostics: AspecDiagnostic[]
   traceability?: TraceabilityGraph
 }
@@ -168,6 +178,8 @@ export type TraceLinkKind =
   | 'type'
   | 'variable'
   | 'invariant'
+  | 'gui-screen'
+  | 'gui-widget'
 
 export interface TraceLink {
   aspecId: string
@@ -231,6 +243,7 @@ export interface RefineResult {
 export interface ProjectPair {
   aspecPath: string
   asflPath?: string
+  guispecPath?: string
   tracePath?: string
 }
 
@@ -238,5 +251,6 @@ export interface ProjectScanResult {
   root: string
   aspecFiles: string[]
   asflFiles: string[]
+  guispecFiles: string[]
   pairs: ProjectPair[]
 }
