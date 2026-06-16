@@ -3,14 +3,14 @@ import { join } from 'node:path'
 import { registerFileHandlers } from './services/fileService'
 import { registerWindowHandlers } from './services/windowService'
 import { registerParseHandlers } from './services/parseService'
+import { attachDevToolsShortcuts, attachRendererDiagnostics, openDevTools } from './services/devToolsService'
 import {
   isLspRunning,
   getLspStatusMessage,
   sendToLanguageServer,
   setLspWindow,
   startLanguageServer,
-  stopLanguageServer,
-  setLspWindow
+  stopLanguageServer
 } from './lspBridge'
 
 let mainWindow: BrowserWindow | null = null
@@ -38,6 +38,9 @@ function createWindow(): void {
   })
 
   setLspWindow(mainWindow)
+
+  attachDevToolsShortcuts(mainWindow)
+  attachRendererDiagnostics(mainWindow)
 
   mainWindow.on('closed', () => {
     setLspWindow(null)
@@ -67,13 +70,23 @@ function createWindow(): void {
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
+
+  if (!app.isPackaged) {
+    mainWindow.webContents.once('did-finish-load', () => {
+      openDevTools(mainWindow)
+    })
+  }
 }
 
 app.whenReady().then(() => {
   registerFileHandlers(getWindow)
   registerWindowHandlers(getWindow)
 
-  registerParseHandlers()
+  try {
+    registerParseHandlers()
+  } catch (err) {
+    console.error('[studio] Failed to register parse handlers:', err)
+  }
 
   ipcMain.on('studio:lsp-send', (_event, jsonBody: string) => {
     sendToLanguageServer(jsonBody)
@@ -88,7 +101,7 @@ app.whenReady().then(() => {
   }))
 
   ipcMain.handle('studio:open-devtools', () => {
-    mainWindow?.webContents.openDevTools({ mode: 'detach' })
+    openDevTools(mainWindow)
   })
 
   ipcMain.on('studio:confirm-close', () => {

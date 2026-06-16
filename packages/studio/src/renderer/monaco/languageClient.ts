@@ -6,6 +6,7 @@ import {
 } from 'vscode-languageclient/browser'
 import { AbstractMessageReader, AbstractMessageWriter, type DataCallback } from 'vscode-jsonrpc'
 import { monaco } from './setup'
+import { ensureVscodeServices } from './vscodeServices'
 
 class IpcMessageReader extends AbstractMessageReader {
   private disposable: (() => void) | null = null
@@ -32,23 +33,35 @@ class IpcMessageWriter extends AbstractMessageWriter {
 }
 
 let client: MonacoLanguageClient | null = null
+let transports: MessageTransports | null = null
+
+function createTransports(): MessageTransports {
+  if (!transports) {
+    transports = {
+      reader: new IpcMessageReader(),
+      writer: new IpcMessageWriter()
+    }
+  }
+  return transports
+}
 
 export function createLanguageClient(): MonacoLanguageClient {
-  const reader = new IpcMessageReader()
-  const writer = new IpcMessageWriter()
-  const messageTransports: MessageTransports = { reader, writer }
-
   client = new MonacoLanguageClient({
     name: 'Agile-SOFL Language Client',
     clientOptions: {
-      documentSelector: [{ language: 'agile-sofl', scheme: 'file' }, { language: 'agile-sofl', scheme: 'inmemory' }],
+      documentSelector: [
+        { language: 'agile-sofl', scheme: 'file' },
+        { language: 'agile-sofl', scheme: 'inmemory' }
+      ],
       initializationOptions: { semanticHighlighting: true },
       errorHandler: {
         error: () => ({ action: ErrorAction.Continue }),
         closed: () => ({ action: CloseAction.DoNotRestart })
       }
     },
-    messageTransports
+    connectionProvider: {
+      get: async () => createTransports()
+    }
   })
 
   return client
@@ -56,6 +69,7 @@ export function createLanguageClient(): MonacoLanguageClient {
 
 export async function startLanguageClient(): Promise<MonacoLanguageClient | null> {
   if (!window.studio) return null
+  await ensureVscodeServices()
   const c = client ?? createLanguageClient()
   await c.start()
   return c

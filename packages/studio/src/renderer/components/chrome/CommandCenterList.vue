@@ -39,7 +39,7 @@ function isSelected(flatIndex: number): boolean {
 </script>
 
 <template>
-  <div class="max-h-[min(400px,50vh)] overflow-y-auto py-1">
+  <div class="studio-scroll max-h-[min(360px,calc(100vh-140px))] overflow-y-auto py-1">
     <template v-if="items.length">
       <div v-for="group in groups" :key="group.key" class="px-1">
         <div class="px-2 py-1 text-[10px] font-medium uppercase tracking-wide text-content-muted">

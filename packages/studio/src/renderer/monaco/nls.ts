@@ -8,6 +8,10 @@ type NlsAdapterState = { data: Record<string, unknown> | null; name: string }
 declare global {
   // eslint-disable-next-line no-var
   var __MONACO_NLS_ADAPTER_STATE__: NlsAdapterState | undefined
+  // eslint-disable-next-line no-var
+  var _VSCODE_NLS_LANGUAGE: string | undefined
+  // eslint-disable-next-line no-var
+  var _VSCODE_NLS_MESSAGES: string[] | undefined
 }
 
 let configured = false
@@ -22,6 +26,8 @@ export function initMonacoNls(locale: MonacoNlsLocale): void {
     data: locale === 'zh-hans' ? (zhHans as Record<string, unknown>) : {},
     name: locale
   }
+  globalThis._VSCODE_NLS_LANGUAGE = locale
+  globalThis._VSCODE_NLS_MESSAGES = globalThis._VSCODE_NLS_MESSAGES || []
   configured = true
 }
 

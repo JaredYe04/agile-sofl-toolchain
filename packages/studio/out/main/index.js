@@ -2,8 +2,8 @@
 const electron = require("electron");
 const node_path = require("node:path");
 const promises = require("node:fs/promises");
-const node_child_process = require("node:child_process");
 const node_fs = require("node:fs");
+const node_child_process = require("node:child_process");
 const node_module = require("node:module");
 let cached = {};
 let loaded = false;
@@ -122,9 +122,49 @@ function registerWindowHandlers(getWindow2) {
     return process.platform;
   });
 }
-const { registerParseHandlers: registerBundled } = require(node_path.join(__dirname, "../../dist/parse-bridge.cjs"));
+function resolveParseBridgePath() {
+  const fromOut = node_path.join(electron.app.getAppPath(), "out/dist/parse-bridge.cjs");
+  if (node_fs.existsSync(fromOut)) return fromOut;
+  return node_path.join(electron.app.getAppPath(), "dist/parse-bridge.cjs");
+}
 function registerParseHandlers() {
+  const { registerParseHandlers: registerBundled } = require(resolveParseBridgePath());
   registerBundled();
+}
+function toggleDevTools(win) {
+  if (win.webContents.isDevToolsOpened()) {
+    win.webContents.closeDevTools();
+  } else {
+    win.webContents.openDevTools({ mode: "detach" });
+  }
+}
+function attachDevToolsShortcuts(win) {
+  win.webContents.on("before-input-event", (event, input) => {
+    if (input.type !== "keyDown") return;
+    const isF12 = input.key === "F12";
+    const isCtrlShiftI = (input.control || input.meta) && input.shift && input.key.toLowerCase() === "i";
+    if (isF12 || isCtrlShiftI) {
+      event.preventDefault();
+      toggleDevTools(win);
+    }
+  });
+}
+function attachRendererDiagnostics(win) {
+  win.webContents.on("did-fail-load", (_event, errorCode, errorDescription, validatedURL) => {
+    console.error("[studio:renderer] did-fail-load", { errorCode, errorDescription, validatedURL });
+  });
+  win.webContents.on("render-process-gone", (_event, details) => {
+    console.error("[studio:renderer] render-process-gone", details);
+  });
+  if (electron.app.isPackaged) return;
+  win.webContents.on("console-message", (_event, level, message, line, sourceId) => {
+    const tag = level === 3 ? "error" : level === 2 ? "warn" : "log";
+    console[tag === "log" ? "log" : tag](`[studio:renderer:${tag}] ${message} (${sourceId}:${line})`);
+  });
+}
+function openDevTools(win) {
+  if (!win || win.isDestroyed()) return;
+  win.webContents.openDevTools({ mode: "detach" });
 }
 function parseMessages(buffer) {
   const messages = [];
@@ -168,6 +208,9 @@ function safeSend(channel, ...args) {
   mainWindow$1.webContents.send(channel, ...args);
 }
 function resolveServerEntry() {
+  if (electron.app.isPackaged) {
+    return node_path.join(process.resourcesPath, "language-server", "server.js");
+  }
   const pkgRoot = node_path.dirname(require$1.resolve("@agile-sofl/language-server/package.json"));
   return node_path.join(pkgRoot, "dist", "server.js");
 }
@@ -382,6 +425,8 @@ function createWindow() {
     title: "Agile-SOFL Studio"
   });
   setLspWindow(mainWindow);
+  attachDevToolsShortcuts(mainWindow);
+  attachRendererDiagnostics(mainWindow);
   mainWindow.on("closed", () => {
     setLspWindow(null);
     mainWindow = null;
@@ -405,11 +450,20 @@ function createWindow() {
   } else {
     mainWindow.loadFile(node_path.join(__dirname, "../renderer/index.html"));
   }
+  if (!electron.app.isPackaged) {
+    mainWindow.webContents.once("did-finish-load", () => {
+      openDevTools(mainWindow);
+    });
+  }
 }
 electron.app.whenReady().then(() => {
   registerFileHandlers(getWindow);
   registerWindowHandlers(getWindow);
-  registerParseHandlers();
+  try {
+    registerParseHandlers();
+  } catch (err) {
+    console.error("[studio] Failed to register parse handlers:", err);
+  }
   electron.ipcMain.on("studio:lsp-send", (_event, jsonBody) => {
     sendToLanguageServer(jsonBody);
   });
@@ -418,7 +472,7 @@ electron.app.whenReady().then(() => {
     message: isLspRunning() ? getLspStatusMessage() || "Language server connected" : getLspStatusMessage() || "Language server not available — run npm run bundle --workspace @agile-sofl/language-server"
   }));
   electron.ipcMain.handle("studio:open-devtools", () => {
-    mainWindow?.webContents.openDevTools({ mode: "detach" });
+    openDevTools(mainWindow);
   });
   electron.ipcMain.on("studio:confirm-close", () => {
     allowClose = true;

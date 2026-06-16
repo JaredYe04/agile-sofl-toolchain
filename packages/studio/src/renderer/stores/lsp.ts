@@ -19,8 +19,13 @@ export const useLspStore = defineStore('lsp', () => {
 
   async function ensureClient(): Promise<void> {
     if (clientStarted || !running.value) return
-    await startLanguageClient()
-    clientStarted = true
+    try {
+      await startLanguageClient()
+      clientStarted = true
+    } catch (err) {
+      console.error('[studio] language client failed to start:', err)
+      message.value = 'Language client failed to start — see DevTools console'
+    }
   }
 
   function init(): void {

@@ -1,4 +1,5 @@
 import { ref } from 'vue'
+import { assetUrl } from '../lib/assetUrl'
 import type { DocumentKind } from '../stores/tabUtils'
 
 export interface TemplateEntry {
@@ -67,7 +68,7 @@ let manifestCache: TemplateEntry[] | null = null
 export function useNewFileDialog() {
   async function loadManifest(): Promise<TemplateEntry[]> {
     if (manifestCache) return manifestCache
-    const res = await fetch('/templates/manifest.json')
+    const res = await fetch(assetUrl('/templates/manifest.json'))
     if (!res.ok) throw new Error('Failed to load templates manifest')
     const data = (await res.json()) as { templates: TemplateEntry[] }
     manifestCache = data.templates
@@ -75,7 +76,7 @@ export function useNewFileDialog() {
   }
 
   async function loadTemplateContent(file: string): Promise<string> {
-    const res = await fetch(`/templates/${file}`)
+    const res = await fetch(assetUrl(`/templates/${file}`))
     if (!res.ok) throw new Error(`Failed to load template: ${file}`)
     return res.text()
   }

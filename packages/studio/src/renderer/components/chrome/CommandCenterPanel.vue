@@ -55,16 +55,16 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown, true))
   <Teleport to="body">
     <div
       v-if="center.isOpen"
-      class="fixed inset-0 z-[90] flex justify-center pt-[35px]"
+      class="fixed inset-0 z-[90] flex items-start justify-center pt-[35px]"
       @click.self="center.close()"
     >
       <div
-        class="titlebar-no-drag mx-4 mt-2 w-full max-w-2xl rounded-lg border border-border-subtle bg-surface-overlay shadow-lg animate-in fade-in duration-150"
+        class="titlebar-no-drag mx-4 mt-2 flex w-full max-w-2xl flex-col overflow-hidden rounded-lg border border-border-subtle bg-surface-overlay shadow-lg animate-in fade-in duration-150"
         role="dialog"
         aria-modal="true"
         :aria-label="t('commandCenter.search')"
       >
-        <div class="flex items-center gap-2 border-b border-border-subtle px-3 py-2">
+        <div class="flex shrink-0 items-center gap-2 border-b border-border-subtle px-3 py-2">
           <svg class="h-4 w-4 shrink-0 text-content-muted" viewBox="0 0 16 16" fill="none">
             <circle cx="7" cy="7" r="4.5" stroke="currentColor" stroke-width="1.2" />
             <path
@@ -93,7 +93,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown, true))
         />
 
         <div
-          class="flex flex-wrap gap-x-3 gap-y-1 border-t border-border-subtle px-3 py-2 text-[10px] text-content-muted"
+          class="flex shrink-0 flex-wrap gap-x-3 gap-y-1 border-t border-border-subtle px-3 py-2 text-[10px] text-content-muted"
         >
           <span>{{ t('commandCenter.footer.hint') }}</span>
         </div>

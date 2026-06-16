@@ -1,0 +1,55 @@
+appId: com.agile-sofl.studio
+productName: Agile-SOFL Studio
+copyright: Copyright © Agile-SOFL Contributors
+electronVersion: 28.3.3
+
+directories:
+  buildResources: build
+  output: release
+
+files:
+  - out/**/*
+  - package.json
+
+asarUnpack:
+  - out/dist/parse-bridge.cjs
+
+extraResources:
+  - from: resources/language-server
+    to: language-server
+    filter:
+      - '**/*'
+
+npmRebuild: false
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  artifactName: ${productName}-${version}-win-${arch}-setup.${ext}
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  shortcutName: ${productName}
+
+mac:
+  target:
+    - dmg
+    - zip
+  artifactName: ${productName}-${version}-mac-${arch}.${ext}
+  category: public.app-category.developer-tools
+
+dmg:
+  artifactName: ${productName}-${version}-mac.${ext}
+
+linux:
+  target:
+    - AppImage
+    - deb
+  artifactName: ${productName}-${version}-linux-${arch}.${ext}
+  category: Development
+  maintainer: Agile-SOFL Contributors

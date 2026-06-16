@@ -2,7 +2,7 @@ import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { join, dirname } from 'node:path'
-import { utilityProcess, type BrowserWindow, type UtilityProcess } from 'electron'
+import { utilityProcess, type BrowserWindow, type UtilityProcess, app } from 'electron'
 import { frameMessage, parseMessages } from './lspFraming'
 
 const require = createRequire(import.meta.url)
@@ -35,6 +35,9 @@ function safeSend(channel: string, ...args: unknown[]): void {
 }
 
 function resolveServerEntry(): string {
+  if (app.isPackaged) {
+    return join(process.resourcesPath, 'language-server', 'server.js')
+  }
   const pkgRoot = dirname(require.resolve('@agile-sofl/language-server/package.json'))
   return join(pkgRoot, 'dist', 'server.js')
 }

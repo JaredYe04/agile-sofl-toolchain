@@ -1,12 +1,13 @@
 import { loadWASM, createOnigScanner, createOnigString } from 'vscode-oniguruma'
 import { Registry, type IGrammar, type IOnigLib, INITIAL } from 'vscode-textmate'
+import { assetUrl } from '../lib/assetUrl'
 import { monaco } from './setup'
 import { mergeScopeMap, scopeToMonacoToken, TokenizerState, type ScopeMap } from './scopeMap'
 
 let grammarReady: Promise<{ grammar: IGrammar; scopeMap: ScopeMap }> | null = null
 
 async function loadOnigLib(): Promise<IOnigLib> {
-  const res = await fetch('/syntax/onig.wasm')
+  const res = await fetch(assetUrl('/syntax/onig.wasm'))
   if (!res.ok) throw new Error(`Failed to load onig.wasm: ${res.status}`)
   const wasm = await res.arrayBuffer()
   await loadWASM(wasm)
@@ -21,8 +22,8 @@ async function getGrammarAndScopeMap(): Promise<{ grammar: IGrammar; scopeMap: S
     grammarReady = (async () => {
       const onigLib = await loadOnigLib()
       const [grammarRes, scopeRes] = await Promise.all([
-        fetch('/syntax/agile-sofl.tmLanguage.json'),
-        fetch('/syntax/highlight-scope-map.json')
+        fetch(assetUrl('/syntax/agile-sofl.tmLanguage.json')),
+        fetch(assetUrl('/syntax/highlight-scope-map.json'))
       ])
       if (!grammarRes.ok) throw new Error(`Failed to load grammar: ${grammarRes.status}`)
       if (!scopeRes.ok) throw new Error(`Failed to load scope map: ${scopeRes.status}`)
@@ -78,7 +79,7 @@ export async function registerTextMateTokens(): Promise<void> {
 }
 
 export async function registerLanguageConfiguration(): Promise<void> {
-  const configRes = await fetch('/syntax/language-configuration.json')
+  const configRes = await fetch(assetUrl('/syntax/language-configuration.json'))
   if (!configRes.ok) throw new Error(`Failed to load language configuration: ${configRes.status}`)
   const config = await configRes.json()
   monaco.languages.setLanguageConfiguration('agile-sofl', {
