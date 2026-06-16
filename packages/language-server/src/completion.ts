@@ -14,6 +14,15 @@ const PROCESS_KEYWORDS = ['FSF', 'ext', 'decom', 'comment', 'end_process']
 
 const FSF_KEYWORDS = ['others', '&&', '||']
 
+const GUI_BLOCK_KEYWORDS = ['gui', 'screen', 'end_screen', 'end_gui']
+const GUI_WIDGET_KEYWORDS = ['label', 'button', 'text-input', 'navigation', 'triggers']
+
+function inGuiBlock(program: ProgramNode, offset: number): boolean {
+  const mod = moduleAtOffset(program, offset)
+  if (!mod?.gui) return false
+  return offset >= mod.gui.span.start && offset <= mod.gui.span.end
+}
+
 function linePrefix(document: TextDocument, position: Position): string {
   const line = document.getText({
     start: { line: position.line, character: 0 },
@@ -176,6 +185,36 @@ export function getCompletions(document: TextDocument, position: Position): Comp
   if (/module\s+[A-Za-z_][A-Za-z0-9_]*\s*\/\s*[A-Za-z_]*$/.test(prefix)) {
     if (ast?.type === 'program') {
       return ast.modules.map((m) => ({ label: m.name, kind: CompletionItemKind.Module }))
+    }
+  }
+
+  if (ast?.type === 'program') {
+    const partial = trimmed.match(/([A-Za-z_-]*)$/)?.[1] ?? ''
+    if (inGuiBlock(ast, offset)) {
+      if (/triggers\s+[A-Za-z_]*$/.test(trimmed)) {
+        const mod = moduleAtOffset(ast, offset)
+        if (mod) {
+          return mod.processes
+            .map((p) => ({ label: p.name, kind: CompletionItemKind.Method }))
+            .filter((item) => item.label.startsWith(partial))
+        }
+      }
+      const keywords = [...GUI_WIDGET_KEYWORDS, ...GUI_BLOCK_KEYWORDS]
+      return keywords
+        .filter((k) => k.startsWith(partial))
+        .map((k) => ({ label: k, kind: CompletionItemKind.Keyword }))
+    }
+    const mod = moduleAtOffset(ast, offset)
+    if (mod && !mod.gui && /^\s*[a-z-]*$/i.test(trimmed) && 'gui'.startsWith(trimmed.trim())) {
+      return [
+        {
+          label: 'gui',
+          kind: CompletionItemKind.Snippet,
+          insertText:
+            'gui ${1:AppGui};\nscreen ${2:Home};\n    label ${3:welcome} "${4:Welcome}";\nend_screen;\nend_gui',
+          insertTextFormat: InsertTextFormat.Snippet
+        }
+      ]
     }
   }
 

@@ -10,6 +10,7 @@ export {
   mergeTraceability,
   parseTraceJson
 } from './trace/coverage.js'
+export { updateTraceContentHash } from './trace/updateTrace.js'
 export {
   patchAspec,
   patchAspecField,
@@ -27,11 +28,15 @@ export {
   addAspecInv,
   removeAspecInv,
   addAspecFunction,
-  removeAspecFunction
+  removeAspecFunction,
+  addAspecConst,
+  removeAspecConst
 } from './patch.js'
 export type { PatchAspecAction } from './patch.js'
 export { validateBookAlign } from './validateBookAlign.js'
 export { mergeExistingAsfl } from './refine/mergeAsfl.js'
+export { buildFunctionFsf, shouldRenderFunctionFsf } from './refine/fsfBuilder.js'
+export { buildGuiBlockForRefine } from './refine/guiBlockBuilder.js'
 export type { MergeStrategy, ProcessMergePlan } from './refine/mergeAsfl.js'
 export { attachDiagnosticLines, offsetAtLine } from './sourceSpans.js'
 export { scanProject } from './projectScan.js'

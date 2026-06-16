@@ -86,6 +86,14 @@ export const builtinCommands: BuiltinCommand[] = [
     }
   },
   {
+    id: 'view.toggleProjectSidebar',
+    titleKey: 'commandCenter.cmd.toggleSidebar',
+    run: async () => {
+      const { useEditorUiStore } = await import('../../stores/editorUi')
+      useEditorUiStore().toggleProjectSidebar()
+    }
+  },
+  {
     id: 'view.minimap',
     titleKey: 'commandCenter.cmd.toggleMinimap',
     run: async () => {
@@ -152,6 +160,16 @@ export const builtinCommands: BuiltinCommand[] = [
       const { useEditorUiStore } = await import('../../stores/editorUi')
       const ui = useEditorUiStore()
       ui.setFsfStrictMode(!ui.fsfStrictMode)
+    }
+  },
+  {
+    id: 'tools.bookAlignStrict',
+    titleKey: 'commandCenter.cmd.bookAlignStrict',
+    when: (ctx) => ctx.activeTab?.documentKind === 'aspec',
+    run: async () => {
+      const { useEditorUiStore } = await import('../../stores/editorUi')
+      const ui = useEditorUiStore()
+      ui.setBookAlignStrict(!ui.bookAlignStrict)
     }
   },
   {

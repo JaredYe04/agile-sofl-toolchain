@@ -16,6 +16,12 @@ import {
   Type,
   Var,
   Inv,
+  Gui,
+  Screen,
+  EndGui,
+  EndScreen,
+  Triggers,
+  TextInput,
   Process,
   Function,
   Init,
@@ -200,7 +206,53 @@ export class AgileSoflParser extends CstParser {
       $.OPTION4(() => $.SUBRULE($.typeDecls))
       $.OPTION5(() => $.SUBRULE($.varDecls))
       $.OPTION6(() => $.SUBRULE($.invDecls))
+      $.OPTION7(() => $.SUBRULE($.guiBlock))
       $.SUBRULE($.processFunctionSpecs)
+    })
+
+    $.RULE('guiBlock', () => {
+      $.CONSUME(Gui)
+      $.CONSUME(Identifier)
+      $.CONSUME(Semicolon)
+      $.MANY(() => {
+        $.SUBRULE($.guiScreen)
+      })
+      $.CONSUME(EndGui)
+      $.OPTION(() => $.CONSUME1(Semicolon))
+    })
+
+    $.RULE('guiScreen', () => {
+      $.CONSUME(Screen)
+      $.CONSUME1(Identifier)
+      $.CONSUME2(Semicolon)
+      $.MANY1(() => {
+        $.SUBRULE($.guiWidget)
+      })
+      $.CONSUME(EndScreen)
+      $.OPTION1(() => $.CONSUME3(Semicolon))
+    })
+
+    $.RULE('guiWidget', () => {
+      $.OR([
+        {
+          ALT: () => {
+            $.CONSUME(TextInput)
+            $.CONSUME(Identifier)
+          }
+        },
+        {
+          ALT: () => {
+            $.CONSUME1(Identifier)
+            $.CONSUME2(Identifier)
+          }
+        }
+      ])
+      $.CONSUME(StringLiteral)
+      $.OPTION2(() => {
+        $.CONSUME(Triggers)
+        $.CONSUME3(Identifier)
+      })
+      $.CONSUME4(Semicolon)
     })
 
     $.RULE('constDecls', () => {
@@ -280,7 +332,8 @@ export class AgileSoflParser extends CstParser {
             t !== Process &&
             t !== Function &&
             t !== EndModule &&
-            t !== Const
+            t !== Const &&
+            t !== Gui
           )
         },
         DEF: () => {

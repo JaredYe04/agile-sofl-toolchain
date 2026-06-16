@@ -4,12 +4,15 @@ import { contentHash } from '../buildInformalModel.js'
 import {
   aspecCommentTag,
   buildFunctionBody,
+  buildFunctionFsf,
   buildFunctionSignature,
   buildProcessFsf,
   buildProcessSignature,
-  mapTypeHint
+  mapTypeHint,
+  shouldRenderFunctionFsf
 } from './fsfBuilder.js'
 import { mergeExistingAsfl } from './mergeAsfl.js'
+import { buildGuiBlockForRefine } from './guiBlockBuilder.js'
 import type { AspecDiagnostic } from '../model.js'
 
 function moduleHeader(mod: InformalModule): string {
@@ -19,7 +22,12 @@ function moduleHeader(mod: InformalModule): string {
   return `module ${mod.name};`
 }
 
-function renderModule(mod: InformalModule, warnings: AspecDiagnostic[], skeletonOnly: boolean): string {
+function renderModule(
+  mod: InformalModule,
+  warnings: AspecDiagnostic[],
+  skeletonOnly: boolean,
+  guiBlock?: string | null
+): string {
   const lines: string[] = [moduleHeader(mod)]
 
   if (mod.constants?.length) {
@@ -52,6 +60,10 @@ function renderModule(mod: InformalModule, warnings: AspecDiagnostic[], skeleton
     }
   }
 
+  if (guiBlock) {
+    lines.push(guiBlock.split('\n').join('\n'))
+  }
+
   for (const proc of mod.processes ?? []) {
     lines.push(`process ${proc.name} ${buildProcessSignature(proc)}`)
     if (!skeletonOnly) {
@@ -70,7 +82,12 @@ function renderModule(mod: InformalModule, warnings: AspecDiagnostic[], skeleton
 
   for (const fn of mod.functions ?? []) {
     lines.push(`function ${fn.name} ${buildFunctionSignature(fn)}`)
-    lines.push(`    == ${skeletonOnly ? 'undefined' : buildFunctionBody(fn)}`)
+    if (!skeletonOnly && shouldRenderFunctionFsf(fn)) {
+      lines.push('    FSF :')
+      lines.push(`    ${buildFunctionFsf(fn)}`)
+    } else {
+      lines.push(`    == ${skeletonOnly ? 'undefined' : buildFunctionBody(fn)}`)
+    }
     lines.push('end_function')
   }
 
@@ -103,8 +120,12 @@ export function refineToAsfl(
   resolveModuleParents(document)
   const warnings: AspecDiagnostic[] = []
   const skeletonOnly = options.skeletonOnly ?? false
+  const guiBlock =
+    options.emitGuiBlock !== false ? buildGuiBlockForRefine(source, options.guiSource) : null
 
-  const moduleTexts = document.modules.map((m) => renderModule(m, warnings, skeletonOnly))
+  const moduleTexts = document.modules.map((m, i) =>
+    renderModule(m, warnings, skeletonOnly, i === 0 ? guiBlock : null)
+  )
   let asflText = moduleTexts.join(';\n') + '\n'
 
   if (options.preserveExisting && options.existingAsfl?.trim()) {

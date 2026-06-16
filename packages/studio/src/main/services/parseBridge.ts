@@ -20,6 +20,7 @@ import {
   patchProcessInit,
   patchModule,
   formatDocument,
+  patchGuiWidgetText,
   findProcess,
   parsePredicateUi,
   uiToPredicateText,
@@ -40,6 +41,7 @@ import {
   parseTraceJson,
   scanProject,
   formatAspec,
+  updateTraceContentHash,
   type PatchAspecAction
 } from '@agile-sofl/aspec'
 import {
@@ -149,6 +151,33 @@ export function registerParseHandlers(): void {
         text?: string
       }
     ) => patchDeclaration(payload.source, payload)
+  )
+
+  ipcMain.handle(
+    'studio:patch-gui-widget',
+    (
+      _event,
+      payload: {
+        source: string
+        moduleName: string
+        screenName: string
+        widgetName: string
+        text: string
+      }
+    ) => {
+      const { ast } = parse(payload.source)
+      if (!ast || ast.type !== 'program') return payload.source
+      return (
+        patchGuiWidgetText(
+          payload.source,
+          ast,
+          payload.moduleName,
+          payload.screenName,
+          payload.widgetName,
+          payload.text
+        ) ?? payload.source
+      )
+    }
   )
 
   ipcMain.handle(
@@ -378,9 +407,12 @@ export function registerParseHandlers(): void {
     return cloneForIpc(results)
   })
 
-  ipcMain.handle('studio:build-informal-model', (_event, source: string) => {
-    return cloneForIpc(buildInformalModel(source))
-  })
+  ipcMain.handle(
+    'studio:build-informal-model',
+    (_event, source: string, options?: { bookAlignStrict?: boolean }) => {
+      return cloneForIpc(buildInformalModel(source, options))
+    }
+  )
 
   ipcMain.handle('studio:patch-aspec', (_event, payload: { source: string } & PatchAspecAction) => {
     const { source, ...action } = payload
@@ -398,6 +430,8 @@ export function registerParseHandlers(): void {
         existingAsfl?: string
         skeletonOnly?: boolean
         mergePlans?: Array<{ aspecId: string; processName: string; strategy: string }>
+        guiSource?: string
+        emitGuiBlock?: boolean
       }
     ) => {
       const result = refineAspecWithCheck(payload.source, {
@@ -406,7 +440,9 @@ export function registerParseHandlers(): void {
         preserveExisting: Boolean(payload.existingAsfl),
         existingAsfl: payload.existingAsfl,
         skeletonOnly: payload.skeletonOnly,
-        mergePlans: payload.mergePlans
+        mergePlans: payload.mergePlans,
+        guiSource: payload.guiSource,
+        emitGuiBlock: payload.emitGuiBlock
       })
       return cloneForIpc(result)
     }
@@ -469,6 +505,17 @@ export function registerParseHandlers(): void {
     writeFileSync(filePath, traceJson, 'utf8')
     return true
   })
+
+  ipcMain.handle(
+    'studio:update-trace-content-hash',
+    (_event, payload: { tracePath: string; aspecSource: string }) => {
+      if (!existsSync(payload.tracePath)) return false
+      const existing = readFileSync(payload.tracePath, 'utf8')
+      const updated = updateTraceContentHash(existing, payload.aspecSource)
+      writeFileSync(payload.tracePath, updated, 'utf8')
+      return true
+    }
+  )
 
   ipcMain.handle('studio:format-aspec', (_event, source: string) => formatAspec(source))
 

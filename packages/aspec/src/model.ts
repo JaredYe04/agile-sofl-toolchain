@@ -231,6 +231,8 @@ export interface RefineOptions {
   aspecUri?: string
   asflUri?: string
   bookAlignStrict?: boolean
+  emitGuiBlock?: boolean
+  guiSource?: string
 }
 
 export interface RefineResult {

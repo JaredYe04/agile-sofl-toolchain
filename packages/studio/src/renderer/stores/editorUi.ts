@@ -12,6 +12,13 @@ const SIDE_VIEW_KEY = 'studio-visual-side-view'
 const VISUAL_NAV_RATIO_KEY = 'studio-visual-nav-ratio'
 const VISUAL_NAV_MANUAL_KEY = 'studio-visual-nav-manual'
 const FSF_STRICT_KEY = 'studio-fsf-strict'
+const BOOK_ALIGN_STRICT_KEY = 'studio-book-align-strict'
+const PROJECT_SIDEBAR_KEY = 'studio-show-project-sidebar'
+const PROJECT_SIDEBAR_WIDTH_KEY = 'studio-project-sidebar-width'
+
+export const PROJECT_SIDEBAR_MIN_WIDTH = 200
+export const PROJECT_SIDEBAR_MAX_WIDTH = 420
+export const PROJECT_SIDEBAR_DEFAULT_WIDTH = 260
 
 const TREE_DEFAULT_RATIO = 0.22
 const GRAPH_DEFAULT_RATIO = 0.5
@@ -41,7 +48,19 @@ export const useEditorUiStore = defineStore('editorUi', () => {
     Number.parseInt(localStorage.getItem(GRAPH_ZOOM_KEY) ?? '100', 10) || 100
   )
   const fsfStrictMode = ref(readBool(FSF_STRICT_KEY, false))
+  const bookAlignStrict = ref(readBool(BOOK_ALIGN_STRICT_KEY, false))
+  const showProjectSidebar = ref(readBool(PROJECT_SIDEBAR_KEY, true))
+  const projectSidebarWidth = ref(
+    clampSidebarWidth(
+      Number.parseInt(localStorage.getItem(PROJECT_SIDEBAR_WIDTH_KEY) ?? String(PROJECT_SIDEBAR_DEFAULT_WIDTH), 10) ||
+        PROJECT_SIDEBAR_DEFAULT_WIDTH
+    )
+  )
   let graphFitHandler: (() => void) | null = null
+
+  function clampSidebarWidth(px: number): number {
+    return Math.min(PROJECT_SIDEBAR_MAX_WIDTH, Math.max(PROJECT_SIDEBAR_MIN_WIDTH, px))
+  }
 
   function setViewMode(mode: ViewMode): void {
     viewMode.value = mode
@@ -109,9 +128,28 @@ export const useEditorUiStore = defineStore('editorUi', () => {
     localStorage.setItem(FSF_STRICT_KEY, String(v))
   }
 
+  function setBookAlignStrict(v: boolean): void {
+    bookAlignStrict.value = v
+    localStorage.setItem(BOOK_ALIGN_STRICT_KEY, String(v))
+  }
+
   function resetGraphView(): void {
     setGraphZoom(100)
     fitGraphToView()
+  }
+
+  function setShowProjectSidebar(v: boolean): void {
+    showProjectSidebar.value = v
+    localStorage.setItem(PROJECT_SIDEBAR_KEY, String(v))
+  }
+
+  function toggleProjectSidebar(): void {
+    setShowProjectSidebar(!showProjectSidebar.value)
+  }
+
+  function setProjectSidebarWidth(px: number): void {
+    projectSidebarWidth.value = clampSidebarWidth(px)
+    localStorage.setItem(PROJECT_SIDEBAR_WIDTH_KEY, String(projectSidebarWidth.value))
   }
 
   if (!visualNavRatioManual.value) {
@@ -143,10 +181,17 @@ export const useEditorUiStore = defineStore('editorUi', () => {
     showVisual,
     graphZoomPercent,
     fsfStrictMode,
+    bookAlignStrict,
     setGraphZoom,
     setFsfStrictMode,
+    setBookAlignStrict,
     registerGraphFit,
     fitGraphToView,
-    resetGraphView
+    resetGraphView,
+    showProjectSidebar,
+    projectSidebarWidth,
+    setShowProjectSidebar,
+    toggleProjectSidebar,
+    setProjectSidebarWidth
   }
 })

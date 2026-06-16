@@ -136,7 +136,7 @@ function patchStakeholders(raw: string): void {
 </script>
 
 <template>
-  <div class="visual-panel flex h-full min-h-0 flex-col">
+  <div class="visual-panel flex h-full min-h-0 w-full min-w-0 flex-col">
     <div class="flex border-b border-border-subtle px-3 py-1.5 text-xs">
       <button
         type="button"
@@ -207,11 +207,13 @@ function patchStakeholders(raw: string): void {
           :scope="informal.model.value?.system.scope"
           :assumptions="informal.model.value?.system.assumptions"
           :stakeholders="informal.model.value?.system.stakeholders"
+          :glossary="informal.model.value?.system.glossary"
           :disabled="writeDisabled"
           @patch-purpose="(v) => informal.patchById('system.purpose', v)"
           @patch-scope="(v) => informal.patchById('system.scope', v)"
           @patch-assumptions="(v) => informal.patchField('system.assumptions', v)"
           @patch-stakeholders="patchStakeholders"
+          @patch-glossary="(v) => informal.patchField('system.glossary', v)"
         />
         <button type="button" class="text-xs text-accent hover:underline" @click="showBookAlign = !showBookAlign">
           {{ showBookAlign ? t('informal.hideBookAlign') : t('informal.showBookAlign') }}
@@ -230,9 +232,11 @@ function patchStakeholders(raw: string): void {
           @add-type="informal.addType(selectedModule!.id, { id: newId('type'), name: 'NewType', typeHint: 'nat' })"
           @add-variable="informal.addVariable(selectedModule!.id, { id: newId('var'), name: 'new_var', typeHint: 'nat' })"
           @add-invariant="informal.addInvariant(selectedModule!.id, { id: newId('inv'), textHint: 'true' })"
+          @add-constant="informal.addConstant(selectedModule!.id, { id: newId('const'), name: 'new_const', valueHint: '0' })"
           @remove-type="(id) => informal.removeType(selectedModule!.id, id)"
           @remove-variable="(id) => informal.removeVariable(selectedModule!.id, id)"
           @remove-invariant="(id) => informal.removeInvariant(selectedModule!.id, id)"
+          @remove-constant="(id) => informal.removeConstant(selectedModule!.id, id)"
         />
         <InformalProcessCard
           v-if="selectedProcess && selectedModule"

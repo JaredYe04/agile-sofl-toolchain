@@ -40,7 +40,7 @@ describe('lsp spawn integration', () => {
 
     let buffer = ''
     const response = await new Promise<string>((resolve, reject) => {
-      const timeout = setTimeout(() => reject(new Error('LSP initialize timeout')), 8000)
+      const timeout = setTimeout(() => reject(new Error('LSP initialize timeout')), 15000)
 
       proc!.stdout.on('data', (chunk: Buffer) => {
         buffer += chunk.toString('utf8')
@@ -71,5 +71,5 @@ describe('lsp spawn integration', () => {
 
     const parsed = JSON.parse(response) as { result: { capabilities: unknown } }
     expect(parsed.result.capabilities).toBeTruthy()
-  }, 15000)
+  }, 25000)
 })

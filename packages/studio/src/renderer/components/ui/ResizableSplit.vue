@@ -47,7 +47,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div ref="container" class="flex h-full min-h-0">
+  <div ref="container" class="flex h-full min-h-0 w-full min-w-0 flex-1">
     <div
       class="min-h-0 shrink-0 overflow-hidden"
       :style="{ width: `${ratio * 100}%` }"
@@ -60,7 +60,7 @@ onUnmounted(() => {
     >
       <div class="w-full" />
     </div>
-    <div class="min-h-0 min-w-0 flex-1 overflow-hidden">
+    <div class="min-h-0 min-w-0 w-full flex-1 overflow-hidden">
       <slot name="right" />
     </div>
   </div>

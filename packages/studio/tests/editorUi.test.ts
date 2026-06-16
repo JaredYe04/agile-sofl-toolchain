@@ -61,4 +61,16 @@ describe('editorUi store', () => {
     ui.setGraphZoom(75)
     expect(localStorage.getItem('studio-graph-zoom-percent')).toBe('75')
   })
+
+  it('toggles and clamps project sidebar width', () => {
+    const ui = useEditorUiStore()
+    expect(ui.showProjectSidebar).toBe(true)
+    expect(ui.projectSidebarWidth).toBe(260)
+    ui.toggleProjectSidebar()
+    expect(ui.showProjectSidebar).toBe(false)
+    ui.setProjectSidebarWidth(999)
+    expect(ui.projectSidebarWidth).toBe(420)
+    ui.setProjectSidebarWidth(50)
+    expect(ui.projectSidebarWidth).toBe(200)
+  })
 })

@@ -19,8 +19,11 @@ if (!gui) throw new Error('GuiVisualEditor requires GUI_MODEL_KEY')
 const informal = inject(INFORMAL_MODEL_KEY, null)
 
 const selectedScreenId = ref<string | null>(null)
+const selectedWidgetId = ref<string | null>(null)
+const previewMode = ref(false)
 
 const screens = computed(() => gui.model.value?.screens ?? [])
+const flows = computed(() => gui.model.value?.flows ?? [])
 
 watch(screens, (list) => {
   if (!list.length) {
@@ -66,17 +69,28 @@ async function onAddWidget(): Promise<void> {
 async function onPatch(idPath: string, value: unknown): Promise<void> {
   await gui.patchById(idPath, value)
 }
+
+function onSelectWidget(widgetId: string): void {
+  selectedWidgetId.value = widgetId
+}
+
+function onNavigate(screenId: string): void {
+  selectedScreenId.value = screenId
+  selectedWidgetId.value = null
+}
 </script>
 
 <template>
-  <div class="flex h-full min-h-0 flex-col visual-panel">
+  <div class="visual-panel flex h-full min-h-0 w-full min-w-0 flex-col">
     <GuiToolbar
       :disabled="writeDisabled"
+      :preview-mode="previewMode"
+      @toggle-preview="previewMode = !previewMode"
       @add-screen="onAddScreen"
       @add-widget="onAddWidget"
       @format-yaml="gui.formatYaml()"
     />
-    <ResizableSplit class="min-h-0 flex-1" :show-left="true" :show-right="true" :initial-left-percent="22">
+    <ResizableSplit v-if="!previewMode" class="min-h-0 flex-1" :show-left="true" :show-right="true" :initial-left-percent="22">
       <template #left>
         <GuiScreenTree
           :screens="screens"
@@ -102,12 +116,29 @@ async function onPatch(idPath: string, value: unknown): Promise<void> {
             </div>
           </template>
           <template #right>
-            <GuiWireframePreview :screen="selectedScreen" />
+            <GuiWireframePreview
+              :screen="selectedScreen"
+              :screens="screens"
+              :flows="flows"
+              :preview-mode="previewMode"
+              :selected-widget-id="selectedWidgetId"
+              @navigate="onNavigate"
+              @select-widget="onSelectWidget"
+            />
           </template>
         </ResizableSplit>
       </template>
     </ResizableSplit>
-    <p v-if="embedded && informal?.model.value?.meta.guiTarget" class="border-t border-border-subtle px-3 py-1 text-xs text-content-muted">
+    <GuiWireframePreview
+      v-else
+      class="min-h-0 flex-1"
+      :screen="selectedScreen"
+      :screens="screens"
+      :flows="flows"
+      :preview-mode="true"
+      @navigate="onNavigate"
+    />
+    <p v-if="props.embedded && informal?.model.value?.meta.guiTarget" class="border-t border-border-subtle px-3 py-1 text-xs text-content-muted">
       {{ t('gui.linkedFile', { path: informal.model.value.meta.guiTarget }) }}
     </p>
   </div>

@@ -88,6 +88,9 @@ function registerFileHandlers(getWindow2) {
     await rememberDialogPath(root);
     return root;
   });
+  electron.ipcMain.handle("studio:reveal-in-folder", (_event, filePath) => {
+    electron.shell.showItemInFolder(filePath);
+  });
 }
 function joinLastDir(dir, name) {
   return node_path.join(dir, name);

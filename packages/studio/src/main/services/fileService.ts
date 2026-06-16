@@ -1,4 +1,4 @@
-import { dialog, ipcMain, type BrowserWindow } from 'electron'
+import { dialog, ipcMain, shell, type BrowserWindow } from 'electron'
 import { readFile, writeFile } from 'node:fs/promises'
 import { basename, join } from 'node:path'
 import { getLastDialogDir, rememberDialogPath } from './dialogState.js'
@@ -67,6 +67,10 @@ export function registerFileHandlers(getWindow: () => BrowserWindow | null): voi
     const root = result.filePaths[0]
     await rememberDialogPath(root)
     return root
+  })
+
+  ipcMain.handle('studio:reveal-in-folder', (_event, filePath: string) => {
+    shell.showItemInFolder(filePath)
   })
 }
 

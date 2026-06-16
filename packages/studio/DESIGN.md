@@ -107,3 +107,20 @@ Reference: [VoltAgent awesome-design-md — Cursor](https://github.com/VoltAgent
 
 Font: **Inter** (CursorGothic substitute). Scope: `.gui-preview` only — Shell IDE tokens unchanged.
 ```
+
+## 9. New File Dialog
+
+- **Blank starters** (top section): dashed `border-accent/30`, 3-column large cards, document icon + extension badge.
+- **Example templates** (below): solid `border-border-subtle`, 2-column compact cards grouped by ASFL / Informal / GUI.
+- Section headers: primary title for blanks; uppercase muted captions for example groups.
+- No heavy shadows; hairline borders only. Escape closes dialog.
+
+## 10. Project Sidebar
+
+- **Width**: default 260px, draggable 200–420px; persisted in localStorage.
+- **Collapse**: toolbar panel icon, View menu, `Ctrl+B`, resize bar chevron (hover center); persisted visibility.
+- **Expand affordance**: when collapsed, hover the left edge (vertical center) to reveal a chevron button.
+- **Pair cards**: expandable; show `.aspec` / `.asfl` / `.guispec` rows with Badge; status pill (Full / Partial / Informal only).
+- **Unpaired section**: grouped by extension, collapsed by default.
+- **Context menu**: pair/file rows (open, reveal, copy path); panel blank (open folder, refresh, close project, collapse).
+- Active tab file path highlights matching row.

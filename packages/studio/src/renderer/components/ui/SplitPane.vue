@@ -40,11 +40,15 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div ref="container" class="flex h-full min-h-0">
+  <div ref="container" class="flex h-full min-h-0 w-full min-w-0 flex-1">
     <div
       v-show="showLeft"
-      class="min-h-0 overflow-hidden"
-      :style="showRight ? { width: `${editorUi.splitRatio * 100}%` } : { flex: 1 }"
+      class="min-h-0 min-w-0 overflow-hidden"
+      :style="
+        showRight
+          ? { width: `${editorUi.splitRatio * 100}%`, flex: '0 0 auto' }
+          : { flex: '1 1 0', width: '100%' }
+      "
     >
       <slot name="left" />
     </div>
@@ -55,7 +59,7 @@ onUnmounted(() => {
     >
       <div class="w-full" />
     </div>
-    <div v-show="showRight" class="min-h-0 flex-1 overflow-hidden">
+    <div v-show="showRight" class="min-h-0 min-w-0 w-full flex-1 overflow-hidden">
       <slot name="right" />
     </div>
   </div>

@@ -40,6 +40,19 @@ function severityRank(severity: string): number {
   return 0
 }
 
+export function adjustFsfDiagnosticSeverity<T extends { code: string; severity: string }>(
+  diagnostics: T[],
+  hybridFsfStrict: boolean
+): T[] {
+  if (!hybridFsfStrict) return diagnostics
+  return diagnostics.map((d) => {
+    if (d.code === 'ASFL_FSF_001' && d.severity === 'warning') {
+      return { ...d, severity: 'error' }
+    }
+    return d
+  })
+}
+
 /** Merge visual (parse/fsf) diagnostics with LSP markers, dropping near-duplicate LSP entries. */
 export function mergeDiagnostics(
   visual: Array<{

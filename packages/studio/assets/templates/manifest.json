@@ -5,7 +5,8 @@
       "titleKey": "template.blank.title",
       "descriptionKey": "template.blank.description",
       "file": "blank.asfl",
-      "category": "basic"
+      "category": "basic",
+      "kind": "blank"
     },
     {
       "id": "minimal-module",
@@ -54,7 +55,8 @@
       "titleKey": "template.informal.blank.title",
       "descriptionKey": "template.informal.blank.description",
       "file": "informal-blank.aspec",
-      "category": "informal"
+      "category": "informal",
+      "kind": "blank"
     },
     {
       "id": "library-informal",
@@ -62,6 +64,21 @@
       "descriptionKey": "template.informal.library.description",
       "file": "library-informal.aspec",
       "category": "informal"
+    },
+    {
+      "id": "gui-blank",
+      "titleKey": "template.gui.blank.title",
+      "descriptionKey": "template.gui.blank.description",
+      "file": "informal-blank.guispec",
+      "category": "gui",
+      "kind": "blank"
+    },
+    {
+      "id": "library-gui",
+      "titleKey": "template.gui.library.title",
+      "descriptionKey": "template.gui.library.description",
+      "file": "library-gui.guispec",
+      "category": "gui"
     }
   ]
 }

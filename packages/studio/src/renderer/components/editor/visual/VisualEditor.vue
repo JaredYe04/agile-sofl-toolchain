@@ -164,14 +164,15 @@ const selectedFunction = computed(() => {
 })
 
 const blockInformalPredicate = computed(() => {
-  if (!editorUi.fsfStrictMode || selected.value?.kind !== 'process') return false
+  if (selected.value?.kind !== 'process') return false
   const proc = selectedProcess.value
   if (!proc) return false
-  return linkedHints.blockInformalForProcess(
-    selected.value.processName,
-    Boolean(proc.decom?.trim()),
-    true
-  )
+  const hasDecom = Boolean(proc.decom?.trim())
+  if (linkedHints.shouldBlockInformalForProcess(selected.value.processName, hasDecom)) return true
+  if (editorUi.fsfStrictMode) {
+    return linkedHints.blockInformalForProcess(selected.value.processName, hasDecom, true)
+  }
+  return false
 })
 
 const blockInformalFunction = computed(() => editorUi.fsfStrictMode && selected.value?.kind === 'function')
@@ -258,6 +259,17 @@ function onPatchFunction(payload: {
     name: selected.value.functionName,
     ...payload
   })
+}
+
+async function onPatchGuiWidget(payload: {
+  screenName: string
+  widgetName: string
+  text: string
+}): Promise<void> {
+  if (writeDisabled.value) return
+  const moduleName = selectedModule.value?.name
+  if (!moduleName) return
+  await visual.patchGuiWidget({ moduleName, ...payload })
 }
 
 async function onPatchDeclaration(payload: {
@@ -554,7 +566,7 @@ onUnmounted(() => document.removeEventListener('click', onGlobalClick))
 </script>
 
 <template>
-  <div class="visual-panel flex h-full min-h-0 flex-col bg-surface-base">
+  <div class="visual-panel flex h-full min-h-0 w-full min-w-0 flex-col bg-surface-base">
     <ParseErrorBanner
       v-if="visual.parseFailed.value && doc.activeTab?.content?.trim()"
       :diagnostics="diagnostics"
@@ -593,7 +605,7 @@ onUnmounted(() => document.removeEventListener('click', onGlobalClick))
       @remove-module="onRemoveModule"
     />
     <ResizableSplit
-      class="min-h-0 flex-1"
+      class="min-h-0 min-w-0 w-full flex-1"
       :ratio="editorUi.visualNavRatio"
       @update:ratio="onNavRatioUpdate"
     >
@@ -629,6 +641,7 @@ onUnmounted(() => document.removeEventListener('click', onGlobalClick))
             :module="selectedModule"
             :disabled="writeDisabled"
             @patch-declaration="onPatchDeclaration"
+            @patch-gui-widget="onPatchGuiWidget"
             @patch-invariant="onPatchInvariant"
             @rename-module="onRenameModuleInline"
             @select="selected = $event"

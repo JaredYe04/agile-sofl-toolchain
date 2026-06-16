@@ -155,6 +155,16 @@ export function useVisualModel(activeTabId: ComputedRef<string | undefined>) {
     })
   }
 
+  async function patchGuiWidget(payload: Omit<import('../../preload/index').PatchGuiWidgetPayload, 'source'>): Promise<void> {
+    scheduleVisualPatch(
+      `gui:${payload.moduleName}:${payload.screenName}:${payload.widgetName}`,
+      async (source) => {
+        if (!window.studio?.patchGuiWidget) return source
+        return window.studio.patchGuiWidget({ ...payload, source })
+      }
+    )
+  }
+
   async function patchProcess(payload: Omit<PatchProcessPayload, 'source'>): Promise<void> {
     await applySourcePatch(async (source) => {
       if (!window.studio?.patchProcess) return source
@@ -277,6 +287,7 @@ export function useVisualModel(activeTabId: ComputedRef<string | undefined>) {
     applySourcePatch,
     scheduleVisualPatch,
     patchDeclaration,
+    patchGuiWidget,
     patchProcess,
     patchFunction,
     patchInvariant,

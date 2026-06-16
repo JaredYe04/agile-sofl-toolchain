@@ -16,9 +16,13 @@ import type { Diagnostic } from './diagnostics/codes.js'
 import { formatDiagnostic } from './diagnostics/codes.js'
 
 export { textOf } from './ast/nodes.js'
+export { attachAndValidateGui, removeGuiBlocksForParse, parseGuiBlock } from './gui/guiBlock.js'
 export type {
   ProgramNode,
   ModuleNode,
+  GuiBlockNode,
+  GuiScreenNode,
+  GuiWidgetNode,
   ProcessNode,
   FunctionNode,
   ParamGroupNode,

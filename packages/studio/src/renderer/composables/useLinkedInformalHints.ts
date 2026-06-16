@@ -43,11 +43,16 @@ export function useLinkedInformalHints(activeTabId: Ref<string | undefined>) {
   }
 
   function blockInformalForProcess(processName: string, hasDecom: boolean, fsfStrict: boolean): boolean {
-    if (!fsfStrict) return false
     const hint = hintForProcess(processName)
-    if (hint) return hint.bottomLevel || hint.expectedFsfLevel === 'formal'
-    return !hasDecom
+    if (hint?.bottomLevel) return true
+    if (!hasDecom) return true
+    if (fsfStrict && (hint?.expectedFsfLevel === 'formal' || hint?.bottomLevel)) return true
+    return false
   }
 
-  return { hintsByProcess, hintForProcess, blockInformalForProcess, refresh }
+  function shouldBlockInformalForProcess(processName: string, hasDecom: boolean): boolean {
+    return blockInformalForProcess(processName, hasDecom, false)
+  }
+
+  return { hintsByProcess, hintForProcess, blockInformalForProcess, shouldBlockInformalForProcess, refresh }
 }

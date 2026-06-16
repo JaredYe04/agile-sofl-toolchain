@@ -26,7 +26,10 @@ import type {
   ExpressionNode,
   BindingGroupNode,
   QuantifiedNode,
-  LetBindingNode
+  LetBindingNode,
+  GuiBlockNode,
+  GuiScreenNode,
+  GuiWidgetNode
 } from '../ast/nodes.js'
 import { mergeSpans, EMPTY_SPAN } from '../ast/span.js'
 import { spanOfToken, spanOfChildren, spanFromLocation, spanOfTokens } from '../ast/spanHelpers.js'
@@ -137,7 +140,8 @@ function cstToTopModule(cst: CstNode): ModuleNode {
     vars: body ? extractVars(body) : [],
     invariants: body ? extractInvs(body) : [],
     processes: body ? extractProcesses(body) : [],
-    functions: body ? extractFunctions(body) : []
+    functions: body ? extractFunctions(body) : [],
+    gui: body ? extractGui(body) : undefined
   }
 }
 
@@ -160,7 +164,8 @@ function cstToRegularModule(cst: CstNode): ModuleNode {
     vars: body ? extractVars(body) : [],
     invariants: body ? extractInvs(body) : [],
     processes: body ? extractProcesses(body) : [],
-    functions: body ? extractFunctions(body) : []
+    functions: body ? extractFunctions(body) : [],
+    gui: body ? extractGui(body) : undefined
   }
 }
 
@@ -239,6 +244,60 @@ function extractInvs(body: CstNode): InvariantNode[] {
     }
   }
   return result
+}
+
+function decodeStringLiteral(image: string): string {
+  return image.slice(1, -1).replace(/\\"/g, '"')
+}
+
+const WIDGET_KINDS = new Set(['label', 'button', 'text-input', 'navigation'])
+
+function widgetKindFromWidgetCst(widgetCst: CstNode): GuiWidgetNode['kind'] | null {
+  if (tokensOf(widgetCst, 'TextInput')[0]) return 'text-input'
+  const ids = tokensOf(widgetCst, 'Identifier')
+  const kind = ids[0]?.image?.toLowerCase()
+  if (kind && WIDGET_KINDS.has(kind)) return kind as GuiWidgetNode['kind']
+  return null
+}
+
+function extractGui(body: CstNode): GuiBlockNode | undefined {
+  const block = singleChild(body, 'guiBlock')
+  if (!block) return undefined
+  const ids = tokensOf(block, 'Identifier')
+  const name = ids[0]?.image ?? ''
+  const screens: GuiScreenNode[] = []
+  for (const screenCst of allRuleInstances(block, 'guiScreen')) {
+    const screenIds = tokensOf(screenCst, 'Identifier')
+    const screenName = screenIds[0]?.image ?? ''
+    const widgets: GuiWidgetNode[] = []
+    for (const widgetCst of allRuleInstances(screenCst, 'guiWidget')) {
+      const kind = widgetKindFromWidgetCst(widgetCst)
+      const widgetIds = tokensOf(widgetCst, 'Identifier')
+      const hasTextInput = Boolean(tokensOf(widgetCst, 'TextInput')[0])
+      const str = tokensOf(widgetCst, 'StringLiteral')[0]
+      const hasTrigger = Boolean(tokensOf(widgetCst, 'Triggers')[0])
+      widgets.push({
+        type: 'gui_widget',
+        kind: kind ?? 'label',
+        name: (hasTextInput ? widgetIds[0] : widgetIds[1])?.image ?? '',
+        text: str ? decodeStringLiteral(str.image) : '',
+        triggersProcess: hasTrigger ? widgetIds.at(-1)?.image : undefined,
+        span: spanOf(widgetCst)
+      })
+    }
+    screens.push({
+      type: 'gui_screen',
+      name: screenName,
+      widgets,
+      span: spanOf(screenCst)
+    })
+  }
+  return {
+    type: 'gui_block',
+    name,
+    screens,
+    span: spanOf(block)
+  }
 }
 
 function extractProcesses(body: CstNode): ProcessNode[] {

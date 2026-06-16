@@ -30,5 +30,9 @@ export const useProjectStore = defineStore('project', () => {
     scanning.value = v
   }
 
-  return { root, opening, scanning, setRoot, openFolder, setScanning }
+  function closeProject(): void {
+    setRoot(null)
+  }
+
+  return { root, opening, scanning, setRoot, openFolder, setScanning, closeProject }
 })

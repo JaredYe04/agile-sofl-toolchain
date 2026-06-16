@@ -124,15 +124,35 @@ export function buildCoverageReport(
     for (const fn of mod.functions ?? []) {
       const { ast } = parse(asflSource)
       let exists = false
+      let hasBody = false
+      let hasFsf = false
       if (ast?.type === 'program') {
         for (const m of ast.modules) {
-          if (m.functions.some((f) => f.name === fn.name)) exists = true
+          const found = m.functions.find((f) => f.name === fn.name)
+          if (found) {
+            exists = true
+            hasBody = !found.isUndefined && Boolean(found.body)
+            hasFsf = Boolean(found.fsf)
+          }
         }
       }
-      const status: CoverageItem['status'] = isStale ? 'stale' : exists ? 'covered' : 'missing'
-      if (status === 'covered') covered++
-      else if (status === 'missing') missing++
-      else if (status === 'stale') stale++
+      const tagged = hasAspecTag(asflSource, fn.id)
+      let status: CoverageItem['status'] = 'missing'
+      if (isStale && trace?.links.some((l) => l.aspecId === fn.id)) {
+        status = 'stale'
+        stale++
+      } else if (!exists) {
+        status = 'missing'
+        missing++
+      } else if ((hasBody || hasFsf) && tagged) {
+        status = 'covered'
+        covered++
+      } else if (exists) {
+        status = 'partial'
+        partial++
+      } else {
+        missing++
+      }
       items.push({ aspecId: fn.id, kind: 'function', name: fn.name, status })
     }
   }

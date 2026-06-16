@@ -21,6 +21,14 @@ export function useFileActions() {
 
     await window.studio!.fileWrite(path, tab.content)
     doc.markSaved(tab.id, path, path.split(/[/\\]/).pop() ?? tab.title)
+    if (tab.documentKind === 'aspec' && path && window.studio?.updateTraceContentHash) {
+      const tracePath = path.replace(/\.aspec$/i, '.aspec.trace.json')
+      try {
+        await window.studio.updateTraceContentHash(tracePath, tab.content)
+      } catch {
+        /* trace file may not exist yet */
+      }
+    }
     return true
   }
 

@@ -15,6 +15,7 @@ import { GUI_MODEL_KEY } from '../../composables/guiModelContext'
 import {
   mergeDiagnostics,
   filterDiagnosticsBySelection,
+  adjustFsfDiagnosticSeverity,
   type MergedDiagnostic
 } from '@agile-sofl/editor-api'
 import type { CoverageReportPayload, DiagnosticSummary } from '../../preload/index'
@@ -79,7 +80,10 @@ const informalDiagnostics = computed((): MergedDiagnostic[] => {
 const unifiedDiagnostics = computed((): MergedDiagnostic[] => {
   if (!isDocumentActive.value) return []
   if (isAspec.value) return informalDiagnostics.value
-  const visualItems = (visual.diagnostics.value ?? []) as DiagnosticSummary[]
+  const visualItems = adjustFsfDiagnosticSeverity(
+    (visual.diagnostics.value ?? []) as DiagnosticSummary[],
+    editorUi.fsfStrictMode
+  ) as DiagnosticSummary[]
   return mergeDiagnostics(visualItems, lspDiagnostics.markers)
 })
 
@@ -222,8 +226,8 @@ defineExpose({
 </script>
 
 <template>
-  <div class="flex h-full min-h-0 flex-col">
-    <SplitPane class="min-h-0 flex-1" :show-left="showLeft" :show-right="showRight">
+  <div class="flex h-full min-h-0 w-full min-w-0 flex-1 flex-col">
+    <SplitPane class="min-h-0 min-w-0 w-full flex-1" :show-left="showLeft" :show-right="showRight">
       <template #left>
         <MonacoEditor v-if="showLeft" ref="monacoRef" />
       </template>

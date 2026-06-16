@@ -8,6 +8,7 @@ import { useNewFileDialog } from '../../composables/useNewFileDialog'
 import { useProjectStore } from '../../stores/projectStore'
 import { useDocumentStore } from '../../stores/document'
 import { useModalStore } from '../../stores/modal'
+import { useEditorUiStore } from '../../stores/editorUi'
 
 const emit = defineEmits<{ edit: [cmd: string]; devTools: []; format: []; refine: [] }>()
 
@@ -18,6 +19,7 @@ const newFileDialog = useNewFileDialog()
 const modal = useModalStore()
 const project = useProjectStore()
 const docStore = useDocumentStore()
+const editorUi = useEditorUiStore()
 
 const accessKeys: Record<string, string> = {
   file: 'f',
@@ -55,6 +57,13 @@ const editItems = computed<MenuItem[]>(() => [
 ])
 
 const viewItems = computed<MenuItem[]>(() => [
+  {
+    id: 'toggleSidebar',
+    label: t('menu.view.toggleSidebar'),
+    shortcut: 'Ctrl+B',
+    action: () => editorUi.toggleProjectSidebar()
+  },
+  { id: 'sep0', label: '', separator: true },
   { id: 'light', label: t('menu.view.themeLight'), action: () => app.setTheme('light') },
   { id: 'dark', label: t('menu.view.themeDark'), action: () => app.setTheme('dark') },
   { id: 'system', label: t('menu.view.themeSystem'), action: () => app.setTheme('system') },

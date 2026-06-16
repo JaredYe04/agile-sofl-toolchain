@@ -9,6 +9,7 @@ import type { ProgramNode, ModuleNode } from '../ast/nodes.js'
 import type { Diagnostic } from '../diagnostics/codes.js'
 import { createDiagnostic, DiagnosticCodes } from '../diagnostics/codes.js'
 import { EMPTY_SPAN } from '../ast/span.js'
+import { validateGuiTriggers } from '../gui/guiBlock.js'
 import type { CstNode } from 'chevrotain'
 
 export interface ParseResult {
@@ -90,11 +91,19 @@ function runProgramParse(source: string, options: ParseOptions = {}): ParseResul
 }
 
 export function parse(source: string, options?: ParseOptions): ParseResult {
-  return runProgramParse(source, options)
+  const result = runProgramParse(source, options)
+  if (result.ast?.type === 'program') {
+    result.diagnostics.push(...validateGuiTriggers(result.ast))
+  }
+  return result
 }
 
 export function parseStrict(source: string): ParseResult {
-  return runProgramParse(source, { tolerant: false })
+  const result = runProgramParse(source, { tolerant: false })
+  if (result.ast?.type === 'program') {
+    result.diagnostics.push(...validateGuiTriggers(result.ast))
+  }
+  return result
 }
 
 export function parseModule(source: string, options?: ParseOptions): ParseResult {

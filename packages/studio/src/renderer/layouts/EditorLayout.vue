@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import TitleBar from '../components/chrome/TitleBar.vue'
-import Sidebar from '../components/chrome/Sidebar.vue'
+import SidebarResizeSplit from '../components/ui/SidebarResizeSplit.vue'
+import ProjectSidebar from '../components/chrome/project/ProjectSidebar.vue'
 import EditorTabs from '../components/editor/EditorTabs.vue'
 import EditorToolbar from '../components/editor/EditorToolbar.vue'
 import EditorWorkspace from '../components/editor/EditorWorkspace.vue'
@@ -17,6 +18,7 @@ import { useDocumentStore } from '../stores/document'
 import { useModalStore } from '../stores/modal'
 import Modal from '../components/ui/Modal.vue'
 import { useCommandCenterStore } from '../stores/commandCenter'
+import { useEditorUiStore } from '../stores/editorUi'
 
 const workspaceRef = ref<InstanceType<typeof EditorWorkspace> | null>(null)
 const files = useFileActions()
@@ -24,6 +26,7 @@ const doc = useDocumentStore()
 const modalStore = useModalStore()
 const newFileDialog = useNewFileDialog()
 const commandCenter = useCommandCenterStore()
+const editorUi = useEditorUiStore()
 const refineOpen = ref(false)
 
 function onUndoRedo(cmd: 'undo' | 'redo'): boolean {
@@ -82,7 +85,8 @@ useKeyboardShortcuts(
     openCommandCenter: (q) => commandCenter.open(q),
     isCommandCenterOpen: () => commandCenter.isOpen,
     closeCommandCenter: () => commandCenter.close()
-  }
+  },
+  () => editorUi.toggleProjectSidebar()
 )
 
 let unsubClose: (() => void) | undefined
@@ -102,14 +106,20 @@ onUnmounted(() => {
   <div class="flex h-full flex-col overflow-hidden">
     <TitleBar @edit="onEdit" @dev-tools="onDevTools" @format="onFormat" @refine="refineOpen = true" />
     <EditorTabs />
-    <main class="flex min-h-0 flex-1 flex-col bg-surface-raised">
+    <main class="flex min-h-0 w-full min-w-0 flex-1 flex-col bg-surface-raised">
       <HomeView v-if="doc.isHomeActive" />
       <WelcomeView v-else-if="doc.showWelcomeFallback" />
       <template v-else-if="showDocumentEditor">
         <EditorToolbar @format="onFormat" />
-        <div class="flex min-h-0 flex-1">
-          <Sidebar v-if="showDocumentEditor" />
-          <EditorWorkspace ref="workspaceRef" class="min-h-0 flex-1" />
+        <div class="flex min-h-0 min-w-0 w-full flex-1">
+          <SidebarResizeSplit class="min-h-0 min-w-0 w-full flex-1">
+            <template #sidebar>
+              <ProjectSidebar />
+            </template>
+            <template #main>
+              <EditorWorkspace ref="workspaceRef" class="min-h-0 min-w-0 w-full flex-1" />
+            </template>
+          </SidebarResizeSplit>
         </div>
       </template>
     </main>

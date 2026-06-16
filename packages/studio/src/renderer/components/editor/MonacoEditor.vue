@@ -319,7 +319,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div ref="container" class="h-full min-h-0 flex-1" />
+  <div ref="container" class="h-full min-h-0 w-full min-w-0 flex-1" />
 </template>
 
 <style>

@@ -49,7 +49,7 @@ export type {
   ModuleSpanIndex
 } from './filterDiagnostics.js'
 
-export { mergeDiagnostics, countBySeverity } from './mergeDiagnostics.js'
+export { mergeDiagnostics, countBySeverity, adjustFsfDiagnosticSeverity } from './mergeDiagnostics.js'
 export type { MergedDiagnostic, DiagnosticSource } from './mergeDiagnostics.js'
 
 export {
@@ -126,6 +126,7 @@ export {
 } from './processPatch.js'
 export type { ProcessPatchAction, FunctionPatchAction } from './processPatch.js'
 
+export { patchGuiWidgetText } from './guiPatch.js'
 export { toSerializableSpan, sliceText } from './span.js'
 export type { SerializableSpan } from './span.js'
 

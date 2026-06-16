@@ -45,6 +45,27 @@ export interface ModuleNode extends WithSpan {
   invariants: InvariantNode[]
   processes: ProcessNode[]
   functions: FunctionNode[]
+  gui?: GuiBlockNode
+}
+
+export interface GuiWidgetNode extends WithSpan {
+  type: 'gui_widget'
+  kind: 'label' | 'button' | 'text-input' | 'navigation'
+  name: string
+  text: string
+  triggersProcess?: string
+}
+
+export interface GuiScreenNode extends WithSpan {
+  type: 'gui_screen'
+  name: string
+  widgets: GuiWidgetNode[]
+}
+
+export interface GuiBlockNode extends WithSpan {
+  type: 'gui_block'
+  name: string
+  screens: GuiScreenNode[]
 }
 
 export interface QualifiedNameNode extends WithSpan {

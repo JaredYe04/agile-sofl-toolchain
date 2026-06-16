@@ -22,6 +22,21 @@ const showMonacoToggles = computed(() => editorUi.viewMode === 'code' || editorU
     class="flex h-[36px] shrink-0 items-center justify-between border-b border-border-subtle bg-surface-base px-3"
   >
     <div class="flex items-center gap-3">
+      <button
+        type="button"
+        class="rounded-md p-1.5 text-content-secondary transition-colors hover:bg-surface-overlay hover:text-content-primary"
+        :title="t('sidebar.toggle')"
+        :aria-pressed="editorUi.showProjectSidebar"
+        @click="editorUi.toggleProjectSidebar()"
+      >
+        <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+          <path
+            fill-rule="evenodd"
+            d="M2 4.75A.75.75 0 0 1 2.75 4h14.5a.75.75 0 0 1 0 1.5H2.75A.75.75 0 0 1 2 4.75ZM2 10a.75.75 0 0 1 .75-.75h14.5a.75.75 0 0 1 0 1.5H2.75A.75.75 0 0 1 2 10Zm0 5.25a.75.75 0 0 1 .75-.75h14.5a.75.75 0 0 1 0 1.5H2.75a.75.75 0 0 1-.75-.75Z"
+            clip-rule="evenodd"
+          />
+        </svg>
+      </button>
       <div class="flex rounded-lg border border-border-subtle p-0.5">
         <button
           v-for="mode in modes"

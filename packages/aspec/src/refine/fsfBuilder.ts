@@ -54,12 +54,31 @@ export function buildProcessFsf(proc: InformalProcess): string {
   return lines.map((line, i) => (i < lines.length - 1 ? `${line} ||` : line)).join('\n')
 }
 
-export function buildFunctionBody(fn: { bodyHint?: string; refinementHints?: { bottomLevel?: boolean } }): string {
+export function buildFunctionBody(fn: { bodyHint?: string; refinementHints?: { bottomLevel?: boolean; expectedFsfLevel?: 'semi-formal' | 'formal' } }): string {
   const hint = fn.bodyHint?.trim()
   if (!hint) return 'undefined'
   const bottom = fn.refinementHints?.bottomLevel ?? false
-  if (bottom && /^[a-zA-Z_(]/.test(hint)) return hint
+  const formal = fn.refinementHints?.expectedFsfLevel === 'formal' || bottom
+  if (formal && /^[a-zA-Z_(]/.test(hint)) return hint
   return `informal ${sanitizeInformalText(hint)}`
+}
+
+export function shouldRenderFunctionFsf(fn: {
+  bodyHint?: string
+  refinementHints?: { expectedFsfLevel?: 'semi-formal' | 'formal' }
+}): boolean {
+  const level = fn.refinementHints?.expectedFsfLevel
+  return level === 'semi-formal' || (level === 'formal' && Boolean(fn.bodyHint?.trim()))
+}
+
+export function buildFunctionFsf(fn: { bodyHint?: string; refinementHints?: { bottomLevel?: boolean; expectedFsfLevel?: 'semi-formal' | 'formal' } }): string {
+  const hint = fn.bodyHint?.trim()
+  const formal = fn.refinementHints?.expectedFsfLevel === 'formal' || fn.refinementHints?.bottomLevel
+  if (formal && hint && /^[a-zA-Z_(]/.test(hint)) {
+    return `true && ${hint}`
+  }
+  const test = hint ? `informal ${sanitizeInformalText(hint)}` : 'true'
+  return `${test} && true`
 }
 
 export function aspecCommentTag(aspecId: string, notes?: string): string {

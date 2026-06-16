@@ -96,18 +96,37 @@ async function ensureDiffEditor(): Promise<void> {
   syncDiffModels()
 }
 
+async function resolveGuiSource(tab: NonNullable<ReturnType<typeof aspecTab>>): Promise<string | undefined> {
+  const guiTarget = (await window.studio?.buildInformalModel(tab.content))?.meta.guiTarget
+  if (guiTarget && tab.filePath && window.studio?.fileRead) {
+    try {
+      const base = tab.filePath.replace(/[/\\][^/\\]+$/, '')
+      const file = await window.studio.fileRead(`${base}/${guiTarget.replace(/^\.\//, '')}`.replace(/\\/g, '/'))
+      return file.content
+    } catch {
+      /* no external gui */
+    }
+  }
+  if (tab.content.includes('\ngui:') || tab.content.startsWith('gui:')) return tab.content
+  const pair = doc.documentTabs.find((t) => t.documentKind === 'guispec' && t.linkedDocumentId === tab.id)
+  return pair?.content
+}
+
 async function loadPreview(): Promise<void> {
   const tab = aspecTab()
   if (!tab || !window.studio?.refineAspec) return
   error.value = null
   preview.value = ''
   const hybrid = hybridTab()
+  const guiSource = await resolveGuiSource(tab)
   const result = await window.studio.refineAspec({
     source: tab.content,
     aspecUri: tab.filePath ?? undefined,
     existingAsfl: preserveExisting.value && targetMode.value === 'linked' ? hybrid?.content : undefined,
     skeletonOnly: skeletonOnly.value,
-    mergePlans: preserveExisting.value ? mergePlans.value : undefined
+    mergePlans: preserveExisting.value ? mergePlans.value : undefined,
+    guiSource,
+    emitGuiBlock: Boolean(guiSource)
   })
   preview.value = result.asflText
   if (!result.checkOk) {
@@ -154,12 +173,15 @@ async function runRefine(): Promise<void> {
   refining.value = true
   try {
     const hybrid = hybridTab()
+    const guiSource = await resolveGuiSource(tab)
     const result = await window.studio.refineAspec({
       source: tab.content,
       aspecUri: tab.filePath ?? undefined,
       existingAsfl: preserveExisting.value && targetMode.value === 'linked' ? hybrid?.content : undefined,
       skeletonOnly: skeletonOnly.value,
-      mergePlans: preserveExisting.value ? mergePlans.value : undefined
+      mergePlans: preserveExisting.value ? mergePlans.value : undefined,
+      guiSource,
+      emitGuiBlock: Boolean(guiSource)
     })
     let target = targetMode.value === 'linked' ? hybrid : undefined
     if (!target) {

@@ -219,7 +219,7 @@
       "patterns": [
         {
           "name": "keyword.declaration.asfl",
-          "match": "\\b(const|type|var|inv|ext|rd|wr|decom|comment|forall|forevery|forsome)\\b"
+          "match": "\\b(const|type|var|inv|ext|rd|wr|decom|comment|gui|screen|end_gui|end_screen|label|button|text-input|navigation|triggers|forall|forevery|forsome)\\b"
         }
       ]
     },

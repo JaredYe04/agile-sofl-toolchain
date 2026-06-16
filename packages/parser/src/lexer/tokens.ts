@@ -6,6 +6,8 @@ function kw(word: string): RegExp {
 }
 export const Others = createToken({ name: 'Others', pattern: kw('others') })
 export const EndModule = createToken({ name: 'EndModule', pattern: kw('end_module') })
+export const EndGui = createToken({ name: 'EndGui', pattern: kw('end_gui') })
+export const EndScreen = createToken({ name: 'EndScreen', pattern: kw('end_screen') })
 export const EndProcess = createToken({ name: 'EndProcess', pattern: kw('end_process') })
 export const EndFunction = createToken({ name: 'EndFunction', pattern: kw('end_function') })
 export const EndCase = createToken({ name: 'EndCase', pattern: kw('end_case') })
@@ -24,6 +26,10 @@ export const Const = createToken({ name: 'Const', pattern: kw('const') })
 export const Type = createToken({ name: 'Type', pattern: kw('type') })
 export const Var = createToken({ name: 'Var', pattern: kw('var') })
 export const Inv = createToken({ name: 'Inv', pattern: kw('inv') })
+export const Gui = createToken({ name: 'Gui', pattern: kw('gui') })
+export const Screen = createToken({ name: 'Screen', pattern: kw('screen') })
+export const Triggers = createToken({ name: 'Triggers', pattern: kw('triggers') })
+export const TextInput = createToken({ name: 'TextInput', pattern: /\btext-input\b/ })
 export const Ext = createToken({ name: 'Ext', pattern: kw('ext') })
 export const Init = createToken({ name: 'Init', pattern: /\bInit\b/ })
 export const Equal = createToken({ name: 'Equal', pattern: kw('equal') })
@@ -202,6 +208,8 @@ export const allTokens: TokenType[] = [
   // Keywords (longer first)
   Others,
   EndModule,
+  EndGui,
+  EndScreen,
   EndProcess,
   EndFunction,
   EndCase,
@@ -230,6 +238,10 @@ export const allTokens: TokenType[] = [
   Type,
   Var,
   Inv,
+  Gui,
+  Screen,
+  Triggers,
+  TextInput,
   Ext,
   Init,
   Equal,

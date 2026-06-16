@@ -9,6 +9,7 @@ import type {
   InformalType,
   InformalVar,
   InformalInv,
+  InformalConst,
   BookAlignSection
 } from './model.js'
 
@@ -77,6 +78,17 @@ export function patchFieldById(source: string, idPath: string, value: unknown): 
           setOnObject(scen as unknown as Record<string, unknown>, fieldName, value)
           return serializeAspec(doc)
         }
+      }
+    }
+    return source
+  }
+
+  if (kind === 'const') {
+    for (const mod of doc.modules) {
+      const c = mod.constants?.find((x) => x.id === id)
+      if (c && field) {
+        setOnObject(c as unknown as Record<string, unknown>, field, value)
+        return serializeAspec(doc)
       }
     }
     return source
@@ -257,7 +269,7 @@ export function removeAspecFunction(source: string, moduleId: string, functionId
 function addEntity<T>(
   source: string,
   moduleId: string,
-  key: 'types' | 'variables' | 'invariants',
+  key: 'types' | 'variables' | 'invariants' | 'constants',
   entity: T
 ): string {
   const { document } = parseAspec(source)
@@ -273,7 +285,7 @@ function addEntity<T>(
 function removeEntity(
   source: string,
   moduleId: string,
-  key: 'types' | 'variables' | 'invariants',
+  key: 'types' | 'variables' | 'invariants' | 'constants',
   entityId: string
 ): string {
   const { document } = parseAspec(source)
@@ -283,6 +295,14 @@ function removeEntity(
   if (!mod?.[key]) return source
   ;(mod[key] as Array<{ id: string }>) = (mod[key] as Array<{ id: string }>).filter((e) => e.id !== entityId)
   return serializeAspec(doc)
+}
+
+export function addAspecConst(source: string, moduleId: string, constant: InformalConst): string {
+  return addEntity(source, moduleId, 'constants', constant)
+}
+
+export function removeAspecConst(source: string, moduleId: string, constId: string): string {
+  return removeEntity(source, moduleId, 'constants', constId)
 }
 
 export function addAspecType(source: string, moduleId: string, type: InformalType): string {
@@ -340,6 +360,8 @@ export type PatchAspecAction =
   | { action: 'remove-variable'; moduleId: string; variableId: string }
   | { action: 'add-invariant'; moduleId: string; invariant: InformalInv }
   | { action: 'remove-invariant'; moduleId: string; invariantId: string }
+  | { action: 'add-constant'; moduleId: string; constant: InformalConst }
+  | { action: 'remove-constant'; moduleId: string; constantId: string }
   | { action: 'patch-book-align'; bookAlign: BookAlignSection }
 
 export function patchAspec(source: string, payload: PatchAspecAction): string {
@@ -376,6 +398,10 @@ export function patchAspec(source: string, payload: PatchAspecAction): string {
       return addAspecInv(source, payload.moduleId, payload.invariant)
     case 'remove-invariant':
       return removeAspecInv(source, payload.moduleId, payload.invariantId)
+    case 'add-constant':
+      return addAspecConst(source, payload.moduleId, payload.constant)
+    case 'remove-constant':
+      return removeAspecConst(source, payload.moduleId, payload.constantId)
     case 'patch-book-align':
       return patchBookAlign(source, payload.bookAlign)
     default:

@@ -7,7 +7,11 @@ import { extractGuiFromAspec } from '@agile-sofl/gui'
 import type { GuiModelSummary } from './model.js'
 import { attachDiagnosticLines } from './sourceSpans.js'
 
-export function buildInformalModel(source: string): InformalDocumentModel {
+export type BuildInformalModelOptions = {
+  bookAlignStrict?: boolean
+}
+
+export function buildInformalModel(source: string, options?: BuildInformalModelOptions): InformalDocumentModel {
   const { document, diagnostics: parseDiags } = parseAspec(source)
   if (!document) {
     return {
@@ -18,7 +22,7 @@ export function buildInformalModel(source: string): InformalDocumentModel {
     }
   }
   resolveModuleParents(document)
-  const styleDiags = validateAspec(document)
+  const styleDiags = validateAspec(document, { bookAlignStrict: options?.bookAlignStrict })
   const embeddedGui = extractGuiFromAspec(source)
   let guiSummary: GuiModelSummary | undefined
   if (embeddedGui || document.meta.guiTarget) {

@@ -34,7 +34,7 @@ export function validateBookAlign(document: AspecDocument, strict = false): Aspe
           createDiagnostic(
             DiagnosticCodes.BOOK_ALIGN_FUNCTION_FORMAT,
             'Each bookAlign.functions entry needs ref and description',
-            'warning',
+            strict ? 'error' : 'warning',
             'bookAlign.functions'
           )
         )
@@ -49,7 +49,7 @@ export function validateBookAlign(document: AspecDocument, strict = false): Aspe
           createDiagnostic(
             DiagnosticCodes.BOOK_ALIGN_DATA_FORMAT,
             'Each bookAlign.data entry needs ref and description',
-            'warning',
+            strict ? 'error' : 'warning',
             'bookAlign.data'
           )
         )
@@ -73,7 +73,7 @@ export function validateBookAlign(document: AspecDocument, strict = false): Aspe
           createDiagnostic(
             DiagnosticCodes.BOOK_ALIGN_CONSTRAINT_FORMAT,
             'Each bookAlign.constraints entry needs ref and description',
-            'warning',
+            strict ? 'error' : 'warning',
             'bookAlign.constraints'
           )
         )

@@ -75,6 +75,8 @@ const studio = {
     ipcRenderer.invoke('studio:format-document', source) as Promise<string>,
   patchDeclaration: (payload: PatchDeclarationPayload) =>
     ipcRenderer.invoke('studio:patch-declaration', payload) as Promise<string>,
+  patchGuiWidget: (payload: PatchGuiWidgetPayload) =>
+    ipcRenderer.invoke('studio:patch-gui-widget', payload) as Promise<string>,
   patchProcess: (payload: PatchProcessPayload) =>
     ipcRenderer.invoke('studio:patch-process', payload) as Promise<string>,
   patchFunction: (payload: PatchFunctionPayload) =>
@@ -121,8 +123,10 @@ const studio = {
     >
   ,
   openProjectFolder: () => ipcRenderer.invoke('studio:open-project-folder') as Promise<string | null>,
-  buildInformalModel: (source: string) =>
-    ipcRenderer.invoke('studio:build-informal-model', source) as Promise<InformalModelPayload>,
+  revealInFolder: (filePath: string) =>
+    ipcRenderer.invoke('studio:reveal-in-folder', filePath) as Promise<void>,
+  buildInformalModel: (source: string, options?: { bookAlignStrict?: boolean }) =>
+    ipcRenderer.invoke('studio:build-informal-model', source, options) as Promise<InformalModelPayload>,
   patchAspec: (payload: PatchAspecPayload) =>
     ipcRenderer.invoke('studio:patch-aspec', payload) as Promise<string>,
   refineAspec: (payload: RefineAspecPayload) =>
@@ -142,6 +146,8 @@ const studio = {
   scanProject: (root: string) => ipcRenderer.invoke('studio:scan-project', root) as Promise<ProjectScanPayload>,
   writeTraceFile: (filePath: string, traceJson: string) =>
     ipcRenderer.invoke('studio:write-trace-file', filePath, traceJson) as Promise<boolean>,
+  updateTraceContentHash: (tracePath: string, aspecSource: string) =>
+    ipcRenderer.invoke('studio:update-trace-content-hash', { tracePath, aspecSource }) as Promise<boolean>,
   formatAspec: (source: string) => ipcRenderer.invoke('studio:format-aspec', source) as Promise<string>,
   buildGuiModel: (payload: { source: string; informalSource?: string }) =>
     ipcRenderer.invoke('studio:build-gui-model', payload) as Promise<GuiModelPayload>,
@@ -218,6 +224,26 @@ export type VisualModuleProcess = {
   fsfFormal?: 'formal' | 'semi-formal' | null
 }
 
+export type VisualGuiWidget = {
+  name: string
+  kind: string
+  text: string
+  triggersProcess?: string
+  span: { start: number; end: number; line: number; column: number }
+}
+
+export type VisualGuiScreen = {
+  name: string
+  span: { start: number; end: number; line: number; column: number }
+  widgets: VisualGuiWidget[]
+}
+
+export type VisualGuiBlock = {
+  name: string
+  span: { start: number; end: number; line: number; column: number }
+  screens: VisualGuiScreen[]
+}
+
 export type VisualModuleSummary = {
   name: string
   isSystem: boolean
@@ -233,6 +259,7 @@ export type VisualModuleSummary = {
   consts: VisualDeclarationItem[]
   types: VisualDeclarationItem[]
   vars: VisualDeclarationItem[]
+  gui?: VisualGuiBlock
 }
 
 export type ModuleGraphLayoutPayload = {
@@ -297,6 +324,14 @@ export type PatchProcessPayload = {
   name: string
   newName?: string
   template?: string
+}
+
+export type PatchGuiWidgetPayload = {
+  source: string
+  moduleName: string
+  screenName: string
+  widgetName: string
+  text: string
 }
 
 export type PatchDeclarationPayload = {
@@ -415,7 +450,15 @@ export type InformalModulePayload = {
   name: string
   description: string
   processes?: InformalProcessPayload[]
-  functions?: Array<{ id: string; name: string; description?: string }>
+  functions?: Array<{
+    id: string
+    name: string
+    description?: string
+    bodyHint?: string
+    signature?: InformalProcessPayload['signature']
+    refinementHints?: InformalProcessPayload['refinementHints']
+  }>
+  constants?: Array<{ id: string; name: string; valueHint?: string; description?: string }>
   types?: Array<{ id: string; name: string; typeHint?: string }>
   variables?: Array<{ id: string; name: string; typeHint?: string }>
   invariants?: Array<{ id: string; textHint?: string; description?: string }>
@@ -462,6 +505,8 @@ export type PatchAspecPayload = {
     | 'remove-variable'
     | 'add-invariant'
     | 'remove-invariant'
+    | 'add-constant'
+    | 'remove-constant'
     | 'patch-book-align'
   path?: string
   idPath?: string
@@ -480,6 +525,8 @@ export type PatchAspecPayload = {
   type?: { id: string; name: string; typeHint?: string; description?: string }
   variable?: { id: string; name: string; typeHint?: string; description?: string }
   invariant?: { id: string; textHint?: string; description?: string }
+  constant?: { id: string; name: string; valueHint?: string; description?: string }
+  constantId?: string
   bookAlign?: BookAlignPayload
 }
 
@@ -490,6 +537,8 @@ export type RefineAspecPayload = {
   existingAsfl?: string
   skeletonOnly?: boolean
   mergePlans?: Array<{ aspecId: string; processName: string; strategy: string }>
+  guiSource?: string
+  emitGuiBlock?: boolean
 }
 
 export type RefineAspecResult = {

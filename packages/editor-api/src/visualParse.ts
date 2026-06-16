@@ -67,6 +67,21 @@ export type VisualModelResult = {
     consts: Array<{ name: string; text: string; span: ReturnType<typeof toSerializableSpan> }>
     types: Array<{ name: string; text: string; span: ReturnType<typeof toSerializableSpan> }>
     vars: Array<{ name: string; text: string; span: ReturnType<typeof toSerializableSpan> }>
+    gui?: {
+      name: string
+      span: ReturnType<typeof toSerializableSpan>
+      screens: Array<{
+        name: string
+        span: ReturnType<typeof toSerializableSpan>
+        widgets: Array<{
+          name: string
+          kind: string
+          text: string
+          triggersProcess?: string
+          span: ReturnType<typeof toSerializableSpan>
+        }>
+      }>
+    }
   }>
 }
 
@@ -205,7 +220,24 @@ export function buildVisualModelTolerant(source: string): VisualModelResult {
         name: v.variable.name,
         text: sliceText(source, v.span).trim(),
         span: toSerializableSpan(v.span)
-      }))
+      })),
+      gui: mod.gui
+        ? {
+            name: mod.gui.name,
+            span: toSerializableSpan(mod.gui.span),
+            screens: mod.gui.screens.map((s) => ({
+              name: s.name,
+              span: toSerializableSpan(s.span),
+              widgets: s.widgets.map((w) => ({
+                name: w.name,
+                kind: w.kind,
+                text: w.text,
+                triggersProcess: w.triggersProcess,
+                span: toSerializableSpan(w.span)
+              }))
+            }))
+          }
+        : undefined
     }))
   }
 }

@@ -16,9 +16,11 @@ const emit = defineEmits<{
   addType: []
   addVariable: []
   addInvariant: []
+  addConstant: []
   removeType: [id: string]
   removeVariable: [id: string]
   removeInvariant: [id: string]
+  removeConstant: [id: string]
 }>()
 
 const { t } = useI18n()
@@ -44,6 +46,33 @@ watch(desc, (v) => {
     <FormField :label="t('informal.moduleDescription')">
       <TextField v-model="desc" :rows="3" :disabled="disabled" />
     </FormField>
+
+    <div class="mt-4">
+      <div class="mb-1 flex items-center justify-between">
+        <p class="text-xs font-medium text-content-secondary">{{ t('informal.constants') }}</p>
+        <button type="button" class="text-xs text-accent hover:underline disabled:opacity-40" :disabled="disabled" @click="emit('addConstant')">
+          {{ t('informal.addEntry') }}
+        </button>
+      </div>
+      <ul class="space-y-2">
+        <li v-for="c in module.constants ?? []" :key="c.id" class="flex items-start gap-2 rounded border border-border-subtle p-2">
+          <div class="min-w-0 flex-1 space-y-1">
+            <TextField
+              :model-value="c.name"
+              :disabled="disabled"
+              @update:model-value="(v) => emit('patch', `const.${c.id}.name`, v)"
+            />
+            <TextField
+              :model-value="c.valueHint ?? ''"
+              :disabled="disabled"
+              :placeholder="t('informal.valueHint')"
+              @update:model-value="(v) => emit('patch', `const.${c.id}.valueHint`, v)"
+            />
+          </div>
+          <button type="button" class="text-xs text-semantic-error hover:underline" :disabled="disabled" @click="emit('removeConstant', c.id)">×</button>
+        </li>
+      </ul>
+    </div>
 
     <div class="mt-4">
       <div class="mb-1 flex items-center justify-between">

@@ -5,6 +5,7 @@ import type { VisualModuleSummary, DeclarationKind, SerializableSpan } from '../
 import type { TreeSelection } from '../../../composables/useVisualModel'
 import DeclarationEditor from './DeclarationEditor.vue'
 import InvariantPanel from './InvariantPanel.vue'
+import HybridGuiPanel from './HybridGuiPanel.vue'
 import Badge from './ui/Badge.vue'
 import InlineRename from './ui/InlineRename.vue'
 
@@ -15,6 +16,7 @@ const emit = defineEmits<{
   revealSpan: [span: SerializableSpan]
   select: [selection: TreeSelection]
   renameModule: [name: string]
+  patchGuiWidget: [payload: { screenName: string; widgetName: string; text: string }]
 }>()
 const { t } = useI18n()
 const renaming = ref(false)
@@ -78,6 +80,15 @@ function selectFunction(moduleName: string, functionName: string): void {
       :disabled="disabled"
       @reveal-span="emit('revealSpan', $event)"
       @patch="emit('patchInvariant', $event)"
+    />
+
+    <HybridGuiPanel
+      v-if="module.gui"
+      :gui="module.gui"
+      :module="module"
+      :disabled="disabled"
+      @reveal-span="emit('revealSpan', $event)"
+      @patch-widget="emit('patchGuiWidget', $event)"
     />
 
     <section v-if="module.processes.length" class="rounded-lg border border-border-subtle bg-surface-raised p-4">

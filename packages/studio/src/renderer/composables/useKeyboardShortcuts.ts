@@ -16,7 +16,8 @@ export function useKeyboardShortcuts(
   onNewFile?: () => void,
   onFormat?: () => void,
   onUndoRedo?: (cmd: 'undo' | 'redo') => boolean,
-  commandCenter?: CommandCenterShortcutHandlers
+  commandCenter?: CommandCenterShortcutHandlers,
+  onToggleSidebar?: () => void
 ): void {
   const files = useFileActions()
   const doc = useDocumentStore()
@@ -70,6 +71,9 @@ export function useKeyboardShortcuts(
     if (key === 'n') {
       e.preventDefault()
       onNewFile?.()
+    } else if (key === 'b') {
+      e.preventDefault()
+      onToggleSidebar?.()
     } else if (key === 'o') {
       e.preventDefault()
       files.openFile()

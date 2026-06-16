@@ -2,6 +2,7 @@ import { ref, watch, computed, type Ref } from 'vue'
 import { useDocumentStore } from '../stores/document'
 import { useDocumentHistoryStore } from '../stores/documentHistory'
 import { useModalStore } from '../stores/modal'
+import { useEditorUiStore } from '../stores/editorUi'
 import type {
   BookAlignPayload,
   InformalModelPayload,
@@ -14,6 +15,7 @@ export function useInformalModel(activeTabId: Ref<string | undefined>) {
   const doc = useDocumentStore()
   const history = useDocumentHistoryStore()
   const modal = useModalStore()
+  const editorUi = useEditorUiStore()
   const model = ref<InformalModelPayload | null>(null)
   const loading = ref(false)
   const lastRebuiltContent = ref('')
@@ -32,7 +34,9 @@ export function useInformalModel(activeTabId: Ref<string | undefined>) {
     if (!tab || !window.studio?.buildInformalModel) return
     loading.value = true
     try {
-      model.value = await window.studio.buildInformalModel(tab.content)
+      model.value = await window.studio.buildInformalModel(tab.content, {
+        bookAlignStrict: editorUi.bookAlignStrict
+      })
       lastRebuiltContent.value = tab.content
     } finally {
       loading.value = false
@@ -57,6 +61,11 @@ export function useInformalModel(activeTabId: Ref<string | undefined>) {
   watch(activeTabId, () => {
     void rebuildNow()
   })
+
+  watch(
+    () => editorUi.bookAlignStrict,
+    () => void rebuildNow()
+  )
 
   function applySourcePatch(next: string): void {
     const tab = activeTab.value
@@ -156,6 +165,17 @@ export function useInformalModel(activeTabId: Ref<string | undefined>) {
     await patchViaIpc({ action: 'remove-invariant', moduleId, invariantId })
   }
 
+  async function addConstant(
+    moduleId: string,
+    constant: { id: string; name: string; valueHint?: string; description?: string }
+  ): Promise<void> {
+    await patchViaIpc({ action: 'add-constant', moduleId, constant })
+  }
+
+  async function removeConstant(moduleId: string, constantId: string): Promise<void> {
+    await patchViaIpc({ action: 'remove-constant', moduleId, constantId })
+  }
+
   async function offerHybridLink(): Promise<void> {
     const tab = activeTab.value
     if (!tab || tab.linkedDocumentId || !model.value?.meta.hybridTarget || !window.studio?.fileRead) return
@@ -199,6 +219,8 @@ export function useInformalModel(activeTabId: Ref<string | undefined>) {
     removeVariable,
     addInvariant,
     removeInvariant,
+    addConstant,
+    removeConstant,
     offerHybridLink,
     applySourcePatch
   }
