@@ -29,9 +29,16 @@ export function useVisualModel(activeTabId: ComputedRef<string | undefined>) {
   let requestGen = 0
 
   const activeSource = computed(() => {
-    const tab = doc.activeTab
+    const id = activeTabId.value
+    const tab = id ? doc.tabs.find((t) => t.id === id) : doc.activeTab
     return tab?.kind === 'document' ? tab.content : ''
   })
+
+  function boundTab() {
+    const id = activeTabId.value
+    if (id) return doc.tabs.find((t) => t.id === id && t.kind === 'document')
+    return doc.activeTab?.kind === 'document' ? doc.activeTab : undefined
+  }
 
   const moduleGraph = computed(() => model.value?.moduleGraph ?? null)
   const diagnostics = computed(
@@ -63,7 +70,7 @@ export function useVisualModel(activeTabId: ComputedRef<string | undefined>) {
   }
 
   async function rebuildNow(): Promise<void> {
-    const tab = doc.activeTab
+    const tab = boundTab()
     if (!tab || tab.kind !== 'document') return
     if (debounceTimer) {
       clearTimeout(debounceTimer)
@@ -73,7 +80,7 @@ export function useVisualModel(activeTabId: ComputedRef<string | undefined>) {
   }
 
   function scheduleRebuild(): void {
-    const tab = doc.activeTab
+    const tab = boundTab()
     if (!tab || tab.kind !== 'document') {
       model.value = null
       return
@@ -84,7 +91,7 @@ export function useVisualModel(activeTabId: ComputedRef<string | undefined>) {
     if (debounceTimer) clearTimeout(debounceTimer)
     debounceTimer = setTimeout(() => {
       debounceTimer = null
-      const current = doc.activeTab
+      const current = boundTab()
       if (!current || current.kind !== 'document') return
       if (current.content === lastRebuiltContent) return
       void rebuild(current.content, current.id, false)
@@ -95,7 +102,7 @@ export function useVisualModel(activeTabId: ComputedRef<string | undefined>) {
     mutator: (source: string) => Promise<string>,
     coalesceKey?: string
   ): Promise<void> {
-    const tab = doc.activeTab
+    const tab = boundTab()
     if (!tab || tab.kind !== 'document') return
     if (debounceTimer) {
       clearTimeout(debounceTimer)

@@ -241,3 +241,14 @@ Phase 5–6 已覆盖 ext、结构化签名、别名进程、模块 CRUD、Init 
 - 关闭时先 `stopLanguageServer()` 再销毁窗口，避免 `Object has been destroyed`
 - TextMate scope 经 `highlight-scope-map.json` 映射为 Monaco theme token
 - 小地图：`renderCharacters: false`、`showRegionSectionHeaders: false`
+
+## 15. 四栏工作区中的可视化编辑
+
+有已索引项目时，Studio 主界面改为四栏工作区，不再使用文档 Tab 切换文件：
+
+- 第三列 Hybrid **可视化** Tab 复用 `VisualEditor`（`hideNavigator`），树/图移到第四列
+- `useVisualModel` 绑定当前 Hybrid 文档 tab，不再死绑 `doc.activeTab`
+- 第四列关系图复用 `ModuleGraphView`（`alwaysEnabled`），点击节点选中左列模块
+- GUI 模块选中时，第三列底部显示 GUI Views 拖拽设计器
+
+无项目时仍走 Home + 原文件 Tab / `EditorWorkspace` 双栏。

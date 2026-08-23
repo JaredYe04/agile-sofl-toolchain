@@ -124,3 +124,19 @@ Monaco 主题 `agile-sofl-light` / `agile-sofl-dark` 与上述 token 对齐；�
 - 配色单一来源：`packages/vscode/scripts/syntax-palettes.json`（浅色对齐 VS Code Light+，深色对齐 Dark+）。
 - Studio 切换浅色/深色时同步 `agile-sofl-light` / `agile-sofl-dark` Monaco 主题。
 - VS Code 扩展通过 `[*Light*]` / `[*Dark*]` 的 `tokenColorCustomizations` 与 `semanticTokenColorCustomizations` 适配用户主题。
+
+## 10. 四栏工作区（当前主界面）
+
+有已索引项目时，Studio 使用四栏而不是文档 Tab：
+
+1. 项目/模块树（多项目可折叠；GUI 模块 accent 高亮；未保存模块右侧 `●`）
+2. 项目级 Informal 文本；右缘中点 hover 显示 `<` / `>` 折叠
+3. Hybrid 代码/可视化 Tab；仅 GUI 模块时底部显示 GUI Views
+4. 模块层次树图 + 原关系图；点击节点选中左列模块
+
+列间 `ColumnResizeSplit` 可拖拽改宽，状态写入 SQLite。内核 VisualEditor / ModuleGraphView / Monaco 复用。
+
+工作区 chrome（列头、树、折叠 `<` `>`、tab）使用 `select-none`；Monaco、`.studio-text-selectable`、`.visual-panel` 内文本仍可选。
+
+`--gui-*` 定义在 `:root` / `.dark`，GUI 设计器跟 IDE 深浅色。产品线框预览可用 `.gui-preview-light` 强制浅色皮肤。
+

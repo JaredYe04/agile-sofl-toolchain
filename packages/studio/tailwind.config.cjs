@@ -39,6 +39,7 @@ module.exports = {
           'canvas-soft': 'var(--gui-canvas-soft)',
           ink: 'var(--gui-ink)',
           body: 'var(--gui-body)',
+          muted: 'var(--gui-muted)',
           hairline: 'var(--gui-hairline)',
           primary: 'var(--gui-primary)',
           'surface-card': 'var(--gui-surface-card)'

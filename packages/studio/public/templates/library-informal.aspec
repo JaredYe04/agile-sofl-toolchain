@@ -3,6 +3,7 @@ meta:
   id: "lib-informal-001"
   title: Library System Informal Spec
   hybridTarget: ./library-system.asfl
+  guiTarget: ./library-gui.guispec
 system:
   name: Library
   purpose: |

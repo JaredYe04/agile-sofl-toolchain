@@ -23,6 +23,12 @@
 | [15-Studio可视化编辑器.md](./15-Studio可视化编辑器.md) | Studio 可视化编辑架构与同步协议 |
 | [16-Studio可视化编辑器迭代.md](./16-Studio可视化编辑器迭代.md) | Studio 各阶段迭代记录 |
 | [17-Informal与Hybrid规格编辑器设计.md](./17-Informal与Hybrid规格编辑器设计.md) | Task 1：`.aspec` 非形式规格（含 `bookAlign` 著作对齐块）、精化/traceability、双文档编辑器 |
+| [18-GUI规格模块设计.md](./18-GUI规格模块设计.md) | `.guispec` / 内嵌 GUI、线框预览、与 informal 的追踪 |
+| [19-ASFL-GUI文法扩展.md](./19-ASFL-GUI文法扩展.md) | Hybrid `.asfl` 内 `gui` 块文法、诊断与精化映射 |
+| [20-工作进度与演进方向.md](./20-工作进度与演进方向.md) | 通俗总览：Parser / 语法 / Hybrid 编辑与维护 / AI 渐进形式化 |
+| [21-Informal-IDE接口与handoff.md](./21-Informal-IDE接口与handoff.md) | Informal 列 Phase 1 纯文本与后续 IDE/AI 扩展点 |
+| [22-GUI可视化设计器handoff.md](./22-GUI可视化设计器handoff.md) | WinForms 风格 GUI 设计器已交付能力与后续缺口 |
+| [23-Hybrid规格IDE接口.md](./23-Hybrid规格IDE接口.md) | Hybrid 自然语言骨架、AssistantProvider、左树右键注册表 |
 
 ## 快速验证
 

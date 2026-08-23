@@ -68,7 +68,7 @@ function widgetTitle(widget: GuiWidget): string | undefined {
 </script>
 
 <template>
-  <div class="gui-preview flex h-full flex-col overflow-hidden bg-gui-canvas p-6">
+  <div class="gui-preview gui-preview-light flex h-full flex-col overflow-hidden bg-gui-canvas p-6">
     <div v-if="!screen" class="flex flex-1 items-center justify-center text-sm text-gui-body">
       {{ $t('gui.selectScreen') }}
     </div>

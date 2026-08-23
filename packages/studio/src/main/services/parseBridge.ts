@@ -2,7 +2,7 @@ import { ipcMain } from 'electron'
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { ProjectIndex, walk, textOf } from '@agile-sofl/parser'
+import { ProjectIndex, walk, textOf, parse, moduleSourceHashes } from '@agile-sofl/parser'
 import {
   buildModuleGraphLayout,
   buildVisualModelTolerant,
@@ -57,7 +57,8 @@ import {
   extendCoverageWithGui,
   type PatchGuiAction
 } from '@agile-sofl/gui'
-import { parse } from '@agile-sofl/parser'
+import { loadOrCreateManifest } from './projectManifest.js'
+import type { ProjectFileInfo, ProjectModuleInfo, WorkspaceScanPayload } from '../../shared/projectTypes.js'
 import { cloneForIpc } from './ipcClone.js'
 
 function collectAsflFiles(dir: string): string[] {
@@ -74,6 +75,51 @@ function collectAsflFiles(dir: string): string[] {
 
 function moduleLabel(mod: { name: string; isSystem: boolean }): string {
   return mod.isSystem ? `SYSTEM_${mod.name}` : mod.name
+}
+
+export function isGuiModule(
+  mod: { name: string; gui?: unknown },
+  guiModule?: string
+): boolean {
+  if (guiModule && (mod.name === guiModule || `GUI_${mod.name}` === guiModule)) return true
+  if (mod.name.startsWith('GUI_')) return true
+  return Boolean(mod.gui)
+}
+
+export async function scanWorkspaceProject(root: string): Promise<WorkspaceScanPayload> {
+  const manifest = await loadOrCreateManifest(root)
+  const files: ProjectFileInfo[] = [{ kind: 'manifest', path: join(root, '.agile-sofl.json') }]
+  const informalAbs = join(root, manifest.informal)
+  if (existsSync(informalAbs)) files.push({ kind: 'aspec', path: informalAbs })
+  for (const rel of manifest.hybrid) {
+    const abs = join(root, rel)
+    if (existsSync(abs)) files.push({ kind: 'asfl', path: abs })
+  }
+  if (manifest.gui) {
+    const abs = join(root, manifest.gui)
+    if (existsSync(abs)) files.push({ kind: 'guispec', path: abs })
+  }
+
+  const modules: ProjectModuleInfo[] = []
+  for (const file of files.filter((f) => f.kind === 'asfl')) {
+    const source = readFileSync(file.path, 'utf-8')
+    const { ast } = parse(source)
+    if (!ast || ast.type !== 'program') continue
+    for (const mod of ast.modules) {
+      modules.push({
+        name: mod.name,
+        displayName: moduleLabel(mod),
+        filePath: file.path,
+        isSystem: mod.isSystem,
+        isGui: isGuiModule(mod, manifest.guiModule),
+        parentName: mod.parent?.name,
+        spanStart: mod.span.start,
+        spanEnd: mod.span.end
+      })
+    }
+  }
+
+  return { root, manifest, files, modules }
 }
 
 function toSerializableSpan(span: { start: number; end: number; line: number; column: number }) {
@@ -499,6 +545,16 @@ export function registerParseHandlers(): void {
 
   ipcMain.handle('studio:scan-project', async (_event, root: string) => {
     return cloneForIpc(await scanProject(root))
+  })
+
+  ipcMain.handle('studio:workspace-scan', async (_event, root: string) => {
+    return cloneForIpc(await scanWorkspaceProject(root))
+  })
+
+  ipcMain.handle('studio:module-hashes', (_event, source: string) => {
+    const { ast } = parse(source)
+    if (!ast || ast.type !== 'program') return {}
+    return moduleSourceHashes(source, ast)
   })
 
   ipcMain.handle('studio:write-trace-file', (_event, filePath: string, traceJson: string) => {

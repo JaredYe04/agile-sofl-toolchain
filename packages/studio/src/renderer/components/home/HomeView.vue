@@ -3,16 +3,34 @@ import { useI18n } from 'vue-i18n'
 import { useDocumentStore } from '../../stores/document'
 import { useRecentFilesStore } from '../../stores/recentFiles'
 import { useFileActions } from '../../composables/useFileActions'
-import { useNewFileDialog } from '../../composables/useNewFileDialog'
+import { useNewProjectTemplateDialog } from '../../composables/useNewProjectTemplateDialog'
+
+import { useWorkspaceStore } from '../../stores/workspace'
+import { useModalStore } from '../../stores/modal'
 
 const { t } = useI18n()
 const doc = useDocumentStore()
 const recent = useRecentFilesStore()
 const files = useFileActions()
-const newFileDialog = useNewFileDialog()
+const newProjectTemplateDialog = useNewProjectTemplateDialog()
+const workspace = useWorkspaceStore()
+const modal = useModalStore()
 
-function onNew(): void {
-  newFileDialog.show()
+function onNewFromTemplate(): void {
+  newProjectTemplateDialog.show()
+}
+
+async function onNewProject(): Promise<void> {
+  const { index, value } = await modal.show({
+    title: t('workspace.newProjectTitle'),
+    message: t('workspace.newProjectMessage'),
+    buttons: [t('workspace.create'), t('workspace.cancel')],
+    input: true,
+    inputValue: 'NewSystem',
+    inputPlaceholder: t('workspace.projectName')
+  })
+  if (index !== 0 || !value?.trim()) return
+  await workspace.createProject(value.trim())
 }
 
 async function onOpen(): Promise<void> {
@@ -40,13 +58,27 @@ async function openRecent(path: string): Promise<void> {
         </div>
       </div>
 
-      <div class="flex gap-3">
+      <div class="flex flex-wrap gap-3">
         <button
           type="button"
           class="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition-colors duration-150 hover:bg-accent/90 active:scale-[0.98]"
-          @click="onNew"
+          @click="onNewProject"
         >
-          {{ t('home.newFile') }}
+          {{ t('workspace.newProject') }}
+        </button>
+        <button
+          type="button"
+          class="rounded-lg border border-border-subtle px-4 py-2 text-sm text-content-primary transition-colors duration-150 hover:bg-surface-overlay active:scale-[0.98]"
+          @click="onNewFromTemplate"
+        >
+          {{ t('home.newFromTemplate') }}
+        </button>
+        <button
+          type="button"
+          class="rounded-lg border border-border-subtle px-4 py-2 text-sm text-content-primary transition-colors duration-150 hover:bg-surface-overlay active:scale-[0.98]"
+          @click="workspace.openProjectFolder()"
+        >
+          {{ t('workspace.openProject') }}
         </button>
         <button
           type="button"

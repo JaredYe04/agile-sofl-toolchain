@@ -23,6 +23,19 @@
   --scrollbar-track: rgba(0, 0, 0, 0.04);
   --scrollbar-thumb: rgba(0, 0, 0, 0.22);
   --scrollbar-thumb-hover: rgba(0, 0, 0, 0.35);
+  --gui-canvas: #f7f7f4;
+  --gui-canvas-soft: #fafaf7;
+  --gui-ink: #26251e;
+  --gui-body: #5a5852;
+  --gui-muted: #807d72;
+  --gui-hairline: #e6e5e0;
+  --gui-primary: #f54e00;
+  --gui-surface-card: #ffffff;
+  --gui-timeline-thinking: #dfa88f;
+  --gui-timeline-grep: #9fc9a2;
+  --gui-timeline-read: #9fbbe0;
+  --gui-timeline-edit: #c0a8dd;
+  --gui-timeline-done: #c08532;
 }
 
 .dark {
@@ -45,9 +58,26 @@
   --scrollbar-track: rgba(255, 255, 255, 0.04);
   --scrollbar-thumb: rgba(255, 255, 255, 0.18);
   --scrollbar-thumb-hover: rgba(255, 255, 255, 0.32);
+  --gui-canvas: #1e1e1e;
+  --gui-canvas-soft: #252526;
+  --gui-ink: #e8e8e8;
+  --gui-body: #b0b0b0;
+  --gui-muted: #8a8a8a;
+  --gui-hairline: #3c3c3c;
+  --gui-primary: #f54e00;
+  --gui-surface-card: #2d2d2d;
+  --gui-timeline-thinking: #dfa88f;
+  --gui-timeline-grep: #9fc9a2;
+  --gui-timeline-read: #9fbbe0;
+  --gui-timeline-edit: #c0a8dd;
+  --gui-timeline-done: #c08532;
 }
 
 .gui-preview {
+  font-family: Inter, system-ui, 'Segoe UI', sans-serif;
+}
+
+.gui-preview-light {
   --gui-canvas: #f7f7f4;
   --gui-canvas-soft: #fafaf7;
   --gui-ink: #26251e;
@@ -61,7 +91,6 @@
   --gui-timeline-read: #9fbbe0;
   --gui-timeline-edit: #c0a8dd;
   --gui-timeline-done: #c08532;
-  font-family: Inter, system-ui, 'Segoe UI', sans-serif;
 }
 
 html,
@@ -87,10 +116,18 @@ body,
 .visual-panel {
   font-size: 14px;
   color: var(--text-primary);
+  user-select: text;
+  -webkit-user-select: text;
 }
 
 .studio-text-selectable,
 .studio-text-selectable * {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.monaco-editor,
+.monaco-editor * {
   user-select: text;
   -webkit-user-select: text;
 }

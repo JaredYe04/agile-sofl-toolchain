@@ -1,0 +1,134 @@
+guispecVersion: "1.0"
+meta:
+  id: "ecom-gui-001"
+  title: E-commerce GUI
+  informalTarget: ./ecommerce-informal.aspec
+gui:
+  app:
+    name: ShopApp
+    description: |
+      Storefront UI. current_view in 0..3; checkout requires cart_open > 0.
+  screens:
+    - id: view-home
+      name: Home
+      title: Store
+      size: { width: 640, height: 400 }
+      widgets:
+        - id: w-title
+          kind: label
+          label: Store
+          bounds: { x: 24, y: 24, width: 200, height: 28 }
+        - id: w-cart
+          kind: navigation
+          label: Cart
+          bounds: { x: 24, y: 72, width: 120, height: 32 }
+          events:
+            - on: click
+              action: navigate
+              targetView: view-cart
+        - id: w-orders
+          kind: navigation
+          label: Orders
+          bounds: { x: 156, y: 72, width: 120, height: 32 }
+          events:
+            - on: click
+              action: navigate
+              targetView: view-orders
+    - id: view-cart
+      name: Cart
+      title: Cart
+      size: { width: 640, height: 400 }
+      widgets:
+        - id: w-product
+          kind: text-input
+          label: Product
+          binds: { param: product }
+          bounds: { x: 24, y: 24, width: 200, height: 32 }
+        - id: w-add
+          kind: button
+          label: Add
+          action: submit
+          bounds: { x: 24, y: 72, width: 120, height: 32 }
+        - id: w-checkout
+          kind: navigation
+          label: Checkout
+          bounds: { x: 156, y: 72, width: 120, height: 32 }
+          events:
+            - on: click
+              action: navigate
+              targetView: view-checkout
+        - id: w-home
+          kind: navigation
+          label: Home
+          bounds: { x: 24, y: 116, width: 120, height: 32 }
+          events:
+            - on: click
+              action: navigate
+              targetView: view-home
+    - id: view-checkout
+      name: Checkout
+      title: Checkout
+      triggersProcess: proc-checkout
+      size: { width: 640, height: 400 }
+      widgets:
+        - id: w-total
+          kind: text-input
+          label: Total
+          binds: { param: total }
+          bounds: { x: 24, y: 24, width: 200, height: 32 }
+        - id: w-pay
+          kind: button
+          label: Pay
+          action: submit
+          bounds: { x: 24, y: 72, width: 120, height: 32 }
+        - id: w-back-cart
+          kind: navigation
+          label: Cart
+          bounds: { x: 156, y: 72, width: 120, height: 32 }
+          events:
+            - on: click
+              action: navigate
+              targetView: view-cart
+    - id: view-orders
+      name: Orders
+      title: Orders
+      size: { width: 640, height: 400 }
+      widgets:
+        - id: w-refund
+          kind: button
+          label: Refund
+          action: submit
+          bounds: { x: 24, y: 24, width: 120, height: 32 }
+        - id: w-home2
+          kind: navigation
+          label: Home
+          bounds: { x: 156, y: 24, width: 120, height: 32 }
+          events:
+            - on: click
+              action: navigate
+              targetView: view-home
+  flows:
+    - from: view-home
+      to: view-cart
+      on: navigate
+      label: Open cart
+    - from: view-home
+      to: view-orders
+      on: navigate
+      label: Open orders
+    - from: view-cart
+      to: view-checkout
+      on: navigate
+      label: Checkout when cart is open
+    - from: view-cart
+      to: view-home
+      on: navigate
+      label: Back home
+    - from: view-checkout
+      to: view-cart
+      on: navigate
+      label: Back to cart
+    - from: view-orders
+      to: view-home
+      on: navigate
+      label: Back home

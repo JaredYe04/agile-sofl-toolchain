@@ -1,0 +1,77 @@
+{
+  "templates": [
+    {
+      "id": "blank",
+      "titleKey": "template.project.blank.title",
+      "descriptionKey": "template.project.blank.description",
+      "category": "basic",
+      "useEmptyProject": true
+    },
+    {
+      "id": "minimal",
+      "titleKey": "template.minimal.title",
+      "descriptionKey": "template.minimal.description",
+      "category": "basic",
+      "informal": "minimal-informal.aspec",
+      "hybrid": ["minimal-module.asfl"],
+      "guiHybrid": "minimal-gui-module.asfl",
+      "gui": "minimal-gui.guispec",
+      "guiModule": "GUI_App"
+    },
+    {
+      "id": "library",
+      "titleKey": "template.library.title",
+      "descriptionKey": "template.library.description",
+      "category": "example",
+      "informal": "library-informal.aspec",
+      "hybrid": ["library-system.asfl"],
+      "guiHybrid": "library-gui-module.asfl",
+      "gui": "library-gui.guispec",
+      "guiModule": "GUI_App"
+    },
+    {
+      "id": "ecommerce",
+      "titleKey": "template.ecommerce.title",
+      "descriptionKey": "template.ecommerce.description",
+      "category": "example",
+      "informal": "ecommerce-informal.aspec",
+      "hybrid": ["ecommerce.asfl"],
+      "guiHybrid": "ecommerce-gui-module.asfl",
+      "gui": "ecommerce-gui.guispec",
+      "guiModule": "GUI_App"
+    },
+    {
+      "id": "hospital-registration",
+      "titleKey": "template.hospital.title",
+      "descriptionKey": "template.hospital.description",
+      "category": "example",
+      "informal": "hospital-informal.aspec",
+      "hybrid": ["hospital-registration.asfl"],
+      "guiHybrid": "hospital-gui-module.asfl",
+      "gui": "hospital-gui.guispec",
+      "guiModule": "GUI_App"
+    },
+    {
+      "id": "type-showcase",
+      "titleKey": "template.types.title",
+      "descriptionKey": "template.types.description",
+      "category": "example",
+      "informal": "type-showcase-informal.aspec",
+      "hybrid": ["type-showcase.asfl"],
+      "guiHybrid": "type-showcase-gui-module.asfl",
+      "gui": "type-showcase-gui.guispec",
+      "guiModule": "GUI_App"
+    },
+    {
+      "id": "graph-showcase",
+      "titleKey": "template.graphShowcase.title",
+      "descriptionKey": "template.graphShowcase.description",
+      "category": "example",
+      "informal": "graph-showcase-informal.aspec",
+      "hybrid": ["graph-showcase.asfl"],
+      "guiHybrid": "graph-showcase-gui-module.asfl",
+      "gui": "graph-showcase-gui.guispec",
+      "guiModule": "GUI_App"
+    }
+  ]
+}

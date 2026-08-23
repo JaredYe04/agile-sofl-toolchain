@@ -1,6 +1,7 @@
 import { useI18n } from 'vue-i18n'
 import { useDocumentStore } from '../stores/document'
 import { useModalStore } from '../stores/modal'
+import { useWorkspaceStore } from '../stores/workspace'
 import { HOME_TAB_ID } from '../stores/tabUtils'
 
 export function useFileActions() {
@@ -13,7 +14,8 @@ export function useFileActions() {
     if (!tab || tab.kind !== 'document') return false
 
     let path = tab.filePath
-    const ext = tab.documentKind === 'aspec' ? 'aspec' : 'asfl'
+    const ext =
+      tab.documentKind === 'aspec' ? 'aspec' : tab.documentKind === 'guispec' ? 'guispec' : 'asfl'
     if (!path) {
       path = await window.studio!.fileSaveDialog(`${tab.title}.${ext}`, tab.documentKind)
       if (!path) return false
@@ -32,10 +34,25 @@ export function useFileActions() {
     return true
   }
 
+  async function saveWorkspace(): Promise<boolean> {
+    const workspace = useWorkspaceStore()
+    if (!workspace.hasWorkspace) return saveTab()
+    const tabs = [workspace.informalTab, workspace.hybridTab, workspace.guiTab]
+    for (const tab of tabs) {
+      if (tab?.isDirty) {
+        const ok = await saveTab(tab.id)
+        if (!ok) return false
+        if (tab.documentKind === 'asfl' && tab.filePath) await workspace.markHybridSaved(tab.filePath)
+      }
+    }
+    return true
+  }
+
   async function saveAsTab(): Promise<boolean> {
     const tab = doc.activeTab
     if (!tab || tab.kind !== 'document') return false
-    const ext = tab.documentKind === 'aspec' ? 'aspec' : 'asfl'
+    const ext =
+      tab.documentKind === 'aspec' ? 'aspec' : tab.documentKind === 'guispec' ? 'guispec' : 'asfl'
     const path = await window.studio!.fileSaveDialog(`${tab.title}.${ext}`, tab.documentKind)
     if (!path) return false
     await window.studio!.fileWrite(path, tab.content)
@@ -93,6 +110,7 @@ export function useFileActions() {
 
   return {
     saveTab,
+    saveWorkspace,
     saveAsTab,
     openFile,
     closeActiveTab,

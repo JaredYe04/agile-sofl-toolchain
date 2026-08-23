@@ -26,6 +26,7 @@ const props = defineProps<{
   searchQuery?: string
   nodeHints?: Record<string, string>
   processMeta?: Record<string, ProcessNodeMeta>
+  alwaysEnabled?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -62,7 +63,7 @@ const MIN_MODULE_H = 120
 const RESIZE_HANDLE = 10
 
 const activeFilePath = computed(() => doc.activeTab?.filePath ?? '')
-const graphEnabled = computed(() => editorUi.sideView === 'graph')
+const graphEnabled = computed(() => props.alwaysEnabled || editorUi.sideView === 'graph')
 
 function normalizeModuleSize(size: ModuleGraphModuleSize): ModuleGraphModuleSize | null {
   if (size.width != null) return size

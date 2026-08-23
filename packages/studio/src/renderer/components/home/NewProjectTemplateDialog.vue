@@ -1,32 +1,31 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useDocumentStore } from '../../stores/document'
 import {
-  useNewFileDialog,
-  groupTemplates,
-  inferDocumentKind,
-  isBlankTemplate,
-  type TemplateEntry
-} from '../../composables/useNewFileDialog'
-import NewFileBlankCard from './NewFileBlankCard.vue'
-import NewFileTemplateCard from './NewFileTemplateCard.vue'
+  useNewProjectTemplateDialog,
+  groupProjectTemplates,
+  type ProjectTemplateEntry
+} from '../../composables/useNewProjectTemplateDialog'
+import { useWorkspaceStore } from '../../stores/workspace'
+import { useModalStore } from '../../stores/modal'
+import NewProjectTemplateCard from './NewProjectTemplateCard.vue'
 
 const { t } = useI18n()
-const doc = useDocumentStore()
-const { open, loadManifest, loadTemplateContent, hide } = useNewFileDialog()
+const { open, loadManifest, hide } = useNewProjectTemplateDialog()
+const workspace = useWorkspaceStore()
+const modal = useModalStore()
 
-const templates = ref<TemplateEntry[]>([])
+const templates = ref<ProjectTemplateEntry[]>([])
 const loading = ref(false)
 
-const grouped = computed(() => groupTemplates(templates.value))
+const grouped = computed(() => groupProjectTemplates(templates.value))
 
 async function refreshManifest(): Promise<void> {
   loading.value = true
   try {
     templates.value = await loadManifest()
   } catch (err) {
-    console.error('[studio] failed to load templates:', err)
+    console.error('[studio] failed to load project templates:', err)
   } finally {
     loading.value = false
   }
@@ -48,18 +47,19 @@ onMounted(() => {
 
 onUnmounted(() => document.removeEventListener('keydown', onKeydown))
 
-async function pick(entry: TemplateEntry): Promise<void> {
-  try {
-    const content = await loadTemplateContent(entry.file)
-    const documentKind = inferDocumentKind(entry.file)
-    const title = isBlankTemplate(entry)
-      ? undefined
-      : entry.file.replace(/\.(asfl|aspec|guispec)$/, '')
-    doc.newTab({ content, title, documentKind })
-    hide()
-  } catch (err) {
-    console.error('[studio] failed to open template:', err)
-  }
+async function pick(entry: ProjectTemplateEntry): Promise<void> {
+  const defaultName = entry.id === 'blank' ? 'NewSystem' : entry.id.replace(/-/g, ' ')
+  const { index, value } = await modal.show({
+    title: t('newProjectTemplate.nameTitle'),
+    message: t('newProjectTemplate.nameMessage'),
+    buttons: [t('workspace.create'), t('newProjectTemplate.cancel')],
+    input: true,
+    inputValue: defaultName,
+    inputPlaceholder: t('workspace.projectName')
+  })
+  if (index !== 0 || !value?.trim()) return
+  hide()
+  await workspace.createProjectFromTemplate(value.trim(), entry.id)
 }
 
 function onBackdrop(e: MouseEvent): void {
@@ -78,7 +78,7 @@ function onBackdrop(e: MouseEvent): void {
         class="flex max-h-[85vh] w-full max-w-3xl flex-col overflow-hidden rounded-xl border border-border-subtle bg-surface-raised shadow-lg"
         role="dialog"
         aria-modal="true"
-        :aria-label="t('newFile.title')"
+        :aria-label="t('newProjectTemplate.title')"
         @click.stop
       >
         <div class="flex items-center gap-4 border-b border-border-subtle px-6 py-5">
@@ -89,29 +89,28 @@ function onBackdrop(e: MouseEvent): void {
             +
           </div>
           <div>
-            <h2 class="text-lg font-semibold text-content-primary">{{ t('newFile.title') }}</h2>
-            <p class="mt-0.5 text-sm text-content-secondary">{{ t('newFile.subtitle') }}</p>
+            <h2 class="text-lg font-semibold text-content-primary">{{ t('newProjectTemplate.title') }}</h2>
+            <p class="mt-0.5 text-sm text-content-secondary">{{ t('newProjectTemplate.subtitle') }}</p>
           </div>
         </div>
 
         <div class="studio-scroll flex-1 overflow-y-auto px-6 py-5">
-          <div v-if="loading" class="grid gap-3 sm:grid-cols-3">
+          <div v-if="loading" class="grid gap-3 sm:grid-cols-2">
             <div
-              v-for="n in 3"
+              v-for="n in 4"
               :key="n"
               class="h-24 animate-pulse rounded-lg border border-dashed border-border-subtle bg-surface-overlay"
             />
           </div>
 
           <div v-else class="space-y-6">
-            <section v-if="grouped.blanks.length">
-              <div class="mb-3">
-                <h3 class="text-sm font-semibold text-content-primary">{{ t('newFile.section.blank') }}</h3>
-                <p class="mt-0.5 text-xs text-content-muted">{{ t('newFile.section.blankHint') }}</p>
-              </div>
-              <div class="grid gap-3 sm:grid-cols-3">
-                <NewFileBlankCard
-                  v-for="entry in grouped.blanks"
+            <section v-if="grouped.basic.length">
+              <h3 class="mb-3 text-xs font-medium uppercase tracking-wide text-content-muted">
+                {{ t('newProjectTemplate.section.basic') }}
+              </h3>
+              <div class="grid gap-3 sm:grid-cols-2">
+                <NewProjectTemplateCard
+                  v-for="entry in grouped.basic"
                   :key="entry.id"
                   :entry="entry"
                   @pick="pick"
@@ -119,41 +118,13 @@ function onBackdrop(e: MouseEvent): void {
               </div>
             </section>
 
-            <section v-if="grouped.asfl.length">
+            <section v-if="grouped.example.length">
               <h3 class="mb-3 text-xs font-medium uppercase tracking-wide text-content-muted">
-                {{ t('newFile.section.asfl') }}
+                {{ t('newProjectTemplate.section.example') }}
               </h3>
               <div class="grid gap-3 sm:grid-cols-2">
-                <NewFileTemplateCard
-                  v-for="entry in grouped.asfl"
-                  :key="entry.id"
-                  :entry="entry"
-                  @pick="pick"
-                />
-              </div>
-            </section>
-
-            <section v-if="grouped.informal.length">
-              <h3 class="mb-3 text-xs font-medium uppercase tracking-wide text-content-muted">
-                {{ t('newFile.section.informal') }}
-              </h3>
-              <div class="grid gap-3 sm:grid-cols-2">
-                <NewFileTemplateCard
-                  v-for="entry in grouped.informal"
-                  :key="entry.id"
-                  :entry="entry"
-                  @pick="pick"
-                />
-              </div>
-            </section>
-
-            <section v-if="grouped.gui.length">
-              <h3 class="mb-3 text-xs font-medium uppercase tracking-wide text-content-muted">
-                {{ t('newFile.section.gui') }}
-              </h3>
-              <div class="grid gap-3 sm:grid-cols-2">
-                <NewFileTemplateCard
-                  v-for="entry in grouped.gui"
+                <NewProjectTemplateCard
+                  v-for="entry in grouped.example"
                   :key="entry.id"
                   :entry="entry"
                   @pick="pick"
@@ -169,7 +140,7 @@ function onBackdrop(e: MouseEvent): void {
             class="rounded-md px-3 py-1.5 text-sm text-content-secondary transition-colors duration-150 hover:bg-surface-overlay hover:text-content-primary"
             @click="hide()"
           >
-            {{ t('newFile.cancel') }}
+            {{ t('newProjectTemplate.cancel') }}
           </button>
         </div>
       </div>

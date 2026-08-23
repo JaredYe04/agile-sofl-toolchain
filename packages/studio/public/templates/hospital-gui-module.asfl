@@ -1,0 +1,57 @@
+module GUI_App / Hospital;
+const
+    view_home = 0;
+    view_register = 1;
+    view_triage = 2;
+    view_assign = 3;
+type
+    ViewId = nat;
+var
+    current_view: ViewId;
+    ticket_issued: nat;
+inv
+    current_view >= 0 and current_view <= 3 and ticket_issued >= 0;
+gui ClinicGui;
+screen Home;
+    label title "Hospital";
+    navigation goRegister "Register" triggers OpenRegister;
+    navigation goTriage "Triage" triggers OpenTriage;
+end_screen;
+screen Register;
+    text-input patientId "Patient";
+    text-input deptId "Department";
+    button submit "Register" triggers DoRegister;
+    navigation goAssign "Assign" triggers OpenAssign;
+end_screen;
+screen Triage;
+    text-input patientId2 "Patient";
+    button submitTriage "Triage" triggers DoTriage;
+    navigation backHome "Home" triggers OpenHome;
+end_screen;
+screen Assign;
+    text-input doctorId "Doctor";
+    button submitAssign "Assign" triggers DoAssign;
+    navigation backHome2 "Home" triggers OpenHome;
+end_screen;
+end_gui;
+process OpenRegister ()
+    FSF :
+    others && current_view = 1
+end_process
+process OpenTriage ()
+    FSF :
+    others && current_view = 2
+end_process
+process OpenAssign ()
+    FSF :
+    ticket_issued > 0 && current_view = 3 ||
+    others && current_view = 1
+end_process
+process OpenHome ()
+    FSF :
+    others && current_view = 0
+end_process
+process DoRegister equal Hospital.Register end_process
+process DoTriage equal Hospital.Triage end_process
+process DoAssign equal Hospital.AssignDoctor end_process
+end_module

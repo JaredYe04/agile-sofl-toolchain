@@ -1,0 +1,99 @@
+guispecVersion: "1.0"
+meta:
+  id: "city-gui-001"
+  title: Smart City GUI
+  informalTarget: ./graph-showcase-informal.aspec
+gui:
+  app:
+    name: CityApp
+    description: |
+      Operations console. current_view in 0..2; alerts_open >= 0.
+  screens:
+    - id: view-dash
+      name: Dashboard
+      title: Smart City
+      size: { width: 640, height: 400 }
+      widgets:
+        - id: w-title
+          kind: label
+          label: Smart City
+          bounds: { x: 24, y: 24, width: 220, height: 28 }
+        - id: w-alerts
+          kind: navigation
+          label: Alerts
+          bounds: { x: 24, y: 72, width: 120, height: 32 }
+          events:
+            - on: click
+              action: navigate
+              targetView: view-alerts
+        - id: w-citizens
+          kind: navigation
+          label: Citizens
+          bounds: { x: 156, y: 72, width: 120, height: 32 }
+          events:
+            - on: click
+              action: navigate
+              targetView: view-citizens
+    - id: view-alerts
+      name: Alerts
+      title: Alerts
+      size: { width: 640, height: 400 }
+      widgets:
+        - id: w-sensor
+          kind: text-input
+          label: Sensor
+          binds: { param: sensor }
+          bounds: { x: 24, y: 24, width: 200, height: 32 }
+        - id: w-dispatch
+          kind: button
+          label: Dispatch
+          action: submit
+          bounds: { x: 24, y: 72, width: 120, height: 32 }
+        - id: w-back
+          kind: navigation
+          label: Dashboard
+          bounds: { x: 156, y: 72, width: 120, height: 32 }
+          events:
+            - on: click
+              action: navigate
+              targetView: view-dash
+    - id: view-citizens
+      name: Citizens
+      title: Citizens
+      size: { width: 640, height: 400 }
+      widgets:
+        - id: w-citizen
+          kind: text-input
+          label: Citizen
+          binds: { param: citizen }
+          bounds: { x: 24, y: 24, width: 200, height: 32 }
+        - id: w-register
+          kind: button
+          label: Register
+          action: submit
+          bounds: { x: 24, y: 72, width: 120, height: 32 }
+        - id: w-back2
+          kind: navigation
+          label: Dashboard
+          bounds: { x: 156, y: 72, width: 120, height: 32 }
+          events:
+            - on: click
+              action: navigate
+              targetView: view-dash
+  flows:
+    - from: view-dash
+      to: view-alerts
+      on: navigate
+      label: Open alerts
+    - from: view-dash
+      to: view-citizens
+      on: navigate
+      label: Open citizens
+    - from: view-alerts
+      to: view-dash
+      on: navigate
+      label: Back to dashboard
+    - from: view-citizens
+      to: view-dash
+      on: navigate
+      label: Back to dashboard

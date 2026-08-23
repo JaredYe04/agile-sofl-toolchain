@@ -1,4 +1,19 @@
 import { contextBridge, ipcRenderer } from 'electron'
+import type {
+  IndexedProject,
+  ProjectModuleInfo,
+  ProjectUiState,
+  WorkspaceScanPayload
+} from '../shared/projectTypes'
+
+export type {
+  AgileSoflManifest,
+  IndexedProject,
+  ProjectFileInfo,
+  ProjectModuleInfo,
+  ProjectUiState,
+  WorkspaceScanPayload
+} from '../shared/projectTypes'
 
 export type FileOpenResult = {
   filePath: string
@@ -144,6 +159,40 @@ const studio = {
   getInformalSpans: (source: string) =>
     ipcRenderer.invoke('studio:get-informal-spans', source) as Promise<InformalSpanPayload[]>,
   scanProject: (root: string) => ipcRenderer.invoke('studio:scan-project', root) as Promise<ProjectScanPayload>,
+  workspaceScan: (root: string) =>
+    ipcRenderer.invoke('studio:workspace-scan', root) as Promise<WorkspaceScanPayload>,
+  moduleHashes: (source: string) =>
+    ipcRenderer.invoke('studio:module-hashes', source) as Promise<Record<string, string>>,
+  projectList: () => ipcRenderer.invoke('studio:project-list') as Promise<IndexedProject[]>,
+  projectCreate: (name: string) =>
+    ipcRenderer.invoke('studio:project-create', name) as Promise<{
+      project: IndexedProject
+      root: string
+    } | null>,
+  projectCreateFromTemplate: (name: string, templateId: string) =>
+    ipcRenderer.invoke('studio:project-create-from-template', name, templateId) as Promise<{
+      project: IndexedProject
+      root: string
+    } | null>,
+  projectOpenFolder: () =>
+    ipcRenderer.invoke('studio:project-open-folder') as Promise<{
+      project: IndexedProject
+      root: string
+    } | null>,
+  projectRemove: (projectId: string) =>
+    ipcRenderer.invoke('studio:project-remove', projectId) as Promise<boolean>,
+  projectRename: (projectId: string, name: string) =>
+    ipcRenderer.invoke('studio:project-rename', projectId, name) as Promise<IndexedProject | null>,
+  projectTouch: (projectId: string) =>
+    ipcRenderer.invoke('studio:project-touch', projectId) as Promise<boolean>,
+  projectUiState: (projectId: string) =>
+    ipcRenderer.invoke('studio:project-ui-state', projectId) as Promise<ProjectUiState>,
+  projectSaveUiState: (projectId: string, state: ProjectUiState) =>
+    ipcRenderer.invoke('studio:project-save-ui-state', projectId, state) as Promise<boolean>,
+  projectCachedModules: (projectId: string) =>
+    ipcRenderer.invoke('studio:project-cached-modules', projectId) as Promise<ProjectModuleInfo[]>,
+  projectCacheModules: (projectId: string, modules: ProjectModuleInfo[]) =>
+    ipcRenderer.invoke('studio:project-cache-modules', projectId, modules) as Promise<boolean>,
   writeTraceFile: (filePath: string, traceJson: string) =>
     ipcRenderer.invoke('studio:write-trace-file', filePath, traceJson) as Promise<boolean>,
   updateTraceContentHash: (tracePath: string, aspecSource: string) =>
@@ -598,6 +647,8 @@ export type GuiWidget = {
   action?: string
   binds?: { param?: string; variable?: string; display?: string }
   options?: string[]
+  bounds?: { x: number; y: number; width: number; height: number }
+  events?: Array<{ on: string; action: string; targetView?: string }>
 }
 
 export type GuiScreenDto = {
@@ -608,6 +659,7 @@ export type GuiScreenDto = {
   triggersProcess?: string
   widgets?: GuiWidget[]
   widgetCount: number
+  size?: { width: number; height: number }
 }
 
 export type GuiModelPayload = {
@@ -621,7 +673,16 @@ export type GuiModelPayload = {
 
 export type PatchGuiActionOnly =
   | { action: 'patch-by-id'; idPath: string; value: unknown }
-  | { action: 'add-screen'; screen: { id: string; name: string; title?: string; widgets?: GuiWidget[] } }
+  | {
+      action: 'add-screen'
+      screen: {
+        id: string
+        name: string
+        title?: string
+        widgets?: GuiWidget[]
+        size?: { width: number; height: number }
+      }
+    }
   | { action: 'remove-screen'; screenId: string }
   | { action: 'add-widget'; screenId: string; widget: GuiWidget }
   | { action: 'remove-widget'; widgetId: string }

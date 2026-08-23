@@ -3,16 +3,8 @@ import type { BuiltinCommand } from '../types'
 export const builtinCommands: BuiltinCommand[] = [
   {
     id: 'file.new',
-    titleKey: 'commandCenter.cmd.newFile',
+    titleKey: 'commandCenter.cmd.newFromTemplate',
     run: (ctx) => ctx.openNewFile()
-  },
-  {
-    id: 'file.newGui',
-    titleKey: 'commandCenter.cmd.newGui',
-    run: async () => {
-      const { useDocumentStore } = await import('../../stores/document')
-      useDocumentStore().newTab({ documentKind: 'guispec' })
-    }
   },
   {
     id: 'file.open',
@@ -178,6 +170,30 @@ export const builtinCommands: BuiltinCommand[] = [
     run: async () => {
       const { useProjectStore } = await import('../../stores/projectStore')
       await useProjectStore().openFolder()
+    }
+  },
+  {
+    id: 'workspace.newProject',
+    titleKey: 'workspace.treeMenu.newProject',
+    run: async (ctx) => {
+      const { promptNewProject } = await import('../../workspaceTree/actions')
+      await promptNewProject(ctx.t)
+    }
+  },
+  {
+    id: 'workspace.openProject',
+    titleKey: 'workspace.treeMenu.openProject',
+    run: async () => {
+      const { useWorkspaceStore } = await import('../../stores/workspace')
+      await useWorkspaceStore().openProjectFolder()
+    }
+  },
+  {
+    id: 'workspace.collapseAll',
+    titleKey: 'workspace.treeMenu.collapseAll',
+    run: async () => {
+      const { useWorkspaceStore } = await import('../../stores/workspace')
+      useWorkspaceStore().collapseAllProjects()
     }
   }
 ]

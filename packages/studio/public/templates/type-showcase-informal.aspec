@@ -1,0 +1,42 @@
+aspecVersion: "1.0"
+meta:
+  id: "types-informal-001"
+  title: Type Showcase Informal Spec
+  hybridTarget: ./type-showcase.asfl
+  guiTarget: ./type-showcase-gui.guispec
+system:
+  name: Types
+  purpose: |
+    Demonstrate ASFL type constructors used in formal specifications.
+  scope: |
+    Single module cataloguing set, sequence, product, union, enum, map, composed, and universal types.
+modules:
+  - id: mod-types
+    name: SYSTEM_Types
+    description: |
+      Reference module listing representative type definitions.
+    types:
+      - id: type-set
+        name: S
+        typeHint: set of nat
+      - id: type-seq
+        name: Q
+        typeHint: seq of int
+      - id: type-product
+        name: P
+        typeHint: nat * int
+      - id: type-union
+        name: U
+        typeHint: nat | int
+      - id: type-enum
+        name: E
+        typeHint: enum
+      - id: type-map
+        name: M
+        typeHint: map string to nat
+      - id: type-composed
+        name: C
+        typeHint: composed record
+      - id: type-universal
+        name: G
+        typeHint: universal

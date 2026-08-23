@@ -12,6 +12,7 @@ const props = defineProps<{
   loading: boolean
   syncing?: boolean
   searchQuery: string
+  hideSideViews?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -77,7 +78,7 @@ function onZoomInput(e: Event): void {
   <div
     class="flex h-[36px] shrink-0 items-center gap-2 border-b border-border-subtle bg-surface-base px-3"
   >
-    <div class="flex shrink-0 rounded-lg border border-border-subtle p-0.5">
+    <div v-if="!hideSideViews" class="flex shrink-0 rounded-lg border border-border-subtle p-0.5">
       <button
         v-for="sv in sideViews"
         :key="sv.id"
@@ -94,7 +95,7 @@ function onZoomInput(e: Event): void {
       </button>
     </div>
 
-    <template v-if="editorUi.sideView === 'graph'">
+    <template v-if="!hideSideViews && editorUi.sideView === 'graph'">
       <label class="flex items-center gap-1 text-xs text-content-secondary">
         <span>{{ t('visual.graphZoom') }}</span>
         <input

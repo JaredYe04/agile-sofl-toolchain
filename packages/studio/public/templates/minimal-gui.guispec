@@ -1,0 +1,55 @@
+guispecVersion: "1.0"
+meta:
+  id: "minimal-gui-001"
+  title: Minimal GUI
+  informalTarget: ./minimal-informal.aspec
+gui:
+  app:
+    name: TestApp
+    description: |
+      Two-view shell for the minimal module. current_view in 0..1.
+  screens:
+    - id: view-home
+      name: Home
+      title: Home
+      size: { width: 640, height: 400 }
+      widgets:
+        - id: w-title
+          kind: label
+          label: Minimal
+          bounds: { x: 24, y: 24, width: 200, height: 28 }
+        - id: w-status
+          kind: navigation
+          label: Status
+          bounds: { x: 24, y: 72, width: 120, height: 32 }
+          events:
+            - on: click
+              action: navigate
+              targetView: view-status
+    - id: view-status
+      name: Status
+      title: Status
+      size: { width: 640, height: 400 }
+      widgets:
+        - id: w-value
+          kind: label
+          label: x
+          binds: { variable: var-x }
+          bounds: { x: 24, y: 24, width: 200, height: 28 }
+        - id: w-home
+          kind: navigation
+          label: Home
+          bounds: { x: 24, y: 72, width: 120, height: 32 }
+          events:
+            - on: click
+              action: navigate
+              targetView: view-home
+  flows:
+    - from: view-home
+      to: view-status
+      on: navigate
+      label: Open status
+    - from: view-status
+      to: view-home
+      on: navigate
+      label: Back home

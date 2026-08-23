@@ -1,0 +1,29 @@
+module GUI_App / Types;
+const
+    view_home = 0;
+    view_catalog = 1;
+type
+    ViewId = nat;
+var
+    current_view: ViewId;
+inv
+    current_view >= 0 and current_view <= 1;
+gui TypesGui;
+screen Home;
+    label title "Types";
+    navigation goCatalog "Catalog" triggers OpenCatalog;
+end_screen;
+screen Catalog;
+    label hint "Type constructors";
+    navigation goHome "Home" triggers OpenHome;
+end_screen;
+end_gui;
+process OpenCatalog ()
+    FSF :
+    others && current_view = 1
+end_process
+process OpenHome ()
+    FSF :
+    others && current_view = 0
+end_process
+end_module

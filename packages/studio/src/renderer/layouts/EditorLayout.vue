@@ -1,20 +1,22 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import TitleBar from '../components/chrome/TitleBar.vue'
-import SidebarResizeSplit from '../components/ui/SidebarResizeSplit.vue'
-import ProjectSidebar from '../components/chrome/project/ProjectSidebar.vue'
 import EditorTabs from '../components/editor/EditorTabs.vue'
 import EditorToolbar from '../components/editor/EditorToolbar.vue'
 import EditorWorkspace from '../components/editor/EditorWorkspace.vue'
+import WorkspaceLayout from '../components/workspace/WorkspaceLayout.vue'
+import SidebarResizeSplit from '../components/ui/SidebarResizeSplit.vue'
+import ProjectSidebar from '../components/chrome/project/ProjectSidebar.vue'
 import RefinementWizard from '../components/editor/RefinementWizard.vue'
 import HomeView from '../components/home/HomeView.vue'
 import WelcomeView from '../components/home/WelcomeView.vue'
 import StatusBar from '../components/editor/StatusBar.vue'
 import { useKeyboardShortcuts } from '../composables/useKeyboardShortcuts'
 import { useFileActions } from '../composables/useFileActions'
-import NewFileDialog from '../components/home/NewFileDialog.vue'
-import { useNewFileDialog } from '../composables/useNewFileDialog'
+import NewProjectTemplateDialog from '../components/home/NewProjectTemplateDialog.vue'
+import { useNewProjectTemplateDialog } from '../composables/useNewProjectTemplateDialog'
 import { useDocumentStore } from '../stores/document'
+import { useWorkspaceStore } from '../stores/workspace'
 import { useModalStore } from '../stores/modal'
 import Modal from '../components/ui/Modal.vue'
 import { useCommandCenterStore } from '../stores/commandCenter'
@@ -23,8 +25,9 @@ import { useEditorUiStore } from '../stores/editorUi'
 const workspaceRef = ref<InstanceType<typeof EditorWorkspace> | null>(null)
 const files = useFileActions()
 const doc = useDocumentStore()
+const workspace = useWorkspaceStore()
 const modalStore = useModalStore()
-const newFileDialog = useNewFileDialog()
+const newProjectTemplateDialog = useNewProjectTemplateDialog()
 const commandCenter = useCommandCenterStore()
 const editorUi = useEditorUiStore()
 const refineOpen = ref(false)
@@ -62,9 +65,9 @@ function registerCommandCenterHandlers(): void {
     },
     undoRedo: (cmd) => (ws ? ws[cmd]() : false),
     runEdit: onEdit,
-    openNewFile: () => newFileDialog.show(),
+    openNewFile: () => newProjectTemplateDialog.show(),
     openFile: () => files.openFile(),
-    saveTab: () => files.saveTab(),
+    saveTab: () => files.saveWorkspace(),
     saveAsTab: () => files.saveAsTab(),
     closeActiveTab: () => files.closeActiveTab(),
     openDevTools: onDevTools,
@@ -78,7 +81,7 @@ watch([workspaceRef, showDocumentEditor], () => registerCommandCenterHandlers(),
 useKeyboardShortcuts(
   (cmd) => onEdit(cmd),
   onDevTools,
-  () => newFileDialog.show(),
+  () => newProjectTemplateDialog.show(),
   onFormat,
   onUndoRedo,
   {
@@ -105,9 +108,10 @@ onUnmounted(() => {
 <template>
   <div class="flex h-full flex-col overflow-hidden">
     <TitleBar @edit="onEdit" @dev-tools="onDevTools" @format="onFormat" @refine="refineOpen = true" />
-    <EditorTabs />
+    <EditorTabs v-if="!workspace.hasWorkspace" />
     <main class="flex min-h-0 w-full min-w-0 flex-1 flex-col bg-surface-raised">
-      <HomeView v-if="doc.isHomeActive" />
+      <WorkspaceLayout v-if="workspace.hasWorkspace" />
+      <HomeView v-else-if="doc.isHomeActive" />
       <WelcomeView v-else-if="doc.showWelcomeFallback" />
       <template v-else-if="showDocumentEditor">
         <EditorToolbar @format="onFormat" />
@@ -124,7 +128,7 @@ onUnmounted(() => {
       </template>
     </main>
     <StatusBar />
-    <NewFileDialog />
+    <NewProjectTemplateDialog />
     <RefinementWizard :open="refineOpen" @close="refineOpen = false" />
     <Modal
       v-if="modalStore.request"

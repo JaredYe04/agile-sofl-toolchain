@@ -33,11 +33,28 @@ const templateFiles = [
   ['ecommerce.asfl', join(examplesRoot, 'ecommerce.asfl')],
   ['hospital-registration.asfl', join(examplesRoot, 'hospital-registration.asfl')],
   ['type-showcase.asfl', join(examplesRoot, 'type-showcase.asfl')],
+  ['graph-showcase.asfl', join(examplesRoot, 'graph-showcase.asfl')],
   ['informal-blank.aspec', join(studioRoot, 'assets', 'templates', 'informal-blank.aspec')],
   ['library-informal.aspec', join(studioRoot, 'assets', 'templates', 'library-informal.aspec')],
+  ['minimal-informal.aspec', join(studioRoot, 'assets', 'templates', 'minimal-informal.aspec')],
+  ['ecommerce-informal.aspec', join(studioRoot, 'assets', 'templates', 'ecommerce-informal.aspec')],
+  ['hospital-informal.aspec', join(studioRoot, 'assets', 'templates', 'hospital-informal.aspec')],
+  ['type-showcase-informal.aspec', join(studioRoot, 'assets', 'templates', 'type-showcase-informal.aspec')],
+  ['graph-showcase-informal.aspec', join(studioRoot, 'assets', 'templates', 'graph-showcase-informal.aspec')],
+  ['minimal-gui-module.asfl', join(templatesRoot, 'minimal-gui-module.asfl')],
+  ['library-gui-module.asfl', join(templatesRoot, 'library-gui-module.asfl')],
+  ['ecommerce-gui-module.asfl', join(templatesRoot, 'ecommerce-gui-module.asfl')],
+  ['hospital-gui-module.asfl', join(templatesRoot, 'hospital-gui-module.asfl')],
+  ['type-showcase-gui-module.asfl', join(templatesRoot, 'type-showcase-gui-module.asfl')],
+  ['graph-showcase-gui-module.asfl', join(templatesRoot, 'graph-showcase-gui-module.asfl')],
   ['informal-blank.guispec', join(studioRoot, 'public', 'templates', 'informal-blank.guispec')],
-  ['library-gui.guispec', join(examplesRoot, 'library-gui.guispec')],
-  ['manifest.json', join(studioRoot, 'assets', 'templates', 'manifest.json')]
+  ['minimal-gui.guispec', join(studioRoot, 'assets', 'templates', 'minimal-gui.guispec')],
+  ['library-gui.guispec', join(studioRoot, 'assets', 'templates', 'library-gui.guispec')],
+  ['ecommerce-gui.guispec', join(studioRoot, 'assets', 'templates', 'ecommerce-gui.guispec')],
+  ['hospital-gui.guispec', join(studioRoot, 'assets', 'templates', 'hospital-gui.guispec')],
+  ['type-showcase-gui.guispec', join(studioRoot, 'assets', 'templates', 'type-showcase-gui.guispec')],
+  ['graph-showcase-gui.guispec', join(studioRoot, 'assets', 'templates', 'graph-showcase-gui.guispec')],
+  ['project-manifest.json', join(studioRoot, 'assets', 'templates', 'project-manifest.json')]
 ]
 
 for (const outDir of outDirs) {
@@ -65,7 +82,7 @@ for (const outDir of templateOutDirs) {
       process.exit(1)
     }
     const outPath = join(outDir, dest)
-    if (dest.endsWith('.asfl')) {
+    if (dest.endsWith('.asfl') && !dest.includes('gui-module')) {
       const raw = readFileSync(from, 'utf8')
       const formatted = formatDocument(raw).replace(/\r\n/g, '\n').replace(/\n+$/, '') + '\n'
       writeFileSync(outPath, formatted, 'utf8')

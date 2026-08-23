@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { registerFileHandlers } from './services/fileService'
 import { registerWindowHandlers } from './services/windowService'
 import { registerParseHandlers } from './services/parseService'
+import { initProjectIndex, registerProjectHandlers } from './services/projectService'
 import { attachDevToolsShortcuts, attachRendererDiagnostics, openDevTools } from './services/devToolsService'
 import {
   isLspRunning,
@@ -70,17 +71,18 @@ function createWindow(): void {
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
-
-  if (!app.isPackaged) {
-    mainWindow.webContents.once('did-finish-load', () => {
-      openDevTools(mainWindow)
-    })
-  }
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   registerFileHandlers(getWindow)
   registerWindowHandlers(getWindow)
+  registerProjectHandlers(getWindow)
+
+  try {
+    await initProjectIndex()
+  } catch (err) {
+    console.error('[studio] Failed to open project index:', err)
+  }
 
   try {
     registerParseHandlers()

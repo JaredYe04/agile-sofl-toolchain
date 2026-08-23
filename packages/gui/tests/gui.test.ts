@@ -63,6 +63,23 @@ describe('patchGui', () => {
     })
     expect(buildGuiModel(next).screens[0]?.widgetCount).toBe(2)
   })
+
+  it('roundtrips widget bounds and navigate events', () => {
+    const source = readFileSync(join(fixtures, 'minimal.guispec'), 'utf8')
+    const withBounds = patchFieldById(source, 'widget.w-nav.bounds', {
+      x: 16,
+      y: 24,
+      width: 120,
+      height: 32
+    })
+    const withEvents = patchFieldById(withBounds, 'widget.w-nav.events', [
+      { on: 'click', action: 'navigate', targetView: 'scr-home' }
+    ])
+    const model = buildGuiModel(withEvents)
+    const widget = model.screens[0]?.widgets?.[0]
+    expect(widget?.bounds).toEqual({ x: 16, y: 24, width: 120, height: 32 })
+    expect(widget?.events?.[0]?.targetView).toBe('scr-home')
+  })
 })
 
 describe('extract and merge', () => {

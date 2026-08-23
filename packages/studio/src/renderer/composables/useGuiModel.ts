@@ -131,9 +131,10 @@ export function useGuiModel(
     id: string
     name: string
     title?: string
-    widgets?: []
+    widgets?: unknown[]
+    size?: { width: number; height: number }
   }): Promise<void> {
-    await patchViaIpc({ action: 'add-screen', screen: { ...screen, widgets: screen.widgets ?? [] } })
+    await patchViaIpc({ action: 'add-screen', screen: screen as never })
   }
 
   async function removeScreen(screenId: string): Promise<void> {
@@ -142,7 +143,7 @@ export function useGuiModel(
 
   async function addWidget(
     screenId: string,
-    widget: { id: string; kind: GuiWidgetKind; label?: string }
+    widget: { id: string; kind: GuiWidgetKind; label?: string; bounds?: { x: number; y: number; width: number; height: number }; events?: Array<{ on: string; action: string; targetView?: string }> }
   ): Promise<void> {
     await patchViaIpc({ action: 'add-widget', screenId, widget })
   }

@@ -82,7 +82,7 @@ export function useKeyboardShortcuts(
       files.saveAsTab()
     } else if (key === 's') {
       e.preventDefault()
-      files.saveTab()
+      files.saveWorkspace()
     } else if (key === 'w') {
       e.preventDefault()
       files.closeActiveTab()

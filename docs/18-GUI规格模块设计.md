@@ -41,6 +41,15 @@
 - `binds.variable` — 关联 aspec variable id
 - `binds.display` — 只读展示字段
 
+### 2.5 布局与事件（设计器）
+
+- `screens[].size`: `{ width, height }` 窗体客户区
+- `widgets[].bounds`: `{ x, y, width, height }` 绝对定位（缺省时设计器给流式坐标）
+- `widgets[].events`: `{ on, action, targetView }`；`action: navigate` 在运行模式切换 View
+- 仍保留 `flows` / `widget.action` 作为回退
+
+Studio GUI Views 可视化 Tab 为拖拽设计器，见 [22-GUI可视化设计器handoff.md](./22-GUI可视化设计器handoff.md)。
+
 ## 3. 诊断码
 
 | 码 | 条件 |

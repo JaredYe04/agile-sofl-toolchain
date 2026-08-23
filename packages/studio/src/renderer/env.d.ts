@@ -56,7 +56,7 @@ declare module 'vue-i18n' {
     'about.message': string
     'home.title': string
     'home.subtitle': string
-    'home.newFile': string
+    'home.newFromTemplate': string
     'home.openFile': string
     'home.recentFiles': string
     'home.noRecent': string

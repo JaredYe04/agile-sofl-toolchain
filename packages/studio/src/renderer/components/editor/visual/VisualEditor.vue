@@ -34,7 +34,15 @@ const PREDICATE_KEYWORDS: SymbolHint[] = [
   { label: 'exists', kind: 'keyword' }
 ]
 
-const emit = defineEmits<{ revealSpan: [span: SerializableSpan] }>()
+const props = withDefaults(
+  defineProps<{
+    hideNavigator?: boolean
+    forcedSelection?: TreeSelection
+  }>(),
+  { hideNavigator: false }
+)
+
+const emit = defineEmits<{ revealSpan: [span: SerializableSpan]; select: [selection: TreeSelection] }>()
 
 const { t } = useI18n()
 const modal = useModalStore()
@@ -58,7 +66,16 @@ const diagnostics = computed(
 
 watch(selected, (value) => {
   editorSelection.setSelection(value)
+  emit('select', value)
 }, { immediate: true })
+
+watch(
+  () => props.forcedSelection,
+  (sel) => {
+    if (sel) selected.value = sel
+  },
+  { immediate: true }
+)
 
 const writeDisabled = computed(
   () => visual.parseFailed.value || visual.hasDiagnostics.value
@@ -563,6 +580,12 @@ function onGlobalClick(): void {
 
 onMounted(() => document.addEventListener('click', onGlobalClick))
 onUnmounted(() => document.removeEventListener('click', onGlobalClick))
+
+function setSelection(sel: TreeSelection): void {
+  selected.value = sel
+}
+
+defineExpose({ setSelection })
 </script>
 
 <template>
@@ -592,6 +615,7 @@ onUnmounted(() => document.removeEventListener('click', onGlobalClick))
       :loading="visual.loading.value"
       :syncing="visual.syncing.value"
       :search-query="searchQuery"
+      :hide-side-views="hideNavigator"
       @update:search-query="searchQuery = $event"
       @refresh="visual.rebuildNow()"
       @add-declaration="onAddDeclaration"
@@ -604,7 +628,70 @@ onUnmounted(() => document.removeEventListener('click', onGlobalClick))
       @rename-module="onRenameModule"
       @remove-module="onRemoveModule"
     />
+    <div v-if="hideNavigator" class="studio-scroll min-h-0 flex-1 overflow-y-auto">
+      <ModuleOverview
+        v-if="selected?.kind === 'module' && selectedModule"
+        :key="detailPanelKey"
+        :module="selectedModule"
+        :disabled="writeDisabled"
+        @patch-declaration="onPatchDeclaration"
+        @patch-gui-widget="onPatchGuiWidget"
+        @patch-invariant="onPatchInvariant"
+        @rename-module="onRenameModuleInline"
+        @select="selected = $event"
+        @reveal-span="emit('revealSpan', $event)"
+      />
+      <AliasProcessEditor
+        v-else-if="selected?.kind === 'process' && selectedProcess?.isAlias"
+        :key="detailPanelKey"
+        :process="selectedProcess"
+        :disabled="writeDisabled"
+        :write-disabled-reason="writeDisabledReason"
+        @patch-alias="onPatchAlias"
+        @rename="onRenameProcess"
+      />
+      <ProcessEditor
+        v-else-if="selected?.kind === 'process' && selectedProcess"
+        :key="detailPanelKey"
+        ref="processEditorRef"
+        :process="selectedProcess"
+        :process-name="selected.processName"
+        :module-name="selected.moduleName"
+        :initial-decom="selectedProcess.decom"
+        :initial-comment="selectedProcess.comment"
+        :fsf-model="selectedFsfModel"
+        :symbols="symbolHints"
+        :disabled="writeDisabled"
+        :write-disabled-reason="writeDisabledReason"
+        :block-informal="blockInformalPredicate"
+        @patch="onPatch"
+        @patch-ext="onPatchExt"
+        @patch-signature="onPatchProcessSignature"
+        @patch-init="onPatchProcessInit"
+        @rename="onRenameProcess"
+      />
+      <FunctionEditor
+        v-else-if="selected?.kind === 'function' && selectedFunction"
+        :key="detailPanelKey"
+        ref="functionEditorRef"
+        :fn="selectedFunction"
+        :module-name="selected.moduleName"
+        :fsf-model="selectedFunctionFsfModel"
+        :symbols="symbolHints"
+        :disabled="writeDisabled"
+        :write-disabled-reason="writeDisabledReason"
+        :block-informal="blockInformalFunction"
+        @patch="onPatchFunction"
+        @patch-signature="onPatchFunctionSignature"
+        @rename="onRenameFunction"
+        @reveal-span="emit('revealSpan', $event)"
+      />
+      <div v-else class="flex h-full items-center justify-center p-8 text-sm text-content-secondary">
+        {{ t('visual.selectHint') }}
+      </div>
+    </div>
     <ResizableSplit
+      v-else
       class="min-h-0 min-w-0 w-full flex-1"
       :ratio="editorUi.visualNavRatio"
       @update:ratio="onNavRatioUpdate"

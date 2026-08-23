@@ -1,0 +1,56 @@
+module GUI_App / Ecommerce;
+const
+    view_home = 0;
+    view_cart = 1;
+    view_checkout = 2;
+    view_orders = 3;
+type
+    ViewId = nat;
+var
+    current_view: ViewId;
+    cart_open: nat;
+inv
+    current_view >= 0 and current_view <= 3 and cart_open >= 0;
+gui ShopGui;
+screen Home;
+    label title "Store";
+    navigation goCart "Cart" triggers OpenCart;
+    navigation goOrders "Orders" triggers OpenOrders;
+end_screen;
+screen Cart;
+    text-input productId "Product";
+    button add "Add" triggers DoAddToCart;
+    navigation goCheckout "Checkout" triggers OpenCheckout;
+    navigation backHome "Home" triggers OpenHome;
+end_screen;
+screen Checkout;
+    text-input total "Total";
+    button pay "Pay" triggers DoCheckout;
+    navigation backCart "Cart" triggers OpenCart;
+end_screen;
+screen Orders;
+    button refund "Refund" triggers DoRefund;
+    navigation backHome2 "Home" triggers OpenHome;
+end_screen;
+end_gui;
+process OpenCart ()
+    FSF :
+    others && current_view = 1
+end_process
+process OpenCheckout ()
+    FSF :
+    cart_open > 0 && current_view = 2 ||
+    others && current_view = 1
+end_process
+process OpenOrders ()
+    FSF :
+    others && current_view = 3
+end_process
+process OpenHome ()
+    FSF :
+    others && current_view = 0
+end_process
+process DoAddToCart equal Ecommerce.AddToCart end_process
+process DoCheckout equal Ecommerce.Checkout end_process
+process DoRefund equal Ecommerce.Refund end_process
+end_module

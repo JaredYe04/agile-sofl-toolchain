@@ -178,4 +178,13 @@ flowchart TB
 
 - 手测：scope 错误出现在 issues 底栏（LSP 标签）；代码/分屏/纯可视化模式底栏可见；Open 对话框记住上次目录
 
+## 已完成（四栏工作区重构）
+
+- 项目 = 文件夹 + `.agile-sofl.json`；SQLite 索引（sql.js）记住多项目
+- 四栏：模块树 / Informal 文本 / Hybrid+GUI Views / 层次树+关系图
+- GUI 模块高亮；模块级 dirty（`moduleHashes`）；Informal hover 折叠
+- GUI 拖拽设计器：bounds、多 View、点击切换；设计器 token 跟随 IDE 深浅色
+- 左列 `WorkspaceTreeMenuProvider` 右键菜单（空白 / 项目 / SYSTEM / 模块）；删除项目仅移出索引
+
+
 

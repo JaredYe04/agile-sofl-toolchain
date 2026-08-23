@@ -15,6 +15,13 @@ function removeCrossorigin(): Plugin {
   }
 }
 
+const monorepoExternals = [
+  '@agile-sofl/parser',
+  '@agile-sofl/gui',
+  '@agile-sofl/editor-api',
+  '@agile-sofl/language-server'
+]
+
 export default defineConfig({
   main: {
     plugins: [externalizeDepsPlugin()],
@@ -22,7 +29,8 @@ export default defineConfig({
       rollupOptions: {
         input: {
           index: resolve(__dirname, 'src/main/index.ts')
-        }
+        },
+        external: monorepoExternals
       }
     }
   },

@@ -26,6 +26,19 @@ export interface GuiBinds {
   display?: string
 }
 
+export interface GuiBounds {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+export interface GuiWidgetEvent {
+  on: string
+  action: string
+  targetView?: string
+}
+
 export interface GuiWidget {
   id: string
   kind: GuiWidgetKind
@@ -34,6 +47,13 @@ export interface GuiWidget {
   action?: string
   binds?: GuiBinds
   options?: string[]
+  bounds?: GuiBounds
+  events?: GuiWidgetEvent[]
+}
+
+export interface GuiViewSize {
+  width: number
+  height: number
 }
 
 export interface GuiScreen {
@@ -43,6 +63,7 @@ export interface GuiScreen {
   description?: string
   triggersProcess?: string
   widgets?: GuiWidget[]
+  size?: GuiViewSize
 }
 
 export interface GuiFlow {

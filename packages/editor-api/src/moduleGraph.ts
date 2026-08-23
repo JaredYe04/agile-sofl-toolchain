@@ -4,7 +4,7 @@ import { toSerializableSpan, type SerializableSpan } from './span.js'
 
 export type ModuleGraphNodeKind = 'module' | 'process' | 'function'
 
-export type ModuleGraphNodeRole = 'system' | 'submodule' | 'process' | 'function'
+export type ModuleGraphNodeRole = 'system' | 'submodule' | 'process' | 'function' | 'gui'
 
 export interface ModuleGraphNode {
   id: string
@@ -87,7 +87,7 @@ function addModuleNode(mod: ModuleNode, nodes: ModuleGraphNode[], edges: ModuleG
     kind: 'module',
     name: mod.isSystem ? `SYSTEM_${mod.name}` : mod.name,
     parentId: mod.parent?.name,
-    moduleRole: mod.isSystem ? 'system' : 'submodule',
+    moduleRole: mod.gui || mod.name.startsWith('GUI_') ? 'gui' : mod.isSystem ? 'system' : 'submodule',
     span: toSerializableSpan(mod.span)
   })
   if (mod.parent?.name) {

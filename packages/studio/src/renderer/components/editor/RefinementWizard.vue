@@ -287,7 +287,7 @@ onUnmounted(() => {
         </div>
         <div class="flex justify-end gap-2 border-t border-border-subtle px-5 py-3">
           <button type="button" class="rounded-md px-3 py-1.5 text-sm hover:bg-surface-overlay" @click="emit('close')">
-            {{ t('newFile.cancel') }}
+            {{ t('newProjectTemplate.cancel') }}
           </button>
           <button
             type="button"

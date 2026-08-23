@@ -40,7 +40,7 @@ async function editSpan(span: InformalSpanPayload): Promise<void> {
   const result = await modal.show({
     title: t('informal.editRegion'),
     message: t('informal.editRegionHint', { process: span.processName, field: span.field }),
-    buttons: [t('newFile.cancel'), t('dialog.ok')],
+    buttons: [t('newProjectTemplate.cancel'), t('dialog.ok')],
     input: true,
     inputValue: span.text
   })

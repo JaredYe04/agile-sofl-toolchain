@@ -21,6 +21,8 @@ export type SerializableSpan = {
   column: number
 }
 
+const props = withDefaults(defineProps<{ tabId?: string }>(), { tabId: undefined })
+
 const container = ref<HTMLElement | null>(null)
 const editor = shallowRef<Monaco.editor.IStandaloneCodeEditor | null>(null)
 const models = new Map<string, Monaco.editor.ITextModel>()
@@ -35,9 +37,13 @@ const lsp = useLspStore()
 const lspDiagnostics = useLspDiagnosticsStore()
 const editorUi = useEditorUiStore()
 
-const activeDocumentTab = computed(() =>
-  doc.activeTab?.kind === 'document' ? doc.activeTab : null
-)
+const activeDocumentTab = computed(() => {
+  if (props.tabId) {
+    const tab = doc.tabs.find((t) => t.id === props.tabId)
+    return tab?.kind === 'document' ? tab : null
+  }
+  return doc.activeTab?.kind === 'document' ? doc.activeTab : null
+})
 
 function runCommand(cmd: string): void {
   const ed = editor.value
@@ -286,7 +292,7 @@ onMounted(async () => {
   markerSub = monaco.editor.onDidChangeMarkers(() => updateMarkerDiagnostics())
 })
 
-watch(() => doc.activeTabId, () => {
+watch([() => doc.activeTabId, () => props.tabId], () => {
   syncModel()
   updateMarkerDiagnostics()
   highlightDecorations = editor.value?.deltaDecorations(highlightDecorations, []) ?? []

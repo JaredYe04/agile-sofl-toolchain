@@ -1,0 +1,29 @@
+module GUI_App / Test;
+const
+    view_home = 0;
+    view_status = 1;
+type
+    ViewId = nat;
+var
+    current_view: ViewId;
+inv
+    current_view >= 0 and current_view <= 1;
+gui TestGui;
+screen Home;
+    label title "Minimal";
+    navigation goStatus "Status" triggers OpenStatus;
+end_screen;
+screen Status;
+    label value "x";
+    navigation goHome "Home" triggers OpenHome;
+end_screen;
+end_gui;
+process OpenStatus ()
+    FSF :
+    others && current_view = 1
+end_process
+process OpenHome ()
+    FSF :
+    others && current_view = 0
+end_process
+end_module

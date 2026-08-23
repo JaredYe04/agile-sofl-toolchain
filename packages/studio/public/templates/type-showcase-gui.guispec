@@ -1,0 +1,54 @@
+guispecVersion: "1.0"
+meta:
+  id: "types-gui-001"
+  title: Type Showcase GUI
+  informalTarget: ./type-showcase-informal.aspec
+gui:
+  app:
+    name: TypesApp
+    description: |
+      Catalog browser. current_view in 0..1.
+  screens:
+    - id: view-home
+      name: Home
+      title: Types
+      size: { width: 640, height: 400 }
+      widgets:
+        - id: w-title
+          kind: label
+          label: Types
+          bounds: { x: 24, y: 24, width: 200, height: 28 }
+        - id: w-catalog
+          kind: navigation
+          label: Catalog
+          bounds: { x: 24, y: 72, width: 120, height: 32 }
+          events:
+            - on: click
+              action: navigate
+              targetView: view-catalog
+    - id: view-catalog
+      name: Catalog
+      title: Type constructors
+      size: { width: 640, height: 400 }
+      widgets:
+        - id: w-hint
+          kind: label
+          label: Type constructors
+          bounds: { x: 24, y: 24, width: 240, height: 28 }
+        - id: w-home
+          kind: navigation
+          label: Home
+          bounds: { x: 24, y: 72, width: 120, height: 32 }
+          events:
+            - on: click
+              action: navigate
+              targetView: view-home
+  flows:
+    - from: view-home
+      to: view-catalog
+      on: navigate
+      label: Open catalog
+    - from: view-catalog
+      to: view-home
+      on: navigate
+      label: Back home

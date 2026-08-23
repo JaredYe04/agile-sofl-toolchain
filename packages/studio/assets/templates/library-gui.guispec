@@ -7,43 +7,102 @@ gui:
   app:
     name: LibraryApp
     description: |
-      Staff-facing library circulation UI.
+      Circulation UI. current_view in 0..2; session_ok >= 0.
   screens:
-    - id: scr-home
-      name: HomePage
+    - id: view-home
+      name: Home
       title: Library Home
-      description: |
-        Main navigation for circulation tasks.
+      size: { width: 640, height: 400 }
       widgets:
+        - id: w-title
+          kind: label
+          label: Library
+          bounds: { x: 24, y: 24, width: 240, height: 28 }
         - id: w-nav-borrow
           kind: navigation
           label: Borrow
+          bounds: { x: 24, y: 72, width: 120, height: 32 }
+          events:
+            - on: click
+              action: navigate
+              targetView: view-borrow
         - id: w-nav-return
           kind: navigation
           label: Return
-    - id: scr-borrow
-      name: BorrowPage
+          bounds: { x: 156, y: 72, width: 120, height: 32 }
+          events:
+            - on: click
+              action: navigate
+              targetView: view-return
+    - id: view-borrow
+      name: Borrow
       title: Borrow Book
-      description: |
-        Enter member and book identifiers.
       triggersProcess: proc-borrow
+      size: { width: 640, height: 400 }
       widgets:
-        - id: w-member-id
+        - id: w-member
           kind: text-input
           label: Member ID
-          binds:
-            param: member_id
-        - id: w-book-id
+          binds: { param: member_id }
+          bounds: { x: 24, y: 24, width: 200, height: 32 }
+        - id: w-book
           kind: text-input
           label: Book ID
-          binds:
-            param: book_id
-        - id: w-submit-borrow
+          binds: { param: book_id }
+          bounds: { x: 24, y: 72, width: 200, height: 32 }
+        - id: w-submit
           kind: button
           label: Borrow
           action: submit
+          bounds: { x: 24, y: 120, width: 120, height: 32 }
+        - id: w-back
+          kind: navigation
+          label: Home
+          bounds: { x: 156, y: 120, width: 120, height: 32 }
+          events:
+            - on: click
+              action: navigate
+              targetView: view-home
+    - id: view-return
+      name: ReturnBook
+      title: Return Book
+      size: { width: 640, height: 400 }
+      widgets:
+        - id: w-member2
+          kind: text-input
+          label: Member ID
+          bounds: { x: 24, y: 24, width: 200, height: 32 }
+        - id: w-book2
+          kind: text-input
+          label: Book ID
+          bounds: { x: 24, y: 72, width: 200, height: 32 }
+        - id: w-submit-ret
+          kind: button
+          label: Return
+          action: submit
+          bounds: { x: 24, y: 120, width: 120, height: 32 }
+        - id: w-back2
+          kind: navigation
+          label: Home
+          bounds: { x: 156, y: 120, width: 120, height: 32 }
+          events:
+            - on: click
+              action: navigate
+              targetView: view-home
   flows:
-    - from: scr-home
-      to: scr-borrow
+    - from: view-home
+      to: view-borrow
       on: navigate
       label: Open borrow
+    - from: view-home
+      to: view-return
+      on: navigate
+      label: Open return
+    - from: view-borrow
+      to: view-home
+      on: navigate
+      label: Back home
+    - from: view-return
+      to: view-home
+      on: navigate
+      label: Back home

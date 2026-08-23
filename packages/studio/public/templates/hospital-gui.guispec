@@ -1,0 +1,130 @@
+guispecVersion: "1.0"
+meta:
+  id: "hospital-gui-001"
+  title: Hospital Registration GUI
+  informalTarget: ./hospital-informal.aspec
+gui:
+  app:
+    name: ClinicApp
+    description: |
+      Front-desk UI. current_view in 0..3; assign requires ticket_issued > 0.
+  screens:
+    - id: view-home
+      name: Home
+      title: Hospital
+      size: { width: 640, height: 400 }
+      widgets:
+        - id: w-title
+          kind: label
+          label: Hospital
+          bounds: { x: 24, y: 24, width: 200, height: 28 }
+        - id: w-register
+          kind: navigation
+          label: Register
+          bounds: { x: 24, y: 72, width: 120, height: 32 }
+          events:
+            - on: click
+              action: navigate
+              targetView: view-register
+        - id: w-triage
+          kind: navigation
+          label: Triage
+          bounds: { x: 156, y: 72, width: 120, height: 32 }
+          events:
+            - on: click
+              action: navigate
+              targetView: view-triage
+    - id: view-register
+      name: Register
+      title: Register
+      triggersProcess: proc-register
+      size: { width: 640, height: 400 }
+      widgets:
+        - id: w-patient
+          kind: text-input
+          label: Patient
+          binds: { param: patient }
+          bounds: { x: 24, y: 24, width: 200, height: 32 }
+        - id: w-dept
+          kind: text-input
+          label: Department
+          binds: { param: dept }
+          bounds: { x: 24, y: 72, width: 200, height: 32 }
+        - id: w-submit
+          kind: button
+          label: Register
+          action: submit
+          bounds: { x: 24, y: 120, width: 120, height: 32 }
+        - id: w-assign
+          kind: navigation
+          label: Assign
+          bounds: { x: 156, y: 120, width: 120, height: 32 }
+          events:
+            - on: click
+              action: navigate
+              targetView: view-assign
+    - id: view-triage
+      name: Triage
+      title: Triage
+      size: { width: 640, height: 400 }
+      widgets:
+        - id: w-patient2
+          kind: text-input
+          label: Patient
+          bounds: { x: 24, y: 24, width: 200, height: 32 }
+        - id: w-submit-triage
+          kind: button
+          label: Triage
+          action: submit
+          bounds: { x: 24, y: 72, width: 120, height: 32 }
+        - id: w-home
+          kind: navigation
+          label: Home
+          bounds: { x: 156, y: 72, width: 120, height: 32 }
+          events:
+            - on: click
+              action: navigate
+              targetView: view-home
+    - id: view-assign
+      name: Assign
+      title: Assign Doctor
+      size: { width: 640, height: 400 }
+      widgets:
+        - id: w-doctor
+          kind: text-input
+          label: Doctor
+          bounds: { x: 24, y: 24, width: 200, height: 32 }
+        - id: w-submit-assign
+          kind: button
+          label: Assign
+          action: submit
+          bounds: { x: 24, y: 72, width: 120, height: 32 }
+        - id: w-home2
+          kind: navigation
+          label: Home
+          bounds: { x: 156, y: 72, width: 120, height: 32 }
+          events:
+            - on: click
+              action: navigate
+              targetView: view-home
+  flows:
+    - from: view-home
+      to: view-register
+      on: navigate
+      label: Open register
+    - from: view-home
+      to: view-triage
+      on: navigate
+      label: Open triage
+    - from: view-register
+      to: view-assign
+      on: navigate
+      label: Assign after ticket
+    - from: view-triage
+      to: view-home
+      on: navigate
+      label: Back home
+    - from: view-assign
+      to: view-home
+      on: navigate
+      label: Back home
