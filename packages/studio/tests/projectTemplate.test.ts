@@ -32,7 +32,16 @@ describe('projectTemplate', () => {
     expect(manifest.gui).toBe('gui.guispec')
     expect(readManifest(nested)?.name).toBe('Library Demo')
     const informal = readFileSync(join(nested, 'informal.aspec'), 'utf-8')
-    expect(informal).toContain('hybridTarget: ./hybrid.asfl')
+    expect(informal).toContain('# Functions')
+    expect(informal).not.toContain('hybridTarget:')
+    expect(informal).not.toMatch(/^---/m)
+    expect(informal).not.toContain('@id:')
+    const meta = JSON.parse(readFileSync(join(nested, '.agile-sofl', 'informal-meta.json'), 'utf-8')) as {
+      hybridTarget?: string
+      moduleId?: string
+    }
+    expect(meta.hybridTarget).toBe('./hybrid.asfl')
+    expect(meta.moduleId).toBe('Library')
     expect(readFileSync(join(nested, 'hybrid.asfl'), 'utf-8')).toContain('module SYSTEM_Library')
     const gui = readFileSync(join(nested, 'gui.guispec'), 'utf-8')
     expect(gui).toContain('informalTarget: ./informal.aspec')
@@ -52,9 +61,15 @@ describe('projectTemplate', () => {
     expect(readFileSync(join(nested, 'hybrid.asfl'), 'utf-8')).toContain('SYSTEM_Ecommerce')
     expect(readFileSync(join(nested, 'hybrid.asfl'), 'utf-8')).toContain('module GUI_App / Ecommerce')
     const informal = readFileSync(join(nested, 'informal.aspec'), 'utf-8')
-    expect(informal).toContain('hybridTarget: ./hybrid.asfl')
-    expect(informal).toContain('guiTarget: ./gui.guispec')
+    expect(informal).not.toContain('hybridTarget: ./hybrid.asfl')
+    expect(informal).not.toContain('guiTarget: ./gui.guispec')
     expect(informal).toContain('AddToCart')
+    const meta = JSON.parse(readFileSync(join(nested, '.agile-sofl', 'informal-meta.json'), 'utf-8')) as {
+      hybridTarget?: string
+      guiTarget?: string
+    }
+    expect(meta.hybridTarget).toBe('./hybrid.asfl')
+    expect(meta.guiTarget).toBe('./gui.guispec')
     expect(readFileSync(join(nested, 'gui.guispec'), 'utf-8')).toContain('view-checkout')
   })
 

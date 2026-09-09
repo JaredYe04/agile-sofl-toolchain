@@ -31,6 +31,7 @@ declare module 'vue-i18n' {
     'menu.view.themeSystem': string
     'menu.view.languageZh': string
     'menu.view.languageEn': string
+    'menu.settings': string
     'menu.help': string
     'menu.help.about': string
     'menu.help.docs': string

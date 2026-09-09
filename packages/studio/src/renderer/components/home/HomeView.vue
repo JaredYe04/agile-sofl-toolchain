@@ -61,7 +61,7 @@ async function openRecent(path: string): Promise<void> {
       <div class="flex flex-wrap gap-3">
         <button
           type="button"
-          class="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition-colors duration-150 hover:bg-accent/90 active:scale-[0.98]"
+          class="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-fg transition-colors duration-150 hover:bg-accent/90 active:scale-[0.98]"
           @click="onNewProject"
         >
           {{ t('workspace.newProject') }}

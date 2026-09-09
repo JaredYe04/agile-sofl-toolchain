@@ -1,6 +1,5 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { basename, join } from 'node:path'
-import { randomUUID } from 'node:crypto'
 import { app } from 'electron'
 import type { AgileSoflManifest } from '../../shared/projectTypes.js'
 import {
@@ -9,6 +8,7 @@ import {
   normalizeManifest,
   writeManifest
 } from './projectManifest.js'
+import { inferModuleIdFromAsfl, writeInformalSpecFile } from './informalMeta.js'
 
 export interface ProjectTemplateEntry {
   id: string
@@ -61,7 +61,7 @@ function readTemplateFile(templatesDir: string, file: string): string {
 function rewriteCrossRefs(
   content: string,
   entry: ProjectTemplateEntry,
-  projectName: string
+  _projectName: string
 ): string {
   let out = content
   const hybridSrc = entry.hybrid?.[0]
@@ -77,34 +77,31 @@ function rewriteCrossRefs(
     out = out.replaceAll(`./${entry.gui}`, `./${STANDARD_GUI}`)
     out = out.replaceAll(entry.gui, STANDARD_GUI)
   }
-  if (out.includes('title:')) {
-    out = out.replace(/title:\s*.+/m, `title: ${JSON.stringify(projectName)}`)
-  }
   return out
 }
 
-function inferSystemModuleName(asflContent: string): string {
-  const match = asflContent.match(/module\s+(SYSTEM_\w+|\w+)\s*;/)
-  return match?.[1] ?? 'NewSystem'
+function writeProjectInformal(
+  root: string,
+  markdown: string,
+  projectName: string,
+  hybridContent: string,
+  hasGui: boolean
+): void {
+  writeInformalSpecFile(root, STANDARD_INFORMAL, markdown, {
+    title: projectName,
+    moduleId: inferModuleIdFromAsfl(hybridContent) ?? asflIdent(projectName),
+    hybridTarget: `./${STANDARD_HYBRID}`,
+    guiTarget: hasGui ? `./${STANDARD_GUI}` : undefined
+  })
 }
 
 function writeStubInformal(root: string, projectName: string, hybridContent: string): void {
-  const systemName = inferSystemModuleName(hybridContent)
-  const ident = asflIdent(projectName)
-  writeFileSync(
-    join(root, STANDARD_INFORMAL),
-    `aspecVersion: "1.0"
-meta:
-  id: "${randomUUID()}"
-  title: ${JSON.stringify(projectName)}
-  hybridTarget: ./${STANDARD_HYBRID}
-system:
-  name: ${ident}
-  purpose: |
-    Informal specification for ${systemName.replace(/^SYSTEM_/, '')}.
-modules: []
-`,
-    'utf-8'
+  writeProjectInformal(
+    root,
+    `# Functions\n\n# Data Resources\n\n# Constraints\n`,
+    projectName,
+    hybridContent,
+    true
   )
 }
 
@@ -146,12 +143,13 @@ export function createProjectFromTemplate(
     hybridPaths.push(STANDARD_HYBRID)
 
     if (entry.informal) {
-      const informalContent = rewriteCrossRefs(
-        readTemplateFile(dir, entry.informal),
-        entry,
-        name
+      writeProjectInformal(
+        root,
+        rewriteCrossRefs(readTemplateFile(dir, entry.informal), entry, name),
+        name,
+        hybridContent,
+        Boolean(entry.gui)
       )
-      writeFileSync(join(root, STANDARD_INFORMAL), informalContent, 'utf-8')
     } else {
       writeStubInformal(root, name, hybridContent)
     }
@@ -165,10 +163,12 @@ export function createProjectFromTemplate(
       if (!firstContent) firstContent = content
     }
     if (entry.informal) {
-      writeFileSync(
-        join(root, STANDARD_INFORMAL),
+      writeProjectInformal(
+        root,
         rewriteCrossRefs(readTemplateFile(dir, entry.informal), entry, name),
-        'utf-8'
+        name,
+        firstContent,
+        Boolean(entry.gui)
       )
     } else {
       writeStubInformal(root, name, firstContent)

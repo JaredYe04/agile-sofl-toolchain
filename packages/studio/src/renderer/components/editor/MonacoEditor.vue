@@ -8,7 +8,8 @@ import { buildMinimapOptions } from '../../monaco/minimapOptions'
 import { registerAgileSoflFormatProvider } from '../../monaco/formatProvider'
 import { EDIT_COMMAND_IDS } from '../../composables/editCommands'
 import { useDocumentStore } from '../../stores/document'
-import { useDocumentHistoryStore } from '../../stores/documentHistory'
+import { useHistoryStore } from '../../stores/history'
+import { historyKindForDocument } from '../../history/kinds'
 import { useLspStore } from '../../stores/lsp'
 import { useLspDiagnosticsStore } from '../../stores/lspDiagnostics'
 import type { DiagnosticSummary, HybridRegionPayload } from '../../../preload/index'
@@ -32,7 +33,7 @@ let highlightClearTimer: ReturnType<typeof setTimeout> | null = null
 let suppressHistory = false
 
 const doc = useDocumentStore()
-const history = useDocumentHistoryStore()
+const history = useHistoryStore()
 const lsp = useLspStore()
 const lspDiagnostics = useLspDiagnosticsStore()
 const editorUi = useEditorUiStore()
@@ -59,7 +60,7 @@ defineExpose({
     const { formatEditorInstance } = await import('../../composables/useFormatDocument')
     return formatEditorInstance(editor.value)
   },
-  applyContent(content: string, fromHistory = false): void {
+  applyContent(content: string, _fromHistory = false): void {
     const tab = activeDocumentTab.value
     const ed = editor.value
     if (!tab || !ed) return
@@ -76,9 +77,6 @@ defineExpose({
     }
     model.pushStackElement()
     model.pushEditOperations([], [], () => null)
-    if (fromHistory) {
-      history.applyExternalContent(tab.id, content)
-    }
     suppressHistory = false
   },
   revealSpan(span: SerializableSpan): void {
@@ -129,7 +127,6 @@ function getOrCreateModel(tabId: string, uri: string, content: string, language:
   }
   model = monaco.editor.createModel(content, language, uriForTab(uri))
   models.set(tabId, model)
-  history.initTab(tabId, content)
   return model
 }
 
@@ -243,11 +240,13 @@ function updateMarkerDiagnostics(): void {
 function onContentChange(): void {
   const tab = activeDocumentTab.value
   const ed = editor.value
-  if (!tab || !ed || suppressHistory) return
+  if (!tab || !ed || suppressHistory || history.applying) return
   const value = ed.getValue()
   if (value !== tab.content) {
-    history.pushSnapshot(tab.id, value)
-    doc.updateContent(tab.id, value)
+    history.applyDocument(tab.id, value, {
+      kind: historyKindForDocument(tab.documentKind),
+      immediate: false
+    })
     scheduleHybridDecorations()
   }
 }
@@ -299,7 +298,7 @@ watch([() => doc.activeTabId, () => props.tabId], () => {
 })
 
 watch(
-  () => doc.documentTabs.map((t) => `${t.id}:${t.content.length}:${t.uri}`).join('|'),
+  () => doc.documentTabs.map((t) => `${t.id}:${t.content}:${t.uri}`).join('\n'),
   () => {
     for (const tab of doc.documentTabs) {
       const model = models.get(tab.id)
@@ -307,7 +306,6 @@ watch(
         suppressHistory = true
         model.setValue(tab.content)
         model.pushStackElement()
-        history.applyExternalContent(tab.id, tab.content)
         suppressHistory = false
       }
     }

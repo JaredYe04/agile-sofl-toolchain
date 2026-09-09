@@ -1,8 +1,6 @@
 import { onMounted, onUnmounted } from 'vue'
 import { useFileActions } from './useFileActions'
-import { useDocumentStore } from '../stores/document'
-import { useDocumentHistoryStore } from '../stores/documentHistory'
-import { isMonacoFocused, isEditableFieldFocused, shouldUseNativeClipboard } from './editCommands'
+import { shouldUseNativeClipboard, shouldUseNativeUndo } from './editCommands'
 
 export interface CommandCenterShortcutHandlers {
   openCommandCenter: (initialQuery?: string) => void
@@ -15,13 +13,12 @@ export function useKeyboardShortcuts(
   onDevTools?: () => void,
   onNewFile?: () => void,
   onFormat?: () => void,
-  onUndoRedo?: (cmd: 'undo' | 'redo') => boolean,
+  onUndoRedo?: (cmd: 'undo' | 'redo') => boolean | Promise<boolean>,
   commandCenter?: CommandCenterShortcutHandlers,
-  onToggleSidebar?: () => void
+  onToggleSidebar?: () => void,
+  onOpenSettings?: () => void
 ): void {
   const files = useFileActions()
-  const doc = useDocumentStore()
-  const history = useDocumentHistoryStore()
 
   function handler(e: KeyboardEvent): void {
     const mod = e.ctrlKey || e.metaKey
@@ -74,6 +71,9 @@ export function useKeyboardShortcuts(
     } else if (key === 'b') {
       e.preventDefault()
       onToggleSidebar?.()
+    } else if (key === ',') {
+      e.preventDefault()
+      onOpenSettings?.()
     } else if (key === 'o') {
       e.preventDefault()
       files.openFile()
@@ -90,10 +90,12 @@ export function useKeyboardShortcuts(
       e.preventDefault()
       onDevTools?.()
     } else if (key === 'z' && !e.shiftKey) {
+      if (shouldUseNativeUndo()) return
       e.preventDefault()
       if (onUndoRedo?.('undo')) return
       onEdit('undo')
     } else if ((key === 'z' && e.shiftKey) || key === 'y') {
+      if (shouldUseNativeUndo()) return
       e.preventDefault()
       if (onUndoRedo?.('redo')) return
       onEdit('redo')

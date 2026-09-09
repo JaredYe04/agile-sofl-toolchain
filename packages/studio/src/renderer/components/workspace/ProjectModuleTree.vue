@@ -9,6 +9,7 @@ import { buildWorkspaceTreeMenu } from '../../workspaceTree/registry'
 import { executeWorkspaceTreeAction, promptNewProject } from '../../workspaceTree/actions'
 import type { WorkspaceTreeContext } from '../../workspaceTree/types'
 import WorkspaceTreeContextMenu from './WorkspaceTreeContextMenu.vue'
+import WorkspacePanel from './WorkspacePanel.vue'
 
 initWorkspaceTreeMenuProviders()
 
@@ -68,7 +69,7 @@ function moduleContext(project: IndexedProject, mod: ProjectModuleInfo): Workspa
 </script>
 
 <template>
-  <aside class="flex h-full min-h-0 w-full flex-col overflow-hidden bg-surface-raised">
+  <WorkspacePanel panel="tree" class="flex flex-col overflow-hidden bg-surface-raised">
     <div class="flex shrink-0 items-center gap-1 border-b border-border-subtle px-2 py-2">
       <p class="min-w-0 flex-1 truncate px-1 text-xs font-semibold text-content-primary">
         {{ t('workspace.fileHierarchy') }}
@@ -160,5 +161,5 @@ function moduleContext(project: IndexedProject, mod: ProjectModuleInfo): Workspa
       @pick="onPick"
       @close="menuOpen = false"
     />
-  </aside>
+  </WorkspacePanel>
 </template>

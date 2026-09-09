@@ -2,10 +2,20 @@ import { parse as parseYaml } from 'yaml'
 import type { AspecDocument } from './model.js'
 import { createDiagnostic, DiagnosticCodes } from './diagnostics/codes.js'
 import type { AspecDiagnostic } from './model.js'
+import { detectAspecFormat, applyInformalMeta, type InformalMeta } from './informal/format.js'
+import { parseInformalSpec } from './informal/parser.js'
+import { informalToAspec } from './informal/bridge.js'
+import type { InformalSpecification } from './informal/model.js'
 
 export interface ParseResult {
   document: AspecDocument | null
   diagnostics: AspecDiagnostic[]
+  format?: 'yaml' | 'markdown'
+  informal?: InformalSpecification | null
+}
+
+export type ParseAspecOptions = {
+  meta?: InformalMeta
 }
 
 function isRecord(v: unknown): v is Record<string, unknown> {
@@ -30,7 +40,7 @@ function normalizeDocument(raw: unknown): AspecDocument | null {
   }
 }
 
-export function parseAspec(source: string): ParseResult {
+function parseYamlAspec(source: string): ParseResult {
   const diagnostics: AspecDiagnostic[] = []
   try {
     const raw = parseYaml(source)
@@ -43,9 +53,9 @@ export function parseAspec(source: string): ParseResult {
           'error'
         )
       )
-      return { document: null, diagnostics }
+      return { document: null, diagnostics, format: 'yaml', informal: null }
     }
-    return { document, diagnostics }
+    return { document, diagnostics, format: 'yaml' }
   } catch (e) {
     diagnostics.push(
       createDiagnostic(
@@ -54,6 +64,24 @@ export function parseAspec(source: string): ParseResult {
         'error'
       )
     )
-    return { document: null, diagnostics }
+    return { document: null, diagnostics, format: 'yaml', informal: null }
   }
+}
+
+export function parseAspec(source: string, options?: ParseAspecOptions): ParseResult {
+  if (detectAspecFormat(source) === 'markdown') {
+    const parsed = parseInformalSpec(source, options)
+    if (!parsed.specification) {
+      return { document: null, diagnostics: parsed.diagnostics, format: 'markdown', informal: null }
+    }
+    if (options?.meta) applyInformalMeta(parsed.specification, options.meta)
+    return {
+      document: informalToAspec(parsed.specification),
+      diagnostics: parsed.diagnostics,
+      format: 'markdown',
+      informal: parsed.specification
+    }
+  }
+  const yaml = parseYamlAspec(source)
+  return yaml
 }

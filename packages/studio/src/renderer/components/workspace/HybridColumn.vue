@@ -10,6 +10,9 @@ import VerticalResizeSplit from '../ui/VerticalResizeSplit.vue'
 import { VISUAL_MODEL_KEY } from '../../composables/visualModelContext'
 import { initSpecAssistProviders } from '../../specAssist/init'
 import { insertHybridProcessSkeleton } from '../../specAssist/hybridSkeleton'
+import WorkspacePanel from './WorkspacePanel.vue'
+import PanelTitle from './PanelTitle.vue'
+import SegmentedSwitch from '../ui/SegmentedSwitch.vue'
 
 initSpecAssistProviders()
 
@@ -21,6 +24,14 @@ const visualRef = ref<InstanceType<typeof VisualEditor> | null>(null)
 const splitRatio = ref(0.62)
 
 const hybridTabId = computed(() => workspace.hybridTab?.id)
+const hybridViewOptions = computed(() => [
+  { id: 'code', label: t('workspace.codeTab') },
+  { id: 'visual', label: t('workspace.visualTab') }
+])
+
+function onHybridMode(id: string): void {
+  workspace.hybridMode = id === 'code' ? 'code' : 'visual'
+}
 
 watch(
   () => workspace.selection,
@@ -68,9 +79,9 @@ defineExpose({
       @update:ratio="splitRatio = $event"
     >
       <template #top>
-        <div class="flex h-full min-h-0 flex-col">
+        <WorkspacePanel panel="hybrid" class="flex flex-col">
           <header class="flex h-[32px] min-w-0 shrink-0 items-center gap-1 overflow-hidden border-b border-border-subtle px-2">
-            <h2 class="mr-auto min-w-0 truncate text-xs font-semibold text-content-primary">{{ t('workspace.hybridSpec') }}</h2>
+            <PanelTitle :title="t('workspace.hybridSpec')" :dirty="workspace.isHybridDirty()" />
             <button
               type="button"
               class="shrink-0 rounded-md px-1.5 py-0.5 text-[11px] text-content-secondary hover:bg-surface-overlay"
@@ -79,24 +90,11 @@ defineExpose({
             >
               {{ t('hybrid.assist.skeleton') }}
             </button>
-            <button
-              type="button"
-              class="shrink-0 rounded-md px-1.5 py-0.5 text-[11px]"
-              :class="workspace.hybridMode === 'code' ? 'bg-accent/15 text-accent' : 'text-content-secondary hover:bg-surface-overlay'"
-              :title="t('workspace.codeTab')"
-              @click="workspace.hybridMode = 'code'"
-            >
-              {{ t('workspace.codeTab') }}
-            </button>
-            <button
-              type="button"
-              class="shrink-0 rounded-md px-1.5 py-0.5 text-[11px]"
-              :class="workspace.hybridMode === 'visual' ? 'bg-accent/15 text-accent' : 'text-content-secondary hover:bg-surface-overlay'"
-              :title="t('workspace.visualTab')"
-              @click="workspace.hybridMode = 'visual'"
-            >
-              {{ t('workspace.visualTab') }}
-            </button>
+            <SegmentedSwitch
+              :model-value="workspace.hybridMode"
+              :options="hybridViewOptions"
+              @update:model-value="onHybridMode"
+            />
           </header>
           <div class="min-h-0 flex-1">
             <MonacoEditor v-show="workspace.hybridMode === 'code'" v-if="hybridTabId" ref="monacoRef" :tab-id="hybridTabId" />
@@ -109,15 +107,17 @@ defineExpose({
               @select="onVisualSelect"
             />
           </div>
-        </div>
+        </WorkspacePanel>
       </template>
       <template #bottom>
-        <GuiViewsPanel />
+        <WorkspacePanel panel="gui">
+          <GuiViewsPanel />
+        </WorkspacePanel>
       </template>
     </VerticalResizeSplit>
-    <div v-else class="flex h-full min-h-0 flex-col">
+    <WorkspacePanel v-else panel="hybrid" class="flex flex-col">
       <header class="flex h-[32px] min-w-0 shrink-0 items-center gap-1 overflow-hidden border-b border-border-subtle px-2">
-        <h2 class="mr-auto min-w-0 truncate text-xs font-semibold text-content-primary">{{ t('workspace.hybridSpec') }}</h2>
+        <PanelTitle :title="t('workspace.hybridSpec')" :dirty="workspace.isHybridDirty()" />
         <button
           type="button"
           class="shrink-0 rounded-md px-1.5 py-0.5 text-[11px] text-content-secondary hover:bg-surface-overlay"
@@ -126,24 +126,11 @@ defineExpose({
         >
           {{ t('hybrid.assist.skeleton') }}
         </button>
-        <button
-          type="button"
-          class="shrink-0 rounded-md px-1.5 py-0.5 text-[11px]"
-          :class="workspace.hybridMode === 'code' ? 'bg-accent/15 text-accent' : 'text-content-secondary hover:bg-surface-overlay'"
-          :title="t('workspace.codeTab')"
-          @click="workspace.hybridMode = 'code'"
-        >
-          {{ t('workspace.codeTab') }}
-        </button>
-        <button
-          type="button"
-          class="shrink-0 rounded-md px-1.5 py-0.5 text-[11px]"
-          :class="workspace.hybridMode === 'visual' ? 'bg-accent/15 text-accent' : 'text-content-secondary hover:bg-surface-overlay'"
-          :title="t('workspace.visualTab')"
-          @click="workspace.hybridMode = 'visual'"
-        >
-          {{ t('workspace.visualTab') }}
-        </button>
+        <SegmentedSwitch
+          :model-value="workspace.hybridMode"
+          :options="hybridViewOptions"
+          @update:model-value="onHybridMode"
+        />
       </header>
       <div class="min-h-0 flex-1">
         <MonacoEditor v-show="workspace.hybridMode === 'code'" v-if="hybridTabId" ref="monacoRef" :tab-id="hybridTabId" />
@@ -156,6 +143,6 @@ defineExpose({
           @select="onVisualSelect"
         />
       </div>
-    </div>
+    </WorkspacePanel>
   </section>
 </template>

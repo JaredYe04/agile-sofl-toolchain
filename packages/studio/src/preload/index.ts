@@ -198,6 +198,142 @@ const studio = {
   updateTraceContentHash: (tracePath: string, aspecSource: string) =>
     ipcRenderer.invoke('studio:update-trace-content-hash', { tracePath, aspecSource }) as Promise<boolean>,
   formatAspec: (source: string) => ipcRenderer.invoke('studio:format-aspec', source) as Promise<string>,
+  parseInformalSpec: (source: string, options?: { projectRoot?: string; filePath?: string | null }) =>
+    ipcRenderer.invoke('studio:parse-informal-spec', {
+      source,
+      projectRoot: options?.projectRoot,
+      filePath: options?.filePath ?? undefined
+    }) as Promise<InformalParsePayload>,
+  patchInformalSpec: (payload: { source: string; patch: InformalPatchPayload }) =>
+    ipcRenderer.invoke('studio:patch-informal-spec', JSON.parse(JSON.stringify(payload))) as Promise<{
+      content: string
+      ok: boolean
+      error?: string
+    }>,
+  llmStatus: () =>
+    ipcRenderer.invoke('studio:llm-status') as Promise<{
+      configured: boolean
+      model: string
+      baseUrl?: string
+    }>,
+  llmListProfiles: () =>
+    ipcRenderer.invoke('studio:llm-list-profiles') as Promise<{
+      activeId: string | null
+      profiles: LlmProfilePublicPayload[]
+    }>,
+  llmSaveProfile: (draft: LlmProfileDraftPayload) =>
+    ipcRenderer.invoke('studio:llm-save-profile', JSON.parse(JSON.stringify(draft))) as Promise<{
+      activeId: string | null
+      savedId: string
+      profiles: LlmProfilePublicPayload[]
+    }>,
+  llmDeleteProfile: (id: string) =>
+    ipcRenderer.invoke('studio:llm-delete-profile', id) as Promise<{
+      activeId: string | null
+      profiles: LlmProfilePublicPayload[]
+    }>,
+  llmSetActiveProfile: (id: string) =>
+    ipcRenderer.invoke('studio:llm-set-active-profile', id) as Promise<{
+      activeId: string | null
+      profiles: LlmProfilePublicPayload[]
+    }>,
+  llmExportProfiles: () => ipcRenderer.invoke('studio:llm-export-profiles') as Promise<string>,
+  llmImportProfiles: (raw: unknown) =>
+    ipcRenderer.invoke('studio:llm-import-profiles', raw) as Promise<{
+      activeId: string | null
+      profiles: LlmProfilePublicPayload[]
+    }>,
+  llmTestProfile: (request: LlmTestRequestPayload) =>
+    ipcRenderer.invoke('studio:llm-test-profile', JSON.parse(JSON.stringify(request))) as Promise<{
+      ok: boolean
+      message: string
+      ms: number
+      detail?: string
+    }>,
+  agentSkills: () =>
+    ipcRenderer.invoke('studio:agent-skills') as Promise<Array<{ id: string; name: string }>>,
+  agentListSessions: (projectRoot: string) =>
+    ipcRenderer.invoke('studio:agent-list-sessions', projectRoot) as Promise<AgentSessionPayload[]>,
+  agentCreateSession: (payload: { projectRoot: string; moduleId?: string; title?: string }) =>
+    ipcRenderer.invoke('studio:agent-create-session', payload) as Promise<AgentSessionPayload>,
+  agentRenameSession: (payload: { projectRoot: string; id: string; title: string }) =>
+    ipcRenderer.invoke('studio:agent-rename-session', payload) as Promise<AgentSessionPayload | null>,
+  agentDeleteSession: (payload: { projectRoot: string; id: string }) =>
+    ipcRenderer.invoke('studio:agent-delete-session', payload) as Promise<boolean>,
+  agentLoadSession: (payload: { projectRoot: string; id: string }) =>
+    ipcRenderer.invoke('studio:agent-load-session', payload) as Promise<AgentSessionPayload | null>,
+  agentDuplicateSession: (payload: { projectRoot: string; id: string }) =>
+    ipcRenderer.invoke('studio:agent-duplicate-session', payload) as Promise<AgentSessionPayload | null>,
+  agentForkSession: (payload: {
+    projectRoot: string
+    id: string
+    throughMessageId: string
+    mode?: 'keep' | 'reset'
+    title?: string
+  }) => ipcRenderer.invoke('studio:agent-fork-session', payload) as Promise<AgentSessionPayload | null>,
+  agentRewindSession: (payload: {
+    projectRoot: string
+    id: string
+    throughMessageId: string
+    mode?: 'keep' | 'reset'
+  }) =>
+    ipcRenderer.invoke('studio:agent-rewind-session', payload) as Promise<AgentSessionPayload | null>,
+  agentFlagSession: (payload: {
+    projectRoot: string
+    id: string
+    flag: 'pinned' | 'archived'
+    value: boolean
+  }) => ipcRenderer.invoke('studio:agent-flag-session', payload) as Promise<AgentSessionPayload | null>,
+  agentChat: (payload: {
+    projectRoot: string
+    sessionId: string
+    text: string
+    context: AgentTurnContextPayload
+  }) => ipcRenderer.invoke('studio:agent-chat', JSON.parse(JSON.stringify(payload))) as Promise<AgentSessionPayload>,
+  agentResume: (payload: {
+    projectRoot: string
+    sessionId: string
+    toolCallId: string
+    result: string
+    context: AgentTurnContextPayload
+    continueTurn?: boolean
+  }) =>
+    ipcRenderer.invoke('studio:agent-resume', JSON.parse(JSON.stringify(payload))) as Promise<AgentSessionPayload | null>,
+  onAgentDelta: (
+    cb: (payload: {
+      sessionId: string
+      kind: 'session' | 'reasoning' | 'content'
+      session?: AgentSessionPayload
+      messageId?: string
+      text?: string
+    }) => void
+  ) => {
+    const handler = (
+      _: unknown,
+      payload: {
+        sessionId: string
+        kind: 'session' | 'reasoning' | 'content'
+        session?: AgentSessionPayload
+        messageId?: string
+        text?: string
+      }
+    ) => cb(payload)
+    ipcRenderer.on('studio:agent-delta', handler)
+    return () => ipcRenderer.removeListener('studio:agent-delta', handler)
+  },
+  listHybridGenerators: () =>
+    ipcRenderer.invoke('studio:list-hybrid-generators') as Promise<Array<{ id: string; name: string }>>,
+  generateHybrid: (payload: {
+    source: string
+    generatorId?: string
+    projectName?: string
+    projectRoot?: string
+    existingAsfl?: string
+  }) =>
+    ipcRenderer.invoke('studio:generate-hybrid', payload) as Promise<
+      | { ok: true; asflText: string; traceLinks: unknown[]; warnings: Array<{ code: string; message: string }> }
+      | { ok: false; error: string }
+    >,
   buildGuiModel: (payload: { source: string; informalSource?: string }) =>
     ipcRenderer.invoke('studio:build-gui-model', payload) as Promise<GuiModelPayload>,
   patchGui: (payload: PatchGuiPayload & { source: string }) =>
@@ -519,6 +655,83 @@ export type BookAlignPayload = {
   constraints?: Array<{ ref: string; description: string; refs?: string[] }>
 }
 
+export type InformalNodePayload = {
+  id: string
+  type: 'function' | 'data-resource' | 'data-field' | 'constraint' | 'text'
+  title: string
+  description?: string
+  parentId?: string
+  children: string[]
+  metadata?: Record<string, unknown>
+}
+
+export type InformalSpecPayload = {
+  id: string
+  moduleId: string
+  version: number
+  metadata: { title?: string; hybridTarget?: string; guiTarget?: string; sourceFormat?: string }
+  sections: Array<{
+    id: string
+    type: 'functions' | 'data-resources' | 'constraints'
+    title: string
+    children: InformalNodePayload[]
+  }>
+}
+
+export type InformalParsePayload = {
+  specification: InformalSpecPayload | null
+  diagnostics: InformalDiagnostic[]
+  format: 'yaml' | 'markdown'
+  displaySource?: string
+}
+
+export type InformalPatchPayload = {
+  explanation?: string
+  operations: Array<Record<string, unknown>>
+}
+
+export type AgentTurnContextPayload = {
+  projectName?: string
+  moduleId?: string
+  informalMarkdown: string
+  selectedNodeId?: string
+  selectedNodeSummary?: string
+  skillId?: string
+}
+
+export type AgentSessionPayload = {
+  id: string
+  moduleId: string
+  title: string
+  createdAt: string
+  updatedAt: string
+  pinned?: boolean
+  archived?: boolean
+  messages: Array<{
+    id: string
+    role: 'user' | 'assistant' | 'system' | 'tool'
+    content: string
+    timestamp: string
+    skillId?: string
+    thinking?: string
+    streaming?: boolean
+    proposedChanges?: InformalPatchPayload
+    clarification?: {
+      id: string
+      question: string
+      options?: Array<{ id: string; label: string }>
+      allowCustom: boolean
+      multiSelect?: boolean
+      pendingToolCallId?: string
+      answer?: string
+    }
+    review?: { issues: Array<{ dimension: string; message: string; nodeId?: string }> }
+    pending?: boolean
+    resolution?: 'applied' | 'rejected' | 'answered'
+  }>
+  context: { skillId?: string; selectedNodeId?: string; pendingToolCallId?: string }
+}
+
 export type InformalModelPayload = {
   meta: { id: string; title: string; hybridTarget?: string; guiTarget?: string }
   system: {
@@ -533,6 +746,8 @@ export type InformalModelPayload = {
   bookAlign?: BookAlignPayload
   gui?: { appName: string; screenCount: number; flowCount: number; embedded: boolean; externalPath?: string }
   diagnostics: InformalDiagnostic[]
+  format?: 'yaml' | 'markdown'
+  informal?: InformalSpecPayload
 }
 
 export type PatchAspecPayload = {
@@ -693,6 +908,31 @@ export type PatchGuiActionOnly =
 export type PatchGuiPayload = PatchGuiActionOnly
 
 export type InformalProcessOption = { id: string; name: string; moduleId: string }
+
+export type LlmProfilePublicPayload = {
+  id: string
+  name: string
+  baseUrl: string
+  model: string
+  apiKeyMasked: string
+  hasKey: boolean
+  active: boolean
+}
+
+export type LlmProfileDraftPayload = {
+  id?: string
+  name?: string
+  baseUrl?: string
+  apiKey?: string
+  model?: string
+  activate?: boolean
+}
+
+export type LlmTestRequestPayload = {
+  kind: 'connectivity' | 'params'
+  profileId?: string
+  draft?: { baseUrl?: string; apiKey?: string; model?: string }
+}
 
 contextBridge.exposeInMainWorld('studio', studio)
 

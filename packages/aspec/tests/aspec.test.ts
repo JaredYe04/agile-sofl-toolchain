@@ -61,7 +61,9 @@ describe('library example pair', () => {
     const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..')
     const aspecPath = join(repoRoot, 'examples', 'library-informal.aspec')
     const source = readFileSync(aspecPath, 'utf8')
-    const { document } = parseAspec(source)
+    const { document } = parseAspec(source, {
+      meta: { moduleId: 'Library', title: 'Library System Informal Spec' }
+    })
     const result = refineToAsfl(document!, source, { aspecUri: aspecPath })
     const checkResult = check(result.asflText)
     expect(checkResult.diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0)

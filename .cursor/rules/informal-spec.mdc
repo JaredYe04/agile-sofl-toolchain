@@ -1,0 +1,13 @@
+---
+description: Informal Specification is Markdown-structured NL, not YAML. Model is source of truth.
+globs: packages/{aspec,studio}/**/*.{ts,vue,md,aspec}
+alwaysApply: false
+---
+
+# Informal Specification
+
+- User-facing `.aspec` is Markdown-like with fixed H1: Functions, Data Resources, Constraints.
+- Document metadata lives in `.agile-sofl/informal-meta.json`, never YAML frontmatter in the user file.
+- Mutate `InformalSpecification` (or patches); serialize to Markdown. Do not treat YAML as the primary format.
+- Node identity is derived from type + title (`fn-login`). Do not write `<!-- @id:... -->` into user-facing markdown.
+- YAML `.aspec` remains parse-compatible for legacy fixtures only.

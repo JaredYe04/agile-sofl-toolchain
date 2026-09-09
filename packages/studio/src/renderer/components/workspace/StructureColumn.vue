@@ -2,10 +2,12 @@
 import { computed, inject } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useWorkspaceStore } from '../../stores/workspace'
-import ModuleHierarchyTree from './ModuleHierarchyTree.vue'
+import SpecificationStructureTree from './SpecificationStructureTree.vue'
 import ModuleGraphView from '../editor/visual/ModuleGraphView.vue'
 import { VISUAL_MODEL_KEY } from '../../composables/visualModelContext'
 import type { TreeSelection } from '../../composables/useVisualModel'
+import WorkspacePanel from './WorkspacePanel.vue'
+import PanelTitle from './PanelTitle.vue'
 
 const { t } = useI18n()
 const workspace = useWorkspaceStore()
@@ -20,9 +22,9 @@ function onGraphSelect(sel: TreeSelection): void {
 </script>
 
 <template>
-  <section class="flex h-full min-h-0 flex-col bg-surface-base">
+  <WorkspacePanel panel="structure" class="flex flex-col bg-surface-base">
     <header class="flex h-[32px] min-w-0 shrink-0 items-center gap-1 overflow-hidden border-b border-border-subtle px-2">
-      <h2 class="mr-auto min-w-0 truncate text-xs font-semibold text-content-primary">{{ t('workspace.hierarchy') }}</h2>
+      <PanelTitle :title="t('workspace.hierarchy')" />
       <button
         type="button"
         class="shrink-0 rounded-md px-1.5 py-0.5 text-[11px]"
@@ -43,7 +45,7 @@ function onGraphSelect(sel: TreeSelection): void {
       </button>
     </header>
     <div class="min-h-0 flex-1">
-      <ModuleHierarchyTree v-if="workspace.structureMode === 'tree'" />
+      <SpecificationStructureTree v-if="workspace.structureMode === 'tree'" />
       <ModuleGraphView
         v-else
         always-enabled
@@ -52,5 +54,5 @@ function onGraphSelect(sel: TreeSelection): void {
         @select="onGraphSelect"
       />
     </div>
-  </section>
+  </WorkspacePanel>
 </template>

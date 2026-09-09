@@ -21,7 +21,7 @@ describe('projectManifest', () => {
     expect(manifest.name).toBe('DemoSys')
     expect(manifest.guiModule).toBe('GUI_App')
     expect(readManifest(nested)?.informal).toBe('informal.aspec')
-    expect(readFileSync(join(nested, 'informal.aspec'), 'utf-8')).toContain('aspecVersion')
+    expect(readFileSync(join(nested, 'informal.aspec'), 'utf-8')).toContain('# Functions')
     expect(readFileSync(join(nested, 'hybrid.asfl'), 'utf-8')).toContain('module GUI_App')
     expect(readFileSync(join(nested, 'gui.guispec'), 'utf-8')).toContain('bounds')
   })

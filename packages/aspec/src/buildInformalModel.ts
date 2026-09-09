@@ -6,13 +6,16 @@ import { resolveModuleParents } from './resolveParents.js'
 import { extractGuiFromAspec } from '@agile-sofl/gui'
 import type { GuiModelSummary } from './model.js'
 import { attachDiagnosticLines } from './sourceSpans.js'
+import { aspecToInformal } from './informal/bridge.js'
+import { validateInformalSpec } from './informal/validator.js'
 
 export type BuildInformalModelOptions = {
   bookAlignStrict?: boolean
 }
 
 export function buildInformalModel(source: string, options?: BuildInformalModelOptions): InformalDocumentModel {
-  const { document, diagnostics: parseDiags } = parseAspec(source)
+  const parsed = parseAspec(source)
+  const { document, diagnostics: parseDiags } = parsed
   if (!document) {
     return {
       meta: { id: '', title: 'Invalid' },
@@ -23,14 +26,26 @@ export function buildInformalModel(source: string, options?: BuildInformalModelO
   }
   resolveModuleParents(document)
   const styleDiags = validateAspec(document, { bookAlignStrict: options?.bookAlignStrict })
-  const embeddedGui = extractGuiFromAspec(source)
+  const informal = parsed.informal ?? aspecToInformal(document)
+  const informalDiags = validateInformalSpec(informal)
   let guiSummary: GuiModelSummary | undefined
-  if (embeddedGui || document.meta.guiTarget) {
+  if (parsed.format !== 'markdown') {
+    const embeddedGui = extractGuiFromAspec(source)
+    if (embeddedGui || document.meta.guiTarget) {
+      guiSummary = {
+        appName: embeddedGui?.app?.name ?? '',
+        screenCount: embeddedGui?.screens?.length ?? 0,
+        flowCount: embeddedGui?.flows?.length ?? 0,
+        embedded: Boolean(embeddedGui),
+        externalPath: document.meta.guiTarget
+      }
+    }
+  } else if (document.meta.guiTarget) {
     guiSummary = {
-      appName: embeddedGui?.app?.name ?? '',
-      screenCount: embeddedGui?.screens?.length ?? 0,
-      flowCount: embeddedGui?.flows?.length ?? 0,
-      embedded: Boolean(embeddedGui),
+      appName: '',
+      screenCount: 0,
+      flowCount: 0,
+      embedded: false,
       externalPath: document.meta.guiTarget
     }
   }
@@ -40,7 +55,9 @@ export function buildInformalModel(source: string, options?: BuildInformalModelO
     modules: document.modules,
     bookAlign: document.bookAlign,
     gui: guiSummary,
-    diagnostics: attachDiagnosticLines(source, [...parseDiags, ...styleDiags])
+    format: parsed.format,
+    informal,
+    diagnostics: attachDiagnosticLines(source, [...parseDiags, ...styleDiags, ...informalDiags])
   }
 }
 

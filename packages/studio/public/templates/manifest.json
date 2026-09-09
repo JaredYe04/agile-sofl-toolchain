@@ -66,6 +66,13 @@
       "category": "informal"
     },
     {
+      "id": "atm-informal",
+      "titleKey": "template.informal.atm.title",
+      "descriptionKey": "template.informal.atm.description",
+      "file": "atm-informal.aspec",
+      "category": "informal"
+    },
+    {
       "id": "gui-blank",
       "titleKey": "template.gui.blank.title",
       "descriptionKey": "template.gui.blank.description",

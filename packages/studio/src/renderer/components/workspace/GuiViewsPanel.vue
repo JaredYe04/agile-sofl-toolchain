@@ -5,6 +5,7 @@ import { GUI_MODEL_KEY } from '../../composables/guiModelContext'
 import { useWorkspaceStore } from '../../stores/workspace'
 import MonacoEditor from '../editor/MonacoEditor.vue'
 import GuiDesignerCanvas from '../editor/gui/GuiDesignerCanvas.vue'
+import PanelTitle from './PanelTitle.vue'
 
 const { t } = useI18n()
 const workspace = useWorkspaceStore()
@@ -33,8 +34,7 @@ watch(
 <template>
   <section class="flex h-full min-h-0 flex-col border-t border-border-subtle bg-surface-base">
     <header class="flex h-[32px] min-w-0 shrink-0 items-center gap-1 overflow-hidden px-2">
-      <h2 class="mr-auto min-w-0 truncate text-xs font-semibold text-content-primary">{{ t('workspace.guiViews') }}</h2>
-      <span v-if="workspace.isGuiDirty()" class="text-accent">●</span>
+      <PanelTitle :title="t('workspace.guiViews')" :dirty="workspace.isGuiDirty()" />
       <button
         type="button"
         class="shrink-0 rounded-md px-1.5 py-0.5 text-[11px]"

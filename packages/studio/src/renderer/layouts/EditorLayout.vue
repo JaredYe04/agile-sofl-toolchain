@@ -19,8 +19,11 @@ import { useDocumentStore } from '../stores/document'
 import { useWorkspaceStore } from '../stores/workspace'
 import { useModalStore } from '../stores/modal'
 import Modal from '../components/ui/Modal.vue'
+import SettingsDialog from '../components/chrome/SettingsDialog.vue'
 import { useCommandCenterStore } from '../stores/commandCenter'
 import { useEditorUiStore } from '../stores/editorUi'
+import { useHistoryStore } from '../stores/history'
+import { useSettingsStore } from '../stores/settings'
 
 const workspaceRef = ref<InstanceType<typeof EditorWorkspace> | null>(null)
 const files = useFileActions()
@@ -30,10 +33,12 @@ const modalStore = useModalStore()
 const newProjectTemplateDialog = useNewProjectTemplateDialog()
 const commandCenter = useCommandCenterStore()
 const editorUi = useEditorUiStore()
+const history = useHistoryStore()
+const settings = useSettingsStore()
 const refineOpen = ref(false)
 
-function onUndoRedo(cmd: 'undo' | 'redo'): boolean {
-  return workspaceRef.value?.[cmd]() ?? false
+async function onUndoRedo(cmd: 'undo' | 'redo'): Promise<boolean> {
+  return cmd === 'undo' ? history.undo() : history.redo()
 }
 
 const showDocumentEditor = computed(
@@ -41,6 +46,14 @@ const showDocumentEditor = computed(
 )
 
 function onEdit(cmd: string): void {
+  if (cmd === 'undo') {
+    void history.undo()
+    return
+  }
+  if (cmd === 'redo') {
+    void history.redo()
+    return
+  }
   workspaceRef.value?.runEditCommand(cmd)
 }
 
@@ -63,7 +76,10 @@ function registerCommandCenterHandlers(): void {
       const { formatActiveDocument } = await import('../composables/useFormatDocument')
       return formatActiveDocument(null)
     },
-    undoRedo: (cmd) => (ws ? ws[cmd]() : false),
+    undoRedo: (cmd) => {
+      void (cmd === 'undo' ? history.undo() : history.redo())
+      return true
+    },
     runEdit: onEdit,
     openNewFile: () => newProjectTemplateDialog.show(),
     openFile: () => files.openFile(),
@@ -89,7 +105,8 @@ useKeyboardShortcuts(
     isCommandCenterOpen: () => commandCenter.isOpen,
     closeCommandCenter: () => commandCenter.close()
   },
-  () => editorUi.toggleProjectSidebar()
+  () => editorUi.toggleProjectSidebar(),
+  () => settings.show()
 )
 
 let unsubClose: (() => void) | undefined
@@ -136,6 +153,7 @@ onUnmounted(() => {
       :title="modalStore.request.title"
       :message="modalStore.request.message"
       :buttons="modalStore.request.buttons"
+      :button-variants="modalStore.request.buttonVariants"
       :input="modalStore.request.input"
       :input-value="modalStore.request.inputValue"
       :input-placeholder="modalStore.request.inputPlaceholder"
@@ -145,5 +163,6 @@ onUnmounted(() => {
       @action="(i, v, c) => modalStore.respond(i, v, c)"
       @close="modalStore.dismiss"
     />
+    <SettingsDialog />
   </div>
 </template>

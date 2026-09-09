@@ -99,9 +99,10 @@ Phase 5–6 已覆盖 ext、结构化签名、别名进程、模块 CRUD、Init 
 
 ### 统一撤回栈
 
-- Store：`stores/documentHistory.ts`，按 tab 维护 `undoStack` / `redoStack`
-- Monaco 输入 debounce 300ms 合并快照；可视化 patch 立即 `pushSnapshot`
-- Undo/Redo 经 `EditorWorkspace.applyContent` 写回并 `pushStackElement` 重置 Monaco 内部栈
+- Store：`stores/history.ts`，Studio **全局** `undoStack` / `redoStack`（不按 tab 隔离）
+- 操作通过 `history.applyDocument` / `history.commit` 注册；种类在 `history/kinds.ts` 的 `registerHistoryKind` 中登记（模块增删改名、Informal 编辑、可视化 patch 等）
+- 文本输入 debounce 300ms 合并；可视化 patch 立即入栈，同 `coalesceKey` 2s 内合并
+- Undo/Redo 由菜单、Ctrl+Z/Y、命令面板统一走全局栈，写回文档内容后由编辑器 watch 同步
 
 ### 剪贴板与小地图
 
@@ -180,7 +181,7 @@ Phase 5–6 已覆盖 ext、结构化签名、别名进程、模块 CRUD、Init 
 ### 编辑即同步（Phase 4）
 
 - 可视化字段 **400ms debounced auto-patch**，已移除 Apply / Apply All 按钮
-- `scheduleVisualPatch` + `documentHistory` **coalesce key**（同字段 2s 内合并 undo）
+- `scheduleVisualPatch` + 全局 history **coalesce key**（同字段 2s 内合并 undo）
 - 解析失败或有 error 诊断时禁用写入，显示 banner
 - **FunctionEditor**：编辑 `==` 函数体与 FSF（`patchFunction` IPC）
 - **PredicateBuilder**：FSF Test/Def 代码/可视化双模式；模块符号补全；支持 and/or/not/quantified/relational 节点增删改、叶子 `CodeField` 补全、量化词 binding 真实类型与 nested quantifiers 往返

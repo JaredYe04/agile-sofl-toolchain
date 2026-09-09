@@ -79,7 +79,8 @@ export default defineConfig({
     // Exclude monaco-editor from prebundle so monacoNlsPlugin can inject zh-hans at dev time.
     // Clear node_modules/.vite after changing this if context menu stays English.
     optimizeDeps: {
-      exclude: ['monaco-editor']
+      exclude: ['monaco-editor'],
+      include: ['vditor']
     }
   }
 })

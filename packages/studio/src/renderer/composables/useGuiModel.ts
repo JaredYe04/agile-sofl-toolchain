@@ -1,6 +1,7 @@
 import { ref, watch, computed, type Ref } from 'vue'
 import { useDocumentStore } from '../stores/document'
-import { useDocumentHistoryStore } from '../stores/documentHistory'
+import { useHistoryStore } from '../stores/history'
+import { HistoryKinds } from '../history/kinds'
 import type { GuiWidgetKind, PatchGuiPayload } from '../preload/index'
 
 const DEBOUNCE_MS = 300
@@ -14,7 +15,7 @@ export function useGuiModel(
   }
 ) {
   const doc = useDocumentStore()
-  const history = useDocumentHistoryStore()
+  const history = useHistoryStore()
   const model = ref<Awaited<ReturnType<NonNullable<typeof window.studio>['buildGuiModel']>> | null>(null)
   const loading = ref(false)
   const lastRebuiltContent = ref('')
@@ -94,9 +95,11 @@ export function useGuiModel(
 
   function applySourcePatch(next: string): void {
     const tab = activeTab.value
-    if (!tab) return
-    doc.setContent(tab.id, next)
-    history.pushSnapshot(tab.id, next)
+    if (!tab || next === tab.content) return
+    history.applyDocument(tab.id, next, {
+      kind: HistoryKinds.guiEdit,
+      immediate: true
+    })
     lastRebuiltContent.value = next
     void rebuildNow()
   }

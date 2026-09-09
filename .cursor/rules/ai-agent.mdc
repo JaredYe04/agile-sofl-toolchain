@@ -1,0 +1,11 @@
+---
+description: Studio AI may only propose schema-valid Informal patches. ChatECNU key stays in main process.
+globs: packages/studio/src/**/*.{ts,vue}
+alwaysApply: false
+---
+
+# Specification Agent
+
+- ChatECNU (`ecnu-max`) runs in Electron main. Never expose `ECNU_API_KEY` to the renderer.
+- AI output is tools: clarification, propose_changes, review. Editor validates, previews, and applies.
+- Do not let the model overwrite `.aspec` / `.asfl` files directly.

@@ -23,6 +23,10 @@ export function useFileActions() {
 
     await window.studio!.fileWrite(path, tab.content)
     doc.markSaved(tab.id, path, path.split(/[/\\]/).pop() ?? tab.title)
+    if (tab.documentKind === 'asfl' && path) {
+      const workspace = useWorkspaceStore()
+      if (workspace.hasWorkspace) await workspace.markHybridSaved(path)
+    }
     if (tab.documentKind === 'aspec' && path && window.studio?.updateTraceContentHash) {
       const tracePath = path.replace(/\.aspec$/i, '.aspec.trace.json')
       try {
@@ -37,12 +41,13 @@ export function useFileActions() {
   async function saveWorkspace(): Promise<boolean> {
     const workspace = useWorkspaceStore()
     if (!workspace.hasWorkspace) return saveTab()
+    const focused = workspace.tabForFocusedPanel()
+    if (focused?.isDirty) return saveTab(focused.id)
     const tabs = [workspace.informalTab, workspace.hybridTab, workspace.guiTab]
     for (const tab of tabs) {
       if (tab?.isDirty) {
         const ok = await saveTab(tab.id)
         if (!ok) return false
-        if (tab.documentKind === 'asfl' && tab.filePath) await workspace.markHybridSaved(tab.filePath)
       }
     }
     return true

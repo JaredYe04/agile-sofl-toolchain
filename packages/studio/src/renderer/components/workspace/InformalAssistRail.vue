@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
 import { useWorkspaceStore } from '../../stores/workspace'
-import { useDocumentStore } from '../../stores/document'
+import { useHistoryStore } from '../../stores/history'
+import { HistoryKinds } from '../../history/kinds'
 import { initSpecAssistProviders } from '../../specAssist/init'
 import { listInformalAssistantProviders } from '../../specAssist/registry'
 import { informalTemplate, type InformalTemplateId } from '../../specAssist/templates'
@@ -11,13 +12,15 @@ initSpecAssistProviders()
 
 const { t } = useI18n()
 const workspace = useWorkspaceStore()
-const doc = useDocumentStore()
+const history = useHistoryStore()
 
 async function applyCurrent(suggestion: Parameters<typeof applyInformalSuggestion>[1]): Promise<void> {
   const tab = workspace.informalTab
   if (!tab) return
   const next = await applyInformalSuggestion(tab.content, suggestion)
-  if (next !== tab.content) doc.setContent(tab.id, next)
+  if (next !== tab.content) {
+    history.applyDocument(tab.id, next, { kind: HistoryKinds.informalEdit, immediate: true })
+  }
 }
 
 async function onTemplate(id: InformalTemplateId): Promise<void> {
@@ -34,7 +37,9 @@ async function onExtract(): Promise<void> {
       source = await applyInformalSuggestion(source, item)
     }
   }
-  if (source !== tab.content) doc.setContent(tab.id, source)
+  if (source !== tab.content) {
+    history.applyDocument(tab.id, source, { kind: HistoryKinds.informalEdit, immediate: true })
+  }
 }
 </script>
 

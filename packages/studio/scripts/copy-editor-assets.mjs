@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { copyFileSync, mkdirSync, existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { copyFileSync, mkdirSync, existsSync, readFileSync, writeFileSync, cpSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createRequire } from 'node:module'
@@ -35,6 +35,7 @@ const templateFiles = [
   ['type-showcase.asfl', join(examplesRoot, 'type-showcase.asfl')],
   ['graph-showcase.asfl', join(examplesRoot, 'graph-showcase.asfl')],
   ['informal-blank.aspec', join(studioRoot, 'assets', 'templates', 'informal-blank.aspec')],
+  ['atm-informal.aspec', join(studioRoot, 'assets', 'templates', 'atm-informal.aspec')],
   ['library-informal.aspec', join(studioRoot, 'assets', 'templates', 'library-informal.aspec')],
   ['minimal-informal.aspec', join(studioRoot, 'assets', 'templates', 'minimal-informal.aspec')],
   ['ecommerce-informal.aspec', join(studioRoot, 'assets', 'templates', 'ecommerce-informal.aspec')],
@@ -91,4 +92,12 @@ for (const outDir of templateOutDirs) {
     }
     console.log(`Copied template ${dest} -> ${outDir.replace(studioRoot, 'packages/studio')}`)
   }
+}
+
+const vditorPkg = dirname(require.resolve('vditor/package.json'))
+const vditorDist = join(vditorPkg, 'dist')
+for (const dest of [join(studioRoot, 'public', 'vditor', 'dist'), join(studioRoot, 'assets', 'vditor', 'dist')]) {
+  mkdirSync(dirname(dest), { recursive: true })
+  cpSync(vditorDist, dest, { recursive: true })
+  console.log(`Copied vditor dist -> ${dest.replace(studioRoot, 'packages/studio')}`)
 }

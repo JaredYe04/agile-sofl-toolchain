@@ -11,8 +11,8 @@ function resolveParseBridgePath(): string {
 export function registerParseHandlers(): void {
   // Pre-bundled with esbuild (incl. chevrotain ESM) — see scripts/bundle-parse-bridge.mjs
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { registerParseHandlers: registerBundled } = require(
-    resolveParseBridgePath()
-  ) as typeof import('./parseBridge')
+  const { registerParseHandlers: registerBundled } = require(resolveParseBridgePath()) as {
+    registerParseHandlers: () => void
+  }
   registerBundled()
 }

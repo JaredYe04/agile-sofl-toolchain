@@ -13,7 +13,7 @@ const doc = useDocumentStore()
       <p class="mt-3 text-sm text-content-secondary">{{ t('welcome.message') }}</p>
       <button
         type="button"
-        class="mt-6 rounded-lg bg-accent px-5 py-2 text-sm font-medium text-white transition-colors duration-150 hover:bg-accent/90 active:scale-[0.98]"
+        class="mt-6 rounded-lg bg-accent px-5 py-2 text-sm font-medium text-accent-fg transition-colors duration-150 hover:bg-accent/90 active:scale-[0.98]"
         @click="doc.goHome()"
       >
         {{ t('welcome.goHome') }}

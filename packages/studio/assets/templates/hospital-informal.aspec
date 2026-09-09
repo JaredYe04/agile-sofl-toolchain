@@ -1,75 +1,48 @@
-aspecVersion: "1.0"
-meta:
-  id: "hospital-informal-001"
-  title: Hospital Registration Informal Spec
-  hybridTarget: ./hospital-registration.asfl
-  guiTarget: ./hospital-gui.guispec
-system:
-  name: Hospital
-  purpose: |
-    Outpatient registration, triage, doctor assignment, and scheduling workflow.
-  scope: |
-    Front-desk registration through doctor assignment for waiting patients.
-modules:
-  - id: mod-hospital
-    name: SYSTEM_Hospital
-    description: |
-      Hospital registration and queue management.
-    types:
-      - id: type-patient-id
-        name: PatientId
-        typeHint: nat
-      - id: type-doctor-id
-        name: DoctorId
-        typeHint: nat
-    variables:
-      - id: var-queue
-        name: queue
-        typeHint: seq of nat
-      - id: var-waiting
-        name: waiting_count
-        typeHint: nat
-    invariants:
-      - id: inv-queue
-        textHint: "forall[p: queue] | p > 0 and waiting_count >= 0"
-    processes:
-      - id: proc-register
-        name: Register
-        description: |
-          Register a patient for a department and issue the next ticket number.
-        signature:
-          inputs:
-            - name: patient
-              typeHint: nat
-            - name: dept
-              typeHint: nat
-          outputs:
-            - name: ticket
-              typeHint: nat
-        decomposition: Hospital_Register
-      - id: proc-triage
-        name: Triage
-        description: |
-          Assign triage priority when a patient arrives, elevating urgent cases.
-        signature:
-          inputs:
-            - name: patient
-              typeHint: nat
-            - name: urgent
-              typeHint: nat
-          outputs:
-            - name: priority
-              typeHint: nat
-      - id: proc-assign
-        name: AssignDoctor
-        description: |
-          Assign an on-duty doctor to a waiting patient.
-        signature:
-          inputs:
-            - name: patient
-              typeHint: nat
-            - name: doctor
-              typeHint: nat
-          outputs:
-            - name: assigned
-              typeHint: nat
+
+# Functions
+
+## Register
+
+Register a patient for a department and issue the next ticket number.
+
+- Inputs: patient (nat), dept (nat)
+- Outputs: ticket (nat)
+- Decomposition: Hospital_Register
+
+## Triage
+
+Assign triage priority when a patient arrives, elevating urgent cases.
+
+- Inputs: patient (nat), urgent (nat)
+- Outputs: priority (nat)
+
+## AssignDoctor
+
+Assign an on-duty doctor to a waiting patient.
+
+- Inputs: patient (nat), doctor (nat)
+- Outputs: assigned (nat)
+
+# Data Resources
+
+## PatientId
+
+Natural-number identifier of a registered patient.
+
+## DoctorId
+
+Natural-number identifier of an on-duty doctor.
+
+## queue
+
+Sequence of waiting patient identifiers.
+
+## waiting_count
+
+Number of patients currently waiting.
+
+# Constraints
+
+## Valid waiting queue
+
+forall[p: queue] | p > 0 and waiting_count >= 0

@@ -1,5 +1,9 @@
 import { parseAspec } from './parse.js'
 import { serializeAspec } from './serialize.js'
+import { detectAspecFormat } from './informal/format.js'
+import { parseInformalSpec } from './informal/parser.js'
+import { serializeInformalSpec } from './informal/serializer.js'
+import { aspecToInformal } from './informal/bridge.js'
 import type {
   AspecDocument,
   InformalModule,
@@ -17,6 +21,13 @@ function clone<T>(v: T): T {
   return JSON.parse(JSON.stringify(v)) as T
 }
 
+function emitAspec(source: string, doc: AspecDocument): string {
+  if (detectAspecFormat(source) === 'markdown') {
+    return serializeInformalSpec(aspecToInformal(doc))
+  }
+  return serializeAspec(doc)
+}
+
 function findModule(doc: AspecDocument, moduleId: string): InformalModule | undefined {
   return doc.modules.find((m) => m.id === moduleId)
 }
@@ -30,7 +41,7 @@ export function patchAspecField(source: string, path: string, value: unknown): s
   if (!document) return source
   const doc = clone(document)
   setByPath(doc, path, value)
-  return serializeAspec(doc)
+  return emitAspec(source, doc)
 }
 
 /** Patch by stable entity id, e.g. `process.proc-borrow.description` or `system.purpose`. */
@@ -46,7 +57,7 @@ export function patchFieldById(source: string, idPath: string, value: unknown): 
 
   if (kind === 'system') {
     setByPath(doc, `system.${id}`, value)
-    return serializeAspec(doc)
+    return emitAspec(source, doc)
   }
 
   if (kind === 'module') {
@@ -54,7 +65,7 @@ export function patchFieldById(source: string, idPath: string, value: unknown): 
     if (!mod) return source
     if (!field) return source
     setOnObject(mod as unknown as Record<string, unknown>, field, value)
-    return serializeAspec(doc)
+    return emitAspec(source, doc)
   }
 
   if (kind === 'process') {
@@ -62,7 +73,7 @@ export function patchFieldById(source: string, idPath: string, value: unknown): 
       const proc = mod.processes?.find((p) => p.id === id)
       if (proc && field) {
         setOnObject(proc as unknown as Record<string, unknown>, field, value)
-        return serializeAspec(doc)
+        return emitAspec(source, doc)
       }
     }
     return source
@@ -76,7 +87,7 @@ export function patchFieldById(source: string, idPath: string, value: unknown): 
         const scen = proc.scenarios?.find((s) => s.id === scenarioId)
         if (scen && fieldName) {
           setOnObject(scen as unknown as Record<string, unknown>, fieldName, value)
-          return serializeAspec(doc)
+          return emitAspec(source, doc)
         }
       }
     }
@@ -88,7 +99,7 @@ export function patchFieldById(source: string, idPath: string, value: unknown): 
       const c = mod.constants?.find((x) => x.id === id)
       if (c && field) {
         setOnObject(c as unknown as Record<string, unknown>, field, value)
-        return serializeAspec(doc)
+        return emitAspec(source, doc)
       }
     }
     return source
@@ -99,7 +110,7 @@ export function patchFieldById(source: string, idPath: string, value: unknown): 
       const fn = mod.functions?.find((f) => f.id === id)
       if (fn && field) {
         setOnObject(fn as unknown as Record<string, unknown>, field, value)
-        return serializeAspec(doc)
+        return emitAspec(source, doc)
       }
     }
     return source
@@ -110,7 +121,7 @@ export function patchFieldById(source: string, idPath: string, value: unknown): 
       const ty = mod.types?.find((t) => t.id === id)
       if (ty && field) {
         setOnObject(ty as unknown as Record<string, unknown>, field, value)
-        return serializeAspec(doc)
+        return emitAspec(source, doc)
       }
     }
     return source
@@ -121,7 +132,7 @@ export function patchFieldById(source: string, idPath: string, value: unknown): 
       const v = mod.variables?.find((x) => x.id === id)
       if (v && field) {
         setOnObject(v as unknown as Record<string, unknown>, field, value)
-        return serializeAspec(doc)
+        return emitAspec(source, doc)
       }
     }
     return source
@@ -132,7 +143,7 @@ export function patchFieldById(source: string, idPath: string, value: unknown): 
       const inv = mod.invariants?.find((x) => x.id === id)
       if (inv && field) {
         setOnObject(inv as unknown as Record<string, unknown>, field, value)
-        return serializeAspec(doc)
+        return emitAspec(source, doc)
       }
     }
     return source
@@ -181,7 +192,7 @@ export function addAspecProcess(source: string, moduleId: string, process: Infor
   if (!mod) return source
   if (!mod.processes) mod.processes = []
   mod.processes.push(process)
-  return serializeAspec(doc)
+  return emitAspec(source, doc)
 }
 
 export function removeAspecProcess(source: string, moduleId: string, processId: string): string {
@@ -191,7 +202,7 @@ export function removeAspecProcess(source: string, moduleId: string, processId: 
   const mod = doc.modules.find((m) => m.id === moduleId)
   if (!mod?.processes) return source
   mod.processes = mod.processes.filter((p) => p.id !== processId)
-  return serializeAspec(doc)
+  return emitAspec(source, doc)
 }
 
 export function addAspecScenario(
@@ -207,7 +218,7 @@ export function addAspecScenario(
   if (!proc) return source
   if (!proc.scenarios) proc.scenarios = []
   proc.scenarios.push(scenario)
-  return serializeAspec(doc)
+  return emitAspec(source, doc)
 }
 
 export function removeAspecScenario(
@@ -222,7 +233,7 @@ export function removeAspecScenario(
   const proc = findProcess(doc, moduleId, processId)
   if (!proc?.scenarios) return source
   proc.scenarios = proc.scenarios.filter((s) => s.id !== scenarioId)
-  return serializeAspec(doc)
+  return emitAspec(source, doc)
 }
 
 export function addAspecModule(source: string, module: InformalModule): string {
@@ -230,7 +241,7 @@ export function addAspecModule(source: string, module: InformalModule): string {
   if (!document) return source
   const doc = clone(document)
   doc.modules.push(module)
-  return serializeAspec(doc)
+  return emitAspec(source, doc)
 }
 
 export function removeAspecModule(source: string, moduleId: string): string {
@@ -238,7 +249,7 @@ export function removeAspecModule(source: string, moduleId: string): string {
   if (!document) return source
   const doc = clone(document)
   doc.modules = doc.modules.filter((m) => m.id !== moduleId)
-  return serializeAspec(doc)
+  return emitAspec(source, doc)
 }
 
 export function addAspecFunction(
@@ -253,7 +264,7 @@ export function addAspecFunction(
   if (!mod) return source
   if (!mod.functions) mod.functions = []
   mod.functions.push(fn)
-  return serializeAspec(doc)
+  return emitAspec(source, doc)
 }
 
 export function removeAspecFunction(source: string, moduleId: string, functionId: string): string {
@@ -263,7 +274,7 @@ export function removeAspecFunction(source: string, moduleId: string, functionId
   const mod = findModule(doc, moduleId)
   if (!mod?.functions) return source
   mod.functions = mod.functions.filter((f) => f.id !== functionId)
-  return serializeAspec(doc)
+  return emitAspec(source, doc)
 }
 
 function addEntity<T>(
@@ -279,7 +290,7 @@ function addEntity<T>(
   if (!mod) return source
   const list = (mod[key] ??= [] as never) as T[]
   list.push(entity)
-  return serializeAspec(doc)
+  return emitAspec(source, doc)
 }
 
 function removeEntity(
@@ -294,7 +305,7 @@ function removeEntity(
   const mod = findModule(doc, moduleId)
   if (!mod?.[key]) return source
   ;(mod[key] as Array<{ id: string }>) = (mod[key] as Array<{ id: string }>).filter((e) => e.id !== entityId)
-  return serializeAspec(doc)
+  return emitAspec(source, doc)
 }
 
 export function addAspecConst(source: string, moduleId: string, constant: InformalConst): string {
@@ -334,10 +345,15 @@ export function patchBookAlign(source: string, bookAlign: BookAlignSection): str
   if (!document) return source
   const doc = clone(document)
   doc.bookAlign = bookAlign
-  return serializeAspec(doc)
+  return emitAspec(source, doc)
 }
 
 export function formatAspec(source: string): string {
+  if (detectAspecFormat(source) === 'markdown') {
+    const parsed = parseInformalSpec(source)
+    if (!parsed.specification) return source
+    return serializeInformalSpec(parsed.specification)
+  }
   const { document } = parseAspec(source)
   if (!document) return source
   return serializeAspec(document)

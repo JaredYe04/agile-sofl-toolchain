@@ -1,6 +1,8 @@
 import type * as Monaco from 'monaco-editor'
 import type { TextEdit as LspTextEdit } from 'vscode-languageserver-types'
 import { useDocumentStore } from '../stores/document'
+import { useHistoryStore } from '../stores/history'
+import { historyKindForDocument } from '../history/kinds'
 import { useLspStore } from '../stores/lsp'
 import { getLanguageClient } from '../monaco/languageClient'
 import { monaco } from '../monaco/setup'
@@ -67,7 +69,10 @@ export async function formatActiveDocument(
   if (tab.documentKind === 'aspec') {
     formatted = await formatViaAspec(source)
     if (!formatted) return false
-    doc.setContent(tab.id, formatted)
+    useHistoryStore().applyDocument(tab.id, formatted, {
+      kind: historyKindForDocument(tab.documentKind),
+      immediate: true
+    })
     if (model && model.getValue() !== formatted) {
       model.setValue(formatted)
       model.pushStackElement()
@@ -78,7 +83,10 @@ export async function formatActiveDocument(
   if (tab.documentKind === 'guispec') {
     formatted = await formatViaGui(source)
     if (!formatted) return false
-    doc.setContent(tab.id, formatted)
+    useHistoryStore().applyDocument(tab.id, formatted, {
+      kind: historyKindForDocument(tab.documentKind),
+      immediate: true
+    })
     if (model && model.getValue() !== formatted) {
       model.setValue(formatted)
       model.pushStackElement()
@@ -111,7 +119,10 @@ export async function formatActiveDocument(
 
   if (!formatted) return false
 
-  doc.setContent(tab.id, formatted)
+  useHistoryStore().applyDocument(tab.id, formatted, {
+    kind: historyKindForDocument(tab.documentKind),
+    immediate: true
+  })
   if (model && model.getValue() !== formatted) {
     model.setValue(formatted)
     model.pushStackElement()

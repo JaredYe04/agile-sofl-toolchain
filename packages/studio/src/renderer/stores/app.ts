@@ -11,22 +11,29 @@ function resolveDark(mode: ThemeMode): boolean {
   return window.matchMedia('(prefers-color-scheme: dark)').matches
 }
 
-function applyThemeClass(isDark: boolean): void {
-  document.documentElement.classList.toggle('dark', isDark)
-  applyMonacoTheme(isDark ? 'agile-sofl-dark' : 'agile-sofl-light')
+function applyThemeClass(dark: boolean): void {
+  document.documentElement.classList.toggle('dark', dark)
+  applyMonacoTheme(dark ? 'agile-sofl-dark' : 'agile-sofl-light')
 }
 
 const savedTheme = (localStorage.getItem('studio-theme') as ThemeMode | null) ?? 'system'
 
 export const useAppStore = defineStore('app', () => {
   const theme = ref<ThemeMode>(savedTheme)
+  const isDark = ref(resolveDark(savedTheme))
   const platform = ref('win32')
   const isMaximized = ref(false)
+
+  function paint(mode: ThemeMode): void {
+    const dark = resolveDark(mode)
+    isDark.value = dark
+    applyThemeClass(dark)
+  }
 
   function setTheme(mode: ThemeMode): void {
     theme.value = mode
     localStorage.setItem('studio-theme', mode)
-    applyThemeClass(resolveDark(mode))
+    paint(mode)
   }
 
   function setLanguage(locale: Locale): void {
@@ -36,10 +43,10 @@ export const useAppStore = defineStore('app', () => {
   async function init(): Promise<void> {
     platform.value = (await window.studio?.getPlatform()) ?? 'win32'
     isMaximized.value = (await window.studio?.isMaximized()) ?? false
-    applyThemeClass(resolveDark(theme.value))
+    paint(theme.value)
 
     window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-      if (theme.value === 'system') applyThemeClass(resolveDark('system'))
+      if (theme.value === 'system') paint('system')
     })
 
     window.studio?.onMaximizedChanged((max) => {
@@ -47,7 +54,7 @@ export const useAppStore = defineStore('app', () => {
     })
   }
 
-  watch(theme, (mode) => applyThemeClass(resolveDark(mode)))
+  watch(theme, (mode) => paint(mode))
 
-  return { theme, platform, isMaximized, setTheme, setLanguage, init }
+  return { theme, isDark, platform, isMaximized, setTheme, setLanguage, init }
 })

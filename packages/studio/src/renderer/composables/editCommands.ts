@@ -20,6 +20,15 @@ export function isEditableFieldFocused(): boolean {
   return tag === 'INPUT' || tag === 'TEXTAREA' || (el as HTMLElement).isContentEditable
 }
 
+/** Let the browser handle undo in ordinary inputs; Studio owns Monaco and Informal Vditor. */
+export function shouldUseNativeUndo(): boolean {
+  if (isMonacoFocused()) return false
+  const el = document.activeElement as HTMLElement | null
+  if (!el) return false
+  if (el.closest('.informal-vditor, .informal-md-shell, .vditor')) return false
+  return isEditableFieldFocused()
+}
+
 /** Let the browser handle clipboard when user selected text outside Monaco. */
 export function shouldUseNativeClipboard(): boolean {
   if (isMonacoFocused() || isEditableFieldFocused()) return true

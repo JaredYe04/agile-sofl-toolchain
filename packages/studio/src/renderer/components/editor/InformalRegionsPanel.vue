@@ -2,7 +2,8 @@
 import { ref, watch, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useDocumentStore } from '../../stores/document'
-import { useDocumentHistoryStore } from '../../stores/documentHistory'
+import { useHistoryStore } from '../../stores/history'
+import { HistoryKinds } from '../../history/kinds'
 import { useModalStore } from '../../stores/modal'
 import type { InformalSpanPayload, SerializableSpan } from '../../preload/index'
 
@@ -10,7 +11,7 @@ const emit = defineEmits<{ revealSpan: [span: SerializableSpan] }>()
 
 const { t } = useI18n()
 const doc = useDocumentStore()
-const history = useDocumentHistoryStore()
+const history = useHistoryStore()
 const modal = useModalStore()
 const spans = ref<InformalSpanPayload[]>([])
 const open = ref(false)
@@ -51,8 +52,10 @@ async function editSpan(span: InformalSpanPayload): Promise<void> {
     span: span.span,
     text: value
   })
-  doc.setContent(tab.id, patched)
-  history.pushSnapshot(tab.id, patched)
+  history.applyDocument(tab.id, patched, {
+    kind: HistoryKinds.visualPatch,
+    immediate: true
+  })
   await refresh()
 }
 </script>

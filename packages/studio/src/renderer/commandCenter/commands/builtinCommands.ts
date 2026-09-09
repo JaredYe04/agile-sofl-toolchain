@@ -1,4 +1,5 @@
 import type { BuiltinCommand } from '../types'
+import { useHistoryStore } from '../../stores/history'
 
 export const builtinCommands: BuiltinCommand[] = [
   {
@@ -40,17 +41,17 @@ export const builtinCommands: BuiltinCommand[] = [
   {
     id: 'edit.undo',
     titleKey: 'commandCenter.cmd.undo',
-    when: (ctx) => ctx.activeTab?.kind === 'document',
+    when: () => useHistoryStore().canUndo,
     run: (ctx) => {
-      if (!ctx.undoRedo('undo')) ctx.runEdit('undo')
+      void ctx.undoRedo('undo')
     }
   },
   {
     id: 'edit.redo',
     titleKey: 'commandCenter.cmd.redo',
-    when: (ctx) => ctx.activeTab?.kind === 'document',
+    when: () => useHistoryStore().canRedo,
     run: (ctx) => {
-      if (!ctx.undoRedo('redo')) ctx.runEdit('redo')
+      void ctx.undoRedo('redo')
     }
   },
   {
@@ -83,6 +84,14 @@ export const builtinCommands: BuiltinCommand[] = [
     run: async () => {
       const { useEditorUiStore } = await import('../../stores/editorUi')
       useEditorUiStore().toggleProjectSidebar()
+    }
+  },
+  {
+    id: 'view.settings',
+    titleKey: 'commandCenter.cmd.openSettings',
+    run: async () => {
+      const { useSettingsStore } = await import('../../stores/settings')
+      useSettingsStore().show()
     }
   },
   {

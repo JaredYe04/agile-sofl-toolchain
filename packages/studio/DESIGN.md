@@ -21,7 +21,8 @@ Design contract for AI agents and contributors. Hybrid strategy: **Shell** keeps
 |-------|-------|------|------|
 | `--surface-base` | `#f3f3f3` | `#1e1e1e` | Window background |
 | `--surface-raised` | `#ffffff` | `#252526` | Panels, tabs |
-| `--accent` | `#0078d4` | `#3794ff` | Focus, links, primary actions |
+| `--accent` | `#3f3f46` | `#d4d4d8` | Neutral primary actions, focus, links |
+| `--accent-fg` | `#fafafa` | `#18181b` | Text on accent-filled buttons |
 
 ### Visual / Form
 
@@ -89,7 +90,7 @@ Design contract for AI agents and contributors. Hybrid strategy: **Shell** keeps
 ```
 Visual panel: card-based forms on --surface-raised, hairline borders, 8px grid.
 Fields: FormField + TextField or CodeField (single border). Process orange-blue via --role-process, function via --role-function.
-Shell: keep --accent blue IDE chrome unchanged.
+Shell: keep --accent as a neutral gray (with --accent-fg for filled-button text).
 
 ## 8. GUI Preview Zone (Cursor-inspired)
 

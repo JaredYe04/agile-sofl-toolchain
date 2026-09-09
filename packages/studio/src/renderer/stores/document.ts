@@ -10,7 +10,6 @@ import {
   type EditorTab
 } from './tabUtils'
 import { useRecentFilesStore } from './recentFiles'
-import { useDocumentHistoryStore } from './documentHistory'
 import { persistWorkspace, restoreWorkspace } from './workspaceSession'
 
 export const useDocumentStore = defineStore('document', () => {
@@ -120,7 +119,6 @@ export const useDocumentStore = defineStore('document', () => {
     if (id === HOME_TAB_ID) return
     const idx = tabs.value.findIndex((t) => t.id === id)
     if (idx === -1) return
-    useDocumentHistoryStore().removeTab(id)
     tabs.value.splice(idx, 1)
 
     if (activeTabId.value === id) {

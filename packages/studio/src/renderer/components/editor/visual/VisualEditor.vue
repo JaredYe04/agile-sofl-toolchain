@@ -593,6 +593,7 @@ defineExpose({ setSelection })
     <ParseErrorBanner
       v-if="visual.parseFailed.value && doc.activeTab?.content?.trim()"
       :diagnostics="diagnostics"
+      :message="t('visual.writeDisabledParseFailed')"
       @reveal-span="emit('revealSpan', $event)"
     />
     <ParseErrorBanner

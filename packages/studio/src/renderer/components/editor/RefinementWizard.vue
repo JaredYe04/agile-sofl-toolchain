@@ -3,6 +3,8 @@ import { ref, watch, onUnmounted, shallowRef, nextTick, computed } from 'vue'
 import type * as Monaco from 'monaco-editor'
 import { useI18n } from 'vue-i18n'
 import { useDocumentStore } from '../../stores/document'
+import { useHistoryStore } from '../../stores/history'
+import { HistoryKinds } from '../../history/kinds'
 import { monaco, initMonacoBase } from '../../monaco/setup'
 import type { CoverageReportPayload } from '../../preload/index'
 import CoveragePanel from './CoveragePanel.vue'
@@ -188,7 +190,10 @@ async function runRefine(): Promise<void> {
       const title = tab.filePath?.replace(/\.aspec$/i, '.asfl').split(/[/\\]/).pop() ?? 'Refined.asfl'
       target = doc.newTab({ content: result.asflText, title, documentKind: 'asfl' })
     } else {
-      doc.setContent(target.id, result.asflText)
+      useHistoryStore().applyDocument(target.id, result.asflText, {
+        kind: HistoryKinds.hybridEdit,
+        immediate: true
+      })
     }
     doc.linkTabs(tab.id, target.id)
     if (tab.filePath && window.studio.writeTraceFile) {

@@ -1,10 +1,13 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
 
+export type ModalButtonVariant = 'accent' | 'warning' | 'danger' | 'default'
+
 export type ModalRequest = {
   title: string
   message?: string
   buttons: string[]
+  buttonVariants?: ModalButtonVariant[]
   input?: boolean
   inputValue?: string
   inputPlaceholder?: string
@@ -21,6 +24,7 @@ export const useModalStore = defineStore('modal', () => {
     title: string
     message?: string
     buttons: string[]
+    buttonVariants?: ModalButtonVariant[]
     input?: boolean
     inputValue?: string
     inputPlaceholder?: string

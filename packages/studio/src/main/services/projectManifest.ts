@@ -5,6 +5,7 @@ import {
   MANIFEST_FILENAME,
   type AgileSoflManifest
 } from '../../shared/projectTypes.js'
+import { writeInformalSpecFile } from './informalMeta.js'
 
 const SKIP_DIRS = new Set(['node_modules', 'dist', '.git'])
 
@@ -128,22 +129,16 @@ export function createProjectTemplate(root: string, name: string): AgileSoflMani
     gui
   }
 
-  const aspecId = randomUUID()
-  writeFileSync(
-    join(root, informal),
-    `aspecVersion: "1.0"
-meta:
-  id: "${aspecId}"
-  title: ${JSON.stringify(name)}
-  hybridTarget: ./${hybrid}
-  guiTarget: ./${gui}
-system:
-  name: ${ident}
-  purpose: |
-    Describe the system purpose here.
-modules: []
-`,
-    'utf-8'
+  writeInformalSpecFile(
+    root,
+    informal,
+    `# Functions\n\n# Data Resources\n\n# Constraints\n`,
+    {
+      moduleId: ident,
+      title: name,
+      hybridTarget: `./${hybrid}`,
+      guiTarget: `./${gui}`
+    }
   )
 
   writeFileSync(

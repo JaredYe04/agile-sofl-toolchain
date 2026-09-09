@@ -1,0 +1,11 @@
+---
+description: Hybrid Code and Visual views share one model; do not parse Visual from Code text as a second source of truth.
+globs: packages/{studio,editor-api}/**/*.{ts,vue}
+alwaysApply: false
+---
+
+# Hybrid Views
+
+- `.asfl` text in the document store is the persisted Hybrid source; visual DTOs come from editor-api.
+- Visual View is structural editing (process / type / invariant cards). Complex expressions stay in Monaco.
+- If Code parse fails, do not overwrite the last valid visual model; show a warning instead.

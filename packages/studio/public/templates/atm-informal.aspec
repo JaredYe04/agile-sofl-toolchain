@@ -1,0 +1,67 @@
+
+# Functions
+
+## Register a customer
+
+The system shall allow a customer to register a bank account.
+
+### Input
+
+- Customer name
+- Account number
+- Password
+
+### Result
+
+A new bank account is created.
+
+## Withdraw from the bank account
+
+The system shall allow a customer to withdraw money.
+
+### Check the card ID and password
+
+The system shall verify the card ID and password.
+
+### Check the amount for withdrawal
+
+The system shall verify that the withdrawal amount is valid.
+
+### Update the account balance
+
+The system shall subtract the withdrawal amount
+from the account balance.
+
+# Data Resources
+
+## Bank Account
+
+### Account Name
+
+The name of the account owner.
+
+### Account Number
+
+The unique number of the bank account.
+
+### Account Password
+
+The password associated with the account.
+
+### Account Balance
+
+The current balance of the account.
+
+## Accounts File
+
+A persistent collection of bank accounts.
+
+# Constraints
+
+## Withdrawal Limit
+
+Each withdrawal must not exceed 200,000 JPY.
+
+## Non-negative Balance
+
+The account balance cannot be less than 0.

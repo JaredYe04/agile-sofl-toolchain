@@ -166,6 +166,8 @@ export interface InformalDocumentModel {
   gui?: GuiModelSummary
   diagnostics: AspecDiagnostic[]
   traceability?: TraceabilityGraph
+  format?: 'yaml' | 'markdown'
+  informal?: import('./informal/model.js').InformalSpecification
 }
 
 export type TraceLinkStatus = 'covered' | 'partial' | 'missing' | 'stale'

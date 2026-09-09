@@ -7,6 +7,8 @@ directories:
   buildResources: build
   output: release
 
+icon: build/icon.png
+
 files:
   - out/**/*
   - package.json

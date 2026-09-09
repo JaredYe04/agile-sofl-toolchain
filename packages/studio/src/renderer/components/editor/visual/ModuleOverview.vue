@@ -20,6 +20,11 @@ const emit = defineEmits<{
 }>()
 const { t } = useI18n()
 const renaming = ref(false)
+const open = ref<Record<string, boolean>>({})
+
+function toggle(name: string): void {
+  open.value = { ...open.value, [name]: open.value[name] === false }
+}
 
 const displayName = () => (props.module.isSystem ? `SYSTEM_${props.module.name}` : props.module.name)
 
@@ -91,24 +96,43 @@ function selectFunction(moduleName: string, functionName: string): void {
       @patch-widget="emit('patchGuiWidget', $event)"
     />
 
-    <section v-if="module.processes.length" class="rounded-lg border border-border-subtle bg-surface-raised p-4">
-      <h3 class="mb-2 text-sm font-semibold text-content-primary">{{ t('visual.section.processes') }}</h3>
-      <ul class="space-y-1">
-        <li v-for="p in module.processes" :key="p.name">
+    <section v-if="module.processes.length" class="space-y-2">
+      <h3 class="text-sm font-semibold text-content-primary">{{ t('visual.section.processes') }}</h3>
+      <article
+        v-for="p in module.processes"
+        :key="p.name"
+        class="rounded-lg border border-border-subtle bg-surface-raised p-3"
+      >
+        <div class="flex w-full items-center gap-2">
           <button
             type="button"
-            class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-content-primary transition-colors hover:bg-surface-overlay"
+            class="flex min-w-0 flex-1 items-center gap-2 text-left text-sm font-medium text-content-primary"
+            @click="toggle(p.name)"
+          >
+            <span class="text-content-muted">{{ open[p.name] === false ? '▶' : '▼' }}</span>
+            <Badge variant="process">{{ t('visual.nodeRole.process') }}</Badge>
+            <span class="flex-1 truncate">{{ p.isInit ? 'Init' : p.name }}</span>
+          </button>
+          <button
+            type="button"
+            class="shrink-0 rounded-md px-2 py-0.5 text-[11px] text-accent hover:bg-accent/10"
             @click="selectProcess(module.name, p.name)"
           >
-            <Badge variant="process">{{ t('visual.nodeRole.process') }}</Badge>
-            <Badge v-if="p.isInit" variant="neutral">{{ t('visual.init.badge') }}</Badge>
-            <Badge v-if="p.isAlias" variant="neutral">{{ t('visual.alias.badge') }}</Badge>
-            <Badge v-else-if="p.fsfFormal === 'formal'" variant="formal">{{ t('visual.fsfFormal') }}</Badge>
-            <Badge v-else-if="p.fsfFormal === 'semi-formal'" variant="semi-formal">{{ t('visual.fsfSemiFormal') }}</Badge>
-            <span>{{ p.isInit ? 'Init' : p.name }}</span>
+            {{ t('visual.editProcess') }}
           </button>
-        </li>
-      </ul>
+        </div>
+        <div v-show="open[p.name] !== false" class="mt-2 space-y-2 pl-5 text-[12px] text-content-secondary">
+          <div v-if="p.inputs?.length">
+            <p class="font-medium text-content-muted">{{ t('visual.input') }}</p>
+            <p v-for="g in p.inputs" :key="g.names">{{ g.names }}: {{ g.type }}</p>
+          </div>
+          <div v-if="p.outputs?.length">
+            <p class="font-medium text-content-muted">{{ t('visual.output') }}</p>
+            <p v-for="g in p.outputs" :key="g.names">{{ g.names }}: {{ g.type }}</p>
+          </div>
+          <p v-if="p.comment" class="whitespace-pre-wrap">{{ p.comment }}</p>
+        </div>
+      </article>
     </section>
 
     <section v-if="module.functions.length" class="rounded-lg border border-border-subtle bg-surface-raised p-4">

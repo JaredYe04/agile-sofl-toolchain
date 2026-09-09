@@ -2,27 +2,28 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DropdownMenu, { type MenuItem } from '../ui/DropdownMenu.vue'
-import { useAppStore } from '../../stores/app'
 import { useFileActions } from '../../composables/useFileActions'
 import { useNewProjectTemplateDialog } from '../../composables/useNewProjectTemplateDialog'
 import { useWorkspaceStore } from '../../stores/workspace'
 import { useModalStore } from '../../stores/modal'
-import { useEditorUiStore } from '../../stores/editorUi'
+import { useHistoryStore } from '../../stores/history'
+import { useSettingsStore } from '../../stores/settings'
+import { historyCommandTitle } from '../../history/kinds'
 
 const emit = defineEmits<{ edit: [cmd: string]; devTools: []; format: []; refine: [] }>()
 
 const { t } = useI18n()
-const app = useAppStore()
 const files = useFileActions()
 const newProjectTemplateDialog = useNewProjectTemplateDialog()
 const modal = useModalStore()
 const workspace = useWorkspaceStore()
-const editorUi = useEditorUiStore()
+const history = useHistoryStore()
+const settings = useSettingsStore()
 
 const accessKeys: Record<string, string> = {
   file: 'f',
   edit: 'e',
-  view: 'v',
+  settings: 's',
   help: 'h'
 }
 
@@ -59,9 +60,24 @@ const fileItems = computed<MenuItem[]>(() => [
   { id: 'exit', label: t('menu.file.exit'), action: () => files.tryCloseWindow() }
 ])
 
-const editItems = computed<MenuItem[]>(() => [
-  { id: 'undo', label: t('menu.edit.undo'), shortcut: 'Ctrl+Z', action: () => emit('edit', 'undo') },
-  { id: 'redo', label: t('menu.edit.redo'), shortcut: 'Ctrl+Y', action: () => emit('edit', 'redo') },
+const editItems = computed<MenuItem[]>(() => {
+  const undoName = history.undoCommand ? historyCommandTitle(history.undoCommand, t) : null
+  const redoName = history.redoCommand ? historyCommandTitle(history.redoCommand, t) : null
+  return [
+  {
+    id: 'undo',
+    label: undoName ? t('menu.edit.undoNamed', { name: undoName }) : t('menu.edit.undo'),
+    shortcut: 'Ctrl+Z',
+    disabled: !history.canUndo,
+    action: () => emit('edit', 'undo')
+  },
+  {
+    id: 'redo',
+    label: redoName ? t('menu.edit.redoNamed', { name: redoName }) : t('menu.edit.redo'),
+    shortcut: 'Ctrl+Y',
+    disabled: !history.canRedo,
+    action: () => emit('edit', 'redo')
+  },
   { id: 'sep1', label: '', separator: true },
   { id: 'cut', label: t('menu.edit.cut'), shortcut: 'Ctrl+X', action: () => emit('edit', 'cut') },
   { id: 'copy', label: t('menu.edit.copy'), shortcut: 'Ctrl+C', action: () => emit('edit', 'copy') },
@@ -69,23 +85,8 @@ const editItems = computed<MenuItem[]>(() => [
   { id: 'selectAll', label: t('menu.edit.selectAll'), shortcut: 'Ctrl+A', action: () => emit('edit', 'selectAll') },
   { id: 'sep2', label: '', separator: true },
   { id: 'format', label: t('menu.edit.format'), shortcut: 'Shift+Alt+F', action: () => emit('format') }
-])
-
-const viewItems = computed<MenuItem[]>(() => [
-  {
-    id: 'toggleSidebar',
-    label: t('menu.view.toggleSidebar'),
-    shortcut: 'Ctrl+B',
-    action: () => editorUi.toggleProjectSidebar()
-  },
-  { id: 'sep0', label: '', separator: true },
-  { id: 'light', label: t('menu.view.themeLight'), action: () => app.setTheme('light') },
-  { id: 'dark', label: t('menu.view.themeDark'), action: () => app.setTheme('dark') },
-  { id: 'system', label: t('menu.view.themeSystem'), action: () => app.setTheme('system') },
-  { id: 'sep1', label: '', separator: true },
-  { id: 'zh', label: t('menu.view.languageZh'), action: () => app.setLanguage('zh-CN') },
-  { id: 'en', label: t('menu.view.languageEn'), action: () => app.setLanguage('en') }
-])
+  ]
+})
 
 const helpItems = computed<MenuItem[]>(() => [
   {
@@ -121,10 +122,10 @@ const helpItems = computed<MenuItem[]>(() => [
 
 const menus = computed(() => [
   { key: 'file', label: t('menu.file'), items: fileItems.value },
-  { key: 'edit', label: t('menu.edit'), items: editItems.value },
-  { key: 'view', label: t('menu.view'), items: viewItems.value },
-  { key: 'help', label: t('menu.help'), items: helpItems.value }
+  { key: 'edit', label: t('menu.edit'), items: editItems.value }
 ])
+
+const helpMenu = computed(() => ({ key: 'help', label: t('menu.help'), items: helpItems.value }))
 </script>
 
 <template>
@@ -140,6 +141,30 @@ const menus = computed(() => [
         >
           <span class="underline decoration-content-muted underline-offset-2">{{ menu.label[0] }}</span
           >{{ menu.label.slice(1) }}
+        </button>
+      </template>
+    </DropdownMenu>
+    <button
+      type="button"
+      role="menuitem"
+      :accesskey="accessKeys.settings"
+      class="rounded-md px-2.5 py-0.5 text-[13px] text-content-secondary transition-colors duration-150 hover:bg-surface-overlay hover:text-content-primary active:scale-[0.98]"
+      @click="settings.show()"
+    >
+      <span class="underline decoration-content-muted underline-offset-2">{{ t('menu.settings')[0] }}</span
+      >{{ t('menu.settings').slice(1) }}
+    </button>
+    <DropdownMenu :items="helpMenu.items">
+      <template #trigger="{ toggle }">
+        <button
+          type="button"
+          role="menuitem"
+          :accesskey="accessKeys.help"
+          class="rounded-md px-2.5 py-0.5 text-[13px] text-content-secondary transition-colors duration-150 hover:bg-surface-overlay hover:text-content-primary active:scale-[0.98]"
+          @click="toggle"
+        >
+          <span class="underline decoration-content-muted underline-offset-2">{{ helpMenu.label[0] }}</span
+          >{{ helpMenu.label.slice(1) }}
         </button>
       </template>
     </DropdownMenu>

@@ -192,7 +192,7 @@ async function handleMenuAction(action: ProjectMenuAction): Promise<void> {
         <p class="text-sm text-content-secondary">{{ t('sidebar.noProject') }}</p>
         <button
           type="button"
-          class="mt-4 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent/90 disabled:opacity-50"
+          class="mt-4 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-fg transition-colors hover:bg-accent/90 disabled:opacity-50"
           :disabled="busy"
           @click="onOpenFolder"
         >

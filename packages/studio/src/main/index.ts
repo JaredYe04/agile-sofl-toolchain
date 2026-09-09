@@ -1,8 +1,11 @@
 import { app, ipcMain, BrowserWindow } from 'electron'
+import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { registerFileHandlers } from './services/fileService'
 import { registerWindowHandlers } from './services/windowService'
 import { registerParseHandlers } from './services/parseService'
+import { registerAgentHandlers } from './services/llm/register'
+import { loadStudioEnv } from './services/llm/env'
 import { initProjectIndex, registerProjectHandlers } from './services/projectService'
 import { attachDevToolsShortcuts, attachRendererDiagnostics, openDevTools } from './services/devToolsService'
 import {
@@ -17,6 +20,14 @@ import {
 let mainWindow: BrowserWindow | null = null
 let allowClose = false
 
+function resolveAppIcon(): string | undefined {
+  const candidates = [
+    join(__dirname, '../../build/icon.png'),
+    join(__dirname, '../../build/icons/256x256.png')
+  ]
+  return candidates.find((p) => existsSync(p))
+}
+
 function getWindow(): BrowserWindow | null {
   return mainWindow
 }
@@ -29,6 +40,7 @@ function createWindow(): void {
     minHeight: 500,
     frame: false,
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'hidden',
+    icon: resolveAppIcon(),
     backgroundColor: '#1e1e1e',
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
@@ -74,9 +86,11 @@ function createWindow(): void {
 }
 
 app.whenReady().then(async () => {
+  loadStudioEnv()
   registerFileHandlers(getWindow)
   registerWindowHandlers(getWindow)
   registerProjectHandlers(getWindow)
+  registerAgentHandlers()
 
   try {
     await initProjectIndex()

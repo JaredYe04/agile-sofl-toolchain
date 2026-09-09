@@ -2,7 +2,6 @@
 import { ref, computed, provide, watch, nextTick } from 'vue'
 import { useEditorUiStore } from '../../stores/editorUi'
 import { useDocumentStore } from '../../stores/document'
-import { useDocumentHistoryStore } from '../../stores/documentHistory'
 import { useLspDiagnosticsStore } from '../../stores/lspDiagnostics'
 import { useEditorSelectionStore } from '../../stores/editorSelection'
 import { useDocumentDiagnosticsStore } from '../../stores/documentDiagnostics'
@@ -34,7 +33,6 @@ const monacoRef = ref<InstanceType<typeof MonacoEditor> | null>(null)
 const visualRef = ref<InstanceType<typeof VisualEditor> | null>(null)
 const editorUi = useEditorUiStore()
 const doc = useDocumentStore()
-const history = useDocumentHistoryStore()
 const lspDiagnostics = useLspDiagnosticsStore()
 const editorSelection = useEditorSelectionStore()
 const documentDiagnostics = useDocumentDiagnosticsStore()
@@ -197,15 +195,6 @@ function runEditCommand(cmd: string): void {
   monacoRef.value?.runEditCommand(cmd)
 }
 
-function applyHistory(cmd: 'undo' | 'redo'): boolean {
-  const tab = doc.activeTab
-  if (!tab || tab.kind !== 'document') return false
-  const content = cmd === 'undo' ? history.undo(tab.id, tab.content) : history.redo(tab.id, tab.content)
-  if (content === null) return false
-  monacoRef.value?.applyContent(content, true)
-  return true
-}
-
 function revealSpan(span: SerializableSpan): void {
   monacoRef.value?.revealSpan(span)
 }
@@ -215,8 +204,6 @@ defineExpose({
   formatDocument() {
     return monacoRef.value?.formatDocument() ?? Promise.resolve(false)
   },
-  undo: () => applyHistory('undo'),
-  redo: () => applyHistory('redo'),
   revealSpan,
   focusCoverage: () => {
     coverageOpen.value = true

@@ -81,11 +81,9 @@ export function buildFunctionFsf(fn: { bodyHint?: string; refinementHints?: { bo
   return `${test} && true`
 }
 
-export function aspecCommentTag(aspecId: string, notes?: string): string {
+export function aspecCommentTag(aspecId: string, _notes?: string): string {
   const tag = `aspec_${aspecId.replace(/-/g, '_')}`
-  const sanitizedNotes = notes?.trim().replace(/[.@]/g, ' ').replace(/\s+/g, ' ').trim()
-  const body = sanitizedNotes ? `${tag} ${sanitizedNotes}` : tag
-  return `comment: informal ${body}`
+  return `comment: informal ${tag}`
 }
 
 export function aspecTagToken(aspecId: string): string {

@@ -1,82 +1,47 @@
-aspecVersion: "1.0"
-meta:
-  id: "ecommerce-informal-001"
-  title: E-commerce Informal Spec
-  hybridTarget: ./ecommerce.asfl
-  guiTarget: ./ecommerce-gui.guispec
-system:
-  name: Ecommerce
-  purpose: |
-    Online store with cart, checkout, fulfillment, payments, and catalog subsystems.
-  scope: |
-    Customer-facing ordering and back-office inventory updates.
-modules:
-  - id: mod-ecommerce
-    name: SYSTEM_Ecommerce
-    description: |
-      Core commerce domain: cart, checkout, refund, and shipping processes.
-    types:
-      - id: type-product-id
-        name: ProductId
-        typeHint: nat
-      - id: type-order-id
-        name: OrderId
-        typeHint: nat
-    variables:
-      - id: var-inventory
-        name: inventory
-        typeHint: map nat to nat
-    processes:
-      - id: proc-add-cart
-        name: AddToCart
-        description: |
-          Active customer adds a product to the cart when stock and pricing allow.
-        signature:
-          inputs:
-            - name: customer
-              typeHint: nat
-            - name: product
-              typeHint: nat
-          outputs:
-            - name: ok
-              typeHint: nat
-        decomposition: Ecom_AddCart
-      - id: proc-checkout
-        name: Checkout
-        description: |
-          Customer completes checkout and receives an order receipt.
-        signature:
-          inputs:
-            - name: customer
-              typeHint: nat
-            - name: total
-              typeHint: nat
-          outputs:
-            - name: receipt
-              typeHint: nat
-      - id: proc-refund
-        name: Refund
-        description: |
-          Refund a prior order amount when the order id is valid.
-        signature:
-          inputs:
-            - name: order
-              typeHint: nat
-            - name: amount
-              typeHint: nat
-          outputs:
-            - name: cleared
-              typeHint: nat
-      - id: proc-ship
-        name: ShipOrder
-        description: |
-          Ship an order and update inventory for the destination region.
-        signature:
-          inputs:
-            - name: order
-              typeHint: nat
-            - name: region
-              typeHint: nat
-          outputs:
-            - name: shipped
-              typeHint: nat
+
+# Functions
+
+## AddToCart
+
+An active customer adds a product to the cart when stock and pricing allow.
+
+- Inputs: customer (nat), product (nat)
+- Outputs: ok (nat)
+- Decomposition: Ecom_AddCart
+
+## Checkout
+
+The customer completes checkout and receives an order receipt.
+
+- Inputs: customer (nat), total (nat)
+- Outputs: receipt (nat)
+
+## Refund
+
+Refund a prior order amount when the order id is valid.
+
+- Inputs: order (nat), amount (nat)
+- Outputs: cleared (nat)
+
+## ShipOrder
+
+Ship an order and update inventory for the destination region.
+
+- Inputs: order (nat), region (nat)
+- Outputs: shipped (nat)
+
+# Data Resources
+
+## ProductId
+
+Natural-number identifier of a catalog product.
+
+## OrderId
+
+Natural-number identifier of a placed order.
+
+## inventory
+
+Map from product id to remaining stock count.
+
+# Constraints

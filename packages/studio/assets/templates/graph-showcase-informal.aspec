@@ -1,65 +1,47 @@
-aspecVersion: "1.0"
-meta:
-  id: "graph-informal-001"
-  title: Graph Showcase Informal Spec
-  hybridTarget: ./graph-showcase.asfl
-  guiTarget: ./graph-showcase-gui.guispec
-system:
-  name: SmartCity
-  purpose: |
-    Multi-module smart city demo for relationship graph layout and navigation testing.
-  scope: |
-    City-wide sensors, alerts, citizens, and nested operational subsystems.
-modules:
-  - id: mod-smartcity
-    name: SYSTEM_SmartCity
-    description: |
-      Top-level smart city coordination module.
-    types:
-      - id: type-sensor-id
-        name: SensorId
-        typeHint: nat
-      - id: type-zone-id
-        name: ZoneId
-        typeHint: nat
-    variables:
-      - id: var-sensors
-        name: sensors
-        typeHint: set of nat
-      - id: var-alerts
-        name: open_alerts
-        typeHint: nat
-    invariants:
-      - id: inv-sensors
-        textHint: "forall[s: sensors] | s > 0 and open_alerts >= 0"
-    processes:
-      - id: proc-init
-        name: InitCity
-        description: |
-          Bootstrap city subsystems and reset open alert counters on startup.
-        decomposition: WarmSensors
-      - id: proc-alert
-        name: DispatchAlert
-        description: |
-          Record a sensor alert and enqueue it for downstream handling.
-        signature:
-          inputs:
-            - name: sensor
-              typeHint: nat
-            - name: level
-              typeHint: nat
-          outputs:
-            - name: ticket
-              typeHint: nat
-        decomposition: HandleAlert
-      - id: proc-citizen
-        name: RegisterCitizen
-        description: |
-          Register a verified citizen into the city population set.
-        signature:
-          inputs:
-            - name: citizen
-              typeHint: nat
-          outputs:
-            - name: ok
-              typeHint: nat
+
+# Functions
+
+## InitCity
+
+Bootstrap city subsystems and reset open alert counters on startup.
+
+- Decomposition: WarmSensors
+
+## DispatchAlert
+
+Record a sensor alert and enqueue it for downstream handling.
+
+- Inputs: sensor (nat), level (nat)
+- Outputs: ticket (nat)
+- Decomposition: HandleAlert
+
+## RegisterCitizen
+
+Register a verified citizen into the city population set.
+
+- Inputs: citizen (nat)
+- Outputs: ok (nat)
+
+# Data Resources
+
+## SensorId
+
+Natural-number identifier of a city sensor.
+
+## ZoneId
+
+Natural-number identifier of a city zone.
+
+## sensors
+
+Set of installed sensor identifiers.
+
+## open_alerts
+
+Count of alerts still waiting for handling.
+
+# Constraints
+
+## Positive sensors and alerts
+
+forall[s: sensors] | s > 0 and open_alerts >= 0

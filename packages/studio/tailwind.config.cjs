@@ -15,7 +15,10 @@ module.exports = {
           secondary: 'var(--text-secondary)',
           muted: 'var(--text-muted)'
         },
-        accent: 'var(--accent)',
+        accent: {
+          DEFAULT: 'var(--accent)',
+          fg: 'var(--accent-fg)'
+        },
         border: {
           subtle: 'var(--border-subtle)',
           field: 'var(--field-border)'

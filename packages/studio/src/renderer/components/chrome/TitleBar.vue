@@ -19,9 +19,12 @@ const isDarwin = computed(() => app.platform === 'darwin')
       class="titlebar-no-drag flex items-center gap-2"
       :class="isDarwin ? 'pl-[78px]' : 'pl-2'"
     >
-      <div class="flex h-4 w-4 items-center justify-center rounded bg-accent/20 text-[10px] font-bold text-accent">
-        A
-      </div>
+      <img
+        src="/logo.png"
+        alt=""
+        class="h-[18px] w-[18px] shrink-0 object-contain"
+        draggable="false"
+      />
       <MenuBar @edit="$emit('edit', $event)" @dev-tools="$emit('devTools')" @format="$emit('format')" @refine="$emit('refine')" />
     </div>
 

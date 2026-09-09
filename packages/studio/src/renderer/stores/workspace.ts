@@ -13,6 +13,14 @@ import { filePathsEqual } from './tabUtils'
 
 const DEFAULT_COLUMN_WIDTHS = [0.18, 0.22, 0.38, 0.22]
 
+export type WorkspacePanelId = 'tree' | 'informal' | 'agent' | 'hybrid' | 'gui' | 'structure'
+
+function readStoredView<T extends string>(key: string, allowed: readonly T[], fallback: T): T {
+  if (typeof localStorage === 'undefined') return fallback
+  const raw = localStorage.getItem(key)
+  return (allowed as readonly string[]).includes(raw ?? '') ? (raw as T) : fallback
+}
+
 export const useWorkspaceStore = defineStore('workspace', () => {
   const doc = useDocumentStore()
   const projects = ref<IndexedProject[]>([])
@@ -23,13 +31,21 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const informalCollapsed = ref(false)
   const columnWidths = ref<number[]>([...DEFAULT_COLUMN_WIDTHS])
   const expandedProjectIds = ref<string[]>([])
-  const hybridMode = ref<'code' | 'visual'>('visual')
+  const hybridMode = ref<'code' | 'visual'>(
+    readStoredView('studio-default-hybrid-view', ['code', 'visual'] as const, 'visual')
+  )
   const guiMode = ref<'visual' | 'code'>('visual')
   const structureMode = ref<'tree' | 'graph'>('tree')
+  const informalViewMode = ref<'document' | 'graphical'>(
+    readStoredView('studio-default-informal-view', ['document', 'graphical'] as const, 'document')
+  )
+  const informalSelectedNodeId = ref<string | null>(null)
+  const agentSplitRatio = ref(0.58)
   const savedModuleHashes = ref<Record<string, Record<string, string>>>({})
   const currentModuleHashes = ref<Record<string, Record<string, string>>>({})
   const loading = ref(false)
   const cachedModulesByProject = ref<Record<string, ProjectModuleInfo[]>>({})
+  const focusedPanel = ref<WorkspacePanelId | null>(null)
 
   const activeProject = computed(
     () => projects.value.find((p) => p.id === activeProjectId.value) ?? null
@@ -71,8 +87,32 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     return Boolean(informalTab.value?.isDirty)
   }
 
+  function isHybridDirty(): boolean {
+    return Boolean(hybridTab.value?.isDirty)
+  }
+
   function isGuiDirty(): boolean {
     return Boolean(guiTab.value?.isDirty)
+  }
+
+  function tabForFocusedPanel() {
+    switch (focusedPanel.value) {
+      case 'informal':
+      case 'agent':
+        return informalTab.value
+      case 'hybrid':
+        return hybridTab.value
+      case 'gui':
+        return guiTab.value
+      default:
+        return undefined
+    }
+  }
+
+  function setFocusedPanel(panel: WorkspacePanelId): void {
+    focusedPanel.value = panel
+    const tab = tabForFocusedPanel()
+    if (tab) doc.setActive(tab.id)
   }
 
   async function refreshProjects(): Promise<void> {
@@ -113,7 +153,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   }
 
   async function refreshHashes(): Promise<void> {
-    if (!window.studio?.moduleHashes) return
+    if (typeof window === 'undefined' || !window.studio?.moduleHashes) return
     const next: Record<string, Record<string, string>> = {}
     for (const file of scan.value?.files.filter((f) => f.kind === 'asfl') ?? []) {
       const tab = doc.documentTabs.find((t) => t.filePath && filePathsEqual(t.filePath, file.path))
@@ -142,6 +182,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   async function activateProject(project: IndexedProject): Promise<void> {
     if (!window.studio?.workspaceScan) return
     loading.value = true
+    const prevId = activeProjectId.value
     try {
       activeProjectId.value = project.id
       await window.studio.projectTouch?.(project.id)
@@ -160,6 +201,10 @@ export const useWorkspaceStore = defineStore('workspace', () => {
         expandedProjectIds.value = [...expandedProjectIds.value, project.id]
       }
       await loadProjectFiles(payload)
+      if (prevId && prevId !== project.id) {
+        const { useHistoryStore } = await import('./history')
+        useHistoryStore().clear()
+      }
       const preferred = ui?.selectedModuleName
       const nextModule =
         payload.modules.find((m) => m.name === preferred)?.name ?? payload.modules[0]?.name ?? null
@@ -298,6 +343,10 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     hybridMode,
     guiMode,
     structureMode,
+    informalViewMode,
+    informalSelectedNodeId,
+    agentSplitRatio,
+    focusedPanel,
     loading,
     hasWorkspace,
     isGuiModuleSelected,
@@ -307,7 +356,10 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     dirtyNames,
     isModuleDirty,
     isInformalDirty,
+    isHybridDirty,
     isGuiDirty,
+    tabForFocusedPanel,
+    setFocusedPanel,
     refreshProjects,
     init,
     createProject,

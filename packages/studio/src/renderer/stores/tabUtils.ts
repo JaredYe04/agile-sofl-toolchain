@@ -33,19 +33,11 @@ export function inferDocumentKind(filePath: string | null, uri?: string): Docume
 
 export function defaultContentForKind(kind: DocumentKind): string {
   if (kind === 'aspec') {
-    return `aspecVersion: "1.0"
-meta:
-  id: "${crypto.randomUUID()}"
-  title: New Informal Spec
-system:
-  name: NewSystem
-  purpose: |
-    Describe the system purpose here.
-modules:
-  - id: mod-main
-    name: SYSTEM_New
-    description: |
-      Main system module.
+    return `# Functions
+
+# Data Resources
+
+# Constraints
 `
   }
   if (kind === 'guispec') {

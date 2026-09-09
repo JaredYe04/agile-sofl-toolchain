@@ -29,6 +29,7 @@
 | [21-Informal-IDE接口与handoff.md](./21-Informal-IDE接口与handoff.md) | Informal 列 Phase 1 纯文本与后续 IDE/AI 扩展点 |
 | [22-GUI可视化设计器handoff.md](./22-GUI可视化设计器handoff.md) | WinForms 风格 GUI 设计器已交付能力与后续缺口 |
 | [23-Hybrid规格IDE接口.md](./23-Hybrid规格IDE接口.md) | Hybrid 自然语言骨架、AssistantProvider、左树右键注册表 |
+| [24-Informal-Markdown与Hybrid生成器.md](./24-Informal-Markdown与Hybrid生成器.md) | Markdown Informal 模型、AI Agent、可插拔 Hybrid Generator |
 
 ## 快速验证
 

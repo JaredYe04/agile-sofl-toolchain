@@ -11,7 +11,8 @@ describe('tabUtils documentKind', () => {
   it('creates aspec tab', () => {
     const tab = createDocumentTab({ documentKind: 'aspec' })
     expect(tab.documentKind).toBe('aspec')
-    expect(tab.content).toContain('aspecVersion')
+    expect(tab.content).toContain('# Functions')
+    expect(tab.content).not.toContain('moduleId:')
   })
 
   it('infers kind from path', () => {

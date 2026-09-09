@@ -1,22 +1,14 @@
-aspecVersion: "1.0"
-meta:
-  id: "minimal-informal-001"
-  title: Minimal Module Informal Spec
-  hybridTarget: ./minimal-module.asfl
-  guiTarget: ./minimal-gui.guispec
-system:
-  name: Test
-  purpose: |
-    Minimal example with a single system module and one variable.
-modules:
-  - id: mod-test
-    name: SYSTEM_Test
-    description: |
-      Test module holding a natural-number variable.
-    variables:
-      - id: var-x
-        name: x
-        typeHint: nat
-    invariants:
-      - id: inv-x
-        textHint: "x >= 0"
+
+# Functions
+
+# Data Resources
+
+## x
+
+A natural-number variable held by the test module.
+
+# Constraints
+
+## Non-negative x
+
+x >= 0

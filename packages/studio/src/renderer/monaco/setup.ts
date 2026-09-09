@@ -41,29 +41,46 @@ export function initMonacoBase(): void {
   monaco.languages.setMonarchTokensProvider('agile-aspec', {
     tokenizer: {
       root: [
+        [/^---$/, 'delimiter.yaml', '@frontmatter'],
+        [/^#{1,6}\s.*$/, 'keyword'],
+        [/<!--.*?-->/, 'comment'],
+        [/^[\s]*[-*]\s/, 'markup'],
+        [/^aspecVersion:.+$/, 'keyword'],
         [/^[\s-]*[\w]+:/, 'keyword'],
-        [/#.+$/, 'comment'],
-        [/\|.*/, 'string'],
         [/.*/, 'source']
+      ],
+      frontmatter: [
+        [/^---$/, 'delimiter.yaml', '@pop'],
+        [/[\w][-\w]*:/, 'keyword'],
+        [/./, 'string']
       ]
     }
   })
   monaco.languages.registerCompletionItemProvider('agile-aspec', {
-    triggerCharacters: [' ', ':', '\n'],
-    provideCompletionItems: () => ({
-      suggestions: [
-        'aspecVersion', 'meta', 'system', 'modules', 'bookAlign',
-        'id', 'title', 'hybridTarget', 'name', 'purpose', 'scope',
-        'description', 'processes', 'functions', 'types', 'variables',
-        'invariants', 'scenarios', 'condition', 'outcome', 'decomposition',
-        'refinementHints', 'bottomLevel', 'expectedFsfLevel', 'signature',
-        'inputs', 'outputs', 'typeHint', 'bodyHint', 'preconditions', 'postconditions'
-      ].map((label) => ({
-        label,
-        kind: monaco.languages.CompletionItemKind.Property,
-        insertText: `${label}: `
+    triggerCharacters: ['#', ' ', '\n'],
+    provideCompletionItems: (model, position) => {
+      const line = model.getLineContent(position.lineNumber)
+      const suggestions = [
+        { label: '# Functions', insertText: '# Functions' },
+        { label: '# Data Resources', insertText: '# Data Resources' },
+        { label: '# Constraints', insertText: '# Constraints' },
+        { label: '## Function', insertText: '## ${1:Function title}\n\n' },
+        { label: '## Data resource', insertText: '## ${1:Data resource}\n\n' },
+        { label: '## Constraint', insertText: '## ${1:Constraint}\n\n' }
+      ].map((item) => ({
+        label: item.label,
+        kind: monaco.languages.CompletionItemKind.Snippet,
+        insertText: item.insertText,
+        insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+        range: {
+          startLineNumber: position.lineNumber,
+          startColumn: 1,
+          endLineNumber: position.lineNumber,
+          endColumn: line.length + 1
+        }
       }))
-    })
+      return { suggestions }
+    }
   })
 }
 

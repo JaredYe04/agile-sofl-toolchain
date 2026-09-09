@@ -1,6 +1,7 @@
 import { ref, watch, computed, type Ref } from 'vue'
 import { useDocumentStore } from '../stores/document'
-import { useDocumentHistoryStore } from '../stores/documentHistory'
+import { useHistoryStore } from '../stores/history'
+import { HistoryKinds } from '../history/kinds'
 import { useModalStore } from '../stores/modal'
 import { useEditorUiStore } from '../stores/editorUi'
 import type {
@@ -13,7 +14,7 @@ const DEBOUNCE_MS = 300
 
 export function useInformalModel(activeTabId: Ref<string | undefined>) {
   const doc = useDocumentStore()
-  const history = useDocumentHistoryStore()
+  const history = useHistoryStore()
   const modal = useModalStore()
   const editorUi = useEditorUiStore()
   const model = ref<InformalModelPayload | null>(null)
@@ -69,9 +70,11 @@ export function useInformalModel(activeTabId: Ref<string | undefined>) {
 
   function applySourcePatch(next: string): void {
     const tab = activeTab.value
-    if (!tab) return
-    doc.setContent(tab.id, next)
-    history.pushSnapshot(tab.id, next)
+    if (!tab || next === tab.content) return
+    history.applyDocument(tab.id, next, {
+      kind: HistoryKinds.informalEdit,
+      immediate: true
+    })
     lastRebuiltContent.value = next
     void rebuildNow()
   }

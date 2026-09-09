@@ -7,11 +7,12 @@ import type {
   DiagnosticSummary
 } from '../../preload/index'
 import { useDocumentStore } from '../stores/document'
-import { useDocumentHistoryStore } from '../stores/documentHistory'
+import { useHistoryStore } from '../stores/history'
+import { HistoryKinds } from '../history/kinds'
 
 export function useVisualModel(activeTabId: ComputedRef<string | undefined>) {
   const doc = useDocumentStore()
-  const history = useDocumentHistoryStore()
+  const history = useHistoryStore()
   const model = ref<VisualModelPayload | null>(null)
   const parseFailed = ref(false)
   const hasDiagnostics = ref(false)
@@ -100,7 +101,12 @@ export function useVisualModel(activeTabId: ComputedRef<string | undefined>) {
 
   async function applySourcePatch(
     mutator: (source: string) => Promise<string>,
-    coalesceKey?: string
+    options?: {
+      coalesceKey?: string
+      kind?: string
+      labelParams?: Record<string, unknown>
+      selectionAfter?: { moduleName?: string | null; informalNodeId?: string | null }
+    }
   ): Promise<void> {
     const tab = boundTab()
     if (!tab || tab.kind !== 'document') return
@@ -110,9 +116,13 @@ export function useVisualModel(activeTabId: ComputedRef<string | undefined>) {
     }
     const next = await mutator(tab.content)
     if (next === tab.content) return
-    history.pushSnapshot(tab.id, tab.content, true, coalesceKey)
-    doc.setContent(tab.id, next)
-    history.applyExternalContent(tab.id, next)
+    history.applyDocument(tab.id, next, {
+      kind: options?.kind ?? HistoryKinds.visualPatch,
+      coalesceKey: options?.coalesceKey,
+      immediate: true,
+      labelParams: options?.labelParams,
+      selectionAfter: options?.selectionAfter
+    })
     await rebuild(next, tab.id, false)
   }
 
@@ -126,7 +136,7 @@ export function useVisualModel(activeTabId: ComputedRef<string | undefined>) {
     if (!pending) return
     syncing.value = true
     try {
-      await applySourcePatch(pending.mutator, pending.coalesceKey)
+      await applySourcePatch(pending.mutator, { coalesceKey: pending.coalesceKey })
     } finally {
       syncing.value = false
     }
@@ -256,10 +266,31 @@ export function useVisualModel(activeTabId: ComputedRef<string | undefined>) {
     parentName?: string
     isSystem?: boolean
   }): Promise<void> {
-    await applySourcePatch(async (source) => {
-      if (!window.studio?.patchModule) return source
-      return window.studio.patchModule({ ...payload, source })
-    })
+    const kind =
+      payload.action === 'remove'
+        ? HistoryKinds.moduleDelete
+        : payload.action === 'rename'
+          ? HistoryKinds.moduleRename
+          : HistoryKinds.moduleAdd
+    const selectionAfter = {
+      moduleName:
+        payload.action === 'rename'
+          ? (payload.newName ?? payload.moduleName)
+          : payload.action === 'add'
+            ? payload.moduleName
+            : null
+    }
+    await applySourcePatch(
+      async (source) => {
+        if (!window.studio?.patchModule) return source
+        return window.studio.patchModule({ ...payload, source })
+      },
+      {
+        kind,
+        labelParams: { name: payload.moduleName, newName: payload.newName ?? payload.moduleName },
+        selectionAfter
+      }
+    )
   }
 
   watch(activeSource, () => scheduleRebuild(), { immediate: true })
@@ -274,7 +305,10 @@ export function useVisualModel(activeTabId: ComputedRef<string | undefined>) {
     scheduleRebuild()
   })
 
+  const unregisterFlusher = history.registerFlusher(() => flushScheduledPatch())
+
   onUnmounted(() => {
+    unregisterFlusher()
     if (debounceTimer) clearTimeout(debounceTimer)
     if (patchDebounceTimer) clearTimeout(patchDebounceTimer)
     void flushScheduledPatch()

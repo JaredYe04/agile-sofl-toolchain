@@ -42,8 +42,19 @@ import {
   scanProject,
   formatAspec,
   updateTraceContentHash,
-  type PatchAspecAction
+  parseAspec,
+  parseInformalSpec,
+  applyInformalSourcePatch,
+  applyInformalMeta,
+  aspecToInformal,
+  listHybridGenerators,
+  getHybridGenerator,
+  registerLlmHybridGenerator,
+  type PatchAspecAction,
+  type InformalPatch
 } from '@agile-sofl/aspec'
+import { chatEcnu } from './llm/chatEcnu.js'
+import { migrateInformalSource, readInformalMeta } from './informalMeta.js'
 import {
   buildGuiModel,
   buildGuiModelFromAspec,
@@ -126,7 +137,105 @@ function toSerializableSpan(span: { start: number; end: number; line: number; co
   return { start: span.start, end: span.end, line: span.line, column: span.column }
 }
 
+function ensureLlmHybridGenerator(): void {
+  registerLlmHybridGenerator(async ({ system, user, json }) => {
+    const result = await chatEcnu({
+      messages: [
+        { role: 'system', content: system },
+        { role: 'user', content: user }
+      ],
+      json,
+      temperature: 0.2
+    })
+    return result.content
+  })
+}
+
 export function registerParseHandlers(): void {
+  ensureLlmHybridGenerator()
+
+  ipcMain.handle(
+    'studio:parse-informal-spec',
+    (
+      _event,
+      payload: string | { source: string; projectRoot?: string; filePath?: string }
+    ) => {
+      const input = typeof payload === 'string' ? { source: payload } : payload
+      let source = input.source
+      let meta = input.projectRoot ? readInformalMeta(input.projectRoot) ?? undefined : undefined
+      if (input.projectRoot) {
+        const migrated = migrateInformalSource(input.projectRoot, source)
+        source = migrated.body
+        meta = migrated.meta
+      }
+      const parsed = parseAspec(source, meta ? { meta } : undefined)
+      if (parsed.informal) {
+        return cloneForIpc({
+          specification: parsed.informal,
+          diagnostics: parsed.diagnostics,
+          format: parsed.format ?? 'markdown',
+          displaySource: source
+        })
+      }
+      if (parsed.document) {
+        return cloneForIpc({
+          specification: aspecToInformal(parsed.document),
+          diagnostics: parsed.diagnostics,
+          format: parsed.format ?? 'yaml',
+          displaySource: source
+        })
+      }
+      return cloneForIpc({ ...parseInformalSpec(source, meta ? { meta } : undefined), displaySource: source })
+    }
+  )
+
+  ipcMain.handle(
+    'studio:patch-informal-spec',
+    (_event, payload: { source: string; patch: InformalPatch }) =>
+      cloneForIpc(applyInformalSourcePatch(payload.source, cloneForIpc(payload.patch)))
+  )
+
+  ipcMain.handle('studio:list-hybrid-generators', () =>
+    cloneForIpc(listHybridGenerators().map((g) => ({ id: g.id, name: g.name })))
+  )
+
+  ipcMain.handle(
+    'studio:generate-hybrid',
+    async (
+      _event,
+      payload: {
+        source: string
+        generatorId?: string
+        projectName?: string
+        projectRoot?: string
+        existingAsfl?: string
+      }
+    ) => {
+      ensureLlmHybridGenerator()
+      const parsed = parseAspec(payload.source, payload.projectRoot ? { meta: readInformalMeta(payload.projectRoot) ?? undefined } : undefined)
+      const spec = parsed.informal ?? (parsed.document ? aspecToInformal(parsed.document) : null)
+      if (!spec) return { ok: false as const, error: 'Informal specification could not be parsed.' }
+      const sidecar = payload.projectRoot ? readInformalMeta(payload.projectRoot) : null
+      if (sidecar) applyInformalMeta(spec, sidecar)
+      const generator = getHybridGenerator(payload.generatorId || 'rule-based')
+      if (!generator) return { ok: false as const, error: `Unknown generator "${payload.generatorId}".` }
+      try {
+        const result = await generator.generate(spec, {
+          projectName: payload.projectName,
+          existingAsfl: payload.existingAsfl
+        })
+        return cloneForIpc({
+          ok: true as const,
+          asflText: result.asflText,
+          traceLinks: result.traceLinks,
+          warnings: result.warnings
+        })
+      } catch (e) {
+        return { ok: false as const, error: e instanceof Error ? e.message : String(e) }
+      }
+    }
+  )
+
   ipcMain.handle('studio:build-visual-model', (_event, source: string, _channelId: string) => {
     const result = buildVisualModelTolerant(source)
     return cloneForIpc({

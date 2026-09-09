@@ -3,6 +3,8 @@ import type { VisualModelContext } from '../composables/visualModelContext'
 import { useWorkspaceStore } from '../stores/workspace'
 import { useModalStore } from '../stores/modal'
 import { useDocumentStore } from '../stores/document'
+import { useHistoryStore } from '../stores/history'
+import { HistoryKinds } from '../history/kinds'
 import { filePathsEqual } from '../stores/tabUtils'
 
 export async function insertHybridProcessSkeleton(
@@ -49,7 +51,8 @@ export async function insertHybridProcessSkeleton(
     name,
     template
   })
-  doc.setContent(tab.id, next)
+  const history = useHistoryStore()
+  history.applyDocument(tab.id, next, { kind: HistoryKinds.visualPatch, immediate: true })
   if (tab.filePath) {
     const found = doc.documentTabs.find((x) => x.filePath && filePathsEqual(x.filePath, tab.filePath!))
     if (found) doc.setActive(found.id)
