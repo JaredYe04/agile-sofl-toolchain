@@ -557,7 +557,7 @@
   "agent.title": "AI Specification Agent",
   "agent.newSession": "New",
   "agent.noSessions": "No sessions yet",
-  "agent.emptyHint": "Describe the system in natural language. The agent will extract Functions, Data Resources and Constraints, ask clarifying questions, then propose a patch you can apply.",
+  "agent.emptyHint": "Describe what you want the system to do...",
   "agent.placeholder": "Describe a requirement…",
   "agent.send": "Send",
   "agent.thinking": "Thinking…",

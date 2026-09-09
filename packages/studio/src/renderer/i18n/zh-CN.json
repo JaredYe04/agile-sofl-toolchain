@@ -557,7 +557,7 @@
   "agent.title": "规格智能体",
   "agent.newSession": "新建",
   "agent.noSessions": "暂无会话",
-  "agent.emptyHint": "用自然语言描述系统。智能体会提取功能、数据资源和约束，先提问澄清，再给出可预览的补丁，由你确认后写入规格。",
+  "agent.emptyHint": "请描述你想要什么样的系统....",
   "agent.placeholder": "描述需求…",
   "agent.send": "发送",
   "agent.thinking": "思考中…",
