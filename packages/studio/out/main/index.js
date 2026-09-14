@@ -3,11 +3,13 @@ const electron = require("electron");
 const node_fs = require("node:fs");
 const node_path = require("node:path");
 const promises = require("node:fs/promises");
+const editorApi = require("@agile-sofl/editor-api");
 const node_crypto = require("node:crypto");
 const node_url = require("node:url");
 const initSqlJs = require("sql.js");
 const node_module = require("node:module");
 const node_child_process = require("node:child_process");
+const node_util = require("node:util");
 let cached = {};
 let loaded = false;
 function statePath() {
@@ -456,12 +458,36 @@ async function testLlmProfile(request) {
     return { ok: false, message, ms: 0 };
   }
 }
+class ChatAbortedError extends Error {
+  constructor(message = "Stopped by user.") {
+    super(message);
+    this.name = "ChatAbortedError";
+  }
+}
+function isChatAborted(error) {
+  return error instanceof ChatAbortedError || error instanceof Error && error.name === "ChatAbortedError";
+}
+function combineAbortSignals(signals) {
+  if (typeof AbortSignal.any === "function") return AbortSignal.any(signals);
+  const controller = new AbortController();
+  const abort = () => controller.abort();
+  for (const signal of signals) {
+    if (signal.aborted) {
+      controller.abort();
+      return controller.signal;
+    }
+    signal.addEventListener("abort", abort, { once: true });
+  }
+  return controller.signal;
+}
 const CHAT_TIMEOUT_MS = 9e4;
-async function postChat(body) {
+async function postChat(body, userSignal) {
   const cfg = getEcnuConfig();
   if (!cfg.apiKey) {
     throw new Error("No LLM API key. Add a profile in Settings, or set ECNU_API_KEY in packages/studio/.env.");
   }
+  const timeout = AbortSignal.timeout(CHAT_TIMEOUT_MS);
+  const signal = userSignal ? combineAbortSignals([timeout, userSignal]) : timeout;
   const res = await fetch(`${cfg.baseUrl}/chat/completions`, {
     method: "POST",
     headers: {
@@ -469,9 +495,10 @@ async function postChat(body) {
       Authorization: `Bearer ${cfg.apiKey}`
     },
     body: JSON.stringify({ model: cfg.model, ...body }),
-    signal: AbortSignal.timeout(CHAT_TIMEOUT_MS)
+    signal
   }).catch((e) => {
     if (e instanceof Error && (e.name === "TimeoutError" || e.name === "AbortError")) {
+      if (userSignal?.aborted) throw new ChatAbortedError();
       throw new Error("ChatECNU timed out after 90s. Send again to continue.");
     }
     throw e;
@@ -491,7 +518,7 @@ async function chatEcnuStream(options) {
   };
   if (options.thinking !== false) body.reasoning_effort = "low";
   if (options.tools?.length) body.tools = options.tools;
-  const res = await postChat(body);
+  const res = await postChat(body, options.signal);
   if (!res.body) throw new Error("ChatECNU stream has no body.");
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
@@ -536,7 +563,20 @@ async function chatEcnuStream(options) {
     }
   };
   while (true) {
-    const { done, value } = await reader.read();
+    if (options.signal?.aborted) {
+      await reader.cancel().catch(() => void 0);
+      throw new ChatAbortedError();
+    }
+    let chunk;
+    try {
+      chunk = await reader.read();
+    } catch (e) {
+      if (options.signal?.aborted || e instanceof Error && e.name === "AbortError") {
+        throw new ChatAbortedError();
+      }
+      throw e;
+    }
+    const { done, value } = chunk;
     if (done) break;
     buffer += decoder.decode(value, { stream: true });
     const lines = buffer.split(/\r?\n/);
@@ -562,7 +602,7 @@ const AGENT_SKILLS = [
   {
     id: "requirement-discovery",
     name: "Requirement Discovery",
-    prompt: "Discover Functions, Data Resources, and Constraints from the user's natural language. Do not dump a full specification. Summarize candidates, then ask clarifying questions, then propose a structured patch."
+    prompt: "Discover Functions, Data Resources, and Constraints from the user's natural language. Do not dump a full specification. Summarize candidates, then ask clarifying questions, then propose structured propose_changes patches. After each applied write, read_specification and continue until the inventory is complete, then summarize. If CRUD cannot express a fix, read view=source and propose_source_edit."
   },
   {
     id: "requirement-clarification",
@@ -588,6 +628,21 @@ const AGENT_SKILLS = [
     id: "specification-review",
     name: "Specification Review",
     prompt: "Review Completeness, Precision, Consistency, and Traceability. Call review_specification and list concrete issues tied to node ids when possible."
+  },
+  {
+    id: "hybrid-generation",
+    name: "Hybrid Generation",
+    prompt: `Turn Informal Specification into Hybrid (.asfl) incrementally via CRUD tools. NEVER dump a full SOFL file or use replace-document.
+Pipeline — keep going after each applied patch until every enabled stage is done, then summarize:
+1. Read Informal and Hybrid inventories. If Hybrid already exists and strategy is ask, call ask_clarification (merge vs rebuild).
+2. Module architecture: add each semantic module (and a GUI module) with propose_hybrid_changes op=add kind=module. Do not paste module source.
+3. Per module: add types/variables from Data Resources (kind=type|var, parentId=mod:…).
+4. Per module: add process signatures from Functions (kind=process, pre/post).
+5. Per process: replace-process-body or add scenarios. Write structured natural-language pre/post, never FSF :. Enumerations use {<Tag>}.
+6. Add invariants (kind=inv) from Constraints; add GUI screens; keep traceability in explanations.
+After every applied write, call read_hybrid_specification and fix gaps with more CRUD until the inventory is correct. Last message = summary of completed stages.
+If CRUD fails, the file is empty/out of sync, or an uncovered parser/id issue appears, call read_hybrid_specification with view=source then propose_source_edit (unique replace/append/replace-document). Do not retry the same failing CRUD.
+Infer unstated GUI/navigation only when the parameter allows it; otherwise ask. Prefer small patches citing inventory ids.`
   }
 ];
 function skillById(id) {
@@ -622,7 +677,7 @@ const AGENT_TOOLS = [
     type: "function",
     function: {
       name: "propose_changes",
-      description: "Propose a structured Informal Specification patch against the CURRENT spec (see inventory ids). Never write raw markdown. The editor shows a preview for Apply / Reject. You MAY add new nodes, AND update or remove existing ones. Prefer update/remove on existing ids over adding duplicates.",
+      description: "Propose a structured Informal Specification patch against the CURRENT Informal inventory ids. Never write raw markdown. Never use this for Hybrid/.asfl. Prefer update/remove on existing ids. After Apply (or auto-write), continue: read_specification, fix gaps, then summarize.",
       parameters: {
         type: "object",
         properties: {
@@ -669,8 +724,17 @@ const AGENT_TOOLS = [
     type: "function",
     function: {
       name: "read_specification",
-      description: "Return the current Informal Specification inventory: every node id, type, title, and description. Call this before propose_changes when you need to edit or delete existing items.",
-      parameters: { type: "object", properties: {} }
+      description: "Return the current Informal Specification. Default view=inventory (node ids/titles). Pass view=source for numbered markdown text before propose_source_edit. Does not return Hybrid/.asfl.",
+      parameters: {
+        type: "object",
+        properties: {
+          view: {
+            type: "string",
+            enum: ["inventory", "source"],
+            description: "inventory (default) or numbered source text"
+          }
+        }
+      }
     }
   },
   {
@@ -700,8 +764,165 @@ const AGENT_TOOLS = [
         required: ["issues"]
       }
     }
+  },
+  {
+    type: "function",
+    function: {
+      name: "read_hybrid_specification",
+      description: "Return the current Hybrid Specification. Default view=inventory (mod:/proc:/scn:/type:/var:/inv:/gui:). Pass view=source for numbered .asfl text before propose_source_edit.",
+      parameters: {
+        type: "object",
+        properties: {
+          view: {
+            type: "string",
+            enum: ["inventory", "source"],
+            description: "inventory (default) or numbered source text"
+          }
+        }
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "propose_hybrid_changes",
+      description: "Propose an incremental Hybrid/.asfl CRUD patch against inventory ids (mod:, proc:Module.Name). Bare ids like proc:Login or Chinese titles are resolved when possible. Prefer this over source edits. Never emit raw SOFL or replace-document here — use propose_source_edit for text-level fixes. Use add/update/remove/replace-process-body. Write pre/post, not FSF :.",
+      parameters: {
+        type: "object",
+        properties: {
+          explanation: { type: "string" },
+          operations: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                op: {
+                  type: "string",
+                  enum: ["add", "update", "remove", "replace-process-body"]
+                },
+                kind: {
+                  type: "string",
+                  enum: [
+                    "module",
+                    "process",
+                    "function",
+                    "type",
+                    "var",
+                    "const",
+                    "inv",
+                    "scenario",
+                    "gui-screen"
+                  ]
+                },
+                id: { type: "string", description: "update/remove/replace-process-body: inventory id" },
+                parentId: { type: "string", description: "add: parent mod: or proc: id" },
+                name: { type: "string" },
+                text: { type: "string" },
+                pre: { type: "string" },
+                post: { type: "string" },
+                signature: { type: "string" },
+                comment: { type: "string" },
+                scenarios: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      name: { type: "string" },
+                      guard: { type: "string" },
+                      test: { type: "string" },
+                      def: { type: "string" },
+                      definingCondition: { type: "string" },
+                      kind: { type: "string", enum: ["normal", "exceptional"] }
+                    }
+                  }
+                }
+              },
+              required: ["op"]
+            }
+          }
+        },
+        required: ["operations"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "propose_source_edit",
+      description: "Last-resort source-level edit of Informal markdown or Hybrid .asfl. Prefer propose_changes / propose_hybrid_changes. Use this when CRUD failed, inventory is empty/out of sync, or you must fix text the structured tools cannot express. Read view=source first. Ops: replace (unique oldText → newText; all:true to replace every match), append, replace-document.",
+      parameters: {
+        type: "object",
+        properties: {
+          target: {
+            type: "string",
+            enum: ["informal", "hybrid"],
+            description: "Which open specification file to edit"
+          },
+          explanation: { type: "string" },
+          operations: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                op: { type: "string", enum: ["replace", "append", "replace-document"] },
+                oldText: { type: "string", description: "replace: unique snippet from the current source" },
+                newText: { type: "string" },
+                text: { type: "string", description: "append or replace-document body" },
+                all: { type: "boolean", description: "replace: replace every match of oldText" }
+              },
+              required: ["op"]
+            }
+          }
+        },
+        required: ["operations"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "review_hybrid",
+      description: "Record a structured review of the current Hybrid specification.",
+      parameters: {
+        type: "object",
+        properties: {
+          issues: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                dimension: {
+                  type: "string",
+                  enum: ["completeness", "precision", "consistency", "traceability"]
+                },
+                message: { type: "string" },
+                nodeId: { type: "string" }
+              },
+              required: ["dimension", "message"]
+            }
+          }
+        },
+        required: ["issues"]
+      }
+    }
   }
 ];
+function defaultAgentPermissions() {
+  return {
+    informal: { read: true, write: true },
+    hybrid: { read: true, write: true }
+  };
+}
+function normalizePermissions(raw) {
+  const base = defaultAgentPermissions();
+  const informal = { ...base.informal, ...raw?.informal };
+  const hybrid = { ...base.hybrid, ...raw?.hybrid };
+  if (informal.write) informal.read = true;
+  if (hybrid.write) hybrid.read = true;
+  if (!informal.read) informal.write = false;
+  if (!hybrid.read) hybrid.write = false;
+  return { informal, hybrid };
+}
 function newId(prefix) {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }
@@ -818,7 +1039,7 @@ function deleteSession(projectRoot, id) {
   node_fs.unlinkSync(file);
   return true;
 }
-function createSession(projectRoot, moduleId, title) {
+function createSession(projectRoot, moduleId, title, options) {
   const now = (/* @__PURE__ */ new Date()).toISOString();
   const session = {
     id: newId("ses"),
@@ -827,7 +1048,11 @@ function createSession(projectRoot, moduleId, title) {
     createdAt: now,
     updatedAt: now,
     messages: [],
-    context: { skillId: "requirement-discovery" }
+    context: {
+      skillId: options?.skillId || "requirement-discovery",
+      permissions: normalizePermissions(options?.permissions),
+      promptExtras: options?.promptExtras
+    }
   };
   saveSession(projectRoot, session);
   return session;
@@ -1231,36 +1456,253 @@ function informalInventoryFromMarkdown(markdown, maxChars = 12e3) {
   const { specification } = parseInformalSpec(markdown);
   return formatInformalInventory(specification, maxChars);
 }
+function numberedSource(text, maxChars = 16e3) {
+  if (!text.trim()) return "(empty file)";
+  const body = text.split("\n").map((line, i) => `${String(i + 1).padStart(4, " ")}| ${line}`).join("\n");
+  if (body.length <= maxChars) return body;
+  return `${body.slice(0, maxChars)}
+…(truncated)`;
+}
+function patchFingerprint(patch) {
+  return JSON.stringify({
+    target: patch.target ?? "",
+    mode: patch.mode ?? "crud",
+    operations: patch.operations ?? []
+  });
+}
+function validateAgentPatch(target, patch, options) {
+  if (!Array.isArray(patch.operations) || patch.operations.length === 0) {
+    return { ok: false, message: "Patch has no operations." };
+  }
+  const mode = options?.mode ?? patch.mode ?? "crud";
+  if (mode === "source") {
+    for (const op of patch.operations) {
+      const kind = String(op.op || "");
+      if (kind === "replace-document") {
+        if (typeof op.text !== "string" && typeof op.asflText !== "string") {
+          return { ok: false, message: "replace-document requires text." };
+        }
+        continue;
+      }
+      if (kind === "append") {
+        if (typeof op.text !== "string" || !String(op.text).length) {
+          return { ok: false, message: "append requires text." };
+        }
+        continue;
+      }
+      if (kind === "replace") {
+        if (!String(op.oldText ?? op.from ?? "").length) {
+          return { ok: false, message: "replace requires oldText (a unique snippet from the current source)." };
+        }
+        continue;
+      }
+      return {
+        ok: false,
+        message: `Unknown source op "${kind}". Use replace, append, or replace-document.`
+      };
+    }
+    return { ok: true, message: "ok" };
+  }
+  for (const op of patch.operations) {
+    const kind = String(op.op || "");
+    if (kind === "replace-document" || typeof op.asflText === "string") {
+      return {
+        ok: false,
+        message: "replace-document / asflText is not allowed on CRUD. Use add/update/remove, or call propose_source_edit for a source-level fix."
+      };
+    }
+    const blobs = [op.text, op.pre, op.post, op.comment, op.signature];
+    for (const blob of blobs) {
+      if (typeof blob !== "string") continue;
+      if (/\b(?:module|system)\b[\s\S]{6,}end_module\b/i.test(blob) || /\bend_module\b/i.test(blob)) {
+        return {
+          ok: false,
+          message: "Do not put whole modules or end_module in CRUD fields. Add each entity as a separate operation, or call propose_source_edit if you must edit the .asfl text."
+        };
+      }
+    }
+  }
+  if (target === "hybrid") {
+    for (const op of patch.operations) {
+      const kind = String(op.op || "");
+      if (kind === "add") {
+        if (!op.kind) return { ok: false, message: "Hybrid add requires kind (module, type, var, inv, process, …)." };
+        if (op.kind !== "inv" && !String(op.name ?? "").trim()) {
+          return { ok: false, message: "Hybrid add requires name." };
+        }
+      }
+      if ((kind === "update" || kind === "remove" || kind === "replace-process-body") && !String(op.id ?? "").trim()) {
+        return { ok: false, message: `${kind} requires an inventory id.` };
+      }
+    }
+  }
+  return { ok: true, message: "ok" };
+}
+function consecutiveWriteFailures(toolContents) {
+  let n = 0;
+  for (let i = toolContents.length - 1; i >= 0; i--) {
+    try {
+      const parsed = JSON.parse(toolContents[i] || "{}");
+      if (parsed.action === "error" || parsed.ok === false) n += 1;
+      else break;
+    } catch {
+      break;
+    }
+  }
+  return n;
+}
+function crudBlockedByFailures(lastFailed, incoming) {
+  if (incoming.mode === "source") return null;
+  if (!lastFailed) return null;
+  if (lastFailed.fingerprint === incoming.fingerprint) {
+    return "This CRUD patch already failed. Do not retry it. Call read_specification and/or read_hybrid_specification with view=source, then propose_source_edit (replace/append/replace-document).";
+  }
+  if (lastFailed.mode !== "source" && lastFailed.count >= 2) {
+    return "CRUD has failed repeatedly. Call read_* with view=source, then propose_source_edit to unstick. CRUD is blocked until a source edit is applied.";
+  }
+  return null;
+}
+function nextFailedWrite(lastFailed, incoming) {
+  const count = lastFailed ? lastFailed.count + 1 : 1;
+  return {
+    fingerprint: incoming.fingerprint,
+    error: incoming.error,
+    count,
+    mode: incoming.mode
+  };
+}
+function continuationUserText(lastToolContent, failures = 0) {
+  let action;
+  let error;
+  try {
+    const parsed = JSON.parse(lastToolContent || "{}");
+    action = parsed.action;
+    error = parsed.error;
+  } catch {
+  }
+  const sourceHint = "If CRUD cannot express the fix, call read_* with view=source, then propose_source_edit (replace/append/replace-document). That is allowed.";
+  if (action === "applied") {
+    if (error) {
+      return `The patch was applied, but some operations failed: ${error}. Immediately call read_specification and/or read_hybrid_specification, fix remaining work with CRUD or ${sourceHint}`;
+    }
+    return "The patch was applied. Immediately call read_specification and/or read_hybrid_specification, compare with the plan, and either propose the next incremental CRUD patch or write a final summary of what was completed. Do not wait for a new user message.";
+  }
+  if (action === "error" || failures >= 2) {
+    return `The write failed: ${error || "unknown error"}. This is a tool result, not a stopped session. Do not retry the same CRUD patch. Call read_specification and/or read_hybrid_specification with view=source, then propose_source_edit to unstick (replace a unique snippet, append, or replace-document). Then verify. Do not stop with an empty message.`;
+  }
+  if (action === "rejected") {
+    return "The user rejected that patch. Adjust: ask_clarification if needed, propose a smaller CRUD patch, or use propose_source_edit if the file itself is stuck. Do not stop with an empty message.";
+  }
+  return "Continue now. Prefer propose_changes / propose_hybrid_changes. If those fail, read source and propose_source_edit. After writes, read the spec to verify. When the task is done, write a short summary and stop. Do not reply with an empty message.";
+}
+function appliedToolResult(extra) {
+  return JSON.stringify({
+    action: "applied",
+    ok: !extra?.error,
+    error: extra?.error,
+    next: extra?.error ? `Some operations failed: ${extra.error}. Read the inventory (and view=source if needed). Follow up with CRUD or propose_source_edit. Do not stop.` : "Call read_specification and/or read_hybrid_specification to verify. If more work remains, propose the next CRUD patch (or propose_source_edit if CRUD cannot express it). If the task is complete, write a short summary and stop."
+  });
+}
+function rejectedToolResult() {
+  return JSON.stringify({
+    action: "rejected",
+    ok: false,
+    next: "Revise the plan. Ask if needed, propose a smaller CRUD patch, or propose_source_edit if the file is stuck."
+  });
+}
+function failedToolResult(error) {
+  return JSON.stringify({
+    action: "error",
+    ok: false,
+    error,
+    next: "Tool failed. Do not retry the identical CRUD. Read inventory and view=source, then propose_source_edit if needed. Do not stop the task."
+  });
+}
 const MAX_HISTORY = 20;
+function permissionsOf(session, ctx) {
+  return normalizePermissions(ctx.permissions ?? session.context.permissions);
+}
+function toolsFor(permissions) {
+  return AGENT_TOOLS.filter((tool) => {
+    const name = tool.function.name;
+    if (name === "ask_clarification") return true;
+    if (name === "read_specification" || name === "review_specification") return permissions.informal.read;
+    if (name === "propose_changes") return permissions.informal.write;
+    if (name === "read_hybrid_specification" || name === "review_hybrid") return permissions.hybrid.read;
+    if (name === "propose_hybrid_changes") return permissions.hybrid.write;
+    if (name === "propose_source_edit") return permissions.informal.write || permissions.hybrid.write;
+    return true;
+  });
+}
 function compactSpec(markdown) {
   return informalInventoryFromMarkdown(markdown, 12e3);
 }
-function systemPrompt(ctx) {
+function compactHybrid(asfl) {
+  if (!asfl?.trim()) return "(empty hybrid specification)";
+  return editorApi.formatHybridInventory(asfl, 12e3);
+}
+function systemPrompt(ctx, permissions) {
   const skill = skillById(ctx.skillId);
-  return `You are the Agile-SOFL Specification Agent inside Studio.
-You help users build an Informal Specification with a fixed schema:
-# Functions
-# Data Resources
-# Constraints
-
-Markdown is only a view. You MUST NOT output a full markdown document to apply.
-You MUST use tools:
-- ask_clarification: when you need a decision (render options the user can click)
-- read_specification: when you need ids of existing items before editing
-- propose_changes: when ready to add, update, remove, or move nodes (preview + user confirm)
-- review_specification: for quality review
-
-Never claim you already modified the file. The editor applies patches only after the user clicks Apply.
-After the user applies or rejects a patch, stop and wait for their next message. Do not immediately propose more changes.
-After an ask_clarification tool result, you MUST continue: call ask_clarification again or propose_changes. Never return an empty message.
-
-For propose_changes, operate on the CURRENT inventory below (ids like fn-login, dr-account, c-unique):
+  const toolLines = ["- ask_clarification: when you need a decision (render options the user can click)"];
+  if (permissions.informal.read) {
+    toolLines.push("- read_specification: Informal inventory (default) or numbered source (view=source)");
+    toolLines.push("- review_specification: Informal quality review");
+  }
+  if (permissions.informal.write) {
+    toolLines.push("- propose_changes: Informal add/update/remove/move (preferred)");
+  }
+  if (permissions.hybrid.read) {
+    toolLines.push("- read_hybrid_specification: Hybrid inventory (default) or numbered .asfl (view=source)");
+    toolLines.push("- review_hybrid: Hybrid quality review");
+  }
+  if (permissions.hybrid.write) {
+    toolLines.push("- propose_hybrid_changes: incremental Hybrid CRUD (preferred)");
+  }
+  if (permissions.informal.write || permissions.hybrid.write) {
+    toolLines.push(
+      "- propose_source_edit: last-resort Informal/Hybrid source edit (replace/append/replace-document) when CRUD cannot unstick"
+    );
+  }
+  const informalGuide = permissions.informal.write ? `For propose_changes, operate on the CURRENT Informal inventory (ids like fn-login, dr-account, c-unique):
 - add: target = functions | data-resources | constraints (or a parent node id). node.type = function | data-resource | data-field | constraint. Include title and description.
-- update: id = existing node id (or unique title). Set title and/or description. Use this to revise existing items.
-- remove: id = existing node id. Use this to delete obsolete items.
+- update: id = existing node id (or unique title). Set title and/or description.
+- remove: id = existing node id.
 - move: id + parentId + optional afterId.
 Prefer update/remove on existing nodes over adding a second copy of the same idea.
-Do not invent YAML frontmatter or document-level metadata.
+Do not invent YAML frontmatter or document-level metadata.` : "You do not have Informal write permission. Do not call propose_changes.";
+  const hybridGuide = permissions.hybrid.write ? `For propose_hybrid_changes, operate on Hybrid inventory ids with CRUD only:
+- add: kind (module|type|var|const|inv|process|function|scenario|gui-screen) + parentId (mod:Module or proc:Module.Name) + name. Bare ids like proc:Login or Chinese titles are resolved when possible, but prefer inventory ids. Types/vars/invs use text. Processes use pre/post/signature — NEVER FSF :.
+- update / remove: id of existing entity (mod:, proc:, type:, var:, inv:, scn:, gui:).
+- replace-process-body: id of proc:, set pre and/or post (structured NL or predicate).
+FORBIDDEN: replace-document, asflText, dumping several modules as one string, "-- comments" as source.
+Add one module at a time, then its types/vars/invs/processes as separate operations. Prefer updating an existing id over adding a duplicate.
+Never put end_module, a whole module, or a process block inside type/var/inv/pre/post text — that wipes the document.
+After a write is applied, call read_hybrid_specification and keep patching until the inventory matches the plan.` : "You do not have Hybrid write permission. Do not call propose_hybrid_changes.";
+  const sourceGuide = permissions.informal.write || permissions.hybrid.write ? `propose_source_edit is an escape hatch, not the default:
+- Prefer propose_changes / propose_hybrid_changes for almost every write.
+- Use source edit after CRUD fails, when inventory is empty/out of sync with the file, or when you must fix text CRUD cannot express.
+- First call read_* with view=source. Then replace a UNIQUE oldText snippet, append, or replace-document.
+- Do not retry the same failing CRUD patch. After two CRUD failures you MUST switch to propose_source_edit.` : "You do not have write permission for source edits.";
+  const informalBlock = permissions.informal.read ? `Current Informal Specification inventory:
+${compactSpec(ctx.informalMarkdown)}` : "Informal Specification: (read permission off)";
+  const hybridBlock = permissions.hybrid.read ? `Current Hybrid Specification inventory:
+${compactHybrid(ctx.hybridAsfl)}` : "Hybrid Specification: (read permission off)";
+  return `You are the Agile-SOFL Specification Agent inside Studio.
+You help users build Informal Specification and/or Hybrid Specification (.asfl).
+Markdown and SOFL text are views. You MUST NOT output a full document to apply.
+You MUST use tools:
+${toolLines.join("\n")}
+
+Never claim you already modified the file. Writes go through propose_* tools. User Apply/Reject (or auto-write) is only a tool result — you MUST continue the same task.
+After any applied write, call read_specification and/or read_hybrid_specification, verify, and propose another patch if anything is missing or wrong. Repeat until correct.
+When the whole task is done, your LAST message is a short summary of what was completed. Do not wait for the user to say "continue".
+Prefer structured CRUD. Do not dump raw Markdown or raw SOFL through propose_changes / propose_hybrid_changes. If those tools fail or cannot express the fix, read view=source and use propose_source_edit.
+
+${informalGuide}
+
+${hybridGuide}
+
+${sourceGuide}
 
 Active skill: ${skill.name}
 ${skill.prompt}
@@ -1268,13 +1710,17 @@ ${skill.prompt}
 Current project: ${ctx.projectName ?? "unknown"}
 Current module: ${ctx.moduleId ?? "project"}
 Selected node: ${ctx.selectedNodeSummary || ctx.selectedNodeId || "(none — stay focused on selection when present)"}
+Session permissions: Informal r=${permissions.informal.read} w=${permissions.informal.write}; Hybrid r=${permissions.hybrid.read} w=${permissions.hybrid.write}
 
-Current Informal Specification inventory:
-${compactSpec(ctx.informalMarkdown)}
+${ctx.promptExtras ? `${ctx.promptExtras}
+` : ""}
+${informalBlock}
+
+${hybridBlock}
 `;
 }
-function toApiMessages(session, ctx, options) {
-  const msgs = [{ role: "system", content: systemPrompt(ctx) }];
+function toApiMessages(session, ctx, permissions, options) {
+  const msgs = [{ role: "system", content: systemPrompt(ctx, permissions) }];
   const toolResults = /* @__PURE__ */ new Map();
   for (const m of session.messages) {
     if (m.role === "tool") toolResults.set(m.id, m);
@@ -1331,9 +1777,15 @@ function toApiMessages(session, ctx, options) {
   const trimmed = body.filter((_, i) => startIndexes.has(i));
   msgs.push(...trimmed);
   if (options?.continuation) {
+    const lastTool = [...session.messages].reverse().find((m) => m.role === "tool");
+    const toolContents = session.messages.filter((m) => m.role === "tool").map((m) => m.content);
+    const failures = Math.max(
+      consecutiveWriteFailures(toolContents),
+      session.context.lastFailedWrite?.count ?? 0
+    );
     msgs.push({
       role: "user",
-      content: "Continue now. Call ask_clarification for the next decision, or propose_changes if you have enough detail. Do not reply with an empty message."
+      content: continuationUserText(lastTool?.content, failures)
     });
   }
   return msgs;
@@ -1345,16 +1797,10 @@ function parseArgs(raw) {
     return {};
   }
 }
-function validatePatch(_source, patch) {
-  if (!Array.isArray(patch.operations) || patch.operations.length === 0) {
-    return { ok: false, message: "Patch has no operations." };
-  }
-  return { ok: true, message: "Patch will be schema-validated when applied." };
-}
 function emit(sink, event) {
   sink?.(event);
 }
-async function runAgentTurn(session, projectRoot, ctx, userText, sink) {
+async function runAgentTurn(session, projectRoot, ctx, userText, sink, signal) {
   if (userText?.trim()) {
     session.messages.push({
       id: newId("msg"),
@@ -1371,8 +1817,33 @@ async function runAgentTurn(session, projectRoot, ctx, userText, sink) {
   }
   session.context.skillId = ctx.skillId || session.context.skillId || "requirement-discovery";
   session.context.selectedNodeId = ctx.selectedNodeId;
+  const permissions = permissionsOf(session, ctx);
+  session.context.permissions = permissions;
+  if (ctx.promptExtras) session.context.promptExtras = ctx.promptExtras;
+  else ctx.promptExtras = session.context.promptExtras;
+  ctx.permissions = permissions;
   const continuation = !userText?.trim();
-  for (let step = 0; step < 6; step++) {
+  const stopIfAborted = () => {
+    if (!signal?.aborted) return false;
+    const live = [...session.messages].reverse().find((m) => m.role === "assistant" && m.streaming);
+    if (live) {
+      live.streaming = false;
+      if (!live.content.trim()) live.content = "已停止 / Stopped.";
+    } else {
+      session.messages.push({
+        id: newId("msg"),
+        role: "assistant",
+        content: "已停止 / Stopped.",
+        timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+        skillId: ctx.skillId
+      });
+    }
+    saveSession(projectRoot, session);
+    emit(sink, { kind: "session", session });
+    return true;
+  };
+  for (let step = 0; step < 14; step++) {
+    if (stopIfAborted()) return session;
     const assistantId = newId("msg");
     const live = {
       id: assistantId,
@@ -1387,8 +1858,8 @@ async function runAgentTurn(session, projectRoot, ctx, userText, sink) {
     emit(sink, { kind: "session", session });
     const history = { ...session, messages: session.messages.filter((m) => m.id !== assistantId) };
     const request = {
-      messages: toApiMessages(history, ctx, { continuation: continuation && step === 0 }),
-      tools: AGENT_TOOLS,
+      messages: toApiMessages(history, ctx, permissions, { continuation: continuation && step === 0 }),
+      tools: toolsFor(permissions),
       temperature: 0.35
     };
     let completion;
@@ -1396,6 +1867,7 @@ async function runAgentTurn(session, projectRoot, ctx, userText, sink) {
       completion = await chatEcnuStream({
         ...request,
         thinking: true,
+        signal,
         onDelta: (delta) => {
           if (delta.reasoning != null) {
             live.thinking = delta.reasoning;
@@ -1407,11 +1879,19 @@ async function runAgentTurn(session, projectRoot, ctx, userText, sink) {
           }
         }
       });
-    } catch {
+    } catch (first) {
+      if (isChatAborted(first) || signal?.aborted) {
+        live.streaming = false;
+        if (!live.content.trim()) live.content = "已停止 / Stopped.";
+        saveSession(projectRoot, session);
+        emit(sink, { kind: "session", session });
+        return session;
+      }
       try {
         completion = await chatEcnuStream({
           ...request,
           thinking: false,
+          signal,
           onDelta: (delta) => {
             if (delta.content != null) {
               live.content = delta.content;
@@ -1421,6 +1901,12 @@ async function runAgentTurn(session, projectRoot, ctx, userText, sink) {
         });
       } catch (err) {
         live.streaming = false;
+        if (isChatAborted(err) || signal?.aborted) {
+          if (!live.content.trim()) live.content = "已停止 / Stopped.";
+          saveSession(projectRoot, session);
+          emit(sink, { kind: "session", session });
+          return session;
+        }
         live.content = err instanceof Error ? err.message : String(err);
         saveSession(projectRoot, session);
         emit(sink, { kind: "session", session });
@@ -1458,14 +1944,100 @@ async function runAgentTurn(session, projectRoot, ctx, userText, sink) {
           emit(sink, { kind: "session", session });
           return session;
         }
-        if (call.function.name === "propose_changes") {
+        if (call.function.name === "propose_changes" || call.function.name === "propose_hybrid_changes" || call.function.name === "propose_source_edit") {
+          const mode = call.function.name === "propose_source_edit" ? "source" : "crud";
+          let target;
+          if (call.function.name === "propose_hybrid_changes") target = "hybrid";
+          else if (call.function.name === "propose_changes") target = "informal";
+          else {
+            const raw = typeof args.target === "string" ? args.target : "";
+            if (raw === "hybrid" || raw === "informal") {
+              target = raw;
+            } else if (permissions.hybrid.write && !permissions.informal.write) {
+              target = "hybrid";
+            } else if (permissions.informal.write && !permissions.hybrid.write) {
+              target = "informal";
+            } else {
+              session.messages.push({
+                id: call.id,
+                role: "tool",
+                content: JSON.stringify({
+                  ok: false,
+                  error: 'propose_source_edit requires target: "informal" or "hybrid".',
+                  next: "Re-call propose_source_edit with an explicit target after read_* view=source."
+                }),
+                timestamp: (/* @__PURE__ */ new Date()).toISOString()
+              });
+              live.content = live.content || "Source edit needs an explicit target.";
+              continue;
+            }
+          }
           const patch = {
+            target,
+            mode,
             explanation: typeof args.explanation === "string" ? args.explanation : void 0,
             operations: Array.isArray(args.operations) ? args.operations : []
           };
-          const validity = validatePatch(ctx.informalMarkdown, patch);
-          live.content = patch.explanation || live.content || (validity.ok ? "Proposed specification changes." : `Patch failed validation: ${validity.message}`);
-          live.proposedChanges = validity.ok ? patch : void 0;
+          const allowed = target === "hybrid" ? permissions.hybrid.write : permissions.informal.write;
+          if (!allowed) {
+            session.messages.push({
+              id: call.id,
+              role: "tool",
+              content: JSON.stringify({
+                ok: false,
+                error: `No ${target} write permission.`,
+                next: "Do not call write tools for a specification you cannot write."
+              }),
+              timestamp: (/* @__PURE__ */ new Date()).toISOString()
+            });
+            live.content = live.content || `No ${target} write permission.`;
+            continue;
+          }
+          const blocked = crudBlockedByFailures(session.context.lastFailedWrite, {
+            fingerprint: patchFingerprint(patch),
+            mode
+          });
+          if (blocked) {
+            session.context.lastFailedWrite = nextFailedWrite(session.context.lastFailedWrite, {
+              fingerprint: patchFingerprint(patch),
+              error: blocked,
+              mode
+            });
+            session.messages.push({
+              id: call.id,
+              role: "tool",
+              content: JSON.stringify({
+                ok: false,
+                error: blocked,
+                next: "Do not retry the same CRUD. Call read_* with view=source, then propose_source_edit."
+              }),
+              timestamp: (/* @__PURE__ */ new Date()).toISOString()
+            });
+            live.content = live.content || `Patch rejected: ${blocked}`;
+            continue;
+          }
+          const validity = validateAgentPatch(target, patch, { mode });
+          if (!validity.ok) {
+            session.context.lastFailedWrite = nextFailedWrite(session.context.lastFailedWrite, {
+              fingerprint: patchFingerprint(patch),
+              error: validity.message,
+              mode
+            });
+            session.messages.push({
+              id: call.id,
+              role: "tool",
+              content: JSON.stringify({
+                ok: false,
+                error: validity.message,
+                next: mode === "source" ? "Fix the source-edit operations (unique oldText, or append / replace-document). Do not stop." : "Tool rejected that patch. Read the inventory, or view=source then propose_source_edit. Do not stop."
+              }),
+              timestamp: (/* @__PURE__ */ new Date()).toISOString()
+            });
+            live.content = live.content || `Patch rejected: ${validity.message}`;
+            continue;
+          }
+          live.content = patch.explanation || live.content || (mode === "source" ? `Proposed ${target} source edit.` : `Proposed ${target} specification changes.`);
+          live.proposedChanges = patch;
           live.pending = true;
           session.context.pendingToolCallId = call.id;
           completeSiblingToolCalls(session, completion.toolCalls, call.id);
@@ -1474,17 +2046,40 @@ async function runAgentTurn(session, projectRoot, ctx, userText, sink) {
           return session;
         }
         if (call.function.name === "read_specification") {
-          const inventory = informalInventoryFromMarkdown(ctx.informalMarkdown);
+          const view = args.view === "source" ? "source" : "inventory";
+          const body = !permissions.informal.read ? "(Informal read permission off)" : view === "source" ? numberedSource(ctx.informalMarkdown) : informalInventoryFromMarkdown(ctx.informalMarkdown);
           session.messages.push({
             id: call.id,
             role: "tool",
-            content: JSON.stringify({ ok: true, inventory }),
+            content: JSON.stringify({
+              ok: permissions.informal.read,
+              view,
+              inventory: view === "inventory" ? body : void 0,
+              source: view === "source" ? body : void 0
+            }),
             timestamp: (/* @__PURE__ */ new Date()).toISOString()
           });
-          live.content = live.content || "Read the current Informal Specification inventory.";
+          live.content = live.content || (view === "source" ? "Read the current Informal Specification source." : "Read the current Informal Specification inventory.");
           continue;
         }
-        if (call.function.name === "review_specification") {
+        if (call.function.name === "read_hybrid_specification") {
+          const view = args.view === "source" ? "source" : "inventory";
+          const body = !permissions.hybrid.read ? "(Hybrid read permission off)" : view === "source" ? numberedSource(ctx.hybridAsfl ?? "") : compactHybrid(ctx.hybridAsfl);
+          session.messages.push({
+            id: call.id,
+            role: "tool",
+            content: JSON.stringify({
+              ok: permissions.hybrid.read,
+              view,
+              inventory: view === "inventory" ? body : void 0,
+              source: view === "source" ? body : void 0
+            }),
+            timestamp: (/* @__PURE__ */ new Date()).toISOString()
+          });
+          live.content = live.content || (view === "source" ? "Read the current Hybrid Specification source." : "Read the current Hybrid Specification inventory.");
+          continue;
+        }
+        if (call.function.name === "review_specification" || call.function.name === "review_hybrid") {
           const typedIssues = Array.isArray(args.issues) ? args.issues.map((i) => ({
             dimension: String(i.dimension || "completeness"),
             message: String(i.message || ""),
@@ -1513,7 +2108,7 @@ async function runAgentTurn(session, projectRoot, ctx, userText, sink) {
     }
     if (!live.content && !live.thinking) {
       if (continuation && step === 0) {
-        live.content = "已收到你的回答。请直接发下一条消息，告诉我继续补充需求，或让我把已确认的内容写入规格。";
+        live.content = "继续当前任务：必要时再问一句，或提交下一组修改（CRUD 优先；卡住时用源文件编辑）；若已完成，请给出简短总结。";
       } else {
         session.messages = session.messages.filter((m) => m.id !== assistantId);
       }
@@ -1544,8 +2139,23 @@ function parseResumePayload(result) {
   }
   return {};
 }
-async function resumeWithToolResult(session, projectRoot, ctx, toolCallId, result, sink, continueTurn = true) {
+async function resumeWithToolResult(session, projectRoot, ctx, toolCallId, result, sink, continueTurn = true, signal) {
   const payload = parseResumePayload(result);
+  const pending = session.messages.find(
+    (m) => m.pending && (m.clarification?.pendingToolCallId === toolCallId || session.context.pendingToolCallId === toolCallId)
+  );
+  const patch = pending?.proposedChanges;
+  if (patch) {
+    if (payload.action === "applied" && !payload.error) {
+      session.context.lastFailedWrite = void 0;
+    } else if (payload.action === "error" || payload.action === "applied" && payload.error) {
+      session.context.lastFailedWrite = nextFailedWrite(session.context.lastFailedWrite, {
+        fingerprint: patchFingerprint(patch),
+        error: payload.error || "Tool failed",
+        mode: patch.mode ?? "crud"
+      });
+    }
+  }
   for (const m of session.messages) {
     if (!m.pending) continue;
     if (m.clarification?.pendingToolCallId === toolCallId || session.context.pendingToolCallId === toolCallId) {
@@ -1555,17 +2165,21 @@ async function resumeWithToolResult(session, projectRoot, ctx, toolCallId, resul
         m.resolution = "answered";
       }
       if (m.proposedChanges) {
-        m.resolution = payload.action === "applied" ? "applied" : "rejected";
+        m.resolution = payload.action === "applied" ? "applied" : payload.action === "error" ? "error" : "rejected";
+        if (payload.error) m.toolError = payload.error;
       }
     }
   }
+  if (payload.action === "applied") result = appliedToolResult({ error: payload.error });
+  else if (payload.action === "error") result = failedToolResult(payload.error || "Tool failed");
+  else if (payload.action === "rejected") result = rejectedToolResult();
   session.messages.push({
     id: toolCallId,
     role: "tool",
     content: payload.action ? result : JSON.stringify({
       type: "clarification_answer",
       answer: result,
-      next: "Continue with ask_clarification or propose_changes. Do not stop with an empty message."
+      next: "Continue with ask_clarification or propose_changes / propose_hybrid_changes. If writes are stuck, read view=source and propose_source_edit. After writes, read the spec to verify. Finish with a summary. Do not stop with an empty message."
     }),
     timestamp: (/* @__PURE__ */ new Date()).toISOString()
   });
@@ -1573,13 +2187,23 @@ async function resumeWithToolResult(session, projectRoot, ctx, toolCallId, resul
   saveSession(projectRoot, session);
   emit(sink, { kind: "session", session });
   if (!continueTurn) return session;
-  return runAgentTurn(session, projectRoot, ctx, void 0, sink);
+  return runAgentTurn(session, projectRoot, ctx, void 0, sink, signal);
 }
 function clone(v) {
   return JSON.parse(JSON.stringify(v));
 }
 function emitDelta(event, payload) {
   event.sender.send("studio:agent-delta", clone(payload));
+}
+const agentTurns = /* @__PURE__ */ new Map();
+function startAgentTurn(sessionId) {
+  agentTurns.get(sessionId)?.abort();
+  const controller = new AbortController();
+  agentTurns.set(sessionId, controller);
+  return controller.signal;
+}
+function finishAgentTurn(sessionId, signal) {
+  if (agentTurns.get(sessionId)?.signal === signal) agentTurns.delete(sessionId);
 }
 function registerAgentHandlers() {
   loadStudioEnv();
@@ -1614,7 +2238,13 @@ function registerAgentHandlers() {
   );
   electron.ipcMain.handle(
     "studio:agent-create-session",
-    (_e, payload) => clone(createSession(payload.projectRoot, payload.moduleId || "project", payload.title))
+    (_e, payload) => clone(
+      createSession(payload.projectRoot, payload.moduleId || "project", payload.title, {
+        skillId: payload.skillId,
+        permissions: payload.permissions,
+        promptExtras: payload.promptExtras
+      })
+    )
   );
   electron.ipcMain.handle(
     "studio:agent-rename-session",
@@ -1658,10 +2288,22 @@ function registerAgentHandlers() {
     async (event, payload) => {
       let session = loadSession(payload.projectRoot, payload.sessionId);
       if (!session) session = createSession(payload.projectRoot, payload.context.moduleId || "project");
-      const next = await runAgentTurn(session, payload.projectRoot, payload.context, payload.text, (delta) => {
-        emitDelta(event, { sessionId: session.id, ...delta });
-      });
-      return clone(next);
+      const signal = startAgentTurn(session.id);
+      try {
+        const next = await runAgentTurn(
+          session,
+          payload.projectRoot,
+          payload.context,
+          payload.text,
+          (delta) => {
+            emitDelta(event, { sessionId: session.id, ...delta });
+          },
+          signal
+        );
+        return clone(next);
+      } finally {
+        finishAgentTurn(session.id, signal);
+      }
     }
   );
   electron.ipcMain.handle(
@@ -1669,21 +2311,32 @@ function registerAgentHandlers() {
     async (event, payload) => {
       const session = loadSession(payload.projectRoot, payload.sessionId);
       if (!session) return null;
-      const next = await resumeWithToolResult(
-        session,
-        payload.projectRoot,
-        payload.context,
-        payload.toolCallId,
-        payload.result,
-        (delta) => emitDelta(event, { sessionId: session.id, ...delta }),
-        payload.continueTurn === true
-      );
-      return clone(next);
+      const signal = startAgentTurn(session.id);
+      try {
+        const next = await resumeWithToolResult(
+          session,
+          payload.projectRoot,
+          payload.context,
+          payload.toolCallId,
+          payload.result,
+          (delta) => emitDelta(event, { sessionId: session.id, ...delta }),
+          payload.continueTurn !== false,
+          signal
+        );
+        return clone(next);
+      } finally {
+        finishAgentTurn(session.id, signal);
+      }
     }
   );
+  electron.ipcMain.handle("studio:agent-abort", (_e, sessionId) => {
+    const id = String(sessionId || "");
+    agentTurns.get(id)?.abort();
+    return { ok: true };
+  });
 }
 const MANIFEST_FILENAME = ".agile-sofl.json";
-const DEFAULT_COLUMN_WIDTHS = [0.18, 0.22, 0.38, 0.22];
+const DEFAULT_COLUMN_WIDTHS = [0.18, 0.6, 0.22];
 let SQL = null;
 let db = null;
 let dbPath = null;
@@ -1884,7 +2537,11 @@ function getUiState(projectId) {
     }
     return {
       informalCollapsed: Boolean(row.informal_collapsed),
-      columnWidths: widths.length === 4 ? widths : DEFAULT_COLUMN_WIDTHS,
+      columnWidths: widths.length === 3 ? widths : widths.length === 4 ? [
+        widths[0] ?? DEFAULT_COLUMN_WIDTHS[0],
+        (widths[1] ?? 0.22) + (widths[2] ?? 0.38),
+        widths[3] ?? DEFAULT_COLUMN_WIDTHS[2]
+      ] : DEFAULT_COLUMN_WIDTHS,
       selectedModuleName: typeof row.selected_module === "string" ? row.selected_module : null,
       expanded: row.expanded !== 0
     };
@@ -2138,12 +2795,16 @@ screen Next;
 end_screen;
 end_gui;
 process OpenNext ()
-    FSF :
-    others && current_view = 1
+    pre
+        true
+    post
+        current_view = 1
 end_process
 process OpenHome ()
-    FSF :
-    others && current_view = 0
+    pre
+        true
+    post
+        current_view = 0
 end_process
 end_module
 `,
@@ -2450,6 +3111,151 @@ function registerProjectHandlers(getWindow2) {
       return true;
     }
   );
+}
+const execFileAsync = node_util.promisify(node_child_process.execFile);
+const GIT_BIN = process.platform === "win32" ? "git.exe" : "git";
+const CONFLICT_CODES = /* @__PURE__ */ new Set(["UU", "AA", "DD", "AU", "UA", "DU", "UD"]);
+function isGitRepo(rootPath) {
+  if (!rootPath) return false;
+  try {
+    return node_fs.existsSync(node_path.join(rootPath, ".git"));
+  } catch {
+    return false;
+  }
+}
+function normalizeRelPath(p) {
+  return p.replace(/\\/g, "/").replace(/^\.\//, "");
+}
+function decodeGitCQuote(inner) {
+  let out = "";
+  for (let i = 0; i < inner.length; i++) {
+    const ch = inner[i];
+    if (ch !== "\\") {
+      out += ch;
+      continue;
+    }
+    const next = inner[i + 1];
+    if (next === "\\" || next === '"' || next === "'") {
+      out += next;
+      i++;
+      continue;
+    }
+    if (next === "t") {
+      out += "	";
+      i++;
+      continue;
+    }
+    if (next === "n") {
+      out += "\n";
+      i++;
+      continue;
+    }
+    if (next === "r") {
+      out += "\r";
+      i++;
+      continue;
+    }
+    const oct = inner.slice(i + 1, i + 4);
+    if (/^[0-7]{3}$/.test(oct)) {
+      out += String.fromCharCode(parseInt(oct, 8));
+      i += 3;
+      continue;
+    }
+    out += next ?? "";
+    i++;
+  }
+  return out;
+}
+function unquoteGitPath(raw) {
+  const s = raw.trim();
+  if (s.length >= 2 && s.startsWith('"') && s.endsWith('"')) {
+    return decodeGitCQuote(s.slice(1, -1));
+  }
+  return s;
+}
+function mapXy(xy) {
+  if (CONFLICT_CODES.has(xy) || xy.includes("U")) return "conflicted";
+  if (xy === "??") return "untracked";
+  if (xy === "!!") return "ignored";
+  if (xy[0] === "M" || xy[1] === "M") return "modified";
+  if (xy[0] === "A" || xy[1] === "A") return "added";
+  if (xy[0] === "D" || xy[1] === "D") return "deleted";
+  if (xy[0] === "R" || xy[1] === "R") return "renamed";
+  if (xy[0] === "C" || xy[1] === "C") return "added";
+  if (xy[0] === "T" || xy[1] === "T") return "modified";
+  return null;
+}
+function parsePorcelain(stdout) {
+  const files = [];
+  for (const line of stdout.split(/\r?\n/)) {
+    if (line.length < 3) continue;
+    const xy = line.slice(0, 2);
+    const status = mapXy(xy);
+    if (!status) continue;
+    const rest = line.slice(3);
+    const sep = " -> ";
+    const sepIdx = rest.indexOf(sep);
+    const isRename = xy.includes("R");
+    const paths = isRename && sepIdx >= 0 ? [unquoteGitPath(rest.slice(0, sepIdx)), unquoteGitPath(rest.slice(sepIdx + sep.length))] : [unquoteGitPath(rest)];
+    for (const raw of paths) {
+      const path = normalizeRelPath(raw);
+      if (!path) continue;
+      files.push({ path, status });
+    }
+  }
+  return files;
+}
+async function runGit(rootPath, args) {
+  try {
+    const { stdout, stderr } = await execFileAsync(GIT_BIN, args, {
+      cwd: rootPath,
+      encoding: "utf8",
+      windowsHide: true,
+      timeout: 15e3,
+      maxBuffer: 8 * 1024 * 1024,
+      env: { ...process.env, GIT_OPTIONAL_LOCKS: "0" }
+    });
+    return { ok: true, stdout: stdout ?? "", stderr: stderr ?? "" };
+  } catch (err) {
+    const e = err;
+    return {
+      ok: false,
+      stdout: typeof e.stdout === "string" ? e.stdout : "",
+      stderr: typeof e.stderr === "string" ? e.stderr : "",
+      error: e.message || String(err)
+    };
+  }
+}
+function registerGitHandlers() {
+  electron.ipcMain.handle("studio:git-is-repo", (_event, rootPath) => {
+    try {
+      return isGitRepo(typeof rootPath === "string" ? rootPath : "");
+    } catch {
+      return false;
+    }
+  });
+  electron.ipcMain.handle("studio:git-status", async (_event, rootPath) => {
+    try {
+      const root = typeof rootPath === "string" ? rootPath : "";
+      if (!root || !isGitRepo(root)) return { isRepo: false, files: [] };
+      const result = await runGit(root, ["status", "--porcelain=v1", "-uall"]);
+      if (!result.ok) return { isRepo: true, files: [] };
+      return { isRepo: true, files: parsePorcelain(result.stdout) };
+    } catch {
+      return { isRepo: false, files: [] };
+    }
+  });
+  electron.ipcMain.handle("studio:git-init", async (_event, rootPath) => {
+    try {
+      const root = typeof rootPath === "string" ? rootPath : "";
+      if (!root) return { ok: false, error: "Missing rootPath" };
+      const result = await runGit(root, ["init"]);
+      if (!result.ok) return { ok: false, error: result.error || result.stderr || "git init failed" };
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : String(err) };
+    }
+  });
 }
 function toggleDevTools(win) {
   if (win.webContents.isDevToolsOpened()) {
@@ -2785,6 +3591,7 @@ electron.app.whenReady().then(async () => {
   registerWindowHandlers(getWindow);
   registerProjectHandlers(getWindow);
   registerAgentHandlers();
+  registerGitHandlers();
   try {
     await initProjectIndex();
   } catch (err) {

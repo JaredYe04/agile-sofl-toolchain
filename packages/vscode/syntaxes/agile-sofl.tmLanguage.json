@@ -11,6 +11,8 @@
     { "include": "#comment-line" },
     { "include": "#decom-line" },
     { "include": "#fsf-block" },
+    { "include": "#pre-block" },
+    { "include": "#post-block" },
     { "include": "#ext-block" },
     { "include": "#decl-blocks" },
     { "include": "#strings" },
@@ -33,11 +35,15 @@
           "name": "comment.block.asfl",
           "begin": "/\\*",
           "end": "\\*/"
+        },
+        {
+          "name": "comment.line.double-slash.asfl",
+          "match": "//.*$"
         }
       ]
     },
     "module-header": {
-      "match": "^\\s*(module)\\s+(SYSTEM_)([A-Za-z_][A-Za-z0-9_]*)",
+      "match": "^\\s*(module|system)\\s+(SYSTEM_)([A-Za-z_\\u0080-\\uFFFF][A-Za-z0-9_\\u0080-\\uFFFF]*)",
       "captures": {
         "1": { "name": "keyword.control.asfl" },
         "2": { "name": "keyword.control.system-prefix.asfl" },
@@ -45,7 +51,7 @@
       }
     },
     "module-header-sub": {
-      "match": "^\\s*(module)\\s+([A-Za-z_][A-Za-z0-9_]*)\\s*(/)\\s*([A-Za-z_][A-Za-z0-9_]*)",
+      "match": "^\\s*(module|system)\\s+([A-Za-z_\\u0080-\\uFFFF][A-Za-z0-9_\\u0080-\\uFFFF]*)\\s*(/)\\s*([A-Za-z_\\u0080-\\uFFFF][A-Za-z0-9_\\u0080-\\uFFFF]*)",
       "captures": {
         "1": { "name": "keyword.control.asfl" },
         "2": { "name": "entity.name.namespace.asfl" },
@@ -54,7 +60,7 @@
       }
     },
     "process-header": {
-      "match": "^\\s*(process)\\s+((?:Init|[A-Za-z_][A-Za-z0-9_]*))\\s*(\\()?",
+      "match": "^\\s*(process)\\s+((?:Init|[A-Za-z_\\u0080-\\uFFFF][A-Za-z0-9_\\u0080-\\uFFFF]*))\\s*(\\()?",
       "captures": {
         "1": { "name": "keyword.control.asfl" },
         "2": { "name": "entity.name.function.asfl" },
@@ -62,7 +68,7 @@
       }
     },
     "function-header": {
-      "match": "^\\s*(function)\\s+([A-Za-z_][A-Za-z0-9_]*)\\s*(\\()",
+      "match": "^\\s*(function)\\s+([A-Za-z_\\u0080-\\uFFFF][A-Za-z0-9_\\u0080-\\uFFFF]*)\\s*(\\()",
       "captures": {
         "1": { "name": "keyword.control.asfl" },
         "2": { "name": "entity.name.function.asfl" },
@@ -92,7 +98,7 @@
     },
     "fsf-block": {
       "begin": "^\\s*(FSF)\\s*(:)",
-      "end": "^(?=\\s*(decom|comment|end_process|end_function|\\S))",
+      "end": "^(?=\\s*(decom|comment|end_process|end_function|pre|post|\\S))",
       "beginCaptures": {
         "1": { "name": "keyword.control.fsf.asfl" },
         "2": { "name": "punctuation.separator.asfl" }
@@ -106,6 +112,22 @@
         { "include": "#numbers" },
         { "include": "#identifiers" }
       ]
+    },
+    "pre-block": {
+      "begin": "^\\s*(pre)\\b",
+      "end": "^(?=\\s*(post|FSF|decom|comment|end_process))",
+      "beginCaptures": {
+        "1": { "name": "keyword.declaration.asfl" }
+      },
+      "name": "meta.pre.asfl"
+    },
+    "post-block": {
+      "begin": "^\\s*(post)\\b",
+      "end": "^(?=\\s*(FSF|decom|comment|end_process))",
+      "beginCaptures": {
+        "1": { "name": "keyword.declaration.asfl" }
+      },
+      "name": "meta.post.asfl"
     },
     "ext-block": {
       "begin": "^\\s*(ext)\\s*$",
@@ -207,7 +229,7 @@
       "patterns": [
         {
           "name": "keyword.control.asfl",
-          "match": "\\b(module|end_module|process|end_process|function|end_function|Init|end_case|case|default|if|then|else|let|undefined|equal|exists|not)\\b"
+          "match": "\\b(module|system|end_module|process|end_process|function|end_function|Init|end_case|case|default|if|then|else|let|undefined|equal|exists|not)\\b"
         },
         {
           "name": "keyword.control.system-prefix.asfl",
@@ -219,7 +241,7 @@
       "patterns": [
         {
           "name": "keyword.declaration.asfl",
-          "match": "\\b(const|type|var|inv|ext|rd|wr|decom|comment|gui|screen|end_gui|end_screen|label|button|text-input|navigation|triggers|forall|forevery|forsome)\\b"
+          "match": "\\b(const|type|var|inv|ext|rd|wr|decom|comment|pre|post|gui|screen|end_gui|end_screen|label|button|text-input|navigation|triggers|forall|forevery|forsome)\\b"
         }
       ]
     },
@@ -275,11 +297,11 @@
       "patterns": [
         {
           "name": "variable.parameter.asfl",
-          "match": "(?<=\\()\\s*[A-Za-z_][A-Za-z0-9_]*(?=\\s*[:,)])"
+          "match": "(?<=\\()\\s*[A-Za-z_\\u0080-\\uFFFF][A-Za-z0-9_\\u0080-\\uFFFF]*(?=\\s*[:,)])"
         },
         {
           "name": "variable.other.asfl",
-          "match": "[A-Za-z_][A-Za-z0-9_]*"
+          "match": "[A-Za-z_\\u0080-\\uFFFF][A-Za-z0-9_\\u0080-\\uFFFF]*"
         }
       ]
     }

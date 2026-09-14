@@ -10,6 +10,7 @@ import type {
   Span,
   TypeExprNode
 } from '@agile-sofl/parser'
+import { IDENT_BODY, isIdentifierName } from './ident.js'
 
 export interface BindingAtOffset {
   name: string
@@ -193,12 +194,12 @@ function identifierAtOffset(
 ): { name: string; start: number; end: number } | null {
   if (offset < 0 || offset >= source.length) return null
   let start = offset
-  while (start > 0 && /[A-Za-z0-9_]/.test(source[start - 1]!)) start--
+  while (start > 0 && IDENT_BODY.test(source[start - 1]!)) start--
   let end = offset
-  while (end < source.length && /[A-Za-z0-9_]/.test(source[end]!)) end++
+  while (end < source.length && IDENT_BODY.test(source[end]!)) end++
   if (start >= end) return null
   const name = source.slice(start, end)
-  if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) return null
+  if (!isIdentifierName(name)) return null
   return { name, start, end }
 }
 

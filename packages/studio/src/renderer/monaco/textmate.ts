@@ -44,11 +44,11 @@ async function getGrammarAndScopeMap(): Promise<{ grammar: IGrammar; scopeMap: S
 
 function registerMonarchFallback(): void {
   monaco.languages.setMonarchTokensProvider('agile-sofl', {
-    keywords: ['module', 'process', 'function', 'var', 'const', 'type', 'end_module', 'end_process', 'FSF'],
+    keywords: ['module', 'process', 'function', 'var', 'const', 'type', 'end_module', 'end_process', 'FSF', 'pre', 'post'],
     tokenizer: {
       root: [
         [/\/\*[\s\S]*?\*\//, 'comment.block.asfl'],
-        [/\b(module|process|function|var|const|type|end_module|end_process|FSF)\b/, 'keyword.declaration.asfl'],
+        [/\b(module|process|function|var|const|type|end_module|end_process|FSF|pre|post)\b/, 'keyword.declaration.asfl'],
         [/[A-Za-z_]\w*/, 'variable.other.asfl']
       ]
     }

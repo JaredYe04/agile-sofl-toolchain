@@ -236,7 +236,16 @@ export function getUiState(projectId: string): ProjectUiState {
     }
     return {
       informalCollapsed: Boolean(row.informal_collapsed),
-      columnWidths: widths.length === 4 ? widths : DEFAULT_COLUMN_WIDTHS,
+      columnWidths:
+        widths.length === 3
+          ? widths
+          : widths.length === 4
+            ? [
+                widths[0] ?? DEFAULT_COLUMN_WIDTHS[0],
+                (widths[1] ?? 0.22) + (widths[2] ?? 0.38),
+                widths[3] ?? DEFAULT_COLUMN_WIDTHS[2]
+              ]
+            : DEFAULT_COLUMN_WIDTHS,
       selectedModuleName:
         typeof row.selected_module === 'string' ? row.selected_module : null,
       expanded: row.expanded !== 0

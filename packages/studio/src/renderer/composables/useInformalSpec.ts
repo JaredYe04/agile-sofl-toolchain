@@ -3,6 +3,7 @@ import { useDocumentStore } from '../stores/document'
 import { useHistoryStore } from '../stores/history'
 import { HistoryKinds } from '../history/kinds'
 import { useWorkspaceStore } from '../stores/workspace'
+import { applySourceEdits, isSourcePatch } from '../../shared/sourceEdit'
 import type { InformalPatchPayload, InformalSpecPayload } from '../../preload/index'
 
 export function nestedNodes(node: InformalSpecPayload['sections'][0]['children'][0]) {
@@ -81,15 +82,33 @@ export function useInformalSpec(tabId: Ref<string | undefined>) {
     void rebuild()
   }
 
-  async function applyPatch(patch: InformalPatchPayload): Promise<{ ok: boolean; error?: string }> {
+  async function applyPatch(
+    patch: InformalPatchPayload
+  ): Promise<{ ok: boolean; error?: string; applied?: boolean }> {
     const current = tab.value
-    if (!current || !window.studio?.patchInformalSpec) return { ok: false, error: 'Patch service unavailable.' }
+    if (!current) return { ok: false, error: 'Patch service unavailable.' }
+    if (isSourcePatch(patch)) {
+      const result = applySourceEdits(current.content, patch.operations)
+      const applied = result.content !== current.content
+      if (applied) {
+        history.applyDocument(current.id, result.content, {
+          kind: HistoryKinds.informalEdit,
+          immediate: true
+        })
+        last = result.content
+        await rebuild()
+      }
+      if (result.error) return { ok: false, error: result.error, applied }
+      return { ok: true, applied }
+    }
+    if (!window.studio?.patchInformalSpec) return { ok: false, error: 'Patch service unavailable.' }
     const result = await window.studio.patchInformalSpec({
       source: current.content,
       patch: JSON.parse(JSON.stringify(patch)) as InformalPatchPayload
     })
-    if (!result.ok) return { ok: false, error: result.error || 'Patch failed.' }
-    if (result.content !== current.content) {
+    if (!result.ok) return { ok: false, error: result.error || 'Patch failed.', applied: false }
+    const applied = result.content !== current.content
+    if (applied) {
       history.applyDocument(current.id, result.content, {
         kind: HistoryKinds.informalEdit,
         immediate: true
@@ -97,7 +116,7 @@ export function useInformalSpec(tabId: Ref<string | undefined>) {
       last = result.content
       await rebuild()
     }
-    return { ok: true }
+    return { ok: true, applied }
   }
 
   async function addNode(

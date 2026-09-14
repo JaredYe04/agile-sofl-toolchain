@@ -44,6 +44,9 @@ export function parsePredicateFragment(text: string): ParsePredicateResult {
   }
   const src = `module SYSTEM_ParseStub;\ninv\n${trimmed};\nend_module.`
   const { ast, diagnostics } = parse(src)
+  if (diagnostics.some((d) => d.code === 'ASFL_LEX_001')) {
+    return { predicate: null, diagnostics, error: 'Could not parse predicate' }
+  }
   if (!ast || ast.type !== 'program') {
     return { predicate: null, diagnostics, error: 'Could not parse predicate' }
   }

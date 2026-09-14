@@ -12,7 +12,8 @@ import type {
   ProcessNode,
   ParamGroupNode,
   PredicateNode,
-  FsfSpecNode
+  FsfSpecNode,
+  ConditionClauseNode
 } from '../ast/nodes.js'
 import type { Diagnostic } from '../diagnostics/codes.js'
 import { createDiagnostic, DiagnosticCodes } from '../diagnostics/codes.js'
@@ -124,7 +125,18 @@ function walkProcessBodyRefs(proc: ProcessNode, sites: RefSite[]): void {
   }
   const locals = paramNames([...proc.inputs, ...proc.outputs])
   for (const ext of body.ext ?? []) locals.add(ext.name)
+  if (body.pre) walkConditionRefs(body.pre, sites, locals)
+  if (body.post) walkConditionRefs(body.post, sites, locals)
   if (body.fsf) walkFsfRefs(body.fsf, sites, locals)
+}
+
+function walkConditionRefs(clause: ConditionClauseNode, sites: RefSite[], skipNames: Set<string>): void {
+  if (clause.predicate) walkPredicateRefs(clause.predicate, sites, skipNames)
+  if (clause.conditional) {
+    walkConditionRefs(clause.conditional.guard, sites, skipNames)
+    walkConditionRefs(clause.conditional.thenClause, sites, skipNames)
+    if (clause.conditional.elseClause) walkConditionRefs(clause.conditional.elseClause, sites, skipNames)
+  }
 }
 
 function walkFsfRefs(fsf: FsfSpecNode, sites: RefSite[], skipNames: Set<string>): void {

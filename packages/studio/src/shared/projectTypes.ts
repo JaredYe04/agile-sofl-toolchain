@@ -17,6 +17,22 @@ export interface IndexedProject {
   createdAt: number
 }
 
+export type ProjectModuleMemberKind =
+  | 'const'
+  | 'type'
+  | 'var'
+  | 'inv'
+  | 'process'
+  | 'function'
+  | 'gui-screen'
+
+export interface ProjectModuleMember {
+  kind: ProjectModuleMemberKind
+  name: string
+  spanStart: number
+  spanEnd: number
+}
+
 export interface ProjectModuleInfo {
   name: string
   displayName: string
@@ -26,6 +42,7 @@ export interface ProjectModuleInfo {
   parentName?: string
   spanStart: number
   spanEnd: number
+  members?: ProjectModuleMember[]
 }
 
 export interface ProjectFileInfo {
@@ -48,4 +65,4 @@ export interface ProjectUiState {
   expanded: boolean
 }
 
-export const DEFAULT_COLUMN_WIDTHS = [0.18, 0.22, 0.38, 0.22]
+export const DEFAULT_COLUMN_WIDTHS = [0.18, 0.6, 0.22]

@@ -49,7 +49,12 @@ export function addProcess(
   if (!mod) return source
   const block =
     template ??
-    `process ${processName} (x: nat) ok: nat\nFSF :\nx > 0 && ok = 1 ||\nothers && ok = 0\nend_process`
+    `process ${processName} (x: nat) ok: nat
+    pre
+        true
+    post
+        ok = 1
+end_process`
   const at = moduleBodyInsertPoint(source, mod)
   return source.slice(0, at) + `\n${block}\n` + source.slice(at)
 }

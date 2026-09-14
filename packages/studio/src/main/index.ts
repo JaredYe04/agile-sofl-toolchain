@@ -7,6 +7,7 @@ import { registerParseHandlers } from './services/parseService'
 import { registerAgentHandlers } from './services/llm/register'
 import { loadStudioEnv } from './services/llm/env'
 import { initProjectIndex, registerProjectHandlers } from './services/projectService'
+import { registerGitHandlers } from './services/gitService'
 import { attachDevToolsShortcuts, attachRendererDiagnostics, openDevTools } from './services/devToolsService'
 import {
   isLspRunning,
@@ -91,6 +92,7 @@ app.whenReady().then(async () => {
   registerWindowHandlers(getWindow)
   registerProjectHandlers(getWindow)
   registerAgentHandlers()
+  registerGitHandlers()
 
   try {
     await initProjectIndex()

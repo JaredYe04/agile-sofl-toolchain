@@ -19,6 +19,7 @@ describe('workspace tree menu', () => {
     const proj = buildWorkspaceTreeMenu({ kind: 'project', project }).map((i) => i.id)
     expect(proj).toContain('copyPath')
     expect(proj).toContain('removeFromList')
+    expect(proj).toContain('initGit')
     const mod = builtinWorkspaceTreeMenuProvider.items({
       kind: 'module',
       project,

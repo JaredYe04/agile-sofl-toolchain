@@ -34,13 +34,15 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div
-    v-if="open"
-    class="fixed z-[120] min-w-[180px] rounded-md border border-border-subtle bg-surface-raised py-1 shadow-lg"
-    :style="{ left: `${x}px`, top: `${y}px` }"
-    @click.stop
-    @contextmenu.prevent
-  >
+  <Teleport to="body">
+    <div
+      v-if="open"
+      class="fixed z-[200] min-w-[180px] rounded-md border border-border-subtle bg-surface-raised py-1 shadow-lg"
+      :style="{ left: `${x}px`, top: `${y}px` }"
+      @click.stop
+      @mousedown.stop
+      @contextmenu.prevent
+    >
     <template v-for="item in items" :key="item.id">
       <div v-if="item.separator" class="my-1 border-t border-border-subtle" />
       <button
@@ -53,5 +55,6 @@ onUnmounted(() => {
         {{ t(item.labelKey) }}
       </button>
     </template>
-  </div>
+    </div>
+  </Teleport>
 </template>

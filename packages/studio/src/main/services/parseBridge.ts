@@ -7,6 +7,7 @@ import {
   buildModuleGraphLayout,
   buildVisualModelTolerant,
   patchFsfSpec,
+  patchProcessCondition,
   patchComment,
   patchDecom,
   patchInvariant,
@@ -31,7 +32,10 @@ import {
   patchInformal,
   buildHybridRegions,
   getInformalSpans,
-  type DeclarationKind
+  type DeclarationKind,
+  applyHybridPatch,
+  formatHybridInventory,
+  type HybridPatch
 } from '@agile-sofl/editor-api'
 import {
   buildInformalModel,
@@ -50,8 +54,15 @@ import {
   listHybridGenerators,
   getHybridGenerator,
   registerLlmHybridGenerator,
+  informalToHybridIR,
+  normalizeHybridIR,
+  irToGenerationResult,
+  normalizeGenerateParams,
+  stagesToScope,
   type PatchAspecAction,
-  type InformalPatch
+  type InformalPatch,
+  type GenerationScope,
+  type HybridGenerateParams
 } from '@agile-sofl/aspec'
 import { chatEcnu } from './llm/chatEcnu.js'
 import { migrateInformalSource, readInformalMeta } from './informalMeta.js'
@@ -71,6 +82,7 @@ import {
 import { loadOrCreateManifest } from './projectManifest.js'
 import type { ProjectFileInfo, ProjectModuleInfo, WorkspaceScanPayload } from '../../shared/projectTypes.js'
 import { cloneForIpc } from './ipcClone.js'
+import { isGuiModuleName, modulesFromSource } from '../../shared/modulesFromSource.js'
 
 function collectAsflFiles(dir: string): string[] {
   const out: string[] = []
@@ -84,17 +96,11 @@ function collectAsflFiles(dir: string): string[] {
   return out
 }
 
-function moduleLabel(mod: { name: string; isSystem: boolean }): string {
-  return mod.isSystem ? `SYSTEM_${mod.name}` : mod.name
-}
-
 export function isGuiModule(
   mod: { name: string; gui?: unknown },
   guiModule?: string
 ): boolean {
-  if (guiModule && (mod.name === guiModule || `GUI_${mod.name}` === guiModule)) return true
-  if (mod.name.startsWith('GUI_')) return true
-  return Boolean(mod.gui)
+  return isGuiModuleName(mod, guiModule)
 }
 
 export async function scanWorkspaceProject(root: string): Promise<WorkspaceScanPayload> {
@@ -114,20 +120,7 @@ export async function scanWorkspaceProject(root: string): Promise<WorkspaceScanP
   const modules: ProjectModuleInfo[] = []
   for (const file of files.filter((f) => f.kind === 'asfl')) {
     const source = readFileSync(file.path, 'utf-8')
-    const { ast } = parse(source)
-    if (!ast || ast.type !== 'program') continue
-    for (const mod of ast.modules) {
-      modules.push({
-        name: mod.name,
-        displayName: moduleLabel(mod),
-        filePath: file.path,
-        isSystem: mod.isSystem,
-        isGui: isGuiModule(mod, manifest.guiModule),
-        parentName: mod.parent?.name,
-        spanStart: mod.span.start,
-        spanEnd: mod.span.end
-      })
-    }
+    modules.push(...modulesFromSource(source, file.path, manifest.guiModule))
   }
 
   return { root, manifest, files, modules }
@@ -196,7 +189,17 @@ export function registerParseHandlers(): void {
   )
 
   ipcMain.handle('studio:list-hybrid-generators', () =>
-    cloneForIpc(listHybridGenerators().map((g) => ({ id: g.id, name: g.name })))
+    cloneForIpc(listHybridGenerators().map((g) => ({ id: g.id, name: g.name, runtime: g.runtime ?? 'batch' })))
+  )
+
+  ipcMain.handle('studio:hybrid-inventory', (_event, source: string) =>
+    cloneForIpc({ inventory: formatHybridInventory(typeof source === 'string' ? source : '') })
+  )
+
+  ipcMain.handle(
+    'studio:patch-hybrid-spec',
+    (_event, payload: { source: string; patch: HybridPatch }) =>
+      cloneForIpc(applyHybridPatch(payload.source, cloneForIpc(payload.patch)))
   )
 
   ipcMain.handle(
@@ -209,6 +212,12 @@ export function registerParseHandlers(): void {
         projectName?: string
         projectRoot?: string
         existingAsfl?: string
+        scope?: GenerationScope
+        moduleName?: string
+        processName?: string
+        selectedNodeIds?: string[]
+        specification?: unknown
+        params?: Partial<HybridGenerateParams>
       }
     ) => {
       ensureLlmHybridGenerator()
@@ -217,18 +226,51 @@ export function registerParseHandlers(): void {
       if (!spec) return { ok: false as const, error: 'Informal specification could not be parsed.' }
       const sidecar = payload.projectRoot ? readInformalMeta(payload.projectRoot) : null
       if (sidecar) applyInformalMeta(spec, sidecar)
-      const generator = getHybridGenerator(payload.generatorId || 'rule-based')
-      if (!generator) return { ok: false as const, error: `Unknown generator "${payload.generatorId}".` }
+      const params = normalizeGenerateParams({
+        ...payload.params,
+        locale: payload.params?.locale ?? 'zh-CN'
+      })
+      const context = {
+        projectName: payload.projectName,
+        existingAsfl: payload.existingAsfl,
+        scope: payload.scope ?? stagesToScope(params.stages),
+        moduleName: payload.moduleName,
+        processName: payload.processName,
+        selectedNodeIds: payload.selectedNodeIds,
+        params,
+        locale: params.locale
+      }
       try {
-        const result = await generator.generate(spec, {
-          projectName: payload.projectName,
-          existingAsfl: payload.existingAsfl
-        })
+        if (payload.specification) {
+          const fallback = informalToHybridIR(spec)
+          const validated = normalizeHybridIR(payload.specification, fallback)
+          const result = irToGenerationResult(spec, validated.ir, context)
+          return cloneForIpc({
+            ok: true as const,
+            kind: 'document' as const,
+            asflText: result.asflText,
+            traceLinks: result.traceLinks,
+            warnings: result.warnings,
+            specification: result.specification,
+            changes: result.changes
+          })
+        }
+        const generator = getHybridGenerator(payload.generatorId || 'rule-based')
+        if (!generator) return { ok: false as const, error: `Unknown generator "${payload.generatorId}".` }
+        if (generator.runtime === 'agent') {
+          const bootstrap = generator.agentBootstrap?.({ input: spec, params, context })
+          if (!bootstrap) return { ok: false as const, error: 'Agent generator is missing agentBootstrap.' }
+          return cloneForIpc({ ok: true as const, kind: 'agent-session' as const, bootstrap })
+        }
+        const result = await generator.generate(spec, context)
         return cloneForIpc({
           ok: true as const,
+          kind: 'document' as const,
           asflText: result.asflText,
           traceLinks: result.traceLinks,
-          warnings: result.warnings
+          warnings: result.warnings,
+          specification: result.specification,
+          changes: result.changes
         })
       } catch (e) {
         return { ok: false as const, error: e instanceof Error ? e.message : String(e) }
@@ -272,7 +314,7 @@ export function registerParseHandlers(): void {
       _event,
       payload: {
         source: string
-        kind: 'fsf' | 'comment' | 'decom'
+        kind: 'fsf' | 'comment' | 'decom' | 'pre' | 'post'
         processName: string
         scenarios?: FsfScenarioDto[]
         others?: string
@@ -283,6 +325,10 @@ export function registerParseHandlers(): void {
       switch (kind) {
         case 'fsf':
           return patchFsfSpec(source, processName, payload.scenarios ?? [], payload.others)
+        case 'pre':
+          return patchProcessCondition(source, processName, 'pre', payload.text ?? '')
+        case 'post':
+          return patchProcessCondition(source, processName, 'post', payload.text ?? '')
         case 'comment':
           return patchComment(source, processName, payload.text ?? '')
         case 'decom':
@@ -665,6 +711,14 @@ export function registerParseHandlers(): void {
     if (!ast || ast.type !== 'program') return {}
     return moduleSourceHashes(source, ast)
   })
+
+  ipcMain.handle(
+    'studio:modules-from-source',
+    (
+      _event,
+      payload: { source: string; filePath: string; guiModule?: string }
+    ) => cloneForIpc(modulesFromSource(payload.source, payload.filePath, payload.guiModule))
+  )
 
   ipcMain.handle('studio:write-trace-file', (_event, filePath: string, traceJson: string) => {
     writeFileSync(filePath, traceJson, 'utf8')

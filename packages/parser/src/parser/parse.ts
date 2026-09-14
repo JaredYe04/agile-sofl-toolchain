@@ -5,12 +5,13 @@
 import { AgileSoflLexer } from '../lexer/tokens.js'
 import { parserInstance, strictParserInstance, type AgileSoflParser } from './parser.js'
 import { cstToProgram, cstToModuleAst } from './cstToAst.js'
-import type { ProgramNode, ModuleNode } from '../ast/nodes.js'
+import type { ProgramNode, ModuleNode, ConditionClauseNode } from '../ast/nodes.js'
 import type { Diagnostic } from '../diagnostics/codes.js'
 import { createDiagnostic, DiagnosticCodes } from '../diagnostics/codes.js'
 import { EMPTY_SPAN } from '../ast/span.js'
 import { validateGuiTriggers } from '../gui/guiBlock.js'
 import type { CstNode } from 'chevrotain'
+import { parsePredicateSource } from '../prepost/parsePredicate.js'
 
 export interface ParseResult {
   ast: ProgramNode | ModuleNode | null
@@ -58,6 +59,31 @@ function parseErrorsToDiagnostics(parser: AgileSoflParser): Diagnostic[] {
   )
 }
 
+function attachClausePredicate(clause: ConditionClauseNode | undefined): void {
+  if (!clause) return
+  if (clause.conditional) {
+    attachClausePredicate(clause.conditional.guard)
+    attachClausePredicate(clause.conditional.thenClause)
+    attachClausePredicate(clause.conditional.elseClause)
+    return
+  }
+  const pred = parsePredicateSource(clause.text)
+  if (!pred) return
+  const informal = pred.disjuncts.some((d) => d.atoms.some((a) => a.type === 'informal_text'))
+  if (informal) return
+  clause.predicate = pred
+  clause.kind = 'formal'
+}
+
+function attachFormalPredicates(ast: ProgramNode): void {
+  for (const mod of ast.modules) {
+    for (const proc of mod.processes) {
+      attachClausePredicate(proc.body?.pre)
+      attachClausePredicate(proc.body?.post)
+    }
+  }
+}
+
 function runProgramParse(source: string, options: ParseOptions = {}): ParseResult {
   const tolerant = options.tolerant !== false
   const parser = tolerant ? parserInstance : strictParserInstance
@@ -65,7 +91,7 @@ function runProgramParse(source: string, options: ParseOptions = {}): ParseResul
   const lexResult = AgileSoflLexer.tokenize(source)
   if (lexResult.errors.length > 0) {
     diagnostics.push(...lexErrorsToDiagnostics(lexResult.errors))
-    return { ast: null, diagnostics }
+    // Keep going: one unknown character (e.g. `?` in NL pre/post) must not wipe the program AST.
   }
   parser.input = lexResult.tokens
   const cst = parser.specification() as CstNode
@@ -76,6 +102,7 @@ function runProgramParse(source: string, options: ParseOptions = {}): ParseResul
   if (!cst) return { ast: null, diagnostics }
   try {
     const ast = cstToProgram(cst)
+    if (ast?.type === 'program') attachFormalPredicates(ast)
     return { ast, diagnostics }
   } catch (err) {
     diagnostics.push(
@@ -113,7 +140,6 @@ export function parseModule(source: string, options?: ParseOptions): ParseResult
   const lexResult = AgileSoflLexer.tokenize(source)
   if (lexResult.errors.length > 0) {
     diagnostics.push(...lexErrorsToDiagnostics(lexResult.errors))
-    return { ast: null, diagnostics }
   }
   parser.input = lexResult.tokens
   const cst = parser.module() as CstNode

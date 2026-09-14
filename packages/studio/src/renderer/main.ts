@@ -8,5 +8,8 @@ import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import App from './App.vue'
 import './styles/main.css'
+import { registerStudioIcons } from './icons/registerStudioIcons'
+
+registerStudioIcons()
 
 createApp(App).use(createPinia()).use(i18n).mount('#app')

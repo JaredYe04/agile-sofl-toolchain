@@ -1,4 +1,4 @@
-import { parse, textOf, isFsfFormal, classifyFsf, type ProgramNode } from '@agile-sofl/parser'
+import { parse, textOf, isFsfFormal, classifyFsf, deriveFsf, printConditionText, printType, type ProgramNode } from '@agile-sofl/parser'
 import { buildModuleGraph } from './moduleGraph.js'
 import { buildAllFsfModels } from './fsfModel.js'
 import { sliceText, toSerializableSpan } from './span.js'
@@ -9,9 +9,9 @@ import {
   type ParamGroupDto
 } from './signatureUtils.js'
 import type { ExtVarDto } from './extPatch.js'
-import { printType } from '@agile-sofl/parser'
 
 export type FsfFormalStatus = 'formal' | 'semi-formal' | null
+export type FormalizationStatus = 'semi-formal' | 'formal' | 'mixed'
 
 export type VisualParseDiagnostic = {
   code: string
@@ -52,6 +52,14 @@ export type VisualModelResult = {
       outputs: ParamGroupDto[]
       ext: ExtVarDto[]
       fsfFormal: FsfFormalStatus
+      pre: string
+      post: string
+      hasPre: boolean
+      hasPost: boolean
+      scenarioCount: number
+      exceptionalCount: number
+      formalizationStatus: FormalizationStatus
+      fsfSource?: 'derived' | 'editor-internal-dsl'
     }>
     functions: Array<{
       name: string
@@ -65,7 +73,12 @@ export type VisualModelResult = {
       fsfFormal: FsfFormalStatus
     }>
     consts: Array<{ name: string; text: string; span: ReturnType<typeof toSerializableSpan> }>
-    types: Array<{ name: string; text: string; span: ReturnType<typeof toSerializableSpan> }>
+    types: Array<{
+      name: string
+      text: string
+      span: ReturnType<typeof toSerializableSpan>
+      fields?: Array<{ name: string; type: string }>
+    }>
     vars: Array<{ name: string; text: string; span: ReturnType<typeof toSerializableSpan> }>
     gui?: {
       name: string
@@ -105,6 +118,39 @@ function aliasTargetText(alias: { module?: string; name: string }): string {
 function fsfFormalStatus(fsf: Parameters<typeof isFsfFormal>[0] | undefined): FsfFormalStatus {
   if (!fsf) return null
   return isFsfFormal(fsf) ? 'formal' : 'semi-formal'
+}
+
+function processFormalization(p: ProgramNode['modules'][0]['processes'][0]): {
+  fsfFormal: FsfFormalStatus
+  formalizationStatus: FormalizationStatus
+  scenarioCount: number
+  exceptionalCount: number
+  fsfSource?: 'derived' | 'editor-internal-dsl'
+} {
+  const form = deriveFsf(p)
+  const preKind = p.body?.pre?.kind
+  const postKind = p.body?.post?.kind
+  const kinds = [preKind, postKind].filter(Boolean)
+  let formalizationStatus: FormalizationStatus = 'semi-formal'
+  if (kinds.length && kinds.every((k) => k === 'formal') && form && form.source === 'derived') {
+    formalizationStatus = 'formal'
+  } else if (kinds.includes('formal') && kinds.includes('natural-language')) {
+    formalizationStatus = 'mixed'
+  } else if (p.body?.fsf) {
+    formalizationStatus = isFsfFormal(p.body.fsf) ? 'formal' : 'semi-formal'
+  }
+  return {
+    fsfFormal: p.body?.fsf ? fsfFormalStatus(p.body.fsf) : form ? (form.source === 'derived' ? 'semi-formal' : fsfFormalStatus(form.fsf)) : null,
+    formalizationStatus,
+    scenarioCount: form?.scenarios.length ?? 0,
+    exceptionalCount: form?.exceptionalScenarios.length ?? 0,
+    fsfSource: form?.source
+  }
+}
+
+function typeFields(t: ProgramNode['modules'][0]['types'][0]): Array<{ name: string; type: string }> | undefined {
+  if (t.typeExpr.type !== 'composed_type') return undefined
+  return t.typeExpr.fields.map((f) => ({ name: f.name, type: printType(f.typeExpr) }))
 }
 
 /** Tolerant parse for visual editor — keeps partial AST when possible. */
@@ -159,7 +205,9 @@ export function buildVisualModelTolerant(source: string): VisualModelResult {
     diagnostics: allDiagnostics,
     moduleGraph: buildModuleGraph(program),
     fsfModels: buildAllFsfModels(program, source),
-    modules: program.modules.map((mod) => ({
+    modules: program.modules
+      .filter((mod) => mod.name.trim().length > 0)
+      .map((mod) => ({
       name: mod.name,
       isSystem: mod.isSystem,
       parentName: mod.parent?.name,
@@ -172,12 +220,14 @@ export function buildVisualModelTolerant(source: string): VisualModelResult {
         text: sliceText(source, inv.span).trim(),
         span: toSerializableSpan(inv.span)
       })),
-      processes: mod.processes.map((p) => ({
+      processes: mod.processes.map((p) => {
+        const form = processFormalization(p)
+        return {
         name: p.name,
         span: toSerializableSpan(p.span),
         decom: textOf(p.body?.decomposition) ?? '',
         comment: textOf(p.body?.comment) ?? '',
-        hasFsf: Boolean(p.body?.fsf),
+        hasFsf: Boolean(p.body?.fsf) || Boolean(p.body?.pre || p.body?.post),
         isAlias: Boolean(p.alias),
         aliasTarget: p.alias ? aliasTargetText(p.alias) : undefined,
         isInit: p.isInit,
@@ -189,8 +239,17 @@ export function buildVisualModelTolerant(source: string): VisualModelResult {
           name: e.name,
           type: e.typeExpr ? sliceText(source, e.typeExpr.span).trim() : undefined
         })),
-        fsfFormal: p.body?.fsf ? fsfFormalStatus(p.body.fsf) : null
-      })),
+        fsfFormal: form.fsfFormal,
+        pre: p.body?.pre ? printConditionText(p.body.pre) : '',
+        post: p.body?.post ? printConditionText(p.body.post) : '',
+        hasPre: Boolean(p.body?.pre),
+        hasPost: Boolean(p.body?.post),
+        scenarioCount: form.scenarioCount,
+        exceptionalCount: form.exceptionalCount,
+        formalizationStatus: form.formalizationStatus,
+        fsfSource: form.fsfSource
+      }
+      }),
       functions: mod.functions.map((f) => ({
         name: f.name,
         text: sliceText(source, f.span).trim(),
@@ -214,7 +273,8 @@ export function buildVisualModelTolerant(source: string): VisualModelResult {
       types: mod.types.map((t) => ({
         name: t.name,
         text: sliceText(source, t.span).trim(),
-        span: toSerializableSpan(t.span)
+        span: toSerializableSpan(t.span),
+        fields: typeFields(t)
       })),
       vars: mod.vars.map((v) => ({
         name: v.variable.name,

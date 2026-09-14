@@ -126,9 +126,33 @@ export interface ProcessNode extends WithSpan {
   alias?: QualifiedNameNode
 }
 
+export type ConditionKind = 'formal' | 'structured' | 'natural-language'
+
+/** Semi-formal pre/post clause: formal predicate, if-then-else, or structured NL. */
+export interface ConditionClauseNode extends WithSpan {
+  type: 'condition_clause'
+  kind: ConditionKind
+  /** Original clause text (Agile-SOFL semi-formal source). */
+  text: string
+  predicate?: PredicateNode
+  conditional?: {
+    guard: ConditionClauseNode
+    thenClause: ConditionClauseNode
+    elseClause?: ConditionClauseNode
+  }
+}
+
 export interface ProcessBodyNode extends WithSpan {
   type: 'process_body'
   ext: ExtVarNode[]
+  /** Semi-formal/formal precondition (primary process logic). */
+  pre?: ConditionClauseNode
+  /** Semi-formal/formal postcondition (primary process logic). */
+  post?: ConditionClauseNode
+  /**
+   * Optional editor-internal FSF DSL (`FSF : …`).
+   * Not Liu's standard source language; prefer deriving FSF from pre/post.
+   */
   fsf?: FsfSpecNode
   decomposition?: MaybeTextWithSpan
   comment?: MaybeTextWithSpan

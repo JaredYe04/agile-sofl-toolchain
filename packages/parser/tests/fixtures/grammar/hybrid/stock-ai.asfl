@@ -1,0 +1,64 @@
+module SYSTEM_StockTradingSimulator;
+type
+    UserAccount = composed of userId: string role: string balance: real end;
+    StockQuote = composed of symbol: string lastPrice: real volume: nat bid: real ask: real end;
+    Order = composed of orderId: string type: string direction: string price: real quantity: nat status: string end;
+    Position = composed of symbol: string quantity: nat costBasis: real end;
+    TradeRecord = composed of tradeId: string orderId: string symbol: string price: real quantity: nat timestamp: string end;
+var
+    accounts: UserAccount;
+    quotes: StockQuote;
+    orders: Order;
+    positions: Position;
+    tradeRecords: TradeRecord;
+inv
+    true;
+    true;
+    true;
+process UserLoginAndRoleAuth (userId: string, password: string) role: string, success: bool
+    FSF :
+    informal User exists in accounts with matching credentials && success = true ||
+    others && true
+    comment: informal aspec_fn_用户登录与角色鉴权
+end_process
+process RealTimeQuoteQuery (symbol: string) quote: StockQuote
+    FSF :
+    informal symbol exists in quotes && quote = the ||
+    others && true
+    comment: informal aspec_fn_实时行情查询
+end_process
+process PlaceOrder (userId: string, symbol: string, direction: string, orderType: string, price: real, quantity: nat) orderId: string
+    FSF :
+    informal User is authenticated and authorized && order = created ||
+    informal Current time is within trading hours && order = created ||
+    informal For buy: total cost <= available balance && order = created ||
+    informal For sell: quantity <= current position quantity && order = created ||
+    others && true
+    decom: PlaceOrder_Decom
+    comment: informal aspec_fn_下单交易
+end_process
+process OrderManagementAndCancel (userId: string, orderId: string) status: string
+    FSF :
+    informal Order exists and belongs to user && order = pending ||
+    others && true
+    comment: informal aspec_fn_订单管理与撤单
+end_process
+process PositionAndAccountManagement (userId: string) balance: real, positions: Position
+    FSF :
+    informal User exists && balance = the ||
+    others && true
+    comment: informal aspec_fn_持仓与账户管理
+end_process
+process StockAnalysisAndCharts (symbol: string, period: string) chartData: string
+    FSF :
+    informal Historical data exists for symbol && h = torical ||
+    others && true
+    comment: informal aspec_fn_股票分析与图表
+end_process
+process RiskAndComplianceCheck (userId: string, symbol: string, direction: string, quantity: nat, price: real) isValid: bool
+    FSF :
+    informal User is authenticated && isValid = true ||
+    others && true
+    comment: informal aspec_fn_风控与合规检查
+end_process
+end_module

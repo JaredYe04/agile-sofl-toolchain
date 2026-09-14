@@ -461,6 +461,12 @@ function checkModuleTypes(module: ModuleNode, scopes: Map<string, ModuleScope>):
         )
       )
     }
+    if (p.body?.pre?.predicate) {
+      checkPredicate(p.body.pre.predicate, typeEnv, diagnostics, `pre of process '${p.name}'`)
+    }
+    if (p.body?.post?.predicate) {
+      checkPredicate(p.body.post.predicate, typeEnv, diagnostics, `post of process '${p.name}'`)
+    }
     if (p.body?.fsf) {
       for (const sc of p.body.fsf.scenarios) {
         checkPredicate(sc.test, typeEnv, diagnostics, `FSF test of process '${p.name}'`)

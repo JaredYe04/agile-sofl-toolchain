@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import type {
+  HybridAgentBootstrapPayload,
   IndexedProject,
   ProjectModuleInfo,
   ProjectUiState,
@@ -10,8 +11,16 @@ import { useDocumentStore } from './document'
 import { dirtyModuleNames } from '../lib/moduleDirty'
 import type { TreeSelection } from '../composables/useVisualModel'
 import { filePathsEqual } from './tabUtils'
+import { refreshGitFor } from '../composables/useGitStatus'
+import { consumeAgentLaunchPending, emitAgentLaunch } from '../lib/agentLaunchBus'
+import {
+  defaultDockLayout,
+  parseDockLayout,
+  serializeDockLayout,
+  type DockNode
+} from '../lib/dockLayout'
 
-const DEFAULT_COLUMN_WIDTHS = [0.18, 0.22, 0.38, 0.22]
+const DEFAULT_COLUMN_WIDTHS = [0.18, 0.6, 0.22]
 
 export type WorkspacePanelId = 'tree' | 'informal' | 'agent' | 'hybrid' | 'gui' | 'structure'
 
@@ -41,6 +50,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   )
   const informalSelectedNodeId = ref<string | null>(null)
   const agentSplitRatio = ref(0.58)
+  const dockLayout = ref<DockNode>(defaultDockLayout())
+  const informalGraphBodyVisible = ref(true)
   const savedModuleHashes = ref<Record<string, Record<string, string>>>({})
   const currentModuleHashes = ref<Record<string, Record<string, string>>>({})
   const loading = ref(false)
@@ -142,7 +153,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       columnWidths: [...columnWidths.value],
       selectedModuleName:
         typeof selectedModuleName.value === 'string' ? selectedModuleName.value : null,
-      expanded: expandedProjectIds.value.includes(id)
+      expanded: expandedProjectIds.value.includes(id),
     }
     const payload = JSON.parse(JSON.stringify(state)) as ProjectUiState
     try {
@@ -180,7 +191,10 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   }
 
   async function activateProject(project: IndexedProject): Promise<void> {
-    if (!window.studio?.workspaceScan) return
+    if (!window.studio?.workspaceScan) {
+      void refreshGitFor(project.rootPath)
+      return
+    }
     loading.value = true
     const prevId = activeProjectId.value
     try {
@@ -193,13 +207,24 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       const ui = await window.studio.projectUiState?.(project.id)
       if (ui) {
         informalCollapsed.value = ui.informalCollapsed
-        columnWidths.value = ui.columnWidths?.length === 4 ? ui.columnWidths : [...DEFAULT_COLUMN_WIDTHS]
+        if (ui.columnWidths?.length === 3) {
+          columnWidths.value = ui.columnWidths
+        } else if (ui.columnWidths?.length === 4) {
+          columnWidths.value = [
+            ui.columnWidths[0] ?? 0.18,
+            (ui.columnWidths[1] ?? 0.22) + (ui.columnWidths[2] ?? 0.38),
+            ui.columnWidths[3] ?? 0.22
+          ]
+        } else {
+          columnWidths.value = [...DEFAULT_COLUMN_WIDTHS]
+        }
         if (ui.expanded && !expandedProjectIds.value.includes(project.id)) {
           expandedProjectIds.value = [...expandedProjectIds.value, project.id]
         }
       } else if (!expandedProjectIds.value.includes(project.id)) {
         expandedProjectIds.value = [...expandedProjectIds.value, project.id]
       }
+      loadDockLayoutForProject(project.id)
       await loadProjectFiles(payload)
       if (prevId && prevId !== project.id) {
         const { useHistoryStore } = await import('./history')
@@ -211,6 +236,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       selectModule(nextModule)
     } finally {
       loading.value = false
+      void refreshGitFor(project.rootPath)
     }
   }
 
@@ -308,6 +334,31 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     void persistUi()
   }
 
+  function dockLayoutStorageKey(projectId: string): string {
+    return `studio-dock-layout:${projectId}`
+  }
+
+  function loadDockLayoutForProject(projectId: string): void {
+    if (typeof localStorage === 'undefined') {
+      dockLayout.value = defaultDockLayout()
+      return
+    }
+    try {
+      const raw = localStorage.getItem(dockLayoutStorageKey(projectId))
+      dockLayout.value = raw ? parseDockLayout(JSON.parse(raw)) : defaultDockLayout()
+    } catch {
+      dockLayout.value = defaultDockLayout()
+    }
+  }
+
+  function setDockLayout(node: DockNode): void {
+    dockLayout.value = node
+    const id = activeProjectId.value
+    if (id && typeof localStorage !== 'undefined') {
+      localStorage.setItem(dockLayoutStorageKey(id), JSON.stringify(serializeDockLayout(node)))
+    }
+  }
+
   async function markHybridSaved(filePath: string): Promise<void> {
     if (!window.studio?.moduleHashes) return
     const tab = doc.documentTabs.find((t) => t.filePath && filePathsEqual(t.filePath, filePath))
@@ -325,8 +376,52 @@ export const useWorkspaceStore = defineStore('workspace', () => {
         .join('|'),
     () => {
       void refreshHashes()
+      void resyncModulesFromOpenTabs()
     }
   )
+
+  async function resyncModulesFromOpenTabs(): Promise<void> {
+    if (typeof window === 'undefined' || !scan.value || !window.studio?.modulesFromSource) return
+    const guiModule = scan.value.manifest.guiModule
+    let modules = [...scan.value.modules]
+    const asflTabs = doc.documentTabs.filter((t) => t.documentKind === 'asfl' && t.filePath)
+    for (const tab of asflTabs) {
+      const path = tab.filePath
+      if (!path) continue
+      const next = await window.studio.modulesFromSource({
+        source: tab.content,
+        filePath: path,
+        guiModule
+      })
+      const looksLikeHybrid = /\b(?:module|system)\b/i.test(tab.content)
+      if (next.length === 0 && looksLikeHybrid) {
+        const prev = modules.filter((m) => filePathsEqual(m.filePath, path))
+        if (prev.length > 0) continue
+      }
+      modules = modules.filter((m) => !filePathsEqual(m.filePath, path)).concat(next)
+    }
+    scan.value = { ...scan.value, modules }
+    const projectId = activeProjectId.value
+    if (projectId) {
+      cachedModulesByProject.value = { ...cachedModulesByProject.value, [projectId]: modules }
+      void window.studio.projectCacheModules?.(projectId, modules)
+    }
+    if (selectedModuleName.value && !modules.some((m) => m.name === selectedModuleName.value)) {
+      const fallback = modules.find((m) => m.isSystem)?.name ?? modules[0]?.name ?? null
+      selectModule(fallback)
+    }
+  }
+
+  function requestAgentLaunch(req: HybridAgentBootstrapPayload): void {
+    informalCollapsed.value = false
+    if (agentSplitRatio.value > 0.78) agentSplitRatio.value = 0.58
+    focusedPanel.value = 'agent'
+    emitAgentLaunch(req)
+  }
+
+  function consumeAgentLaunch(): HybridAgentBootstrapPayload | null {
+    return consumeAgentLaunchPending()
+  }
 
   return {
     projects,
@@ -346,6 +441,11 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     informalViewMode,
     informalSelectedNodeId,
     agentSplitRatio,
+    dockLayout,
+    informalGraphBodyVisible,
+    setDockLayout,
+    requestAgentLaunch,
+    consumeAgentLaunch,
     focusedPanel,
     loading,
     hasWorkspace,
@@ -376,6 +476,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     setInformalCollapsed,
     setColumnWidths,
     markHybridSaved,
-    persistUi
+    persistUi,
+    resyncModulesFromOpenTabs
   }
 })

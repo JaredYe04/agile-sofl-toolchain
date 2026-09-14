@@ -8,8 +8,10 @@ import { CstParser, type CstNode } from 'chevrotain'
 import {
   allTokens,
   Module,
+  SystemKw,
   SystemPrefix,
   Identifier,
+  NameLike,
   Semicolon,
   EndModule,
   Const,
@@ -35,6 +37,8 @@ import {
   Rd,
   Wr,
   Fsf,
+  Pre,
+  Post,
   Decom,
   Comment,
   Equal,
@@ -153,7 +157,7 @@ export class AgileSoflParser extends CstParser {
   public module!: () => CstNode
 
   constructor(recoveryEnabled = true) {
-    super(allTokens, { recoveryEnabled, skipValidations: true, nodeLocation: true })
+    super([...allTokens, NameLike], { recoveryEnabled, skipValidations: true, nodeLocation: true })
 
     const $ = this as unknown as Record<string, (...args: unknown[]) => unknown> & AgileSoflParser
 
@@ -173,24 +177,25 @@ export class AgileSoflParser extends CstParser {
     })
 
     $.RULE('topModule', () => {
-      $.CONSUME(Module)
-      $.CONSUME(SystemPrefix)
-      $.CONSUME1(Identifier)
-      $.OPTION(() => $.CONSUME(Semicolon))
+      $.OR([{ ALT: () => $.CONSUME(Module) }, { ALT: () => $.CONSUME(SystemKw) }])
+      $.OPTION(() => $.CONSUME(SystemPrefix))
+      $.OR1([{ ALT: () => $.CONSUME1(Identifier) }, { ALT: () => $.CONSUME(Gui) }])
+      $.OPTION1(() => $.CONSUME(Semicolon))
       $.SUBRULE($.moduleBody)
       $.CONSUME(EndModule)
     })
 
     $.RULE('module', () => {
-      $.CONSUME(Module)
+      $.OR2([{ ALT: () => $.CONSUME2(Module) }, { ALT: () => $.CONSUME2(SystemKw) }])
       $.OR([
         {
           ALT: () => {
             $.CONSUME(SystemPrefix)
-            $.CONSUME(Identifier)
+            $.CONSUME3(Identifier)
           }
         },
-        { ALT: () => { $.CONSUME1(Identifier) } }
+        { ALT: () => { $.CONSUME1(Identifier) } },
+        { ALT: () => { $.CONSUME1(Gui) } }
       ])
       $.OPTION1(() => {
         $.CONSUME(Slash)
@@ -389,20 +394,157 @@ export class AgileSoflParser extends CstParser {
         $.SUBRULE($.extVars)
       })
       $.OPTION1(() => {
+        $.CONSUME(Pre)
+        $.SUBRULE($.preClause)
+      })
+      $.OPTION2(() => {
+        $.CONSUME(Post)
+        $.SUBRULE($.postClause)
+      })
+      $.OPTION3(() => {
         $.CONSUME(Fsf)
         $.CONSUME(Colon)
         $.SUBRULE($.fsfSpec)
       })
-      $.OPTION2(() => {
+      $.OPTION4(() => {
         $.CONSUME(Decom)
         $.CONSUME1(Colon)
         $.CONSUME(Identifier)
       })
-      $.OPTION3(() => {
+      $.OPTION5(() => {
         $.CONSUME(Comment)
         $.CONSUME2(Colon)
         $.SUBRULE($.text)
       })
+    })
+
+    $.RULE('preClause', () => {
+      $.OPTION(() => $.SUBRULE($.clauseContent))
+    })
+
+    $.RULE('postClause', () => {
+      $.OPTION(() => $.SUBRULE1($.clauseContent))
+    })
+
+    $.RULE('clauseContent', () => {
+      $.AT_LEAST_ONE({
+        GATE: () => {
+          const tok = $.LA(1).tokenType
+          return tok !== Pre && tok !== Post && tok !== Fsf && tok !== Decom && tok !== Comment &&
+            tok !== EndProcess && tok !== Function && tok !== Process && tok !== EndModule &&
+            tok !== EndFunction && tok !== Module && tok !== Const && tok !== Type && tok !== Var &&
+            tok !== Inv && tok !== Gui && tok !== EOF
+        },
+        DEF: () => $.SUBRULE($.clauseToken)
+      })
+    })
+
+    $.RULE('clauseToken', () => {
+      $.OR([
+        { ALT: () => $.CONSUME(Identifier) },
+        { ALT: () => $.CONSUME(SystemKw) },
+        { ALT: () => $.CONSUME(StringLiteral) },
+        { ALT: () => $.CONSUME(IntegerLiteral) },
+        { ALT: () => $.CONSUME(RealLiteral) },
+        { ALT: () => $.CONSUME(TextWord) },
+        { ALT: () => $.CONSUME(CharLiteral) },
+        { ALT: () => $.CONSUME(EnumValue) },
+        { ALT: () => $.CONSUME(If) },
+        { ALT: () => $.CONSUME(Then) },
+        { ALT: () => $.CONSUME(Else) },
+        { ALT: () => $.CONSUME(And) },
+        { ALT: () => $.CONSUME(Or) },
+        { ALT: () => $.CONSUME(Not) },
+        { ALT: () => $.CONSUME(In) },
+        { ALT: () => $.CONSUME(Of) },
+        { ALT: () => $.CONSUME(Forall) },
+        { ALT: () => $.CONSUME(Exists) },
+        { ALT: () => $.CONSUME(Forevery) },
+        { ALT: () => $.CONSUME(Forsome) },
+        { ALT: () => $.CONSUME(True) },
+        { ALT: () => $.CONSUME(False) },
+        { ALT: () => $.CONSUME(Nil) },
+        { ALT: () => $.CONSUME(Nat) },
+        { ALT: () => $.CONSUME(Nat0) },
+        { ALT: () => $.CONSUME(Int) },
+        { ALT: () => $.CONSUME(Real) },
+        { ALT: () => $.CONSUME(Char) },
+        { ALT: () => $.CONSUME(String) },
+        { ALT: () => $.CONSUME(Bool) },
+        { ALT: () => $.CONSUME(Given) },
+        { ALT: () => $.CONSUME(Equals) },
+        { ALT: () => $.CONSUME(NotEqual) },
+        { ALT: () => $.CONSUME(LessThan) },
+        { ALT: () => $.CONSUME(GreaterThan) },
+        { ALT: () => $.CONSUME(LessEqual) },
+        { ALT: () => $.CONSUME(GreaterEqual) },
+        { ALT: () => $.CONSUME(Plus) },
+        { ALT: () => $.CONSUME(Minus) },
+        { ALT: () => $.CONSUME(Star) },
+        { ALT: () => $.CONSUME(Slash) },
+        { ALT: () => $.CONSUME(PowerOp) },
+        { ALT: () => $.CONSUME(Div) },
+        { ALT: () => $.CONSUME(Rem) },
+        { ALT: () => $.CONSUME(Mod) },
+        { ALT: () => $.CONSUME(LParen) },
+        { ALT: () => $.CONSUME(RParen) },
+        { ALT: () => $.CONSUME(LBracket) },
+        { ALT: () => $.CONSUME(RBracket) },
+        { ALT: () => $.CONSUME(LBrace) },
+        { ALT: () => $.CONSUME(RBrace) },
+        { ALT: () => $.CONSUME(Comma) },
+        { ALT: () => $.CONSUME(Dot) },
+        { ALT: () => $.CONSUME(Colon) },
+        { ALT: () => $.CONSUME(Semicolon) },
+        { ALT: () => $.CONSUME(Pipe) },
+        { ALT: () => $.CONSUME(Amp) },
+        { ALT: () => $.CONSUME(DoubleAmp) },
+        { ALT: () => $.CONSUME(DoublePipe) },
+        { ALT: () => $.CONSUME(Inset) },
+        { ALT: () => $.CONSUME(Notin) },
+        { ALT: () => $.CONSUME(Arrow) },
+        { ALT: () => $.CONSUME(Ellipsis) },
+        { ALT: () => $.CONSUME(Hash) },
+        { ALT: () => $.CONSUME(Tilde) },
+        { ALT: () => $.CONSUME(Set) },
+        { ALT: () => $.CONSUME(Seq) },
+        { ALT: () => $.CONSUME(Map) },
+        { ALT: () => $.CONSUME(Composed) },
+        { ALT: () => $.CONSUME(End) },
+        { ALT: () => $.CONSUME(Universal) },
+        { ALT: () => $.CONSUME(Others) },
+        { ALT: () => $.CONSUME(To) },
+        { ALT: () => $.CONSUME(Let) },
+        { ALT: () => $.CONSUME(Case) },
+        { ALT: () => $.CONSUME(Equal) },
+        { ALT: () => $.CONSUME(Default) },
+        { ALT: () => $.CONSUME(Modify) },
+        { ALT: () => $.CONSUME(Mk) },
+        { ALT: () => $.CONSUME(Get) },
+        { ALT: () => $.CONSUME(Card) },
+        { ALT: () => $.CONSUME(Len) },
+        { ALT: () => $.CONSUME(Abs) },
+        { ALT: () => $.CONSUME(Floor) },
+        { ALT: () => $.CONSUME(Hd) },
+        { ALT: () => $.CONSUME(Tl) },
+        { ALT: () => $.CONSUME(Union) },
+        { ALT: () => $.CONSUME(Inter) },
+        { ALT: () => $.CONSUME(Diff) },
+        { ALT: () => $.CONSUME(Power) },
+        { ALT: () => $.CONSUME(Bound) },
+        { ALT: () => $.CONSUME(Override) },
+        { ALT: () => $.CONSUME(Inverse) },
+        { ALT: () => $.CONSUME(Elems) },
+        { ALT: () => $.CONSUME(Inds) },
+        { ALT: () => $.CONSUME(Dom) },
+        { ALT: () => $.CONSUME(Rng) },
+        { ALT: () => $.CONSUME(Comp) },
+        { ALT: () => $.CONSUME(Conc) },
+        { ALT: () => $.CONSUME(Rd) },
+        { ALT: () => $.CONSUME(Wr) },
+        { ALT: () => $.CONSUME(Undefined) },
+        { ALT: () => $.CONSUME(DoubleEquals) }
+      ])
     })
 
     $.RULE('extVars', () => {
@@ -598,12 +740,19 @@ export class AgileSoflParser extends CstParser {
 
     $.RULE('enumType', () => {
       $.CONSUME(LBrace)
-      $.CONSUME(EnumValue)
+      $.SUBRULE($.enumLiteral)
       $.MANY(() => {
         $.CONSUME(Comma)
-        $.CONSUME2(EnumValue)
+        $.SUBRULE2($.enumLiteral)
       })
       $.CONSUME(RBrace)
+    })
+
+    $.RULE('enumLiteral', () => {
+      $.OR([
+        { ALT: () => $.CONSUME(EnumValue) },
+        { ALT: () => $.CONSUME(Identifier) }
+      ])
     })
 
     $.RULE('setType', () => {
@@ -627,15 +776,26 @@ export class AgileSoflParser extends CstParser {
 
     $.RULE('fieldList', () => {
       $.SUBRULE($.fieldDecl)
-      $.MANY(() => {
-        $.SUBRULE2($.fieldDecl)
+      $.MANY({
+        GATE: () => {
+          if ($.LA(1).tokenType === Comma) return true
+          return $.LA(1).tokenType !== End && $.LA(2).tokenType === Colon
+        },
+        DEF: () => {
+          $.OPTION(() => $.CONSUME(Comma))
+          $.SUBRULE2($.fieldDecl)
+        }
       })
     })
 
     $.RULE('fieldDecl', () => {
-      $.CONSUME(Identifier)
+      $.SUBRULE($.fieldName)
       $.CONSUME(Colon)
       $.SUBRULE($.typeExpr)
+    })
+
+    $.RULE('fieldName', () => {
+      $.CONSUME(NameLike)
     })
 
     $.RULE('mapType', () => {
@@ -784,7 +944,32 @@ export class AgileSoflParser extends CstParser {
           { ALT: () => $.CONSUME(Identifier) },
           { ALT: () => $.CONSUME(IntegerLiteral) },
           { ALT: () => $.CONSUME(RealLiteral) },
-          { ALT: () => $.CONSUME(TextWord) }
+          { ALT: () => $.CONSUME(TextWord) },
+          { ALT: () => $.CONSUME(Exists) },
+          { ALT: () => $.CONSUME(In) },
+          { ALT: () => $.CONSUME(OfKw) },
+          { ALT: () => $.CONSUME(SystemKw) },
+          { ALT: () => $.CONSUME(To) },
+          { ALT: () => $.CONSUME(And) },
+          { ALT: () => $.CONSUME(Or) },
+          { ALT: () => $.CONSUME(Not) },
+          { ALT: () => $.CONSUME(True) },
+          { ALT: () => $.CONSUME(False) },
+          { ALT: () => $.CONSUME(Forall) },
+          { ALT: () => $.CONSUME(Forevery) },
+          { ALT: () => $.CONSUME(Forsome) },
+          { ALT: () => $.CONSUME(If) },
+          { ALT: () => $.CONSUME(Then) },
+          { ALT: () => $.CONSUME(Else) },
+          { ALT: () => $.CONSUME(Nat) },
+          { ALT: () => $.CONSUME(Nat0) },
+          { ALT: () => $.CONSUME(Int) },
+          { ALT: () => $.CONSUME(Real) },
+          { ALT: () => $.CONSUME(Char) },
+          { ALT: () => $.CONSUME(String) },
+          { ALT: () => $.CONSUME(Bool) },
+          { ALT: () => $.CONSUME(Given) },
+          { ALT: () => $.CONSUME(Nil) }
         ])
       })
     })
@@ -823,10 +1008,35 @@ export class AgileSoflParser extends CstParser {
         {
           ALT: () => $.SUBRULE($.text),
           GATE: () => {
-            if ($.LA(1).tokenType === StringLiteral) return true
-            if ($.LA(1).tokenType !== Identifier) return false
+            const tok = $.LA(1).tokenType
+            if (tok === StringLiteral || tok === TextWord) return true
+            if (tok !== Identifier && tok !== SystemKw) return false
             const next = $.LA(2).tokenType
-            return next === Identifier || next === StringLiteral
+            return (
+              next === Identifier ||
+              next === StringLiteral ||
+              next === TextWord ||
+              next === Exists ||
+              next === In ||
+              next === OfKw ||
+              next === SystemKw ||
+              next === To ||
+              next === Forall ||
+              next === Forevery ||
+              next === Forsome ||
+              next === If ||
+              next === Then ||
+              next === Else ||
+              next === Nat ||
+              next === Nat0 ||
+              next === Int ||
+              next === Real ||
+              next === Char ||
+              next === String ||
+              next === Bool ||
+              next === Given ||
+              next === Nil
+            )
           }
         },
         { ALT: () => { $.CONSUME(LParen); $.SUBRULE($.atomicPredicate); $.CONSUME(RParen) } },
@@ -906,6 +1116,8 @@ export class AgileSoflParser extends CstParser {
 
     $.RULE('expression', () => {
       $.OR([
+        { ALT: () => $.CONSUME(True) },
+        { ALT: () => $.CONSUME(False) },
         { ALT: () => $.SUBRULE($.numberExpr) },
         { ALT: () => $.SUBRULE($.charExpr) },
         { ALT: () => $.CONSUME(EnumValue) },

@@ -151,7 +151,8 @@ describe('refine with pre/post/bodyHint', () => {
     const withPre = patchFieldById(source, 'process.proc-borrow.preconditions', 'member_id > 0')
     const { document } = parseAspec(withPre)
     const result = refineToAsfl(document!, withPre)
-    expect(result.asflText).toContain('informal member_id > 0')
+    expect(result.asflText).toContain('pre')
+    expect(result.asflText).toContain('member_id > 0')
   })
 })
 
@@ -176,11 +177,11 @@ describe('mergeExistingAsfl', () => {
     const { document } = parseAspec(source)
     const generated = refineToAsfl(document!, source).asflText
     const customized = generated.replace(
-      'informal member and book ids are valid',
-      'informal customized requirement'
+      'success is 1 else success is 0',
+      'customized requirement'
     )
     const merged = mergeExistingAsfl(generated, customized, [
-      { aspecId: 'proc-borrow', processName: 'Borrow', strategy: 'merge_fsf_only' }
+      { aspecId: 'proc-borrow', processName: 'Borrow', strategy: 'keep_hybrid' }
     ])
     expect(merged).toContain('customized requirement')
     expect(check(merged).diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0)

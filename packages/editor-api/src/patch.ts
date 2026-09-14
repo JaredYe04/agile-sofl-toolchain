@@ -55,9 +55,76 @@ export function patchFsfSpec(
   if (!ast || ast.type !== 'program') return source
   const proc = findProcess(ast, processName)
   const fsf = proc?.body?.fsf
-  if (!fsf) return source
+  if (!fsf) {
+    return patchProcessCondition(source, processName, 'post', scenariosToPost(scenarios, others))
+  }
   const block = `FSF :\n${buildFsfBody(scenarios, others)}`
   return replaceSpan(source, fsfPatchSpan(source, fsf), block)
+}
+
+function scenariosToPost(scenarios: FsfScenarioDto[], others?: string): string {
+  const normal = scenarios.filter((s) => s.kind !== 'exceptional')
+  if (normal.length === 0) return others?.trim() || 'true'
+  if (normal.length === 1) {
+    const s = normal[0]!
+    return `if ${s.guard || s.test} then ${s.definingCondition || s.def}`
+  }
+  return normal
+    .map((s, i) => {
+      const g = s.guard || s.test
+      const d = s.definingCondition || s.def
+      if (i === 0) return `if ${g} then ${d}`
+      if (i === normal.length - 1) return `else ${d}`
+      return `else if ${g} then ${d}`
+    })
+    .join(' ')
+}
+
+function isBareKeywordAt(source: string, index: number, keyword: string): boolean {
+  if (source.slice(index, index + keyword.length) !== keyword) return false
+  const before = index === 0 ? '\n' : source[index - 1]!
+  const after = source[index + keyword.length] ?? '\n'
+  return /\s/.test(before) && /\s/.test(after)
+}
+
+function conditionKeywordStart(source: string, which: 'pre' | 'post', clauseStart: number): number {
+  const windowStart = Math.max(0, clauseStart - 64)
+  const prefix = source.slice(windowStart, clauseStart)
+  const re = new RegExp(`(?:^|\\n)[ \\t]*(${which})(?=\\s|$)`, 'g')
+  let match: RegExpExecArray | null
+  let last = -1
+  while ((match = re.exec(prefix)) !== null) {
+    last = windowStart + (match.index ?? 0) + match[0].lastIndexOf(which)
+  }
+  if (last >= 0) return last
+  const header = source.lastIndexOf(which, clauseStart)
+  if (header >= 0 && clauseStart - header <= 48 && isBareKeywordAt(source, header, which)) return header
+  return clauseStart
+}
+
+export function patchProcessCondition(
+  source: string,
+  processName: string,
+  which: 'pre' | 'post',
+  text: string
+): string {
+  const { ast } = parse(source)
+  if (!ast || ast.type !== 'program') return source
+  const proc = findProcess(ast, processName)
+  if (!proc) return source
+  const clause = which === 'pre' ? proc.body?.pre : proc.body?.post
+  const block = `${which}\n    ${text.trim() || 'true'}`
+  if (clause && clause.span.end > clause.span.start) {
+    const start = conditionKeywordStart(source, which, clause.span.start)
+    return replaceSpan(source, { start, end: clause.span.end }, block)
+  }
+  const insertAt =
+    (which === 'post' && proc.body?.pre ? proc.body.pre.span.end : undefined) ??
+    proc.body?.ext.at(-1)?.span.end ??
+    proc.body?.fsf?.span.start ??
+    proc.body?.span.start ??
+    proc.span.end
+  return source.slice(0, insertAt) + `\n    ${block}` + source.slice(insertAt)
 }
 
 export function patchComment(source: string, processName: string, text: string): string {

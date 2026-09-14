@@ -8,9 +8,10 @@ import type { SymbolEntry } from '@agile-sofl/parser'
 import type { TextDocument } from 'vscode-languageserver-textdocument'
 import { CompletionItemKind, InsertTextFormat, type CompletionItem, type Position } from 'vscode-languageserver/node.js'
 import { bindingNamesAtOffset } from './bindings.js'
+import { IDENT, IDENT_PARTIAL } from './ident.js'
 const BASIC_TYPES = ['nat', 'int', 'bool', 'char', 'string', 'real', 'given']
 
-const PROCESS_KEYWORDS = ['FSF', 'ext', 'decom', 'comment', 'end_process']
+const PROCESS_KEYWORDS = ['pre', 'post', 'FSF', 'ext', 'decom', 'comment', 'end_process']
 
 const FSF_KEYWORDS = ['others', '&&', '||']
 
@@ -149,26 +150,56 @@ export function getCompletions(document: TextDocument, position: Position): Comp
 
   if (ast?.type === 'program') {
     const bindings = quantifierBindingsAtOffset(ast, offset)
-    if (bindings.length && inBindingCompletionContext(prefix)) {      const partial = prefix.match(/([A-Za-z_][A-Za-z0-9_]*)\s*$/)?.[1] ?? ''
+    if (bindings.length && inBindingCompletionContext(prefix)) {
+      const partial = prefix.match(new RegExp(`(${IDENT.source})\\s*$`, 'u'))?.[1] ?? ''
       return bindings
         .filter((name) => name.startsWith(partial))
         .map((name) => ({ label: name, kind: CompletionItemKind.Variable }))
     }
   }
 
-  if (/:\s*[A-Za-z_]*$/.test(prefix) && ast?.type === 'program' && scopeResult) {
-    const partial = prefix.match(/:\s*([A-Za-z_]*)$/)?.[1] ?? ''
+  if (new RegExp(`:\\s*${IDENT_PARTIAL.source}$`, 'u').test(prefix) && ast?.type === 'program' && scopeResult) {
+    const partial = prefix.match(new RegExp(`:\\s*(${IDENT_PARTIAL.source})$`, 'u'))?.[1] ?? ''
     const scopeTypes = collectTypeNames(ast, scopeResult, offset)
     return scopeTypes
       .filter((name) => name.startsWith(partial))
       .map((name) => ({ label: name, kind: CompletionItemKind.TypeParameter }))
   }
 
-  if (/^\s*(process|function)\b/.test(trimmed) === false && /^\s*(FSF|ext|decom|comment)\b/.test(trimmed)) {
+  if (/^\s*(process|function)\b/.test(trimmed) === false && /^\s*(FSF|pre|post|ext|decom|comment)\b/.test(trimmed)) {
     return PROCESS_KEYWORDS.filter((k) => k.startsWith(trimmed.split(/\s+/).pop() ?? '')).map((k) => ({
       label: k,
       kind: CompletionItemKind.Keyword
     }))
+  }
+
+  if (/^\s*(module|system)\b/.test(trimmed) && trimmed.split(/\s+/).length <= 2) {
+    return [
+      {
+        label: 'module SYSTEM_Name',
+        kind: CompletionItemKind.Snippet,
+        insertText: 'module SYSTEM_${1:Name};\n    ${0}\nend_module',
+        insertTextFormat: InsertTextFormat.Snippet
+      },
+      {
+        label: 'system SYSTEM_Name',
+        kind: CompletionItemKind.Snippet,
+        insertText: 'system SYSTEM_${1:Name};\n    ${0}\nend_module',
+        insertTextFormat: InsertTextFormat.Snippet
+      }
+    ]
+  }
+
+  if (/^\s*process\b/.test(trimmed) && trimmed.split(/\s+/).length <= 2) {
+    return [
+      {
+        label: 'process Name(...) pre/post',
+        kind: CompletionItemKind.Snippet,
+        insertText:
+          'process ${1:Name}(${2:x: nat}) ${3:result: nat}\n    pre\n        ${4:true}\n    post\n        ${5:true}\nend_process',
+        insertTextFormat: InsertTextFormat.Snippet
+      }
+    ]
   }
 
   if (/^\s*FSF\s*:\s*$/.test(trimmed) || (/^\s*others\b/.test(trimmed) && !/&&/.test(trimmed.replace(/^\s*others\s*/, '')))) {
@@ -182,16 +213,16 @@ export function getCompletions(document: TextDocument, position: Position): Comp
     return items
   }
 
-  if (/module\s+[A-Za-z_][A-Za-z0-9_]*\s*\/\s*[A-Za-z_]*$/.test(prefix)) {
+  if (new RegExp(`module\\s+${IDENT.source}\\s*/\\s*${IDENT_PARTIAL.source}$`, 'u').test(prefix)) {
     if (ast?.type === 'program') {
       return ast.modules.map((m) => ({ label: m.name, kind: CompletionItemKind.Module }))
     }
   }
 
   if (ast?.type === 'program') {
-    const partial = trimmed.match(/([A-Za-z_-]*)$/)?.[1] ?? ''
+    const partial = trimmed.match(new RegExp(`(${IDENT.source}|[A-Za-z_-]*)$`, 'u'))?.[1] ?? ''
     if (inGuiBlock(ast, offset)) {
-      if (/triggers\s+[A-Za-z_]*$/.test(trimmed)) {
+      if (new RegExp(`triggers\\s+${IDENT_PARTIAL.source}$`, 'u').test(trimmed)) {
         const mod = moduleAtOffset(ast, offset)
         if (mod) {
           return mod.processes

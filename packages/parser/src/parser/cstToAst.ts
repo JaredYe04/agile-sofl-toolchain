@@ -21,6 +21,7 @@ import type {
   PredicateNode,
   ConjunctionNode,
   AtomicPredicateNode,
+  ConditionClauseNode,
   QualifiedNameNode,
   TypeExprNode,
   ExpressionNode,
@@ -33,6 +34,7 @@ import type {
 } from '../ast/nodes.js'
 import { mergeSpans, EMPTY_SPAN } from '../ast/span.js'
 import { spanOfToken, spanOfChildren, spanFromLocation, spanOfTokens } from '../ast/spanHelpers.js'
+import { interpretConditionTokens } from '../prepost/clause.js'
 
 function spanOf(node: CstNode | IToken | undefined): typeof EMPTY_SPAN {
   if (!node) return EMPTY_SPAN
@@ -113,25 +115,32 @@ export function cstToProgram(cst: CstNode): ProgramNode {
   }
 }
 
+function moduleNameToken(cst: CstNode): IToken | undefined {
+  const gui = tokensOf(cst, 'Gui')[0]
+  const ids = tokensOf(cst, 'Identifier')
+  if (gui) return gui
+  return ids[0]
+}
+
 function cstToModules(cst: CstNode): ModuleNode[] {
   const modules: ModuleNode[] = []
   const top = singleChild(cst, 'topModule')
   if (top) modules.push(cstToTopModule(top))
-  for (const m of childNodes(cst, 'module')) {
+  for (const m of allRuleInstances(cst, 'module')) {
     modules.push(cstToRegularModule(m))
   }
-  return modules
+  return modules.filter((m) => m.name.trim().length > 0)
 }
 
 function cstToTopModule(cst: CstNode): ModuleNode {
-  const id = tokensOf(cst, 'Identifier')[0]
+  const id = moduleNameToken(cst)
   const sysPrefix = tokensOf(cst, 'SystemPrefix')[0]
   const body = singleChild(cst, 'moduleBody')
   const endMod = tokensOf(cst, 'EndModule')[0]
   return {
     type: 'module',
     span: endMod ? mergeSpans(spanOf(cst), spanOfToken(endMod)) : spanOf(cst),
-    name: id?.image ?? 'SYSTEM_',
+    name: id?.image ?? '',
     nameSpan: id ? spanOfToken(id) : undefined,
     systemPrefixSpan: sysPrefix ? spanOfToken(sysPrefix) : undefined,
     isSystem: true,
@@ -146,15 +155,17 @@ function cstToTopModule(cst: CstNode): ModuleNode {
 }
 
 function cstToRegularModule(cst: CstNode): ModuleNode {
+  const guiTok = tokensOf(cst, 'Gui')[0]
   const ids = tokensOf(cst, 'Identifier')
+  const nameTok = guiTok ?? ids[0]
   const body = singleChild(cst, 'moduleBody')
-  const parent = ids.length > 1 ? ids[1] : undefined
+  const parent = guiTok ? ids[0] : ids[1]
   const endMod = tokensOf(cst, 'EndModule')[0]
   return {
     type: 'module',
     span: endMod ? mergeSpans(spanOf(cst), spanOfToken(endMod)) : spanOf(cst),
-    name: ids[0]?.image ?? '',
-    nameSpan: ids[0] ? spanOfToken(ids[0]) : undefined,
+    name: nameTok?.image ?? '',
+    nameSpan: nameTok ? spanOfToken(nameTok) : undefined,
     isSystem: false,
     parent: parent
       ? { type: 'qualified_name', span: spanOf(parent), name: parent.image }
@@ -178,7 +189,7 @@ function extractConsts(body: CstNode): ConstDeclNode[] {
       const expr = singleChild(item, 'expression')
       result.push({
         type: 'const_decl',
-        span: id ? spanOfToken(id) : spanOf(item),
+        span: spanOf(item),
         name: id?.image ?? '',
         value: expr ? cstToExpression(expr) : { type: 'nil', span: EMPTY_SPAN }
       })
@@ -196,7 +207,7 @@ function extractTypes(body: CstNode): TypeDeclNode[] {
       const typeExpr = singleChild(item, 'typeExpr')
       result.push({
         type: 'type_decl',
-        span: id ? spanOfToken(id) : spanOf(item),
+        span: spanOf(item),
         name: id?.image ?? '',
         parentType: parentAccess ? cstToQualifiedName(parentAccess) : undefined,
         typeExpr: typeExpr ? cstToTypeExpr(typeExpr) : { type: 'basic_type', span: EMPTY_SPAN, name: 'given' }
@@ -366,8 +377,50 @@ function decomIdentifier(cst: CstNode): IToken | undefined {
   return tokensOf(cst, 'Identifier').find((id) => id.startOffset > decomTok.startOffset)
 }
 
+function flattenTokens(node: CstNode): IToken[] {
+  const result: IToken[] = []
+  const visit = (n: CstNode | IToken): void => {
+    if (n && 'image' in n && 'tokenType' in n) {
+      result.push(n as IToken)
+      return
+    }
+    const cst = n as CstNode
+    if (!cst.children) return
+    const items: Array<CstNode | IToken> = []
+    for (const arr of Object.values(cst.children)) {
+      if (!Array.isArray(arr)) continue
+      for (const item of arr) {
+        if (item) items.push(item as CstNode | IToken)
+      }
+    }
+    items.sort((a, b) => {
+      const ao =
+        'startOffset' in a && typeof a.startOffset === 'number'
+          ? a.startOffset
+          : ((a as CstNode).location?.startOffset ?? 0)
+      const bo =
+        'startOffset' in b && typeof b.startOffset === 'number'
+          ? b.startOffset
+          : ((b as CstNode).location?.startOffset ?? 0)
+      return ao - bo
+    })
+    for (const item of items) visit(item)
+  }
+  visit(node)
+  return result
+}
+
+function cstToConditionClause(cst: CstNode | undefined): ConditionClauseNode | undefined {
+  if (!cst) return undefined
+  const content = singleChild(cst, 'clauseContent')
+  const tokens = content ? flattenTokens(content) : flattenTokens(cst)
+  return interpretConditionTokens(tokens, spanOf(cst))
+}
+
 function cstToProcessBody(cst: CstNode): ProcessBodyNode {
   const extVars = singleChild(cst, 'extVars')
+  const preClause = singleChild(cst, 'preClause')
+  const postClause = singleChild(cst, 'postClause')
   const fsfSpec = singleChild(cst, 'fsfSpec')
   const decomId = decomIdentifier(cst)
   const commentText = singleChild(cst, 'text')
@@ -375,6 +428,8 @@ function cstToProcessBody(cst: CstNode): ProcessBodyNode {
     type: 'process_body',
     span: spanOf(cst),
     ext: extVars ? cstToExtVars(extVars) : [],
+    pre: cstToConditionClause(preClause),
+    post: cstToConditionClause(postClause),
     fsf: fsfSpec ? cstToFsfSpec(fsfSpec) : undefined,
     decomposition: decomId ? { text: decomId.image, span: spanOfToken(decomId) } : undefined,
     comment: commentText ? cstToTextWithSpan(commentText) : undefined
@@ -513,7 +568,12 @@ function cstToTypeAtomic(cst: CstNode): TypeExprNode {
   }
   const enumT = singleChild(cst, 'enumType')
   if (enumT) {
-    const values = tokensOf(enumT, 'EnumValue').map((t) => t.image.slice(1, -1))
+    const literals = childNodes(enumT, 'enumLiteral')
+    const values = (literals.length ? literals : [enumT]).map((lit) => {
+      const ev = tokensOf(lit, 'EnumValue')[0]
+      if (ev) return ev.image.slice(1, -1)
+      return tokensOf(lit, 'Identifier')[0]?.image ?? ''
+    }).filter(Boolean)
     return { type: 'enum_type', span: spanOf(cst), values }
   }
   const setT = singleChild(cst, 'setType')
@@ -550,18 +610,19 @@ function cstToTypeAtomic(cst: CstNode): TypeExprNode {
 
 function cstToFieldList(cst: CstNode): { type: 'field_decl'; span: typeof EMPTY_SPAN; name: string; typeExpr: TypeExprNode }[] {
   return childNodes(cst, 'fieldDecl').map((fd) => {
-    const id = tokensOf(fd, 'Identifier')[0]
+    const nameNode = singleChild(fd, 'fieldName')
+    const nameTok = nameNode ? firstToken(nameNode) : tokensOf(fd, 'Identifier')[0]
     const typeExpr = singleChild(fd, 'typeExpr')
     return {
       type: 'field_decl' as const,
       span: spanOf(fd),
-      name: id?.image ?? '',
+      name: nameTok?.image ?? '',
       typeExpr: typeExpr ? cstToTypeExpr(typeExpr) : { type: 'basic_type', span: EMPTY_SPAN, name: 'given' }
     }
   })
 }
 
-function cstToPredicate(cst: CstNode): PredicateNode {
+export function cstToPredicate(cst: CstNode): PredicateNode {
   const conjunctions = childNodes(cst, 'conjunction')
   return {
     type: 'predicate',
@@ -671,7 +732,38 @@ function cstToBindingList(cst: CstNode): BindingGroupNode[] {
 }
 
 function cstToTextWithSpan(cst: CstNode): { text: string; span: typeof EMPTY_SPAN } {
-  const kinds = ['StringLiteral', 'Identifier', 'IntegerLiteral', 'RealLiteral', 'TextWord'] as const
+  const kinds = [
+    'StringLiteral',
+    'Identifier',
+    'IntegerLiteral',
+    'RealLiteral',
+    'TextWord',
+    'Exists',
+    'In',
+    'Of',
+    'SystemKw',
+    'To',
+    'And',
+    'Or',
+    'Not',
+    'True',
+    'False',
+    'Forall',
+    'Forevery',
+    'Forsome',
+    'If',
+    'Then',
+    'Else',
+    'Nat',
+    'Nat0',
+    'Int',
+    'Real',
+    'Char',
+    'String',
+    'Bool',
+    'Given',
+    'Nil'
+  ] as const
   const collected = kinds.flatMap((kind) => tokensOf(cst, kind))
   collected.sort((a, b) => a.startOffset - b.startOffset)
   const parts = collected.map((tok) => {
@@ -738,6 +830,10 @@ function cstToNumber(cst: CstNode): ExpressionNode {
 }
 
 function cstToExpression(cst: CstNode): ExpressionNode {
+  const trueTok = tokensOf(cst, 'True')[0]
+  if (trueTok) return { type: 'boolean_literal', span: spanOf(cst), value: true }
+  const falseTok = tokensOf(cst, 'False')[0]
+  if (falseTok) return { type: 'boolean_literal', span: spanOf(cst), value: false }
   const constNode = singleChild(cst, 'constant')
   if (constNode) return cstToConstant(constNode)
   const num = singleChild(cst, 'numberExpr')

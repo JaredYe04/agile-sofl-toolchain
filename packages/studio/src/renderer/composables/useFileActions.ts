@@ -1,4 +1,5 @@
 import { useI18n } from 'vue-i18n'
+import { refreshGitFor } from './useGitStatus'
 import { useDocumentStore } from '../stores/document'
 import { useModalStore } from '../stores/modal'
 import { useWorkspaceStore } from '../stores/workspace'
@@ -23,8 +24,8 @@ export function useFileActions() {
 
     await window.studio!.fileWrite(path, tab.content)
     doc.markSaved(tab.id, path, path.split(/[/\\]/).pop() ?? tab.title)
+    const workspace = useWorkspaceStore()
     if (tab.documentKind === 'asfl' && path) {
-      const workspace = useWorkspaceStore()
       if (workspace.hasWorkspace) await workspace.markHybridSaved(path)
     }
     if (tab.documentKind === 'aspec' && path && window.studio?.updateTraceContentHash) {
@@ -35,6 +36,8 @@ export function useFileActions() {
         /* trace file may not exist yet */
       }
     }
+    const root = workspace.activeProject?.rootPath
+    if (root) void refreshGitFor(root)
     return true
   }
 

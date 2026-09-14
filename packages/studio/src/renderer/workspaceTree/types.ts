@@ -14,6 +14,7 @@ export type WorkspaceTreeActionId =
   | 'copyPath'
   | 'revealInFolder'
   | 'refresh'
+  | 'initGit'
   | 'renameProject'
   | 'removeFromList'
   | 'revealInCode'

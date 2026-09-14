@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { TreeSelection } from '../../../composables/useVisualModel'
 import type { DeclarationKind } from '../../../preload/index'
 import { useEditorUiStore, type VisualSideView } from '../../../stores/editorUi'
+import IconActionButton from '../../ui/IconActionButton.vue'
+import DropdownMenu, { type MenuItem } from '../../ui/DropdownMenu.vue'
 
 const props = defineProps<{
   selection: TreeSelection
@@ -31,14 +33,21 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 const editorUi = useEditorUiStore()
-const addMenuOpen = ref(false)
+
+const declarationMenuItems = computed((): MenuItem[] =>
+  (['const', 'type', 'var'] as DeclarationKind[]).map((kind) => ({
+    id: kind,
+    label: t(`visual.section.${kind === 'const' ? 'const' : kind}`),
+    action: () => emit('addDeclaration', kind)
+  }))
+)
 
 const sideViews = computed(() => [
   { id: 'tree' as VisualSideView, label: t('toolbar.viewTree') },
   { id: 'graph' as VisualSideView, label: t('toolbar.viewGraph') }
 ])
 
-const writeDisabled = computed(() => props.parseFailed || props.hasDiagnostics)
+const writeDisabled = computed(() => props.parseFailed)
 
 function showAddDeclaration(): boolean {
   return props.selection?.kind === 'module' && !writeDisabled.value
@@ -72,11 +81,12 @@ function onZoomInput(e: Event): void {
   const v = Number.parseInt((e.target as HTMLInputElement).value, 10)
   if (!Number.isNaN(v)) editorUi.setGraphZoom(v)
 }
+
 </script>
 
 <template>
   <div
-    class="flex h-[36px] shrink-0 items-center gap-2 border-b border-border-subtle bg-surface-base px-3"
+    class="flex h-[36px] min-w-0 shrink-0 flex-nowrap items-center gap-2 overflow-hidden border-b border-border-subtle bg-surface-base px-3"
   >
     <div v-if="!hideSideViews" class="flex shrink-0 rounded-lg border border-border-subtle p-0.5">
       <button
@@ -120,110 +130,94 @@ function onZoomInput(e: Event): void {
 
     <input
       type="search"
-      class="visual-field ml-1 max-w-[140px] flex-1 px-2 py-1 text-xs placeholder:text-content-muted"
+      class="visual-field ml-1 min-w-0 w-[min(140px,22%)] shrink px-2 py-1 text-xs placeholder:text-content-muted"
       :placeholder="t('visual.searchPlaceholder')"
       :value="searchQuery"
       @input="emit('update:searchQuery', ($event.target as HTMLInputElement).value)"
     />
 
-    <div class="flex-1" />
+    <div class="min-w-0 flex-1" />
 
-    <span v-if="syncing" class="text-xs text-content-secondary">{{ t('visual.syncing') }}</span>
-    <button
-      type="button"
-      class="rounded-md px-2.5 py-1 text-sm text-content-secondary transition-colors hover:bg-surface-overlay hover:text-content-primary disabled:opacity-40"
-      :disabled="loading"
-      @click="emit('refresh')"
-    >
-      {{ t('visual.toolbar.refresh') }}
-    </button>
-    <div v-if="showAddDeclaration()" class="relative">
-      <button
-        type="button"
-        class="rounded-md px-2.5 py-1 text-sm text-accent transition-colors hover:bg-accent/10"
-        @click="addMenuOpen = !addMenuOpen"
-      >
-        {{ t('visual.toolbar.addDeclaration') }}
-      </button>
-      <div
-        v-if="addMenuOpen"
-        class="absolute left-0 top-full z-10 mt-1 min-w-[120px] rounded-md border border-border-subtle bg-surface-raised py-1 shadow-lg"
-      >
-        <button
-          v-for="kind in (['const', 'type', 'var'] as DeclarationKind[])"
-          :key="kind"
-          type="button"
-          class="block w-full px-3 py-1.5 text-left text-sm text-content-primary hover:bg-surface-overlay"
-          @click="emit('addDeclaration', kind); addMenuOpen = false"
-        >
-          {{ t(`visual.section.${kind === 'const' ? 'const' : kind}`) }}
-        </button>
-      </div>
+    <div class="flex shrink-0 items-center gap-0.5">
+      <IconActionButton
+        v-if="syncing"
+        icon="lucide:loader-circle"
+        :label="t('visual.syncing')"
+        spin
+        disabled
+      />
+      <IconActionButton
+        icon="lucide:refresh-cw"
+        :label="t('visual.toolbar.refresh')"
+        :disabled="loading"
+        @click="emit('refresh')"
+      />
+      <DropdownMenu v-if="showAddDeclaration()" :items="declarationMenuItems" teleport>
+        <template #trigger="{ toggle }">
+          <IconActionButton
+            icon="lucide:list-plus"
+            :label="t('visual.toolbar.addDeclaration')"
+            variant="accent"
+            @click="toggle"
+          />
+        </template>
+      </DropdownMenu>
+      <IconActionButton
+        v-if="showModuleActions()"
+        icon="lucide:folder-plus"
+        :label="t('visual.toolbar.addModule')"
+        variant="accent"
+        @click="emit('addModule')"
+      />
+      <IconActionButton
+        v-if="showModuleActions()"
+        icon="lucide:folder-pen"
+        :label="t('visual.toolbar.renameModule')"
+        @click="emit('renameModule')"
+      />
+      <IconActionButton
+        v-if="showModuleActions()"
+        icon="lucide:folder-minus"
+        :label="t('visual.toolbar.removeModule')"
+        variant="danger"
+        @click="emit('removeModule')"
+      />
+      <IconActionButton
+        v-if="showAddProcess()"
+        icon="lucide:workflow"
+        :label="t('visual.toolbar.addProcess')"
+        variant="process"
+        @click="emit('addProcess')"
+      />
+      <IconActionButton
+        v-if="showAddFunction()"
+        icon="lucide:box"
+        :label="t('visual.toolbar.addFunction')"
+        variant="function"
+        @click="emit('addFunction')"
+      />
+      <IconActionButton
+        v-if="showRenameProcess()"
+        icon="lucide:route"
+        :label="t('visual.toolbar.renameProcess')"
+        variant="process"
+        @click="emit('renameProcess')"
+      />
+      <IconActionButton
+        v-if="showRenameFunction()"
+        icon="lucide:square-function"
+        :label="t('visual.toolbar.renameFunction')"
+        variant="function"
+        @click="emit('renameFunction')"
+      />
+      <IconActionButton
+        v-if="showAddScenario()"
+        icon="lucide:clipboard-list"
+        :label="t('visual.addScenario')"
+        variant="accent"
+        @click="emit('addScenario')"
+      />
     </div>
-    <button
-      v-if="showModuleActions()"
-      type="button"
-      class="rounded-md px-2.5 py-1 text-sm text-accent transition-colors hover:bg-accent/10"
-      @click="emit('addModule')"
-    >
-      {{ t('visual.toolbar.addModule') }}
-    </button>
-    <button
-      v-if="showModuleActions()"
-      type="button"
-      class="rounded-md px-2.5 py-1 text-sm text-content-secondary transition-colors hover:bg-surface-overlay hover:text-content-primary"
-      @click="emit('renameModule')"
-    >
-      {{ t('visual.toolbar.renameModule') }}
-    </button>
-    <button
-      v-if="showModuleActions()"
-      type="button"
-      class="rounded-md px-2.5 py-1 text-sm text-semantic-error transition-colors hover:bg-semantic-error/10"
-      @click="emit('removeModule')"
-    >
-      {{ t('visual.toolbar.removeModule') }}
-    </button>
-    <button
-      v-if="showAddProcess()"
-      type="button"
-      class="rounded-md px-2.5 py-1 text-sm text-role-process transition-colors hover:bg-role-process/10"
-      @click="emit('addProcess')"
-    >
-      {{ t('visual.toolbar.addProcess') }}
-    </button>
-    <button
-      v-if="showAddFunction()"
-      type="button"
-      class="rounded-md px-2.5 py-1 text-sm text-role-function transition-colors hover:bg-role-function/10"
-      @click="emit('addFunction')"
-    >
-      {{ t('visual.toolbar.addFunction') }}
-    </button>
-    <button
-      v-if="showRenameProcess()"
-      type="button"
-      class="rounded-md px-2.5 py-1 text-sm text-content-secondary transition-colors hover:bg-surface-overlay hover:text-content-primary"
-      @click="emit('renameProcess')"
-    >
-      {{ t('visual.toolbar.renameProcess') }}
-    </button>
-    <button
-      v-if="showRenameFunction()"
-      type="button"
-      class="rounded-md px-2.5 py-1 text-sm text-content-secondary transition-colors hover:bg-surface-overlay hover:text-content-primary"
-      @click="emit('renameFunction')"
-    >
-      {{ t('visual.toolbar.renameFunction') }}
-    </button>
-    <button
-      v-if="showAddScenario()"
-      type="button"
-      class="rounded-md px-2.5 py-1 text-sm text-accent transition-colors hover:bg-accent/10"
-      @click="emit('addScenario')"
-    >
-      {{ t('visual.addScenario') }}
-    </button>
   </div>
 </template>
 

@@ -75,7 +75,7 @@ function onOptionClick(opt: { id: string; label: string }): void {
 </script>
 
 <template>
-  <div class="agent-bubble mt-2 overflow-hidden rounded-xl bg-surface-raised">
+  <div class="agent-bubble mt-2 min-w-0 max-w-full overflow-hidden rounded-xl bg-surface-raised">
     <button
       type="button"
       class="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-surface-overlay"
@@ -89,18 +89,19 @@ function onOptionClick(opt: { id: string; label: string }): void {
       }}</span>
       <span class="select-none text-[11px] text-content-muted">{{ expanded ? '▾' : '▸' }}</span>
     </button>
-    <div v-if="expanded" class="border-t border-border-subtle px-3 pb-3 pt-2">
-      <div v-if="options?.length" class="flex flex-wrap gap-1.5">
+    <div v-if="expanded" class="min-w-0 border-t border-border-subtle px-3 pb-3 pt-2">
+      <div v-if="options?.length" class="flex min-w-0 flex-col gap-1.5">
         <button
           v-for="opt in options"
           :key="opt.id"
           type="button"
-          class="rounded-full border px-3 py-1 text-[12px] transition-colors"
+          class="max-w-full min-w-0 truncate rounded-full border px-3 py-1 text-left text-[12px] transition-colors"
           :class="
             isChosen(opt)
               ? 'border-content-primary bg-content-primary/10 text-content-primary'
               : 'border-border-subtle text-content-secondary hover:border-content-primary/40 hover:text-content-primary'
           "
+          :title="opt.label"
           :disabled="disabled"
           @click="onOptionClick(opt)"
         >
@@ -118,7 +119,8 @@ function onOptionClick(opt: { id: string; label: string }): void {
       </div>
       <p
         v-if="!pending && answer"
-        class="studio-text-selectable mt-2 rounded-md bg-surface-base px-2.5 py-1.5 text-[12px] text-content-secondary"
+        class="studio-text-selectable mt-2 min-w-0 truncate rounded-md bg-surface-base px-2.5 py-1.5 text-[12px] text-content-secondary"
+        :title="answer"
       >
         {{ $t('agent.yourAnswer') }}：{{ answer }}
       </p>

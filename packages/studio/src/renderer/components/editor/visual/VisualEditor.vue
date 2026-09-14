@@ -3,6 +3,7 @@ import { ref, computed, watch, onMounted, onUnmounted, inject } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { DeclarationKind, SerializableSpan, DiagnosticSummary, VisualModuleSummary } from '../../../preload/index'
 import { useDocumentStore } from '../../../stores/document'
+import { useWorkspaceStore } from '../../../stores/workspace'
 import { useEditorUiStore } from '../../../stores/editorUi'
 import { useLinkedInformalHints } from '../../../composables/useLinkedInformalHints'
 import { useEditorSelectionStore } from '../../../stores/editorSelection'
@@ -47,6 +48,7 @@ const emit = defineEmits<{ revealSpan: [span: SerializableSpan]; select: [select
 const { t } = useI18n()
 const modal = useModalStore()
 const doc = useDocumentStore()
+const workspace = useWorkspaceStore()
 const editorUi = useEditorUiStore()
 const linkedHints = useLinkedInformalHints(computed(() => doc.activeTabId))
 const editorSelection = useEditorSelectionStore()
@@ -77,9 +79,7 @@ watch(
   { immediate: true }
 )
 
-const writeDisabled = computed(
-  () => visual.parseFailed.value || visual.hasDiagnostics.value
-)
+const writeDisabled = computed(() => visual.parseFailed.value)
 
 const writeDisabledReason = computed<'parseFailed' | 'diagnostics' | null>(() => {
   if (visual.parseFailed.value) return 'parseFailed'
@@ -386,6 +386,7 @@ async function onAddModule(): Promise<void> {
     parentName,
     isSystem: checked
   })
+  await workspace.resyncModulesFromOpenTabs()
   selected.value = { kind: 'module', moduleName: value.trim() }
 }
 
@@ -398,6 +399,7 @@ async function onRenameModuleInline(name: string): Promise<void> {
     moduleName: selected.value.moduleName,
     newName: bare
   })
+  await workspace.resyncModulesFromOpenTabs()
   selected.value = { kind: 'module', moduleName: bare }
 }
 
@@ -428,6 +430,7 @@ async function onRenameModule(): Promise<void> {
     moduleName: selected.value.moduleName,
     newName: value.trim()
   })
+  await workspace.resyncModulesFromOpenTabs()
   selected.value = { kind: 'module', moduleName: value.trim() }
 }
 
@@ -441,6 +444,7 @@ async function onRemoveModule(): Promise<void> {
   if (index !== 0) return
   const moduleName = selected.value.moduleName
   await visual.patchModule({ action: 'remove', moduleName })
+  await workspace.resyncModulesFromOpenTabs()
   const list = modules.value.filter((m) => m.name !== moduleName)
   selected.value = list[0] ? { kind: 'module', moduleName: list[0].name } : null
 }
@@ -500,7 +504,12 @@ async function onAddProcess(): Promise<void> {
   if (index !== 0) return
   const processName = checked ? 'Init' : (value?.trim() || defaultName)
   const template = checked
-    ? `process Init ()\nFSF :\nothers && true\nend_process`
+    ? `process Init ()
+    pre
+        true
+    post
+        true
+end_process`
     : undefined
   await onPatchProcess({ kind: 'process', action: 'add', name: processName, template })
   selected.value = { kind: 'process', moduleName: selectedModule.value.name, processName }
@@ -605,7 +614,8 @@ defineExpose({ setSelection })
     />
     <div
       v-if="breadcrumb"
-      class="border-b border-border-subtle px-4 py-1.5 text-xs text-content-secondary"
+      class="truncate border-b border-border-subtle px-4 py-1.5 text-xs text-content-secondary"
+      :title="breadcrumb"
     >
       {{ breadcrumb }}
     </div>

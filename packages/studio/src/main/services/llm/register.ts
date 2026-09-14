@@ -35,6 +35,19 @@ function emitDelta(event: IpcMainInvokeEvent, payload: unknown): void {
   event.sender.send('studio:agent-delta', clone(payload))
 }
 
+const agentTurns = new Map<string, AbortController>()
+
+function startAgentTurn(sessionId: string): AbortSignal {
+  agentTurns.get(sessionId)?.abort()
+  const controller = new AbortController()
+  agentTurns.set(sessionId, controller)
+  return controller.signal
+}
+
+function finishAgentTurn(sessionId: string, signal: AbortSignal): void {
+  if (agentTurns.get(sessionId)?.signal === signal) agentTurns.delete(sessionId)
+}
+
 export function registerAgentHandlers(): void {
   loadStudioEnv()
 
@@ -75,8 +88,21 @@ export function registerAgentHandlers(): void {
 
   ipcMain.handle(
     'studio:agent-create-session',
-    (_e, payload: { projectRoot: string; moduleId?: string; title?: string }) =>
-      clone(createSession(payload.projectRoot, payload.moduleId || 'project', payload.title))
+    (_e, payload: {
+      projectRoot: string
+      moduleId?: string
+      title?: string
+      skillId?: string
+      permissions?: AgentTurnContext['permissions']
+      promptExtras?: string
+    }) =>
+      clone(
+        createSession(payload.projectRoot, payload.moduleId || 'project', payload.title, {
+          skillId: payload.skillId,
+          permissions: payload.permissions,
+          promptExtras: payload.promptExtras
+        })
+      )
   )
 
   ipcMain.handle(
@@ -158,10 +184,22 @@ export function registerAgentHandlers(): void {
     ) => {
       let session = loadSession(payload.projectRoot, payload.sessionId)
       if (!session) session = createSession(payload.projectRoot, payload.context.moduleId || 'project')
-      const next = await runAgentTurn(session, payload.projectRoot, payload.context, payload.text, (delta) => {
-        emitDelta(event, { sessionId: session!.id, ...delta })
-      })
-      return clone(next)
+      const signal = startAgentTurn(session.id)
+      try {
+        const next = await runAgentTurn(
+          session,
+          payload.projectRoot,
+          payload.context,
+          payload.text,
+          (delta) => {
+            emitDelta(event, { sessionId: session!.id, ...delta })
+          },
+          signal
+        )
+        return clone(next)
+      } finally {
+        finishAgentTurn(session.id, signal)
+      }
     }
   )
 
@@ -180,16 +218,28 @@ export function registerAgentHandlers(): void {
     ) => {
       const session = loadSession(payload.projectRoot, payload.sessionId)
       if (!session) return null
-      const next = await resumeWithToolResult(
-        session,
-        payload.projectRoot,
-        payload.context,
-        payload.toolCallId,
-        payload.result,
-        (delta) => emitDelta(event, { sessionId: session.id, ...delta }),
-        payload.continueTurn === true
-      )
-      return clone(next)
+      const signal = startAgentTurn(session.id)
+      try {
+        const next = await resumeWithToolResult(
+          session,
+          payload.projectRoot,
+          payload.context,
+          payload.toolCallId,
+          payload.result,
+          (delta) => emitDelta(event, { sessionId: session.id, ...delta }),
+          payload.continueTurn !== false,
+          signal
+        )
+        return clone(next)
+      } finally {
+        finishAgentTurn(session.id, signal)
+      }
     }
   )
+
+  ipcMain.handle('studio:agent-abort', (_e, sessionId: string) => {
+    const id = String(sessionId || '')
+    agentTurns.get(id)?.abort()
+    return { ok: true }
+  })
 }

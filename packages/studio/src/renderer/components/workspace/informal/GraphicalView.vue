@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import type { InformalNodePayload, InformalSpecPayload } from '../../../preload/index'
 import { nestedNodes } from '../../../composables/useInformalSpec'
 import { useWorkspaceStore } from '../../../stores/workspace'
+import IconActionButton from '../../ui/IconActionButton.vue'
 
 type SectionType = 'functions' | 'data-resources' | 'constraints'
 type MenuAction = 'rename' | 'duplicate' | 'delete' | 'copy'
@@ -219,6 +220,17 @@ function placeholderCount(type: SectionType): string {
 
 <template>
   <div class="flex h-full min-h-0 flex-col bg-surface-base" @mousedown="menu = null">
+    <div
+      v-if="selectedNode && !workspace.informalGraphBodyVisible"
+      class="flex shrink-0 justify-end border-b border-border-subtle px-2 py-1"
+    >
+      <IconActionButton
+        icon="lucide:panel-bottom-open"
+        :label="t('informal.showBodyPanel', { title: selectedNode.title })"
+        variant="accent"
+        @click="workspace.informalGraphBodyVisible = true"
+      />
+    </div>
     <div class="grid min-h-0 flex-1 grid-cols-3 gap-2 overflow-hidden p-2">
       <section
         v-for="col in columns"
@@ -310,16 +322,21 @@ function placeholderCount(type: SectionType): string {
       </section>
     </div>
     <aside
-      v-if="selectedNode"
+      v-if="selectedNode && workspace.informalGraphBodyVisible"
       class="flex max-h-[42%] min-h-[120px] shrink-0 flex-col border-t border-border-subtle bg-surface-raised"
     >
-      <header class="flex h-8 shrink-0 items-center gap-2 border-b border-border-subtle px-3">
+      <header class="flex h-8 shrink-0 items-center gap-2 border-b border-border-subtle px-2">
         <span class="text-[11px] font-semibold uppercase tracking-wide text-content-muted">{{
           t('informal.itemBody')
         }}</span>
         <span class="min-w-0 flex-1 truncate text-[12px] font-medium text-content-primary">{{
           selectedNode.title
         }}</span>
+        <IconActionButton
+          icon="lucide:panel-bottom-close"
+          :label="t('informal.hideBodyPanel')"
+          @click="workspace.informalGraphBodyVisible = false"
+        />
       </header>
       <textarea
         v-model="bodyDraft"

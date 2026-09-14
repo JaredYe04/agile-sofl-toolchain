@@ -32,6 +32,20 @@ export function collectFoldingRanges(document: TextDocument): FoldingRange[] {
         })
       }
       const fsf = proc.body?.fsf
+      if (proc.body?.pre && proc.body.pre.span.end > proc.body.pre.span.start) {
+        ranges.push({
+          startLine: document.positionAt(proc.body.pre.span.start).line,
+          endLine: document.positionAt(proc.body.pre.span.end).line,
+          kind: FoldingRangeKind.Region
+        })
+      }
+      if (proc.body?.post && proc.body.post.span.end > proc.body.post.span.start) {
+        ranges.push({
+          startLine: document.positionAt(proc.body.post.span.start).line,
+          endLine: document.positionAt(proc.body.post.span.end).line,
+          kind: FoldingRangeKind.Region
+        })
+      }
       if (fsf && fsf.span.end > fsf.span.start) {
         ranges.push({
           startLine: document.positionAt(fsf.span.start).line,

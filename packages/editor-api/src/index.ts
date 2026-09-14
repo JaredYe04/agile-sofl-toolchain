@@ -63,7 +63,7 @@ export {
 export type { PredicateUiNode, ParsePredicateResult, SymbolHint } from './predicateModel.js'
 
 export { buildVisualModelTolerant } from './visualParse.js'
-export type { VisualModelResult, VisualParseDiagnostic, FsfFormalStatus } from './visualParse.js'
+export type { VisualModelResult, VisualParseDiagnostic, FsfFormalStatus, FormalizationStatus } from './visualParse.js'
 
 export {
   processSignatureText,
@@ -90,6 +90,7 @@ export type { ModulePatchAction } from './modulePatch.js'
 
 export {
   patchFsfSpec,
+  patchProcessCondition,
   patchComment,
   patchDecom,
   patchInformal,
@@ -126,8 +127,24 @@ export {
 } from './processPatch.js'
 export type { ProcessPatchAction, FunctionPatchAction } from './processPatch.js'
 
-export { patchGuiWidgetText } from './guiPatch.js'
+export { patchGuiWidgetText, addGuiScreen } from './guiPatch.js'
 export { toSerializableSpan, sliceText } from './span.js'
+
+export {
+  parseHybridId,
+  formatHybridId,
+  slug,
+  uniqueSlug,
+  canonicalModuleName,
+  namesEqual,
+  labelsMatch
+} from './hybridIds.js'
+export type { HybridIdKind, ParsedHybridId } from './hybridIds.js'
+
+export { formatHybridInventory, hybridInventoryFromSource } from './hybridInventory.js'
+
+export { applyHybridPatch } from './hybridPatch.js'
+export type { HybridEntityKind, HybridPatchOp, HybridPatch, HybridScenarioInput } from './hybridPatch.js'
 export type { SerializableSpan } from './span.js'
 
 export {

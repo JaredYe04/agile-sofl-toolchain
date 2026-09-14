@@ -26,4 +26,13 @@ export function registerLlmHybridGenerator(complete: LlmCompleteFn): HybridSpecG
 
 export { RULE_BASED_GENERATOR_ID, LLM_GENERATOR_ID, ruleBasedHybridGenerator, createLlmHybridGenerator }
 export * from './types.js'
-export { informalToHybridIR, hybridIRToAspec, irToGenerationResult } from './ir.js'
+export {
+  defaultHybridGenerateParams,
+  normalizeGenerateParams,
+  stagesToScope,
+  formatGenerationPromptExtras,
+  buildHybridAgentBootstrap,
+  generationAgentPermissions
+} from './params.js'
+export { informalToHybridIR, hybridIRToAspec, irToGenerationResult, filterHybridIR } from './ir.js'
+export { normalizeHybridIR } from './validate.js'

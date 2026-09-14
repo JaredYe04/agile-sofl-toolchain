@@ -52,6 +52,22 @@ function selectFunction(moduleName: string, functionName: string): void {
       <p v-if="module.parentName" class="text-sm text-content-secondary">
         {{ t('visual.parentModule') }}: {{ module.parentName }}
       </p>
+      <div class="mt-3 grid grid-cols-2 gap-2 text-[12px] text-content-secondary sm:grid-cols-4">
+        <p>{{ t('visual.section.type') }} {{ module.typeCount }}</p>
+        <p>{{ t('visual.section.var') }} {{ module.varCount }}</p>
+        <p>{{ t('visual.section.inv') }} {{ module.invCount }}</p>
+        <p>{{ t('visual.section.processes') }} {{ module.processes.length }}</p>
+      </div>
+      <p class="mt-2 text-[12px] text-content-secondary">
+        {{ t('visual.specHealth') }}:
+        {{
+          Math.round(
+            (100 *
+              module.processes.filter((p) => (p.scenarioCount ?? 0) > 0 || p.hasFsf || p.hasPre).length) /
+              Math.max(1, module.processes.length)
+          )
+        }}%
+      </p>
     </header>
 
     <DeclarationEditor
@@ -112,6 +128,8 @@ function selectFunction(moduleName: string, functionName: string): void {
             <span class="text-content-muted">{{ open[p.name] === false ? '▶' : '▼' }}</span>
             <Badge variant="process">{{ t('visual.nodeRole.process') }}</Badge>
             <span class="flex-1 truncate">{{ p.isInit ? 'Init' : p.name }}</span>
+            <Badge v-if="p.formalizationStatus === 'formal'" variant="formal">{{ t('visual.status.formal') }}</Badge>
+            <Badge v-else variant="semi-formal">{{ t('visual.status.semiFormal') }}</Badge>
           </button>
           <button
             type="button"
@@ -131,6 +149,8 @@ function selectFunction(moduleName: string, functionName: string): void {
             <p v-for="g in p.outputs" :key="g.names">{{ g.names }}: {{ g.type }}</p>
           </div>
           <p v-if="p.comment" class="whitespace-pre-wrap">{{ p.comment }}</p>
+          <p v-if="p.pre">{{ t('visual.pre') }}: {{ p.pre }}</p>
+          <p>{{ t('visual.scenarios') }}: {{ p.scenarioCount ?? 0 }} · {{ t('visual.exceptionalScenarios') }}: {{ p.exceptionalCount ?? 0 }}</p>
         </div>
       </article>
     </section>

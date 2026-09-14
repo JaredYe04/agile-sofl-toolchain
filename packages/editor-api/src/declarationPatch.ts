@@ -1,4 +1,5 @@
 import { parse, type ModuleNode, type ProgramNode } from '@agile-sofl/parser'
+import { namesEqual } from './hybridIds.js'
 
 export type DeclarationKind = 'const' | 'type' | 'var'
 
@@ -6,13 +7,8 @@ function replaceSpan(source: string, span: { start: number; end: number }, repla
   return source.slice(0, span.start) + replacement + source.slice(span.end)
 }
 
-function normalizeModuleName(name: string): string {
-  return name.startsWith('SYSTEM_') ? name.slice('SYSTEM_'.length) : name
-}
-
 function findModule(ast: ProgramNode, moduleName: string): ModuleNode | undefined {
-  const bare = normalizeModuleName(moduleName)
-  return ast.modules.find((m) => m.name === bare || m.name === moduleName)
+  return ast.modules.find((m) => namesEqual(m.name, moduleName))
 }
 
 function moduleHeaderEnd(source: string, mod: ModuleNode): number {
@@ -54,6 +50,19 @@ function removeSectionIfEmpty(
   return replaceSpan(source, { start: kw, end }, '')
 }
 
+function nextSectionInsertAt(source: string, mod: ModuleNode, keyword: DeclarationKind): number {
+  const following: Record<DeclarationKind, string> = {
+    const: 'type|var|inv|gui|process|function|end_module',
+    type: 'var|inv|gui|process|function|end_module',
+    var: 'inv|gui|process|function|end_module'
+  }
+  const bodyStart = moduleHeaderEnd(source, mod)
+  const slice = source.slice(bodyStart, mod.span.end)
+  const match = new RegExp(`(^|\\n)(${following[keyword]})\\b`, 'im').exec(slice)
+  if (!match) return bodyStart
+  return bodyStart + match.index + match[1].length
+}
+
 function insertIntoSection(
   source: string,
   mod: ModuleNode,
@@ -62,14 +71,23 @@ function insertIntoSection(
   lineText: string
 ): string {
   const line = ensureTrailingSemicolon(lineText)
-  if (items.length === 0) {
-    const at = moduleHeaderEnd(source, mod)
-    const block = `\n${keyword}\n${indentLine(line)}\n`
-    return source.slice(0, at) + block + source.slice(at)
+  if (items.length > 0) {
+    const last = items[items.length - 1]
+    let insertAt = last.span.end
+    while (insertAt < source.length && source[insertAt] !== '\n') insertAt += 1
+    return source.slice(0, insertAt) + `\n${indentLine(line)}` + source.slice(insertAt)
   }
-  const last = items[items.length - 1]
-  const insertAt = last.span.end
-  return source.slice(0, insertAt) + `\n${indentLine(line)}` + source.slice(insertAt)
+  const kw = sectionKeywordIndex(source, mod, keyword)
+  if (kw >= 0) {
+    let afterKw = kw + keyword.length
+    while (afterKw < source.length && source[afterKw] !== '\n') afterKw += 1
+    if (source[afterKw] === '\n') afterKw += 1
+    return source.slice(0, afterKw) + `${indentLine(line)}\n` + source.slice(afterKw)
+  }
+  const at = nextSectionInsertAt(source, mod, keyword)
+  const block = `${keyword}\n${indentLine(line)}\n`
+  const prefix = at > 0 && source[at - 1] !== '\n' ? '\n' : ''
+  return source.slice(0, at) + `${prefix}${block}` + source.slice(at)
 }
 
 function replaceDeclLine(source: string, span: { start: number; end: number }, lineText: string): string {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { ExtVarItem, PatchDocumentPayload, VisualModuleProcess } from '../../../preload/index'
 import type { FsfModelDto } from './FsfScenarioEditor.vue'
@@ -11,6 +11,7 @@ import FormField from './ui/FormField.vue'
 import TextField from './ui/TextField.vue'
 import Badge from './ui/Badge.vue'
 import InlineRename from './ui/InlineRename.vue'
+import { findMissingCases } from '../../../specAssist/findMissingCases'
 
 const props = defineProps<{
   process: VisualModuleProcess
@@ -69,12 +70,16 @@ function stripFieldPrefix(text: string, prefix: string): string {
 
 const decomText = ref('')
 const commentText = ref('')
+const preText = ref('')
+const postText = ref('')
 
 watch(
-  () => [props.initialDecom, props.initialComment] as const,
-  ([decom, comment]) => {
+  () => [props.initialDecom, props.initialComment, props.process.pre, props.process.post] as const,
+  ([decom, comment, pre, post]) => {
     decomText.value = stripFieldPrefix(decom ?? '', 'decom:')
     commentText.value = stripFieldPrefix(comment ?? '', 'comment:')
+    preText.value = pre ?? ''
+    postText.value = post ?? ''
   },
   { immediate: true }
 )
@@ -93,6 +98,18 @@ watch(commentText, (text) => {
   emit('patch', { kind: 'comment', processName: props.processName, text })
 })
 
+watch(preText, (text) => {
+  if (props.disabled) return
+  if (text === (props.process.pre ?? '')) return
+  emit('patch', { kind: 'pre', processName: props.processName, text })
+})
+
+watch(postText, (text) => {
+  if (props.disabled) return
+  if (text === (props.process.post ?? '')) return
+  emit('patch', { kind: 'post', processName: props.processName, text })
+})
+
 function onFsfPatch(scenarios: FsfModelDto['scenarios'], others?: string): void {
   emit('patch', { kind: 'fsf', processName: props.processName, scenarios, others })
 }
@@ -102,6 +119,29 @@ const disabledMessage = () => {
   if (props.writeDisabledReason === 'diagnostics') return t('visual.writeDisabledDiagnostics')
   return t('visual.writeDisabled')
 }
+
+const traceBadges = computed(() => {
+  const comment = commentText.value
+  const ids = [...comment.matchAll(/aspec_([a-z0-9_]+)/gi)].map((m) => m[1]!.replace(/_/g, '-'))
+  return ids
+})
+
+const missingCases = computed(() =>
+  findMissingCases({
+    name: props.processName,
+    pre: preText.value,
+    post: postText.value,
+    comment: commentText.value,
+    scenarioCount: props.process.scenarioCount
+  })
+)
+
+function addMissingCase(summary: string): void {
+  const addition = `else ${summary}`
+  if (postText.value.toLowerCase().includes(summary.toLowerCase())) return
+  postText.value = postText.value.trim() ? `${postText.value.trim()} ${addition}` : addition
+}
+
 </script>
 
 <template>
@@ -121,9 +161,24 @@ const disabledMessage = () => {
       </h2>
       <Badge variant="process">{{ t('visual.nodeRole.process') }}</Badge>
       <Badge v-if="process.isInit" variant="neutral">{{ t('visual.init.badge') }}</Badge>
+      <Badge v-if="process.formalizationStatus === 'formal'" variant="formal">{{ t('visual.status.formal') }}</Badge>
+      <Badge v-else-if="process.formalizationStatus === 'mixed'" variant="semi-formal">{{ t('visual.status.mixed') }}</Badge>
+      <Badge v-else-if="process.formalizationStatus === 'semi-formal'" variant="semi-formal">{{ t('visual.status.semiFormal') }}</Badge>
+      <Badge v-if="process.hasPre" variant="semi-formal">{{ t('visual.status.hasPre') }}</Badge>
+      <Badge v-if="(process.scenarioCount ?? 0) > 0" variant="formal">FSF</Badge>
       <Badge v-if="process.fsfFormal === 'formal'" variant="formal">{{ t('visual.fsfFormal') }}</Badge>
       <Badge v-else-if="process.fsfFormal === 'semi-formal'" variant="semi-formal">{{ t('visual.fsfSemiFormal') }}</Badge>
     </header>
+    <div v-if="traceBadges.length" class="flex flex-wrap gap-1">
+      <button
+        v-for="id in traceBadges"
+        :key="id"
+        type="button"
+        class="rounded-full bg-accent/10 px-2 py-0.5 text-[11px] text-accent"
+      >
+        {{ t('visual.traceFrom') }} {{ id }}
+      </button>
+    </div>
 
     <div
       v-if="disabled"
@@ -154,6 +209,41 @@ const disabledMessage = () => {
     />
 
     <SectionCard>
+      <FormField :label="t('visual.pre')">
+        <TextField
+          v-model="preText"
+          :rows="3"
+          :disabled="disabled"
+          :placeholder="t('visual.prePlaceholder')"
+        />
+      </FormField>
+      <FormField :label="t('visual.post')" class="mt-4">
+        <TextField
+          v-model="postText"
+          :rows="5"
+          :disabled="disabled"
+          :placeholder="t('visual.postPlaceholder')"
+        />
+      </FormField>
+    </SectionCard>
+
+    <SectionCard v-if="missingCases.length" :title="t('visual.missingCases')">
+      <ul class="space-y-2">
+        <li v-for="c in missingCases" :key="c.id" class="flex items-start justify-between gap-2 text-[12px] text-content-secondary">
+          <span>⚠ {{ c.summary }}</span>
+          <button
+            type="button"
+            class="shrink-0 text-accent hover:underline disabled:opacity-40"
+            :disabled="disabled"
+            @click="addMissingCase(c.summary)"
+          >
+            {{ t('visual.addToSpec') }}
+          </button>
+        </li>
+      </ul>
+    </SectionCard>
+
+    <SectionCard>
       <FormField :label="t('visual.decom')">
         <TextField
           v-model="decomText"
@@ -180,6 +270,6 @@ const disabledMessage = () => {
       :block-informal="blockInformal"
       @save="onFsfPatch"
     />
-    <p v-else class="text-sm text-content-secondary">{{ t('visual.noFsf') }}</p>
+    <p v-else class="text-sm text-content-secondary">{{ t('visual.noFsfDerived') }}</p>
   </div>
 </template>

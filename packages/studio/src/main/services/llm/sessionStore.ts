@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { AgentSession } from './agentTypes'
+import { normalizePermissions } from './agentTypes'
 import { newId } from './agentTypes'
 import { applySessionSlice, forkSessionRecord, type SessionBranchMode } from './sessionBranch'
 
@@ -56,7 +57,16 @@ export function deleteSession(projectRoot: string, id: string): boolean {
   return true
 }
 
-export function createSession(projectRoot: string, moduleId: string, title?: string): AgentSession {
+export function createSession(
+  projectRoot: string,
+  moduleId: string,
+  title?: string,
+  options?: {
+    skillId?: string
+    permissions?: AgentSession['context']['permissions']
+    promptExtras?: string
+  }
+): AgentSession {
   const now = new Date().toISOString()
   const session: AgentSession = {
     id: newId('ses'),
@@ -65,7 +75,11 @@ export function createSession(projectRoot: string, moduleId: string, title?: str
     createdAt: now,
     updatedAt: now,
     messages: [],
-    context: { skillId: 'requirement-discovery' }
+    context: {
+      skillId: options?.skillId || 'requirement-discovery',
+      permissions: normalizePermissions(options?.permissions),
+      promptExtras: options?.promptExtras
+    }
   }
   saveSession(projectRoot, session)
   return session

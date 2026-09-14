@@ -20,7 +20,7 @@ const count = computed(() => Math.max(1, props.options.length))
 
 <template>
   <div
-    class="relative isolate inline-grid h-7 shrink-0 select-none rounded-lg bg-surface-overlay p-[3px]"
+    class="relative isolate inline-grid h-7 min-w-0 max-w-full shrink select-none rounded-lg bg-surface-overlay p-[3px]"
     :style="{ gridTemplateColumns: `repeat(${count}, minmax(0, 1fr))` }"
     role="tablist"
   >
@@ -36,7 +36,8 @@ const count = computed(() => Math.max(1, props.options.length))
       :key="opt.id"
       type="button"
       role="tab"
-      class="relative z-10 min-w-[52px] rounded-md px-2.5 text-[11px] font-medium transition-colors duration-200"
+      class="relative z-10 min-w-0 truncate rounded-md px-2.5 text-[11px] font-medium transition-colors duration-200"
+      :title="opt.label"
       :class="
         modelValue === opt.id
           ? 'text-accent-fg'

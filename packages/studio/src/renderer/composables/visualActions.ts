@@ -56,39 +56,21 @@ export function actionsForSelection(
 
   if (!selection || opts.parseFailed) return ['revealInCode']
 
-  const writeBlocked = opts.hasDiagnostics
-
   if (selection.kind === 'module') {
 
-    const base: VisualActionType[] = ['revealInCode']
-
-    if (!writeBlocked) {
-
-      base.push('addProcess', 'addFunction', 'addDeclaration', 'addModule', 'renameModule', 'removeModule')
-
-    }
-
-    return base
+    return ['revealInCode', 'addProcess', 'addFunction', 'addDeclaration', 'addModule', 'renameModule', 'removeModule']
 
   }
 
   if (selection.kind === 'process') {
 
-    const base: VisualActionType[] = ['revealInCode', 'editProcess']
-
-    if (!writeBlocked) base.push('addScenario', 'renameProcess', 'removeProcess')
-
-    return base
+    return ['revealInCode', 'editProcess', 'addScenario', 'renameProcess', 'removeProcess']
 
   }
 
   if (selection.kind === 'function') {
 
-    const base: VisualActionType[] = ['revealInCode']
-
-    if (!writeBlocked) base.push('addScenario', 'renameFunction', 'removeFunction')
-
-    return base
+    return ['revealInCode', 'addScenario', 'renameFunction', 'removeFunction']
 
   }
 

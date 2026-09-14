@@ -58,7 +58,22 @@ export function mergeExistingAsfl(
         continue
       }
 
-      if (strategy === 'merge_fsf_only' && genProc.body?.fsf && existProc.body?.fsf) {
+      if (strategy === 'merge_fsf_only') {
+        if (genProc.body?.pre && existProc.body?.pre) {
+          replacements.push({
+            start: genProc.body.pre.span.start,
+            end: genProc.body.pre.span.end,
+            text: existing.slice(existProc.body.pre.span.start, existProc.body.pre.span.end)
+          })
+        }
+        if (genProc.body?.post && existProc.body?.post) {
+          replacements.push({
+            start: genProc.body.post.span.start,
+            end: genProc.body.post.span.end,
+            text: existing.slice(existProc.body.post.span.start, existProc.body.post.span.end)
+          })
+        }
+        if (genProc.body?.fsf && existProc.body?.fsf) {
         const genFsf = genProc.body.fsf
         const existFsf = existProc.body.fsf
         replacements.push({
@@ -66,7 +81,8 @@ export function mergeExistingAsfl(
           end: genFsf.span.end,
           text: existing.slice(existFsf.span.start, existFsf.span.end)
         })
-        if (genProc.body.decomposition && existProc.body.decomposition) {
+        }
+        if (genProc.body?.decomposition && existProc.body?.decomposition) {
           const gSpan = spanOf(genProc.body.decomposition)
           const eSpan = spanOf(existProc.body.decomposition)
           if (gSpan && eSpan) {
@@ -77,7 +93,7 @@ export function mergeExistingAsfl(
             })
           }
         }
-        if (genProc.body.comment && existProc.body.comment) {
+        if (genProc.body?.comment && existProc.body?.comment) {
           const gSpan = spanOf(genProc.body.comment)
           const eSpan = spanOf(existProc.body.comment)
           if (gSpan && eSpan) {

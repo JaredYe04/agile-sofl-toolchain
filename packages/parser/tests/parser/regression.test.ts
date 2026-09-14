@@ -3,6 +3,7 @@ import { parse } from '../../src/index'
 import { textOf } from '../../src/ast/nodes'
 import { tokenize } from '../../src/lexer/lexer'
 import { isProgramNode } from '../../src/ast/guards'
+import { loadFixture } from '../helpers/index'
 
 describe('Parser regression - user reported cases', () => {
   it('parses total as identifier in process signature', () => {
@@ -63,5 +64,23 @@ end_function
 end_module`
     const { diagnostics } = parse(source)
     expect(diagnostics.filter((d) => d.severity === 'error').map((d) => d.message)).toEqual([])
+  })
+
+  it('tolerant-parses AI hybrid fixture with Chinese comments and FSF informal English', () => {
+    const source = loadFixture('grammar/hybrid/stock-ai.asfl')
+    const { ast, diagnostics } = parse(source)
+    expect(ast).not.toBeNull()
+    expect(isProgramNode(ast)).toBe(true)
+    if (!isProgramNode(ast)) return
+    expect(ast.modules[0]?.name).toBe('StockTradingSimulator')
+    expect(ast.modules[0]?.processes.length).toBeGreaterThan(0)
+    const order = ast.modules[0]?.types.find((t) => t.name === 'Order')?.typeExpr
+    expect(order?.type).toBe('composed_type')
+    if (order?.type === 'composed_type') {
+      expect(order.fields.some((f) => f.name === 'type')).toBe(true)
+    }
+    const login = ast.modules[0]?.processes.find((p) => p.name === 'UserLoginAndRoleAuth')
+    expect(textOf(login?.body?.comment)).toMatch(/用户登录/)
+    void diagnostics
   })
 })

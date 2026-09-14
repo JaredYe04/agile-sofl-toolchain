@@ -19,9 +19,27 @@ export type ReviewIssue = {
 }
 
 export type InformalPatchPayload = {
+  target?: 'informal' | 'hybrid'
+  mode?: 'crud' | 'source'
   explanation?: string
   operations: Array<Record<string, unknown>>
 }
+
+export type AgentFailedWrite = {
+  fingerprint: string
+  error: string
+  count: number
+  mode?: string
+}
+
+export type SpecAccess = { read: boolean; write: boolean }
+
+export type AgentSpecPermissions = {
+  informal: SpecAccess
+  hybrid: SpecAccess
+}
+
+export type SpecPatchPayload = InformalPatchPayload
 
 export type AgentToolCall = {
   id: string
@@ -42,7 +60,8 @@ export type AgentMessage = {
   clarification?: ClarificationPrompt
   review?: { issues: ReviewIssue[] }
   pending?: boolean
-  resolution?: 'applied' | 'rejected' | 'answered'
+  resolution?: 'applied' | 'rejected' | 'answered' | 'error'
+  toolError?: string
 }
 
 export type AgentSession = {
@@ -58,7 +77,35 @@ export type AgentSession = {
     skillId?: string
     selectedNodeId?: string
     pendingToolCallId?: string
+    permissions?: AgentSpecPermissions
+    promptExtras?: string
+    lastFailedWrite?: AgentFailedWrite
   }
+}
+
+export function defaultAgentPermissions(): AgentSpecPermissions {
+  return {
+    informal: { read: true, write: true },
+    hybrid: { read: true, write: true }
+  }
+}
+
+export function generationAgentPermissions(): AgentSpecPermissions {
+  return {
+    informal: { read: true, write: false },
+    hybrid: { read: true, write: true }
+  }
+}
+
+export function normalizePermissions(raw?: Partial<AgentSpecPermissions> | null): AgentSpecPermissions {
+  const base = defaultAgentPermissions()
+  const informal = { ...base.informal, ...raw?.informal }
+  const hybrid = { ...base.hybrid, ...raw?.hybrid }
+  if (informal.write) informal.read = true
+  if (hybrid.write) hybrid.read = true
+  if (!informal.read) informal.write = false
+  if (!hybrid.read) hybrid.write = false
+  return { informal, hybrid }
 }
 
 export function newId(prefix: string): string {

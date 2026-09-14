@@ -3,9 +3,9 @@ import { computed, provide } from 'vue'
 import { useI18n } from 'vue-i18n'
 import ColumnResizeSplit from '../ui/ColumnResizeSplit.vue'
 import ProjectModuleTree from './ProjectModuleTree.vue'
-import InformalColumn from './InformalColumn.vue'
-import HybridColumn from './HybridColumn.vue'
 import StructureColumn from './StructureColumn.vue'
+import WorkspaceDockLayout from './dock/WorkspaceDockLayout.vue'
+import StudioIcon from '../ui/StudioIcon.vue'
 import { useWorkspaceStore } from '../../stores/workspace'
 import { useVisualModel } from '../../composables/useVisualModel'
 import { useGuiModel } from '../../composables/useGuiModel'
@@ -23,7 +23,8 @@ const gui = useGuiModel(
 )
 provide(GUI_MODEL_KEY, gui)
 
-const collapsed = computed(() => [false, workspace.informalCollapsed, false, false])
+/** [tree, center dock, structure] */
+const collapsed = computed(() => [false, workspace.informalCollapsed, false])
 </script>
 
 <template>
@@ -37,22 +38,23 @@ const collapsed = computed(() => [false, workspace.informalCollapsed, false, fal
       <ProjectModuleTree />
     </template>
     <template #col-1>
-      <InformalColumn />
+      <WorkspaceDockLayout />
     </template>
     <template #bar-1>
       <button
         type="button"
         class="relative z-10 flex h-16 w-5 select-none items-center justify-center rounded-md border border-border-subtle bg-surface-raised text-content-secondary opacity-0 shadow-sm transition-all duration-150 group-hover/resize:opacity-100 hover:bg-surface-overlay hover:text-content-primary"
         :title="workspace.informalCollapsed ? t('workspace.expandInformal') : t('workspace.collapseInformal')"
+        @pointerdown.stop
         @click="workspace.setInformalCollapsed(!workspace.informalCollapsed)"
       >
-        {{ workspace.informalCollapsed ? '>' : '<' }}
+        <StudioIcon
+          :icon="workspace.informalCollapsed ? 'lucide:chevron-right' : 'lucide:chevron-left'"
+          :size="14"
+        />
       </button>
     </template>
     <template #col-2>
-      <HybridColumn />
-    </template>
-    <template #col-3>
       <StructureColumn />
     </template>
   </ColumnResizeSplit>

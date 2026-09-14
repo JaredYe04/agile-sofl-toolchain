@@ -67,15 +67,21 @@ end_module`
 })
 
 describe('Parse error paths', () => {
-  it('returns lex diagnostics for invalid characters', () => {
-    const { ast, diagnostics } = parse('module @bad')
-    expect(ast).toBeNull()
+  it('returns lex diagnostics for invalid characters without dropping other modules', () => {
+    const source = `module SYSTEM_Ok;
+end_module
+module @Maybe;
+end_module`
+    const { ast, diagnostics } = parse(source)
     expect(diagnostics.some((d) => d.code === 'ASFL_LEX_001')).toBe(true)
+    expect(ast?.type).toBe('program')
+    if (ast?.type === 'program') {
+      expect(ast.modules.map((m) => m.name).filter(Boolean)).toContain('Ok')
+    }
   })
 
-  it('parseModule reports lex errors', () => {
-    const { ast, diagnostics } = parseModule('module @bad')
-    expect(ast).toBeNull()
+  it('parseModule reports lex errors without requiring a null AST', () => {
+    const { diagnostics } = parseModule('module @bad;\nend_module')
     expect(diagnostics.length).toBeGreaterThan(0)
   })
 })

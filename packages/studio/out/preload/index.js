@@ -76,6 +76,7 @@ const studio = {
   scanProject: (root) => electron.ipcRenderer.invoke("studio:scan-project", root),
   workspaceScan: (root) => electron.ipcRenderer.invoke("studio:workspace-scan", root),
   moduleHashes: (source) => electron.ipcRenderer.invoke("studio:module-hashes", source),
+  modulesFromSource: (payload) => electron.ipcRenderer.invoke("studio:modules-from-source", JSON.parse(JSON.stringify(payload))),
   projectList: () => electron.ipcRenderer.invoke("studio:project-list"),
   projectCreate: (name) => electron.ipcRenderer.invoke("studio:project-create", name),
   projectCreateFromTemplate: (name, templateId) => electron.ipcRenderer.invoke("studio:project-create-from-template", name, templateId),
@@ -116,13 +117,19 @@ const studio = {
   agentFlagSession: (payload) => electron.ipcRenderer.invoke("studio:agent-flag-session", payload),
   agentChat: (payload) => electron.ipcRenderer.invoke("studio:agent-chat", JSON.parse(JSON.stringify(payload))),
   agentResume: (payload) => electron.ipcRenderer.invoke("studio:agent-resume", JSON.parse(JSON.stringify(payload))),
+  agentAbort: (sessionId) => electron.ipcRenderer.invoke("studio:agent-abort", sessionId),
   onAgentDelta: (cb) => {
     const handler = (_, payload) => cb(payload);
     electron.ipcRenderer.on("studio:agent-delta", handler);
     return () => electron.ipcRenderer.removeListener("studio:agent-delta", handler);
   },
   listHybridGenerators: () => electron.ipcRenderer.invoke("studio:list-hybrid-generators"),
-  generateHybrid: (payload) => electron.ipcRenderer.invoke("studio:generate-hybrid", payload),
+  generateHybrid: (payload) => electron.ipcRenderer.invoke("studio:generate-hybrid", JSON.parse(JSON.stringify(payload))),
+  hybridInventory: (source) => electron.ipcRenderer.invoke("studio:hybrid-inventory", source),
+  patchHybridSpec: (payload) => electron.ipcRenderer.invoke("studio:patch-hybrid-spec", JSON.parse(JSON.stringify(payload))),
+  gitIsRepo: (rootPath) => electron.ipcRenderer.invoke("studio:git-is-repo", rootPath),
+  gitStatus: (rootPath) => electron.ipcRenderer.invoke("studio:git-status", rootPath),
+  gitInit: (rootPath) => electron.ipcRenderer.invoke("studio:git-init", rootPath),
   buildGuiModel: (payload) => electron.ipcRenderer.invoke("studio:build-gui-model", payload),
   patchGui: (payload) => electron.ipcRenderer.invoke("studio:patch-gui", payload),
   formatGui: (source) => electron.ipcRenderer.invoke("studio:format-gui", source),

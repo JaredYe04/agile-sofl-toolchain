@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onUnmounted } from 'vue'
 
 const props = withDefaults(
   defineProps<{
@@ -13,48 +13,101 @@ const props = withDefaults(
 const emit = defineEmits<{ 'update:widths': [value: number[]] }>()
 
 const container = ref<HTMLElement | null>(null)
-const dragging = ref<number | null>(null)
 
+type DragState = {
+  index: number
+  pointerId: number
+  startX: number
+  startWidths: number[]
+  pairTotal: number
+  total: number
+  available: number
+}
+
+const drag = ref<DragState | null>(null)
 const count = computed(() => props.widths.length)
 
-function visibleWidth(index: number): number {
-  if (props.collapsed[index]) return 0
+function isCollapsed(index: number): boolean {
+  return Boolean(props.collapsed[index])
+}
+
+function visibleWeight(index: number): number {
+  if (isCollapsed(index)) return 0
   return props.widths[index] ?? 0
 }
 
-function onMouseDown(index: number, e: MouseEvent): void {
-  dragging.value = index
-  e.preventDefault()
+function totalWeight(widths: number[]): number {
+  return widths.reduce((sum, w, idx) => sum + (isCollapsed(idx) ? 0 : w), 0)
 }
 
-function onMouseMove(e: MouseEvent): void {
-  const i = dragging.value
-  if (i == null || !container.value) return
-  const rect = container.value.getBoundingClientRect()
-  const x = (e.clientX - rect.left) / rect.width
-  const next = [...props.widths]
-  const left = next.slice(0, i + 1).reduce((a, b, idx) => a + (props.collapsed[idx] ? 0 : b), 0)
-  const delta = x - left
+function gutterWidthPx(): number {
+  const el = container.value
+  if (!el) return 12
+  const gutter = el.querySelector<HTMLElement>('[data-resize-gutter]')
+  return gutter?.getBoundingClientRect().width || 12
+}
+
+function availableWidth(): number {
+  const el = container.value
+  if (!el) return 0
+  const gutters = Math.max(0, count.value - 1) * gutterWidthPx()
+  return Math.max(0, el.getBoundingClientRect().width - gutters)
+}
+
+function applyDelta(clientX: number): void {
+  const d = drag.value
+  if (!d || d.available <= 0 || d.total <= 0) return
+
+  const deltaWeight = ((clientX - d.startX) / d.available) * d.total
   const min = props.min
-  const a = (next[i] ?? 0) + delta
-  const b = (next[i + 1] ?? 0) - delta
-  if (a < min || b < min) return
-  next[i] = a
-  next[i + 1] = b
+  let nextLeft = (d.startWidths[d.index] ?? 0) + deltaWeight
+  nextLeft = Math.max(min, Math.min(d.pairTotal - min, nextLeft))
+
+  const next = [...d.startWidths]
+  next[d.index] = nextLeft
+  next[d.index + 1] = d.pairTotal - nextLeft
   emit('update:widths', next)
 }
 
-function onMouseUp(): void {
-  dragging.value = null
+function onPointerDown(index: number, e: PointerEvent): void {
+  if (e.button !== 0 || !container.value) return
+  e.preventDefault()
+  e.stopPropagation()
+
+  const startWidths = [...props.widths]
+  drag.value = {
+    index,
+    pointerId: e.pointerId,
+    startX: e.clientX,
+    startWidths,
+    pairTotal: (startWidths[index] ?? 0) + (startWidths[index + 1] ?? 0),
+    total: totalWeight(startWidths),
+    available: availableWidth()
+  }
+
+  const target = e.currentTarget as HTMLElement
+  target.setPointerCapture(e.pointerId)
+  document.body.style.cursor = 'col-resize'
+  document.body.style.userSelect = 'none'
 }
 
-onMounted(() => {
-  window.addEventListener('mousemove', onMouseMove)
-  window.addEventListener('mouseup', onMouseUp)
-})
+function onPointerMove(e: PointerEvent): void {
+  if (!drag.value || e.pointerId !== drag.value.pointerId) return
+  applyDelta(e.clientX)
+}
+
+function endDrag(e: PointerEvent): void {
+  if (!drag.value || e.pointerId !== drag.value.pointerId) return
+  const target = e.currentTarget as HTMLElement
+  if (target.hasPointerCapture(e.pointerId)) target.releasePointerCapture(e.pointerId)
+  drag.value = null
+  document.body.style.cursor = ''
+  document.body.style.userSelect = ''
+}
+
 onUnmounted(() => {
-  window.removeEventListener('mousemove', onMouseMove)
-  window.removeEventListener('mouseup', onMouseUp)
+  document.body.style.cursor = ''
+  document.body.style.userSelect = ''
 })
 </script>
 
@@ -64,20 +117,28 @@ onUnmounted(() => {
       <div
         class="relative min-h-0 min-w-0 overflow-hidden"
         :style="
-          collapsed[i - 1]
-            ? { width: '0px', flex: '0 0 0px' }
-            : { width: `${visibleWidth(i - 1) * 100}%`, flex: '0 0 auto' }
+          isCollapsed(i - 1)
+            ? { flex: '0 0 0px', width: '0px', minWidth: '0px' }
+            : { flex: `${visibleWeight(i - 1)} 0 0px`, minWidth: '0px' }
         "
       >
         <slot :name="`col-${i - 1}`" />
       </div>
       <div
         v-if="i < count"
-        class="group/resize relative z-20 flex w-3 shrink-0 items-center justify-center"
+        data-resize-gutter
+        class="group/resize relative z-20 flex w-3 shrink-0 touch-none items-center justify-center"
       >
         <div
-          class="absolute inset-y-0 left-1/2 w-1 -translate-x-1/2 cursor-col-resize bg-border-subtle transition-colors duration-150 group-hover/resize:bg-accent/40"
-          @mousedown="onMouseDown(i - 1, $event)"
+          class="absolute inset-0 z-[1] cursor-col-resize"
+          @pointerdown="onPointerDown(i - 1, $event)"
+          @pointermove="onPointerMove"
+          @pointerup="endDrag"
+          @pointercancel="endDrag"
+        />
+        <div
+          class="pointer-events-none absolute inset-y-0 left-1/2 z-[2] w-1 -translate-x-1/2 bg-border-subtle transition-colors duration-150 group-hover/resize:bg-accent/40"
+          :class="{ 'bg-accent/40': drag?.index === i - 1 }"
         />
         <slot :name="`bar-${i - 1}`" />
       </div>

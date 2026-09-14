@@ -1,4 +1,4 @@
-import type { AspecDocument, InformalModule, RefineOptions, RefineResult, TraceLink, TraceabilityGraph } from '../model.js'
+import type { AspecDocument, InformalModule, InformalProcess, RefineOptions, RefineResult, TraceLink, TraceabilityGraph } from '../model.js'
 import { resolveModuleParents } from '../resolveParents.js'
 import { contentHash } from '../buildInformalModel.js'
 import {
@@ -6,7 +6,6 @@ import {
   buildFunctionBody,
   buildFunctionFsf,
   buildFunctionSignature,
-  buildProcessFsf,
   buildProcessSignature,
   mapTypeHint,
   shouldRenderFunctionFsf
@@ -14,6 +13,41 @@ import {
 import { mergeExistingAsfl } from './mergeAsfl.js'
 import { buildGuiBlockForRefine } from './guiBlockBuilder.js'
 import type { AspecDiagnostic } from '../model.js'
+
+/** Informal English is allowed in pre/post; strip characters the clause lexer cannot keep. */
+export function asflSafeClause(text: string): string {
+  const cleaned = text
+    .replace(/[''`]/g, '')
+    .replace(/[.;!?]+$/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+  return cleaned || 'true'
+}
+
+export function asflSafeInvariant(text: string): string {
+  const t = asflSafeClause(text)
+  if (/^(forall|exists|forevery|forsome|true|false|not)\b/i.test(t) || /[=<>]|inset|notin|\|/.test(t)) {
+    return t
+  }
+  return 'true'
+}
+
+function buildProcessPost(proc: InformalProcess): string {
+  if (proc.postconditions?.trim()) return asflSafeClause(proc.postconditions)
+  const scens = proc.scenarios ?? []
+  const normal = scens.filter((s) => !s.condition.toLowerCase().includes('other'))
+  if (normal.length === 0) return 'true'
+  if (normal.length === 1) return asflSafeClause(normal[0]!.outcome)
+  return asflSafeClause(
+    normal
+      .map((s, i) => {
+        if (i === 0) return `if ${s.condition} then ${s.outcome}`
+        if (i === normal.length - 1) return `else ${s.outcome}`
+        return `else if ${s.condition} then ${s.outcome}`
+      })
+      .join(' ')
+  )
+}
 
 function moduleHeader(mod: InformalModule): string {
   if (mod.parentModuleName) {
@@ -56,7 +90,7 @@ function renderModule(
   if (mod.invariants?.length) {
     lines.push('inv')
     for (const inv of mod.invariants) {
-      lines.push(`    ${inv.textHint?.trim() || 'true'};`)
+      lines.push(`    ${asflSafeInvariant(inv.textHint?.trim() || 'true')};`)
     }
   }
 
@@ -66,13 +100,19 @@ function renderModule(
 
   for (const proc of mod.processes ?? []) {
     lines.push(`process ${proc.name} ${buildProcessSignature(proc)}`)
-    if (!skeletonOnly) {
-      lines.push('    FSF :')
-      lines.push('    ' + buildProcessFsf(proc).split('\n').join('\n    '))
-    } else {
-      lines.push('    FSF :')
-      lines.push('    others && true')
+    const extNames = (proc as { ext?: Array<{ access: string; name: string; typeHint?: string }> }).ext
+    if (!skeletonOnly && Array.isArray(extNames) && extNames.length) {
+      lines.push('    ext')
+      for (const e of extNames) {
+        lines.push(`    ${e.access} ${e.name}${e.typeHint ? `: ${e.typeHint}` : ''}`)
+      }
     }
+    const pre = asflSafeClause(proc.preconditions?.trim() || 'true')
+    const post = buildProcessPost(proc)
+    lines.push('    pre')
+    lines.push(`        ${skeletonOnly ? 'true' : pre}`)
+    lines.push('    post')
+    lines.push(`        ${skeletonOnly ? 'true' : post}`)
     if (proc.decomposition?.trim()) {
       lines.push(`    decom: ${proc.decomposition.trim()}`)
     }

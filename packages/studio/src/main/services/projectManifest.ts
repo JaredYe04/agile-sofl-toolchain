@@ -166,12 +166,16 @@ screen Next;
 end_screen;
 end_gui;
 process OpenNext ()
-    FSF :
-    others && current_view = 1
+    pre
+        true
+    post
+        current_view = 1
 end_process
 process OpenHome ()
-    FSF :
-    others && current_view = 0
+    pre
+        true
+    post
+        current_view = 0
 end_process
 end_module
 `,

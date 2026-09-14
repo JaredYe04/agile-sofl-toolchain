@@ -78,6 +78,36 @@ end_module`
     }
   })
 
+  it('parses bare enum literals without angle brackets', () => {
+    const source = `module SYSTEM_T;
+type Role = {Investor, Admin};
+end_module`
+    const ast = expectParseOk(source, parse)
+    if (isProgramNode(ast)) {
+      const t = ast.modules[0].types[0].typeExpr
+      expect(t.type).toBe('enum_type')
+      if (t.type === 'enum_type') expect(t.values).toEqual(['Investor', 'Admin'])
+    }
+  })
+
+  it('parses composed fields with commas and keyword field names', () => {
+    const source = `module SYSTEM_T;
+type Order = composed of
+  orderId: string,
+  type: string,
+  role: nat
+end;
+end_module`
+    const ast = expectParseOk(source, parse)
+    if (isProgramNode(ast)) {
+      const t = ast.modules[0].types[0].typeExpr
+      expect(t.type).toBe('composed_type')
+      if (t.type === 'composed_type') {
+        expect(t.fields.map((f) => f.name)).toEqual(['orderId', 'type', 'role'])
+      }
+    }
+  })
+
   it('parses parent type reference', () => {
     const source = `module SYSTEM_T;
 type Local / Parent.Base = nat;

@@ -46,7 +46,14 @@
   --gui-timeline-read: #9fbbe0;
   --gui-timeline-edit: #c0a8dd;
   --gui-timeline-done: #c08532;
+  --git-modified: #e2c08d;
+  --git-added: #73c991;
+  --git-deleted: #c74e39;
 }
+
+.git-status-modified { color: var(--git-modified) !important; }
+.git-status-added, .git-status-untracked, .git-status-renamed { color: var(--git-added) !important; }
+.git-status-deleted, .git-status-conflicted { color: var(--git-deleted) !important; }
 
 .dark {
   --accent-raw: #60a5fa;
@@ -204,11 +211,13 @@ select:focus-visible {
 }
 
 .agent-bubble {
+  max-width: 100%;
   border: 1px solid var(--border-subtle);
   transition: border-color 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
   user-select: text !important;
   -webkit-user-select: text !important;
   box-shadow: 0 1px 2px rgba(21, 36, 34, 0.04);
+  overflow-wrap: anywhere;
 }
 
 .agent-bubble:hover {

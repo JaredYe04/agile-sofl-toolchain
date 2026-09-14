@@ -15,7 +15,8 @@ import type {
   ConstDeclNode,
   TypeDeclNode,
   VarDeclNode,
-  InvariantNode
+  InvariantNode,
+  ConditionClauseNode
 } from './nodes'
 
 export function isProgramNode(n: unknown): n is ProgramNode {
@@ -68,6 +69,10 @@ export function isAtomicPredicateNode(n: unknown): n is AtomicPredicateNode {
     'call', 'field_access', 'index_access', 'if_expr', 'let_expr', 'case_expr',
     'set_expr', 'seq_expr', 'map_expr', 'mk_expr', 'modify_expr', 'paren_expr'
   ].includes(t)
+}
+
+export function isConditionClauseNode(n: unknown): n is ConditionClauseNode {
+  return typeof n === 'object' && n !== null && (n as ConditionClauseNode).type === 'condition_clause'
 }
 
 export function isFsfSpecNode(n: unknown): n is FsfSpecNode {

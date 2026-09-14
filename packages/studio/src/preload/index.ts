@@ -11,6 +11,8 @@ export type {
   IndexedProject,
   ProjectFileInfo,
   ProjectModuleInfo,
+  ProjectModuleMember,
+  ProjectModuleMemberKind,
   ProjectUiState,
   WorkspaceScanPayload
 } from '../shared/projectTypes'
@@ -163,6 +165,10 @@ const studio = {
     ipcRenderer.invoke('studio:workspace-scan', root) as Promise<WorkspaceScanPayload>,
   moduleHashes: (source: string) =>
     ipcRenderer.invoke('studio:module-hashes', source) as Promise<Record<string, string>>,
+  modulesFromSource: (payload: { source: string; filePath: string; guiModule?: string }) =>
+    ipcRenderer.invoke('studio:modules-from-source', JSON.parse(JSON.stringify(payload))) as Promise<
+      ProjectModuleInfo[]
+    >,
   projectList: () => ipcRenderer.invoke('studio:project-list') as Promise<IndexedProject[]>,
   projectCreate: (name: string) =>
     ipcRenderer.invoke('studio:project-create', name) as Promise<{
@@ -254,8 +260,14 @@ const studio = {
     ipcRenderer.invoke('studio:agent-skills') as Promise<Array<{ id: string; name: string }>>,
   agentListSessions: (projectRoot: string) =>
     ipcRenderer.invoke('studio:agent-list-sessions', projectRoot) as Promise<AgentSessionPayload[]>,
-  agentCreateSession: (payload: { projectRoot: string; moduleId?: string; title?: string }) =>
-    ipcRenderer.invoke('studio:agent-create-session', payload) as Promise<AgentSessionPayload>,
+  agentCreateSession: (payload: {
+    projectRoot: string
+    moduleId?: string
+    title?: string
+    skillId?: string
+    permissions?: AgentSpecPermissionsPayload
+    promptExtras?: string
+  }) => ipcRenderer.invoke('studio:agent-create-session', payload) as Promise<AgentSessionPayload>,
   agentRenameSession: (payload: { projectRoot: string; id: string; title: string }) =>
     ipcRenderer.invoke('studio:agent-rename-session', payload) as Promise<AgentSessionPayload | null>,
   agentDeleteSession: (payload: { projectRoot: string; id: string }) =>
@@ -299,6 +311,8 @@ const studio = {
     continueTurn?: boolean
   }) =>
     ipcRenderer.invoke('studio:agent-resume', JSON.parse(JSON.stringify(payload))) as Promise<AgentSessionPayload | null>,
+  agentAbort: (sessionId: string) =>
+    ipcRenderer.invoke('studio:agent-abort', sessionId) as Promise<{ ok: boolean }>,
   onAgentDelta: (
     cb: (payload: {
       sessionId: string
@@ -322,18 +336,57 @@ const studio = {
     return () => ipcRenderer.removeListener('studio:agent-delta', handler)
   },
   listHybridGenerators: () =>
-    ipcRenderer.invoke('studio:list-hybrid-generators') as Promise<Array<{ id: string; name: string }>>,
+    ipcRenderer.invoke('studio:list-hybrid-generators') as Promise<
+      Array<{ id: string; name: string; runtime?: 'batch' | 'agent' }>
+    >,
   generateHybrid: (payload: {
     source: string
     generatorId?: string
     projectName?: string
     projectRoot?: string
     existingAsfl?: string
+    scope?: 'hybrid' | 'module' | 'process' | 'scenario'
+    moduleName?: string
+    processName?: string
+    selectedNodeIds?: string[]
+    specification?: unknown
+    params?: HybridGenerateParamsPayload
   }) =>
-    ipcRenderer.invoke('studio:generate-hybrid', payload) as Promise<
-      | { ok: true; asflText: string; traceLinks: unknown[]; warnings: Array<{ code: string; message: string }> }
+    ipcRenderer.invoke('studio:generate-hybrid', JSON.parse(JSON.stringify(payload))) as Promise<
+      | {
+          ok: true
+          kind?: 'document'
+          asflText: string
+          traceLinks: unknown[]
+          warnings: Array<{ code: string; message: string }>
+          specification?: unknown
+          changes?: Array<{ id: string; kind: string; name: string; summary: string; selected?: boolean }>
+        }
+      | {
+          ok: true
+          kind: 'agent-session'
+          bootstrap: HybridAgentBootstrapPayload
+        }
       | { ok: false; error: string }
     >,
+  hybridInventory: (source: string) =>
+    ipcRenderer.invoke('studio:hybrid-inventory', source) as Promise<{ inventory: string }>,
+  patchHybridSpec: (payload: { source: string; patch: InformalPatchPayload }) =>
+    ipcRenderer.invoke('studio:patch-hybrid-spec', JSON.parse(JSON.stringify(payload))) as Promise<{
+      content: string
+      error?: string
+    }>,
+  gitIsRepo: (rootPath: string) => ipcRenderer.invoke('studio:git-is-repo', rootPath) as Promise<boolean>,
+  gitStatus: (rootPath: string) =>
+    ipcRenderer.invoke('studio:git-status', rootPath) as Promise<{
+      isRepo: boolean
+      files: Array<{
+        path: string
+        status: 'untracked' | 'added' | 'modified' | 'deleted' | 'conflicted' | 'ignored' | 'renamed'
+      }>
+    }>,
+  gitInit: (rootPath: string) =>
+    ipcRenderer.invoke('studio:git-init', rootPath) as Promise<{ ok: boolean; error?: string }>,
   buildGuiModel: (payload: { source: string; informalSource?: string }) =>
     ipcRenderer.invoke('studio:build-gui-model', payload) as Promise<GuiModelPayload>,
   patchGui: (payload: PatchGuiPayload & { source: string }) =>
@@ -366,6 +419,7 @@ export type VisualDeclarationItem = {
   name: string
   text: string
   span: { start: number; end: number; line: number; column: number }
+  fields?: Array<{ name: string; type: string }>
 }
 
 export type VisualFunctionItem = VisualDeclarationItem & {
@@ -407,6 +461,14 @@ export type VisualModuleProcess = {
   outputs?: ParamGroupItem[]
   ext?: ExtVarItem[]
   fsfFormal?: 'formal' | 'semi-formal' | null
+  pre?: string
+  post?: string
+  hasPre?: boolean
+  hasPost?: boolean
+  scenarioCount?: number
+  exceptionalCount?: number
+  formalizationStatus?: 'semi-formal' | 'formal' | 'mixed'
+  fsfSource?: 'derived' | 'editor-internal-dsl'
 }
 
 export type VisualGuiWidget = {
@@ -530,9 +592,9 @@ export type PatchDeclarationPayload = {
 
 export type PatchDocumentPayload = {
   source: string
-  kind: 'fsf' | 'comment' | 'decom'
+  kind: 'fsf' | 'comment' | 'decom' | 'pre' | 'post'
   processName: string
-  scenarios?: Array<{ id: string; test: string; def: string; span: unknown }>
+  scenarios?: Array<{ id: string; test: string; def: string; span: unknown; kind?: string; guard?: string; definingCondition?: string }>
   others?: string
   text?: string
 }
@@ -686,17 +748,52 @@ export type InformalParsePayload = {
 }
 
 export type InformalPatchPayload = {
+  target?: 'informal' | 'hybrid'
+  mode?: 'crud' | 'source'
   explanation?: string
   operations: Array<Record<string, unknown>>
+}
+
+export type AgentSpecPermissionsPayload = {
+  informal: { read: boolean; write: boolean }
+  hybrid: { read: boolean; write: boolean }
+}
+
+export type HybridGenerateParamsPayload = {
+  stages: {
+    hybridSpec: boolean
+    modules: boolean
+    processes: boolean
+    scenarios: boolean
+    typesVars?: boolean
+    invariants?: boolean
+    gui?: boolean
+  }
+  detailLevel: 0 | 1 | 2 | 3 | 4
+  strategy: 'ask' | 'merge' | 'rebuild'
+  inferUnstatedDesign: boolean
+  moduleSplit: 'ask' | 'single-system' | 'cluster-by-function'
+  locale?: 'zh-CN' | 'en'
+}
+
+export type HybridAgentBootstrapPayload = {
+  skillId: string
+  title: string
+  initialUserMessage: string
+  promptExtras: string
+  permissions: AgentSpecPermissionsPayload
 }
 
 export type AgentTurnContextPayload = {
   projectName?: string
   moduleId?: string
   informalMarkdown: string
+  hybridAsfl?: string
   selectedNodeId?: string
   selectedNodeSummary?: string
   skillId?: string
+  permissions?: AgentSpecPermissionsPayload
+  promptExtras?: string
 }
 
 export type AgentSessionPayload = {
@@ -727,9 +824,17 @@ export type AgentSessionPayload = {
     }
     review?: { issues: Array<{ dimension: string; message: string; nodeId?: string }> }
     pending?: boolean
-    resolution?: 'applied' | 'rejected' | 'answered'
+    resolution?: 'applied' | 'rejected' | 'answered' | 'error'
+    toolError?: string
   }>
-  context: { skillId?: string; selectedNodeId?: string; pendingToolCallId?: string }
+  context: {
+    skillId?: string
+    selectedNodeId?: string
+    pendingToolCallId?: string
+    permissions?: AgentSpecPermissionsPayload
+    promptExtras?: string
+    lastFailedWrite?: { fingerprint: string; error: string; count: number; mode?: string }
+  }
 }
 
 export type InformalModelPayload = {

@@ -13,10 +13,11 @@ export function nextId(prefix: string): string {
 }
 
 export function processStubTemplate(name: string, comment?: string): string {
-  const note = comment?.trim() ? `comment\n  ${comment.trim()}\nend_comment\n` : ''
+  const note = comment?.trim() ? `    comment: ${comment.trim()}\n` : ''
   return `process ${name} (x: nat) ok: nat
-${note}FSF :
-x > 0 && ok = 1 ||
-others && ok = 0
-end_process`
+    pre
+        true
+    post
+        ok = 1
+${note}end_process`
 }

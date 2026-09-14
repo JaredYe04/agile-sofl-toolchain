@@ -17,6 +17,42 @@ describe('Parser - modules', () => {
     }
   })
 
+  it('keeps already-parsed modules when a later character is not a token', () => {
+    const source = `module SYSTEM_Keep;
+end_module
+module Next;
+  process P (x: nat) ok: nat
+    pre
+        user is logged in?
+    post
+        ok = 1
+  end_process
+end_module`
+    const { ast, diagnostics } = parse(source)
+    expect(diagnostics.some((d) => d.code === 'ASFL_LEX_001')).toBe(true)
+    expect(ast?.type).toBe('program')
+    if (ast?.type === 'program') {
+      expect(ast.modules.map((m) => m.name)).toEqual(expect.arrayContaining(['Keep', 'Next']))
+    }
+  })
+
+  it('empty source does not invent a SYSTEM_ module', () => {
+    const { ast } = parse('')
+    const mods = ast?.type === 'program' ? ast.modules : []
+    expect(mods.every((m) => m.name.trim().length > 0 && m.name !== 'SYSTEM_')).toBe(true)
+  })
+
+  it('parses system as a module keyword alias', () => {
+    const source = `system SYSTEM_App;
+type T = nat;
+end_module`
+    const ast = expectParseOk(source, parse)
+    if (isProgramNode(ast)) {
+      expect(ast.modules[0].isSystem).toBe(true)
+      expect(ast.modules[0].name).toBe('App')
+    }
+  })
+
   it('parseModule parses single module', () => {
     const source = `module Foo;
 var x: nat;
@@ -52,6 +88,36 @@ end_module`
     if (isProgramNode(ast)) {
       expect(ast.modules).toHaveLength(2)
       expect(ast.modules[1].parent?.name).toBe('R')
+    }
+  })
+
+  it('parses module named gui (keyword as name)', () => {
+    const source = `module SYSTEM_Root;
+end_module;
+module gui / Root;
+end_module`
+    const ast = expectParseOk(source, parse)
+    if (isProgramNode(ast)) {
+      expect(ast.modules.map((m) => m.name.toLowerCase())).toContain('gui')
+    }
+  })
+
+  it('skips -- comments and does not invent empty modules', () => {
+    const source = `module SYSTEM_Root;
+type
+    Account = composed of userId: string role: string end;
+inv
+    -- funds must stay positive
+    true;
+end_module;
+module GUI;
+-- screens added later
+end_module.`
+    const { ast } = parse(source)
+    expect(isProgramNode(ast)).toBe(true)
+    if (isProgramNode(ast)) {
+      expect(ast.modules.every((m) => m.name.trim().length > 0)).toBe(true)
+      expect(ast.modules.map((m) => m.name)).toEqual(['Root', 'GUI'])
     }
   })
 })

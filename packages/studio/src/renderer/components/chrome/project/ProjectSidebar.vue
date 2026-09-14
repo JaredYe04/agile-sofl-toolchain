@@ -14,6 +14,7 @@ import ProjectPairCard from './ProjectPairCard.vue'
 import ProjectFileRow from './ProjectFileRow.vue'
 import ProjectContextMenu from './ProjectContextMenu.vue'
 import DropdownMenu, { type MenuItem } from '../../ui/DropdownMenu.vue'
+import { contextMenuPoint } from '../../../lib/contextMenuPoint'
 
 const { t } = useI18n()
 const project = useProjectStore()
@@ -80,15 +81,18 @@ async function onOpenFolder(): Promise<void> {
 }
 
 function onPanelContext(e: MouseEvent): void {
-  showMenu(e.clientX, e.clientY, { kind: 'panel' })
+  const pt = contextMenuPoint(e)
+  showMenu(pt.x, pt.y, { kind: 'panel' })
 }
 
 function onPairContext(e: MouseEvent, pair: ProjectPair, path?: string): void {
-  showMenu(e.clientX, e.clientY, { kind: 'pair', pair, path })
+  const pt = contextMenuPoint(e)
+  showMenu(pt.x, pt.y, { kind: 'pair', pair, path })
 }
 
 function onFileContext(e: MouseEvent, path: string): void {
-  showMenu(e.clientX, e.clientY, { kind: 'file', path })
+  const pt = contextMenuPoint(e)
+  showMenu(pt.x, pt.y, { kind: 'file', path })
 }
 
 async function handleMenuAction(action: ProjectMenuAction): Promise<void> {

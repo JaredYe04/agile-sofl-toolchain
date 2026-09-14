@@ -1,10 +1,26 @@
 # FSF 规约
 
-**FSF**（Formal / Semi-Formal specification）描述过程/函数行为：将 **Test**（场景条件）与 **Def**（输出约束）组成场景列表，并以 `others` 覆盖剩余输入。本文说明语法、形式/半形式判定，及 `ext`、`decom`、`comment`。
+**FSF**（Functional Scenario Form）是由过程 **pre/post** 推导出的语义形式，**不是**与 SOFL 并列的源语言。
+
+文献定义：若过程 `S(Siv, Sov)[Spre, Spost]` 且
+
+`Spost = (G1 ∧ D1) ∨ … ∨ (Gn ∧ Dn)`
+
+则 FSF 为 `(Spre ∧ G1 ∧ D1) ∨ … ∨ (Spre ∧ Gn ∧ Dn)`。每个 `Spre ∧ Gi ∧ Di` 是一个 Functional Scenario。`¬Spre` 为 exceptional scenario。
+
+Hybrid 的**主文本语言**是半形式/形式 SOFL（`pre` / `post`）。`FSF :` 仅作为 Agile-SOFL Editor **内部 DSL** 保留，用于兼容旧文件与可选展示，**不能**冒充刘老师文献中的“标准 FSF 语法”。
+
+推导路径：
+
+```text
+Process pre/post → Predicate AST → FSF Deriver → Functional Scenario Form
+```
+
+LLM 负责识别需求与候选 pre/post；**不要**让 LLM 做 FSF 数学推导。
 
 ---
 
-## 1. 语法结构
+## 1. 编辑器内部 DSL（兼容旧 `.asfl`）
 
 ```ebnf
 fsfSpec       ::= fsfExpression [ "||" "others" "&&" predicate ]

@@ -42,8 +42,29 @@ describe('Lexer boundaries', () => {
     expect(r.tokens.map((t) => t.image)).toEqual(['still', 'comment', '*', '/', 'module'])
   })
 
-  it('reports no lex errors for banking snippet', () => {
-    const r = tokenize('forall[c: customers] | c.balance > 0')
+  it('tokenizes // line comments as skipped', () => {
+    const r = tokenize('// note\nmodule Foo')
     expect(r.errors).toHaveLength(0)
+    expect(r.tokens.map((t) => t.image)).toEqual(['module', 'Foo'])
+  })
+
+  it('tokenizes -- line comments as skipped', () => {
+    const r = tokenize('-- covers fn-login\nmodule Foo')
+    expect(r.errors).toHaveLength(0)
+    expect(r.tokens.map((t) => t.image)).toEqual(['module', 'Foo'])
+  })
+
+  it('tokenizes Unicode identifiers as a single Identifier', () => {
+    const r = tokenize('aspec_fn_用户登录与角色鉴权')
+    expect(r.errors).toHaveLength(0)
+    expect(r.tokens).toHaveLength(1)
+    expect(r.tokens[0]?.tokenType.name).toBe('Identifier')
+    expect(r.tokens[0]?.image).toBe('aspec_fn_用户登录与角色鉴权')
+  })
+
+  it('tokenizes system as a keyword', () => {
+    const r = tokenize('system SYSTEM_App')
+    expect(r.tokens[0]?.tokenType.name).toBe('SystemKw')
+    expect(r.tokens[0]?.image).toBe('system')
   })
 })

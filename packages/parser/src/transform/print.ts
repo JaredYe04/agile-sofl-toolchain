@@ -13,9 +13,11 @@ import type {
   ProcessNode,
   FunctionNode,
   ParamGroupNode,
-  ExtVarNode
+  ExtVarNode,
+  ConditionClauseNode
 } from '../ast/nodes.js'
 import { textOf } from '../ast/nodes.js'
+import { printConditionText } from '../prepost/clause.js'
 
 const INDENT = '    '
 
@@ -250,6 +252,15 @@ function printExtLine(ext: ExtVarNode): string {
   return `${ext.access} ${ext.name}${ext.typeExpr ? `: ${printType(ext.typeExpr)}` : ''}`
 }
 
+function printConditionBlock(writer: IndentWriter, level: number, keyword: string, clause: ConditionClauseNode): void {
+  writer.line(level, keyword)
+  const text = printConditionText(clause)
+  if (!text) return
+  for (const line of text.split(/\n/)) {
+    writer.line(level, line.trim() ? line.trim() : '')
+  }
+}
+
 function printProcess(writer: IndentWriter, level: number, p: ProcessNode): void {
   if (p.alias) {
     writer.line(
@@ -271,7 +282,13 @@ function printProcess(writer: IndentWriter, level: number, p: ProcessNode): void
         writer.line(bodyLevel, printExtLine(ext))
       }
     }
-    if (p.body.fsf) {
+    if (p.body.pre) {
+      printConditionBlock(writer, bodyLevel, 'pre', p.body.pre)
+    }
+    if (p.body.post) {
+      printConditionBlock(writer, bodyLevel, 'post', p.body.post)
+    }
+    if (p.body.fsf && !p.body.pre && !p.body.post) {
       printFsf(writer, bodyLevel, p.body.fsf)
     }
     if (p.body.decomposition) {

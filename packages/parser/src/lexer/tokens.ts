@@ -4,6 +4,9 @@ import { createToken, Lexer, TokenType } from 'chevrotain'
 function kw(word: string): RegExp {
   return new RegExp(`\\b${word}\\b`)
 }
+
+/** Category for identifiers and keywords usable as composed-of field names (`type: string`). */
+export const NameLike = createToken({ name: 'NameLike', pattern: Lexer.NA })
 export const Others = createToken({ name: 'Others', pattern: kw('others') })
 export const EndModule = createToken({ name: 'EndModule', pattern: kw('end_module') })
 export const EndGui = createToken({ name: 'EndGui', pattern: kw('end_gui') })
@@ -17,23 +20,26 @@ export const Undefined = createToken({ name: 'Undefined', pattern: kw('undefined
 export const Forevery = createToken({ name: 'Forevery', pattern: kw('forevery') })
 export const Forsome = createToken({ name: 'Forsome', pattern: kw('forsome') })
 export const Default = createToken({ name: 'Default', pattern: kw('default') })
-export const Comment = createToken({ name: 'Comment', pattern: kw('comment') })
-export const Decom = createToken({ name: 'Decom', pattern: kw('decom') })
+export const Comment = createToken({ name: 'Comment', pattern: kw('comment'), categories: [NameLike] })
+export const Decom = createToken({ name: 'Decom', pattern: kw('decom'), categories: [NameLike] })
 export const Module = createToken({ name: 'Module', pattern: kw('module') })
-export const Process = createToken({ name: 'Process', pattern: kw('process') })
-export const Function = createToken({ name: 'Function', pattern: kw('function') })
-export const Const = createToken({ name: 'Const', pattern: kw('const') })
-export const Type = createToken({ name: 'Type', pattern: kw('type') })
-export const Var = createToken({ name: 'Var', pattern: kw('var') })
-export const Inv = createToken({ name: 'Inv', pattern: kw('inv') })
+export const SystemKw = createToken({ name: 'SystemKw', pattern: kw('system') })
+export const Process = createToken({ name: 'Process', pattern: kw('process'), categories: [NameLike] })
+export const Function = createToken({ name: 'Function', pattern: kw('function'), categories: [NameLike] })
+export const Const = createToken({ name: 'Const', pattern: kw('const'), categories: [NameLike] })
+export const Type = createToken({ name: 'Type', pattern: kw('type'), categories: [NameLike] })
+export const Var = createToken({ name: 'Var', pattern: kw('var'), categories: [NameLike] })
+export const Inv = createToken({ name: 'Inv', pattern: kw('inv'), categories: [NameLike] })
 export const Gui = createToken({ name: 'Gui', pattern: kw('gui') })
 export const Screen = createToken({ name: 'Screen', pattern: kw('screen') })
 export const Triggers = createToken({ name: 'Triggers', pattern: kw('triggers') })
 export const TextInput = createToken({ name: 'TextInput', pattern: /\btext-input\b/ })
-export const Ext = createToken({ name: 'Ext', pattern: kw('ext') })
+export const Ext = createToken({ name: 'Ext', pattern: kw('ext'), categories: [NameLike] })
 export const Init = createToken({ name: 'Init', pattern: /\bInit\b/ })
 export const Equal = createToken({ name: 'Equal', pattern: kw('equal') })
 export const Fsf = createToken({ name: 'Fsf', pattern: /\bFSF\b/ })
+export const Pre = createToken({ name: 'Pre', pattern: kw('pre'), categories: [NameLike] })
+export const Post = createToken({ name: 'Post', pattern: kw('post'), categories: [NameLike] })
 export const Forall = createToken({ name: 'Forall', pattern: kw('forall') })
 export const Exists = createToken({ name: 'Exists', pattern: kw('exists') })
 export const In = createToken({ name: 'In', pattern: kw('in') })
@@ -51,11 +57,11 @@ export const End = createToken({ name: 'End', pattern: kw('end') })
 export const To = createToken({ name: 'To', pattern: kw('to') })
 export const If = createToken({ name: 'If', pattern: kw('if') })
 export const Let = createToken({ name: 'Let', pattern: kw('let') })
-export const Nat = createToken({ name: 'Nat', pattern: kw('nat') })
-export const Int = createToken({ name: 'Int', pattern: kw('int') })
-export const Real = createToken({ name: 'Real', pattern: kw('real') })
-export const Char = createToken({ name: 'Char', pattern: kw('char') })
-export const Bool = createToken({ name: 'Bool', pattern: kw('bool') })
+export const Nat = createToken({ name: 'Nat', pattern: kw('nat'), categories: [NameLike] })
+export const Int = createToken({ name: 'Int', pattern: kw('int'), categories: [NameLike] })
+export const Real = createToken({ name: 'Real', pattern: kw('real'), categories: [NameLike] })
+export const Char = createToken({ name: 'Char', pattern: kw('char'), categories: [NameLike] })
+export const Bool = createToken({ name: 'Bool', pattern: kw('bool'), categories: [NameLike] })
 export const Set = createToken({ name: 'Set', pattern: kw('set') })
 export const Seq = createToken({ name: 'Seq', pattern: kw('seq') })
 export const Map = createToken({ name: 'Map', pattern: kw('map') })
@@ -95,7 +101,7 @@ export const Hd = createToken({ name: 'Hd', pattern: kw('hd') })
 export const Tl = createToken({ name: 'Tl', pattern: kw('tl') })
 export const Len = createToken({ name: 'Len', pattern: kw('len') })
 export const Nat0 = createToken({ name: 'Nat0', pattern: kw('nat0') })
-export const String = createToken({ name: 'String', pattern: kw('string') })
+export const String = createToken({ name: 'String', pattern: kw('string'), categories: [NameLike] })
 export const Given = createToken({ name: 'Given', pattern: kw('given') })
 export const Sign = createToken({ name: 'Sign', pattern: kw('sign') })
 export const Then = createToken({ name: 'Then', pattern: kw('then') })
@@ -143,7 +149,7 @@ export const Tilde = createToken({ name: 'Tilde', pattern: /~/ })
 
 export const EnumValue = createToken({
   name: 'EnumValue',
-  pattern: /<[A-Za-z_][A-Za-z0-9_]*>/
+  pattern: /<[A-Za-z_\u0080-\uFFFF][A-Za-z0-9_\u0080-\uFFFF]*>/u
 })
 
 export const StringLiteral = createToken({
@@ -174,12 +180,19 @@ export const TextWord = createToken({
 
 export const Identifier = createToken({
   name: 'Identifier',
-  pattern: /[A-Za-z_][A-Za-z0-9_]*/
+  pattern: /[A-Za-z_\u0080-\uFFFF][A-Za-z0-9_\u0080-\uFFFF]*/u,
+  categories: [NameLike]
 })
 
 export const BlockComment = createToken({
   name: 'BlockComment',
   pattern: /\/\*[\s\S]*?\*\//,
+  group: Lexer.SKIPPED
+})
+
+export const LineComment = createToken({
+  name: 'LineComment',
+  pattern: /(?:\/\/[^\n]*|--[^\n]*)/,
   group: Lexer.SKIPPED
 })
 
@@ -192,6 +205,7 @@ export const WhiteSpace = createToken({
 export const allTokens: TokenType[] = [
   WhiteSpace,
   BlockComment,
+  LineComment,
   // Multi-char operators first
   DoubleEquals,
   NotEqual,
@@ -232,6 +246,7 @@ export const allTokens: TokenType[] = [
   Comment,
   Decom,
   Module,
+  SystemKw,
   Process,
   Function,
   Const,
@@ -246,6 +261,8 @@ export const allTokens: TokenType[] = [
   Init,
   Equal,
   Fsf,
+  Pre,
+  Post,
   Forall,
   Forevery,
   Exists,
@@ -329,8 +346,8 @@ export const allTokens: TokenType[] = [
   RBrace,
   Hash,
   Tilde,
-  TextWord,
-  Identifier
+  Identifier,
+  TextWord
 ]
 
 export const AgileSoflLexer = new Lexer(allTokens, {

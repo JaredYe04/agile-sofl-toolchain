@@ -6,6 +6,7 @@
 import { parse, parseModule, parseStrict } from './parser/parse.js'
 import { typeCheck } from './typecheck/checker.js'
 import { classifyFsf, isFsfFormal } from './fsf/classifier.js'
+import { deriveFsf, deriveAllFsf } from './fsf/deriver.js'
 import { resolveScope, lookupModuleScope } from './scope/resolver.js'
 import { checkReferences } from './scope/referenceChecker.js'
 import { normalizeAST, astEqual, stripSpans } from './transform/normalize.js'
@@ -33,7 +34,10 @@ export type {
   TextWithSpan,
   MaybeTextWithSpan,
   TypeExprNode,
-  AST
+  AST,
+  ConditionClauseNode,
+  ProcessBodyNode,
+  FsfSpecNode
 } from './ast/nodes.js'
 export type { Diagnostic, DiagnosticSeverity } from './diagnostics/codes.js'
 export type { Span } from './ast/span.js'
@@ -122,6 +126,8 @@ export {
   typeCheck,
   classifyFsf,
   isFsfFormal,
+  deriveFsf,
+  deriveAllFsf,
   resolveScope,
   lookupModuleScope,
   normalizeAST,
@@ -163,4 +169,7 @@ export {
   textFieldSpan
 } from './inspect/symbolSummary.js'
 export type { SymbolSummaryInput } from './inspect/symbolSummary.js'
-export { typeToString, typeExprToInternal, resolveInternalType, typesCompatible, typesCompatibleStrict } from './typecheck/types.js'
+export { typeExprToInternal, resolveInternalType, typeToString } from './typecheck/types.js'
+export { parsePredicateSource } from './prepost/parsePredicate.js'
+export { printConditionText, clauseHasInformal } from './prepost/clause.js'
+export type { FunctionalScenarioForm, DerivedFunctionalScenario, FsfDerivationSource } from './fsf/deriver.js'

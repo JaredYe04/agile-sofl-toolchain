@@ -50,6 +50,21 @@ end_module`
     }
   })
 
+  it('parses informal FSF text containing exists/in/and keywords', () => {
+    const source = `module SYSTEM_P;
+process P ()
+FSF :
+informal User exists in accounts and is authenticated && success = true
+end_process
+end_module`
+    const ast = expectParseOk(source, parse)
+    if (isProgramNode(ast)) {
+      const atom = ast.modules[0].processes[0].body?.fsf?.scenarios[0]?.test.disjuncts[0]?.atoms[0]
+      expect(atom?.type).toBe('informal_text')
+      if (atom?.type === 'informal_text') expect(atom.text).toMatch(/exists/)
+    }
+  })
+
   it('parses process with dual param lists', () => {
     const source = `module SYSTEM_P;
 process P (a, b: int) c: nat, d: int

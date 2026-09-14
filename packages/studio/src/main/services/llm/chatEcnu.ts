@@ -35,13 +35,40 @@ export type ChatStreamDelta = {
   content?: string
 }
 
+export class ChatAbortedError extends Error {
+  constructor(message = 'Stopped by user.') {
+    super(message)
+    this.name = 'ChatAbortedError'
+  }
+}
+
+export function isChatAborted(error: unknown): boolean {
+  return error instanceof ChatAbortedError || (error instanceof Error && error.name === 'ChatAbortedError')
+}
+
+function combineAbortSignals(signals: AbortSignal[]): AbortSignal {
+  if (typeof AbortSignal.any === 'function') return AbortSignal.any(signals)
+  const controller = new AbortController()
+  const abort = () => controller.abort()
+  for (const signal of signals) {
+    if (signal.aborted) {
+      controller.abort()
+      return controller.signal
+    }
+    signal.addEventListener('abort', abort, { once: true })
+  }
+  return controller.signal
+}
+
 const CHAT_TIMEOUT_MS = 90_000
 
-async function postChat(body: Record<string, unknown>): Promise<Response> {
+async function postChat(body: Record<string, unknown>, userSignal?: AbortSignal): Promise<Response> {
   const cfg = getEcnuConfig()
   if (!cfg.apiKey) {
     throw new Error('No LLM API key. Add a profile in Settings, or set ECNU_API_KEY in packages/studio/.env.')
   }
+  const timeout = AbortSignal.timeout(CHAT_TIMEOUT_MS)
+  const signal = userSignal ? combineAbortSignals([timeout, userSignal]) : timeout
   const res = await fetch(`${cfg.baseUrl}/chat/completions`, {
     method: 'POST',
     headers: {
@@ -49,9 +76,10 @@ async function postChat(body: Record<string, unknown>): Promise<Response> {
       Authorization: `Bearer ${cfg.apiKey}`
     },
     body: JSON.stringify({ model: cfg.model, ...body }),
-    signal: AbortSignal.timeout(CHAT_TIMEOUT_MS)
+    signal
   }).catch((e: unknown) => {
     if (e instanceof Error && (e.name === 'TimeoutError' || e.name === 'AbortError')) {
+      if (userSignal?.aborted) throw new ChatAbortedError()
       throw new Error('ChatECNU timed out after 90s. Send again to continue.')
     }
     throw e
@@ -103,6 +131,7 @@ export async function chatEcnuStream(options: {
   tools?: ChatTool[]
   temperature?: number
   thinking?: boolean
+  signal?: AbortSignal
   onDelta?: (delta: ChatStreamDelta) => void
 }): Promise<ChatCompletion> {
   const body: Record<string, unknown> = {
@@ -114,7 +143,7 @@ export async function chatEcnuStream(options: {
   if (options.thinking !== false) body.reasoning_effort = 'low'
   if (options.tools?.length) body.tools = options.tools
 
-  const res = await postChat(body)
+  const res = await postChat(body, options.signal)
   if (!res.body) throw new Error('ChatECNU stream has no body.')
 
   const reader = res.body.getReader()
@@ -176,7 +205,20 @@ export async function chatEcnuStream(options: {
   }
 
   while (true) {
-    const { done, value } = await reader.read()
+    if (options.signal?.aborted) {
+      await reader.cancel().catch(() => undefined)
+      throw new ChatAbortedError()
+    }
+    let chunk: ReadableStreamReadResult<Uint8Array>
+    try {
+      chunk = await reader.read()
+    } catch (e) {
+      if (options.signal?.aborted || (e instanceof Error && e.name === 'AbortError')) {
+        throw new ChatAbortedError()
+      }
+      throw e
+    }
+    const { done, value } = chunk
     if (done) break
     buffer += decoder.decode(value, { stream: true })
     const lines = buffer.split(/\r?\n/)

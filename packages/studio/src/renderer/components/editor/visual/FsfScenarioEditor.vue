@@ -12,6 +12,12 @@ export type FsfScenarioDto = {
   test: string
   def: string
   span: { start: number; end: number; line: number; column: number }
+  name?: string
+  kind?: 'normal' | 'exceptional'
+  guard?: string
+  definingCondition?: string
+  testCondition?: string
+  atomicPredicates?: string[]
 }
 
 export type FsfModelDto = {
@@ -22,6 +28,9 @@ export type FsfModelDto = {
   scenarios: FsfScenarioDto[]
   others?: string
   othersSpan?: FsfScenarioDto['span']
+  source?: 'derived' | 'editor-internal-dsl'
+  precondition?: string
+  exceptionalScenarios?: FsfScenarioDto[]
 }
 
 const props = defineProps<{
@@ -164,6 +173,36 @@ defineExpose({ addScenario })
 
 <template>
   <SectionCard :title="t('visual.fsfTitle')">
+    <p v-if="model.source === 'derived'" class="mb-3 text-[11px] text-content-muted">{{ t('visual.fsfDerivedHint') }}</p>
+    <p v-else-if="model.source === 'editor-internal-dsl'" class="mb-3 text-[11px] text-content-muted">{{ t('visual.fsfInternalDslHint') }}</p>
+    <p v-if="model.precondition" class="mb-3 rounded-md bg-surface-base px-2 py-1.5 text-[12px] text-content-secondary">
+      <span class="font-medium text-content-muted">{{ t('visual.pre') }}:</span>
+      {{ model.precondition }}
+    </p>
+    <div v-if="scenarios.length" class="mb-4 overflow-auto">
+      <table class="w-full min-w-[480px] border-collapse text-left text-[12px]">
+        <thead>
+          <tr class="text-content-muted">
+            <th class="border-b border-border-subtle py-1 pr-2 font-medium">{{ t('visual.scenario') }}</th>
+            <th class="border-b border-border-subtle py-1 pr-2 font-medium">{{ t('visual.fsfGuard') }}</th>
+            <th class="border-b border-border-subtle py-1 pr-2 font-medium">{{ t('visual.fsfDef') }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="(scenario, index) in scenarios" :key="scenario.id">
+            <td class="border-b border-border-subtle py-1 pr-2 font-medium text-content-primary">S{{ index + 1 }}</td>
+            <td class="border-b border-border-subtle py-1 pr-2 text-content-secondary">{{ scenario.guard || scenario.test }}</td>
+            <td class="border-b border-border-subtle py-1 pr-2 text-content-secondary">{{ scenario.definingCondition || scenario.def }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div v-if="model.exceptionalScenarios?.length" class="mb-4 rounded-md border border-semantic-warning/30 bg-semantic-warning/5 p-3">
+      <h4 class="mb-2 text-xs font-semibold text-content-primary">{{ t('visual.exceptionalScenarios') }}</h4>
+      <p v-for="ex in model.exceptionalScenarios" :key="ex.id" class="text-[12px] text-content-secondary">
+        {{ ex.name || t('visual.preconditionViolated') }} — {{ ex.def }}
+      </p>
+    </div>
     <div v-if="!scenarios.length" class="mb-3">
       <EmptyState :message="t('visual.noScenarios')">
         <template #action>

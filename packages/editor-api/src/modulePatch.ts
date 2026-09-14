@@ -32,8 +32,11 @@ export function addModule(
       : `module ${bare};`
   const block = `${header}\nend_module`
   const trimmed = source.trimEnd()
-  const suffix = trimmed.endsWith('.') ? '' : trimmed.endsWith(';') ? '\n.' : '\n'
-  return `${trimmed}${suffix}\n${block}`
+  const hadDot = trimmed.endsWith('.')
+  const body = hadDot ? trimmed.slice(0, -1).trimEnd() : trimmed
+  const separated = body && !/[;.]\s*$/.test(body) ? `${body};` : body
+  const next = separated ? `${separated}\n${block}` : block
+  return hadDot ? `${next}\n.` : next
 }
 
 export function removeModule(source: string, moduleName: string): string {

@@ -12,6 +12,7 @@ import PanelTitle from './PanelTitle.vue'
 import { useWorkspaceStore } from '../../stores/workspace'
 import { nestedNodes, useInformalSpec } from '../../composables/useInformalSpec'
 import { duplicateTitle, nextIndexedTitle } from '../../lib/informalTitles'
+import { applyHybridDocumentPatch } from '../../lib/applyHybridDocumentPatch'
 import type { InformalPatchPayload, InformalSpecPayload } from '../../../preload/index'
 
 type SectionType = 'functions' | 'data-resources' | 'constraints'
@@ -74,8 +75,19 @@ async function onMove(id: string, parentId: string, afterId?: string): Promise<v
   })
 }
 
-async function onApplyPatch(patch: InformalPatchPayload): Promise<{ ok: boolean; error?: string }> {
+async function onApplyPatch(
+  patch: InformalPatchPayload
+): Promise<{ ok: boolean; error?: string; applied?: boolean }> {
   return applyPatch(patch)
+}
+
+async function onApplyHybridPatch(
+  patch: InformalPatchPayload
+): Promise<{ ok: boolean; error?: string; applied?: boolean }> {
+  return applyHybridDocumentPatch(patch, {
+    noTab: t('agent.noHybridTab'),
+    applyFailed: t('agent.applyFailed')
+  })
 }
 
 function onAdd(section: SectionType): void {
@@ -183,7 +195,11 @@ function onViewMode(id: string): void {
       </template>
       <template #bottom>
         <WorkspacePanel panel="agent">
-          <AgentPanel :informal-markdown="tab?.content ?? ''" :on-apply-patch="onApplyPatch" />
+          <AgentPanel
+            :informal-markdown="tab?.content ?? ''"
+            :on-apply-patch="onApplyPatch"
+            :on-apply-hybrid-patch="onApplyHybridPatch"
+          />
         </WorkspacePanel>
       </template>
     </VerticalResizeSplit>

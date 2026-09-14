@@ -25,6 +25,9 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@iconify-json/hugeicons": "^1.2.34",
+    "@iconify-json/lucide": "^1.2.132",
+    "@iconify/vue": "^5.0.1",
     "sql.js": "^1.14.2"
   },
   "devDependencies": {

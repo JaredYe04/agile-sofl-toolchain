@@ -54,6 +54,24 @@ export function collectDocumentSymbols(document: TextDocument): DocumentSymbol[]
       for (const p of mod.processes) {
         const procChildren: DocumentSymbol[] = []
         const fsf = p.body?.fsf
+        if (p.body?.pre) {
+          procChildren.push({
+            name: 'pre',
+            detail: p.body.pre.kind,
+            kind: SymbolKind.Property,
+            range: spanToRange(document, p.body.pre.span),
+            selectionRange: spanToRange(document, p.body.pre.span)
+          })
+        }
+        if (p.body?.post) {
+          procChildren.push({
+            name: 'post',
+            detail: p.body.post.kind,
+            kind: SymbolKind.Property,
+            range: spanToRange(document, p.body.post.span),
+            selectionRange: spanToRange(document, p.body.post.span)
+          })
+        }
         if (fsf) {
           const count = fsf.scenarios.length + (fsf.others ? 1 : 0)
           procChildren.push({

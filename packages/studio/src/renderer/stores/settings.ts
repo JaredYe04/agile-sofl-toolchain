@@ -9,6 +9,11 @@ import {
 import { useAppStore } from './app'
 import { useWorkspaceStore } from './workspace'
 import type { Locale } from '../i18n'
+import {
+  persistAgentWriteMode,
+  readAgentWriteMode,
+  type AgentWriteMode
+} from '../lib/agentWriteMode'
 
 const ACCENT_IDS: AccentId[] = ['blue', 'green', 'orange', 'purple', 'yellow', 'red', 'pink', 'custom']
 const ZOOMS: UiZoom[] = ['small', 'normal', 'large', 'xlarge']
@@ -49,6 +54,9 @@ export const useSettingsStore = defineStore('settings', () => {
   const zoom = ref<UiZoom>(readZoom())
   const defaultInformalView = ref<InformalViewMode>(readInformalDefault())
   const defaultHybridView = ref<HybridViewMode>(readHybridDefault())
+  const agentWriteMode = ref<AgentWriteMode>(
+    typeof localStorage === 'undefined' ? 'ask' : readAgentWriteMode(localStorage)
+  )
 
   function persist(): void {
     localStorage.setItem('studio-accent-id', accentId.value)
@@ -57,6 +65,7 @@ export const useSettingsStore = defineStore('settings', () => {
     localStorage.setItem('studio-ui-zoom', zoom.value)
     localStorage.setItem('studio-default-informal-view', defaultInformalView.value)
     localStorage.setItem('studio-default-hybrid-view', defaultHybridView.value)
+    persistAgentWriteMode(localStorage, agentWriteMode.value)
   }
 
   function paint(): void {
@@ -106,6 +115,11 @@ export const useSettingsStore = defineStore('settings', () => {
     useWorkspaceStore().hybridMode = value
   }
 
+  function setAgentWriteMode(mode: AgentWriteMode): void {
+    agentWriteMode.value = mode === 'auto' ? 'auto' : 'ask'
+    persist()
+  }
+
   function setLanguage(locale: Locale): void {
     useAppStore().setLanguage(locale)
   }
@@ -139,12 +153,14 @@ export const useSettingsStore = defineStore('settings', () => {
     zoom,
     defaultInformalView,
     defaultHybridView,
+    agentWriteMode,
     setAccentId,
     setCustomHex,
     setTransparency,
     setZoom,
     setDefaultInformalView,
     setDefaultHybridView,
+    setAgentWriteMode,
     setLanguage,
     show,
     hide,

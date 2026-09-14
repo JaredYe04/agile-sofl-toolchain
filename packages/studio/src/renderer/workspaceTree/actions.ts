@@ -1,4 +1,5 @@
 import type { VisualModelContext } from '../composables/visualModelContext'
+import { refreshGitFor } from '../composables/useGitStatus'
 import type { WorkspaceTreeActionId, WorkspaceTreeContext } from './types'
 import { useWorkspaceStore } from '../stores/workspace'
 import { useModalStore } from '../stores/modal'
@@ -65,6 +66,14 @@ export async function executeWorkspaceTreeAction(
     case 'refresh':
       await workspace.refreshActive()
       return
+    case 'initGit': {
+      if (ctx.kind !== 'project') return
+      const root = ctx.project.rootPath
+      await window.studio?.gitInit?.(root)
+      await refreshGitFor(root)
+      await workspace.refreshActive()
+      return
+    }
     case 'renameProject': {
       if (ctx.kind !== 'project') return
       const { index, value } = await modal.show({
@@ -121,7 +130,7 @@ export async function executeWorkspaceTreeAction(
         newName: value.trim()
       })
       workspace.selectModule(value.trim())
-      await workspace.refreshActive()
+      await workspace.resyncModulesFromOpenTabs()
       return
     }
     case 'deleteModule': {
@@ -137,7 +146,7 @@ export async function executeWorkspaceTreeAction(
         await workspace.activateProject(ctx.project)
       }
       await visual.patchModule({ action: 'remove', moduleName: ctx.module.name })
-      await workspace.refreshActive()
+      await workspace.resyncModulesFromOpenTabs()
       return
     }
     case 'addSubmodule':

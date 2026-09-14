@@ -74,6 +74,23 @@ describe('modulePatch', () => {
     expect(removed).not.toContain('module Beta')
     expect(removed).toContain('module A;')
   })
+
+  it('inserts a new module before a trailing program dot', () => {
+    const source = 'module A;\nend_module.'
+    const added = addModule(source, 'GUI')
+    expect(added.indexOf('module GUI')).toBeGreaterThan(-1)
+    expect(added.indexOf('module GUI')).toBeLessThan(added.lastIndexOf('.'))
+    const { ast } = parse(added)
+    expect(ast?.modules.map((m) => m.name)).toEqual(['A', 'GUI'])
+  })
+
+  it('does not plant a dot between end_module; and the next module', () => {
+    const source = 'module A;\nend_module;'
+    const added = addModule(source, 'GUI')
+    expect(added).not.toMatch(/end_module;\s*\./)
+    const { ast } = parse(added)
+    expect(ast?.modules.map((m) => m.name)).toEqual(['A', 'GUI'])
+  })
 })
 
 describe('patchFunctionSignature', () => {

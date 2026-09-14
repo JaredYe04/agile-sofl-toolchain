@@ -21,7 +21,8 @@ import type {
   FsfSpecNode,
   InformalTextNode,
   ExtVarNode,
-  MaybeTextWithSpan
+  MaybeTextWithSpan,
+  ConditionClauseNode
 } from '../ast/nodes.js'
 
 export type AstNode =
@@ -72,7 +73,7 @@ export interface Visitor {
   leaveTypeExpr?(node: TypeExprNode): void
 }
 
-export type HybridRegionType = 'fsf' | 'informal' | 'comment' | 'decom'
+export type HybridRegionType = 'fsf' | 'informal' | 'comment' | 'decom' | 'pre' | 'post'
 
 export interface HybridRegion {
   type: HybridRegionType
@@ -148,6 +149,8 @@ function walkProcessBody(proc: ProcessNode, visitor: Visitor): void {
     if (ext.typeExpr) walkTypeExpr(ext.typeExpr, visitor)
     visitor.leaveExtVar?.(ext)
   }
+  if (body.pre) walkCondition(body.pre, visitor)
+  if (body.post) walkCondition(body.post, visitor)
   if (body.fsf) {
     visitor.enterFsfSpec?.(body.fsf)
     walkFsf(body.fsf, visitor)
@@ -190,6 +193,15 @@ function walkTypeExpr(type: TypeExprNode, visitor: Visitor): void {
     for (const f of type.fields) walkTypeExpr(f.typeExpr, visitor)
   }
   visitor.leaveTypeExpr?.(type)
+}
+
+function walkCondition(clause: ConditionClauseNode, visitor: Visitor): void {
+  if (clause.predicate) walkPredicate(clause.predicate, visitor)
+  if (clause.conditional) {
+    walkCondition(clause.conditional.guard, visitor)
+    walkCondition(clause.conditional.thenClause, visitor)
+    if (clause.conditional.elseClause) walkCondition(clause.conditional.elseClause, visitor)
+  }
 }
 
 function walkFsf(fsf: FsfSpecNode, visitor: Visitor): void {
@@ -416,6 +428,8 @@ export function collectHybridRegions(ast: ProgramNode): HybridRegion[] {
     enterProcessBody(body) {
       pushTextRegion(regions, ctx, 'decom', body.decomposition)
       pushTextRegion(regions, ctx, 'comment', body.comment)
+      if (body.pre) pushHybridRegion(regions, ctx, 'pre', body.pre.span)
+      if (body.post) pushHybridRegion(regions, ctx, 'post', body.post.span)
     }
   })
 

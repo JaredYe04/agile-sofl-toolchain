@@ -1,6 +1,6 @@
 ---
 name: ai-specification-agent
-description: Implement or extend the Agile-SOFL Studio Specification Agent (ChatECNU, skills, clarification cards, patch preview). Use when working on agent sessions, LLM tools, ChatECNU, or Informal AI UX.
+description: Implement or extend the Agile-SOFL Studio Specification Agent (ChatECNU, skills, clarification cards, patch preview). Use when working on agent sessions, LLM tools, ChatECNU, Informal or Hybrid AI UX.
 ---
 
 # AI Specification Agent
@@ -9,24 +9,31 @@ API key stays in the Electron **main** process. Configure profiles in **Settings
 
 Base URL (ChatECNU default): `https://chat.ecnu.edu.cn/open/api/v1`
 
+Reuse this loop for Informal and Hybrid. Do not create a second agent runtime. New sessions pick Informal/Hybrid read+write (defaults: Informal + Hybrid full access). Hybrid generation injects `hybrid-generation` and Informal-read / Hybrid-write.
+
 ## Loop
 
-User NL → skill prompt + spec summary → ChatECNU tools → UI cards → user confirms → patch apply.
+User NL → skill prompt + spec digest → ChatECNU tools (filtered by session permissions) → UI cards → user confirms **or auto-write** → patch apply via the global undo stack → **the same turn continues** with the tool result.
 
-Tools: `ask_clarification`, `read_specification`, `propose_changes`, `review_specification`.
+Informal tools: `ask_clarification`, `read_specification` (`view=inventory|source`), `propose_changes`, `propose_source_edit`, `review_specification`.
+Hybrid tools: `read_hybrid_specification` (`view=inventory|source`), `propose_hybrid_changes`, `propose_source_edit`, `review_hybrid`.
 
-`propose_changes` sees the current inventory (id / type / title / description) and can **add, update, remove, or move** existing nodes. Prefer updating an existing id over adding a duplicate.
+`propose_changes` is Informal-only. `propose_hybrid_changes` uses inventory ids (`mod:`, `proc:`, `scn:`, `gui:`, `type:`, `var:`, `inv:`). Prefer updating an existing id over adding a duplicate. Write `pre`/`post`, never `FSF :`. Enumerations use `{<Tag>}`. **CRUD is the default.** Do not dump multi-module SOFL through CRUD. After each applied write, call `read_*` and keep patching until the inventory is correct. The last assistant message is a task summary.
+
+`propose_source_edit` is the escape hatch: unique `replace` / `append` / `replace-document` against numbered source (`read_* view=source`). Use it when CRUD fails, inventory is empty/out of sync, or an uncovered parser/id issue would otherwise loop. After two CRUD failures, the loop **blocks** the same/repeated CRUD and requires a source edit. Source edits still go through Apply/auto-write and `useHistoryStore`.
 
 ## UX
 
 Clarification: option chips + optional custom input. Checking or unchecking an already answered option asks whether to fork a new session from that question or overwrite the current thread. After fork/overwrite, leave the clarification pending until the user confirms — do not auto-resume the LLM turn.
 Message bubbles: selectable text, with Copy and Fork actions.
-Changes: `Patch → Preview → Apply | Reject`. After Apply or Reject, stop; wait for the next user message.
+Changes: `Patch → Preview → Apply | Reject`. Apply/Reject is only a tool result — **resume the agent**. Send-bar: while the agent is running the send button becomes a red **Stop** control that aborts the in-flight turn. Permission: **Ask me each time** (default) vs **Allow auto-write** (persisted `studio-agent-write-mode`).
 Sessions: `<project>/.agile-sofl/agent/sessions/`.
 Informal document metadata: `<project>/.agile-sofl/informal-meta.json`.
 
 ## Don't
 
-- Stream raw markdown into the document.
+- Stream raw markdown or raw SOFL into the document from chat text (writes must go through tools).
 - Send the API key to the renderer.
 - Dump the entire chat history into every LLM call (keep a recent window + spec digest).
+- Bypass `useHistoryStore` when applying Informal or Hybrid patches.
+- Retry the same failing CRUD patch; switch to `propose_source_edit` instead.

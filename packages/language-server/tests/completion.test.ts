@@ -100,4 +100,12 @@ end_module`
     const items = getCompletions(document, document.positionAt(idx))
     expect(items.some((i) => i.label === 'n')).toBe(true)
   })
+
+  it('offers module and system snippets', () => {
+    const source = 'system '
+    const document = doc(source)
+    const items = getCompletions(document, document.positionAt(source.length))
+    expect(items.some((i) => i.label === 'system SYSTEM_Name')).toBe(true)
+    expect(items.some((i) => i.label === 'module SYSTEM_Name')).toBe(true)
+  })
 })

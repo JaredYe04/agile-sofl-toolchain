@@ -262,16 +262,17 @@ interface InformalDocumentModel {
 | `const` | `const name = value;` |
 | `variable` | `var name: type;` |
 | `invariant.textHint` | `inv predicate;` |
-| `process` + `scenarios` | `process … FSF : …` |
+| `process` + `pre`/`post` | `process … pre … post …`；FSF 由 pre/post 推导 |
 | `decomposition` | `decom: name` |
 | `notes` | `comment: aspec_{id} …` |
 | `function` | `function … == undefined` |
 
 **FSF 策略**
 
-- 非底层（`bottomLevel: false`）：Test 用 `informal {condition}` 半形式原子；Def 用占位等式
-- 底层（`bottomLevel: true`）：形式占位 `true && outcome_expr`
-- 始终追加 `others && …` 兜底场景
+- FSF 不是源语言。生成器写出 `pre`/`post`；`FSFDeriver` 再得到 Functional Scenario Form。
+- 非底层：结构化自然语言 pre/post（数据仍形式定义）
+- 底层：形式谓词，再推导 Guard / Defining Condition
+- 异常场景对应 `¬Spre`
 
 精化后调用 `@agile-sofl/parser` 的 `check()`；错误诊断附加到 wizard。
 

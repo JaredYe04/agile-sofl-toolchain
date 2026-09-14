@@ -1,5 +1,6 @@
 {
   "comments": {
+    "lineComment": "//",
     "blockComment": ["/*", "*/"]
   },
   "brackets": [
@@ -23,12 +24,12 @@
   ],
   "folding": {
     "markers": {
-      "start": "^\\s*(module|process|function|composed\\s+of|case)\\b",
+      "start": "^\\s*(module|system|process|function|composed\\s+of|case)\\b",
       "end": "^\\s*(end_module|end_process|end_function|end;|endcase)\\b"
     }
   },
   "indentationRules": {
-    "increaseIndentPattern": "^\\s*(module\\s|const\\s*$|type\\s*$|var\\s*$|inv\\s*$|process\\s|function\\s|composed\\s+of\\s*$|FSF\\s*:.*)$",
+    "increaseIndentPattern": "^\\s*((module|system)\\s|const\\s*$|type\\s*$|var\\s*$|inv\\s*$|process\\s|function\\s|composed\\s+of\\s*$|FSF\\s*:.*)$",
     "decreaseIndentPattern": "^\\s*(end_module|end_process|end_function|end;|\\s*end\\s*$)"
   },
   "onEnterRules": [
