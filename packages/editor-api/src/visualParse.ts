@@ -2,6 +2,7 @@ import { parse, textOf, isFsfFormal, classifyFsf, deriveFsf, printConditionText,
 import { buildModuleGraph } from './moduleGraph.js'
 import { buildAllFsfModels } from './fsfModel.js'
 import { sliceText, toSerializableSpan } from './span.js'
+import { collectVisualDuplicateDiagnostics } from './visualDuplicateDiagnostics.js'
 import {
   processSignatureText,
   functionSignatureText,
@@ -18,7 +19,7 @@ export type VisualParseDiagnostic = {
   message: string
   severity: string
   span: ReturnType<typeof toSerializableSpan>
-  source: 'parse' | 'fsf'
+  source: 'parse' | 'fsf' | 'visual'
 }
 
 export type VisualModelResult = {
@@ -101,7 +102,7 @@ export type VisualModelResult = {
 
 function mapDiagnostics(
   items: Array<{ code: string; message: string; severity: string; span: { start: number; end: number; line: number; column: number } }>,
-  source: 'parse' | 'fsf'
+  source: 'parse' | 'fsf' | 'visual'
 ): VisualParseDiagnostic[] {
   return items.map((d) => ({
     code: d.code,
@@ -183,6 +184,7 @@ export function buildVisualModelTolerant(source: string): VisualModelResult {
         'fsf'
       )
     )
+    allDiagnostics.push(...collectVisualDuplicateDiagnostics(program, source))
   }
 
   const hasDiagnostics = allDiagnostics.some((d) => d.severity === 'error')

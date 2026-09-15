@@ -8,6 +8,7 @@ import VisualEntityMenu from './VisualEntityMenu.vue'
 defineProps<{
   processes: VisualModuleProcess[]
   disabled?: boolean
+  editDisabled?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -47,7 +48,12 @@ function portSummary(groups?: Array<{ names: string; type: string }>): string {
           >
             {{ t('visual.init.badge') }}
           </span>
-          <VisualEntityMenu :disabled="disabled" @edit="emit('edit', p.name)" @remove="emit('remove', p.name)" />
+          <VisualEntityMenu
+            :disabled="disabled"
+            :edit-disabled="editDisabled"
+            @edit="emit('edit', p.name)"
+            @remove="emit('remove', p.name)"
+          />
         </header>
         <div class="space-y-2 px-3 py-2 text-[12px]">
           <p>

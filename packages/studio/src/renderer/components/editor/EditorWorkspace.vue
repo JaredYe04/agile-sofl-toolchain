@@ -28,6 +28,7 @@ import VisualIssuesPanel from './visual/VisualIssuesPanel.vue'
 import InformalRegionsPanel from './InformalRegionsPanel.vue'
 import CoveragePanel from './CoveragePanel.vue'
 import type { SerializableSpan } from './MonacoEditor.vue'
+import { revealInCodeEditor } from '../../composables/useRevealCode'
 
 const monacoRef = ref<InstanceType<typeof MonacoEditor> | null>(null)
 const visualRef = ref<InstanceType<typeof VisualEditor> | null>(null)
@@ -196,7 +197,7 @@ function runEditCommand(cmd: string): void {
 }
 
 function revealSpan(span: SerializableSpan): void {
-  monacoRef.value?.revealSpan(span)
+  void revealInCodeEditor(monacoRef.value, span)
 }
 
 defineExpose({
@@ -216,7 +217,7 @@ defineExpose({
   <div class="flex h-full min-h-0 w-full min-w-0 flex-1 flex-col">
     <SplitPane class="min-h-0 min-w-0 w-full flex-1" :show-left="showLeft" :show-right="showRight">
       <template #left>
-        <MonacoEditor v-if="showLeft" ref="monacoRef" />
+        <MonacoEditor v-if="showLeft" ref="monacoRef" :active="showLeft" />
       </template>
       <template #right>
         <InformalVisualEditor v-if="showRight && isAspec" />

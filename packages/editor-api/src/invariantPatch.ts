@@ -1,6 +1,7 @@
 import { parse } from '@agile-sofl/parser'
 import { namesEqual } from './hybridIds.js'
 import { findModuleRange, insertInvLine, sectionInsertPoint } from './moduleSourceRange.js'
+import { patchInvariant } from './patch.js'
 
 function expandLine(source: string, span: { start: number; end: number }): { start: number; end: number } {
   let start = span.start
@@ -51,6 +52,22 @@ export function removeInvariantInModule(
   const line = expandLine(source, span)
   const next = (source.slice(0, line.start) + source.slice(line.end)).replace(/\n{3,}/g, '\n\n')
   return removeEmptyInvSection(next, moduleName)
+}
+
+export function patchInvariantByIndex(
+  source: string,
+  moduleName: string,
+  index: number,
+  text: string
+): string {
+  const { ast } = parse(source)
+  if (!ast || ast.type !== 'program') return source
+  const mod = ast.modules.find((m) => namesEqual(m.name, moduleName))
+  const inv = mod?.invariants[index]
+  if (!inv) return source
+  const line = stripInvPrefix(text) || 'true'
+  const withSemi = line.endsWith(';') ? line : `${line};`
+  return patchInvariant(source, inv.span, withSemi)
 }
 
 export function removeInvariantByIndex(source: string, moduleName: string, index: number): string {

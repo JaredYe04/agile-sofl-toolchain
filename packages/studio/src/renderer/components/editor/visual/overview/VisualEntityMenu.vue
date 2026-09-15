@@ -6,6 +6,7 @@ import IconActionButton from '../../../ui/IconActionButton.vue'
 
 const props = defineProps<{
   disabled?: boolean
+  editDisabled?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -16,8 +17,19 @@ const emit = defineEmits<{
 const { t } = useI18n()
 
 const items = computed((): MenuItem[] => [
-  { id: 'edit', label: t('visual.entity.edit'), disabled: props.disabled, action: () => emit('edit') },
-  { id: 'remove', label: t('visual.entity.delete'), danger: true, disabled: props.disabled, action: () => emit('remove') }
+  {
+    id: 'edit',
+    label: t('visual.entity.edit'),
+    disabled: props.disabled || props.editDisabled,
+    action: () => emit('edit')
+  },
+  {
+    id: 'remove',
+    label: t('visual.entity.delete'),
+    danger: true,
+    disabled: props.disabled,
+    action: () => emit('remove')
+  }
 ])
 </script>
 

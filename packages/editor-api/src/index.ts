@@ -103,8 +103,11 @@ export {
   addInvariant,
   removeInvariantInModule,
   removeInvariantByIndex,
+  patchInvariantByIndex,
   reorderInvariants
 } from './invariantPatch.js'
+
+export { VISUAL_DUPLICATE_CODE, collectVisualDuplicateDiagnostics } from './visualDuplicateDiagnostics.js'
 
 export {
   patchConst,

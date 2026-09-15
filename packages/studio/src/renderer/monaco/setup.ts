@@ -1,4 +1,5 @@
 import * as monaco from 'monaco-editor'
+import 'monaco-editor/esm/vs/basic-languages/html/html.contribution.js'
 import editorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker'
 import {
   agileSoflDarkFieldTheme,

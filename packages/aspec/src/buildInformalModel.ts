@@ -8,6 +8,7 @@ import type { GuiModelSummary } from './model.js'
 import { attachDiagnosticLines } from './sourceSpans.js'
 import { aspecToInformal } from './informal/bridge.js'
 import { validateInformalSpec } from './informal/validator.js'
+import { validateInformalDuplicateNames } from './informal/duplicateNames.js'
 
 export type BuildInformalModelOptions = {
   bookAlignStrict?: boolean
@@ -27,7 +28,10 @@ export function buildInformalModel(source: string, options?: BuildInformalModelO
   resolveModuleParents(document)
   const styleDiags = validateAspec(document, { bookAlignStrict: options?.bookAlignStrict })
   const informal = parsed.informal ?? aspecToInformal(document)
-  const informalDiags = validateInformalSpec(informal)
+  const informalDiags = [
+    ...validateInformalSpec(informal),
+    ...validateInformalDuplicateNames(document.modules)
+  ]
   let guiSummary: GuiModelSummary | undefined
   if (parsed.format !== 'markdown') {
     const embeddedGui = extractGuiFromAspec(source)

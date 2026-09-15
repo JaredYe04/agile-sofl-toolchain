@@ -14,6 +14,7 @@ import {
   addInvariant,
   removeInvariantInModule,
   removeInvariantByIndex,
+  patchInvariantByIndex,
   reorderInvariants,
   patchDeclaration,
   patchProcess,
@@ -475,6 +476,14 @@ export function registerParseHandlers(): void {
         typeof payload.toIndex === 'number'
       ) {
         return reorderInvariants(payload.source, payload.moduleName, payload.fromIndex, payload.toIndex)
+      }
+      if (
+        action === 'patch' &&
+        payload.moduleName &&
+        typeof payload.index === 'number' &&
+        payload.text != null
+      ) {
+        return patchInvariantByIndex(payload.source, payload.moduleName, payload.index, payload.text)
       }
       if (payload.span && payload.text != null) {
         return patchInvariant(payload.source, payload.span, payload.text)

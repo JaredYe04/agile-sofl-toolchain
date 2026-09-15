@@ -29,13 +29,15 @@ const collapsed = computed(() => [false, workspace.informalCollapsed, false])
 
 <template>
   <ColumnResizeSplit
-    class="min-h-0 min-w-0 w-full flex-1 select-none"
+    class="min-h-0 min-w-0 w-full flex-1"
     :widths="workspace.columnWidths"
     :collapsed="collapsed"
     @update:widths="workspace.setColumnWidths($event)"
   >
     <template #col-0>
-      <ProjectModuleTree />
+      <div class="h-full min-h-0 select-none">
+        <ProjectModuleTree />
+      </div>
     </template>
     <template #col-1>
       <WorkspaceDockLayout />
@@ -55,7 +57,9 @@ const collapsed = computed(() => [false, workspace.informalCollapsed, false])
       </button>
     </template>
     <template #col-2>
-      <StructureColumn />
+      <div class="h-full min-h-0 select-none">
+        <StructureColumn />
+      </div>
     </template>
   </ColumnResizeSplit>
 </template>

@@ -49,7 +49,6 @@ const gui = inject(GUI_MODEL_KEY)
 if (!gui) throw new Error('GuiDesignerCanvas requires GUI_MODEL_KEY')
 const workspace = useWorkspaceStore()
 
-const runMode = ref(true)
 const selectedPath = ref<string | null>(null)
 const prototypeRef = ref<{ applyOutputs: (env: Record<string, string | number | boolean | null>) => void } | null>(
   null
@@ -260,19 +259,15 @@ watch(
     >
       <template #first>
     <section class="flex h-full min-h-0 min-w-0 flex-col">
-      <header class="flex h-8 items-center justify-between border-b border-border-subtle px-2 text-[11px]">
+      <header class="flex h-8 items-center border-b border-border-subtle px-2 text-[11px]">
         <span class="text-content-secondary">{{ selectedScreen?.name }}</span>
-        <label class="flex items-center gap-1 text-content-secondary">
-          <input v-model="runMode" type="checkbox" />
-          {{ t('gui.runMode') }}
-        </label>
       </header>
       <GuiPrototype
         ref="prototypeRef"
         class="min-h-0 flex-1"
         :html="html"
         :screen-id="selectedViewId"
-        :interactive="runMode"
+        interactive
         @navigate="emit('update:selectedViewId', $event)"
         @process="onProcess"
         @select="selectedPath = $event.path"

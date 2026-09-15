@@ -108,7 +108,10 @@ watch(
   { immediate: true }
 )
 
-const writeDisabled = computed(() => visual.parseFailed.value)
+const parseBlocked = computed(() => visual.parseFailed.value)
+const editBlocked = computed(() => visual.parseFailed.value || visual.hasDiagnostics.value)
+/** @deprecated use parseBlocked / editBlocked */
+const writeDisabled = editBlocked
 
 const writeDisabledReason = computed<'parseFailed' | 'diagnostics' | null>(() => {
   if (visual.parseFailed.value) return 'parseFailed'
@@ -321,7 +324,7 @@ async function onPatchDeclaration(payload: {
   name?: string
   text?: string
 }): Promise<void> {
-  if (writeDisabled.value) return
+  if (payload.action === 'remove' ? parseBlocked.value : editBlocked.value) return
   const moduleName = selectedModule.value?.name
   if (!moduleName) return
   await visual.patchDeclaration({ moduleName, ...payload })
@@ -347,9 +350,14 @@ async function onPatchProcess(payload: {
   }
 }
 
-async function onPatchInvariant(payload: { span: SerializableSpan; text: string }): Promise<void> {
-  if (writeDisabled.value) return
-  await visual.patchInvariant(payload)
+async function onPatchInvariant(payload: { index: number; text: string }): Promise<void> {
+  if (writeDisabled.value || !selectedModule.value) return
+  await visual.patchInvariant({
+    action: 'patch',
+    moduleName: selectedModule.value.name,
+    index: payload.index,
+    text: payload.text
+  })
 }
 
 async function onAddInvariant(text: string): Promise<void> {
@@ -358,7 +366,7 @@ async function onAddInvariant(text: string): Promise<void> {
 }
 
 async function onRemoveInvariant(index: number): Promise<void> {
-  if (writeDisabled.value || !selectedModule.value) return
+  if (parseBlocked.value || !selectedModule.value) return
   await visual.patchInvariant({
     action: 'remove',
     moduleName: selectedModule.value.name,
@@ -367,7 +375,7 @@ async function onRemoveInvariant(index: number): Promise<void> {
 }
 
 async function onReorderInvariants(fromIndex: number, toIndex: number): Promise<void> {
-  if (writeDisabled.value || !selectedModule.value) return
+  if (parseBlocked.value || !selectedModule.value) return
   await visual.patchInvariant({
     action: 'reorder',
     moduleName: selectedModule.value.name,
@@ -840,7 +848,8 @@ defineExpose({ setSelection })
         v-if="selectedModule"
         :key="detailPanelKey"
         :module="selectedModule"
-        :disabled="writeDisabled"
+        :disabled="parseBlocked"
+        :edit-disabled="editBlocked"
         @patch-declaration="onPatchDeclaration"
         @patch-gui-widget="onPatchGuiWidget"
         @patch-invariant="onPatchInvariant"
@@ -895,7 +904,8 @@ defineExpose({ setSelection })
             v-if="selectedModule"
             :key="detailPanelKey"
             :module="selectedModule"
-            :disabled="writeDisabled"
+            :disabled="parseBlocked"
+            :edit-disabled="editBlocked"
             @patch-declaration="onPatchDeclaration"
             @patch-gui-widget="onPatchGuiWidget"
             @patch-invariant="onPatchInvariant"

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, inject, ref, watch } from 'vue'
+import { computed, inject, nextTick, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { GUI_MODEL_KEY } from '../../composables/guiModelContext'
 import { useWorkspaceStore } from '../../stores/workspace'
@@ -14,16 +14,22 @@ const workspace = useWorkspaceStore()
 const gui = inject(GUI_MODEL_KEY)
 if (!gui) throw new Error('GuiViewsPanel requires GUI_MODEL_KEY')
 
-const tabId = computed(() => workspace.guiTab?.id)
+const monacoRef = ref<InstanceType<typeof MonacoEditor> | null>(null)
+const tabId = computed(() => workspace.guiTab?.id ?? workspace.hybridTab?.id)
 const selectedViewId = ref<string | null>(null)
 const screens = computed(() => gui.model.value?.screens ?? [])
 const guiViewOptions = computed(() => [
   { id: 'code', label: t('workspace.codeTab') },
   { id: 'visual', label: t('workspace.visualTab') }
 ])
+const codeActive = computed(() => workspace.guiMode === 'code')
 
 function onGuiMode(id: string): void {
   workspace.guiMode = id === 'code' ? 'code' : 'visual'
+  if (id === 'code') {
+    workspace.setFocusedPanel('gui')
+    void nextTick(() => monacoRef.value?.relayout())
+  }
 }
 
 watch(
@@ -54,13 +60,30 @@ watch(
           />
         </template>
       </DockPanelChrome>
-      <div class="min-h-0 flex-1">
-        <GuiDesignerCanvas
-          v-show="workspace.guiMode === 'visual'"
-          :selected-view-id="selectedViewId"
-          @update:selected-view-id="selectedViewId = $event"
-        />
-        <MonacoEditor v-if="tabId" v-show="workspace.guiMode === 'code'" :tab-id="tabId" />
+      <div class="relative min-h-0 flex-1 overflow-hidden">
+        <div
+          class="absolute inset-0"
+          :class="workspace.guiMode === 'visual' ? 'z-10' : 'hidden'"
+        >
+          <GuiDesignerCanvas
+            :selected-view-id="selectedViewId"
+            @update:selected-view-id="selectedViewId = $event"
+          />
+        </div>
+        <div
+          class="absolute inset-0"
+          :class="codeActive ? 'z-10' : 'invisible pointer-events-none z-0'"
+        >
+          <MonacoEditor
+            v-if="tabId"
+            ref="monacoRef"
+            :tab-id="tabId"
+            :active="codeActive"
+          />
+          <p v-else class="p-4 text-sm text-content-secondary">
+            {{ t('workspace.guiCodeMissing') }}
+          </p>
+        </div>
       </div>
     </section>
   </FullscreenPanel>

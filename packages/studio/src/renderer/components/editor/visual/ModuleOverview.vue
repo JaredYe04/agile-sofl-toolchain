@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useModalStore } from '../../../stores/modal'
+import { isDuplicateInModule } from '../../../lib/visualEntityGuard'
 import type { VisualModuleSummary, DeclarationKind, SerializableSpan } from '../../../preload/index'
 import type { TreeSelection } from '../../../composables/useVisualModel'
 import DeclarationEditor from './DeclarationEditor.vue'
@@ -24,10 +26,16 @@ import {
   nextVarName
 } from '../../../lib/visualNames'
 
-const props = defineProps<{ module: VisualModuleSummary; disabled?: boolean }>()
+const props = defineProps<{
+  module: VisualModuleSummary
+  /** Syntax parse failed — disable everything including delete */
+  disabled?: boolean
+  /** Duplicate / FSF diagnostics — block create and inline edit, allow delete */
+  editDisabled?: boolean
+}>()
 const emit = defineEmits<{
   patchDeclaration: [payload: { kind: DeclarationKind; action: 'patch' | 'add' | 'remove'; name?: string; text?: string }]
-  patchInvariant: [payload: { span: SerializableSpan; text: string }]
+  patchInvariant: [payload: { index: number; text: string }]
   addInvariant: [text: string]
   removeInvariant: [index: number]
   reorderInvariants: [fromIndex: number, toIndex: number]
@@ -42,6 +50,8 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+const modal = useModalStore()
+const formDisabled = computed(() => Boolean(props.disabled || props.editDisabled))
 const varInvRatio = ref(0.5)
 const createKind = ref<'type' | 'var' | 'inv' | 'process' | null>(null)
 const createName = ref('')
@@ -72,11 +82,22 @@ function onCreate(kind: 'type' | 'var' | 'inv' | 'process'): void {
   } else createName.value = ''
 }
 
-function confirmCreate(): void {
+async function blockDuplicate(kind: Parameters<typeof isDuplicateInModule>[1], value: string): Promise<boolean> {
+  if (!isDuplicateInModule(props.module, kind, value)) return false
+  await modal.show({
+    title: t('visual.duplicateName.title'),
+    message: t('visual.duplicateName.message', { name: value }),
+    buttons: [t('dialog.ok')]
+  })
+  return true
+}
+
+async function confirmCreate(): Promise<void> {
   const kind = createKind.value
   if (!kind) return
   if (kind === 'type') {
     const name = createName.value.trim() || nextTypeName(props.module.types.map((t) => t.name))
+    if (await blockDuplicate('type', name)) return
     const fieldName = nextFieldName([])
     emit('patchDeclaration', {
       kind: 'type',
@@ -85,15 +106,18 @@ function confirmCreate(): void {
     })
   } else if (kind === 'var') {
     const name = createName.value.trim() || nextVarName(props.module.vars.map((v) => v.name))
+    if (await blockDuplicate('var', name)) return
     emit('patchDeclaration', { kind: 'var', action: 'add', text: varDeclText(name, createType.value) })
   } else if (kind === 'inv') {
     const text =
       createPredicate.value.trim() ||
       nextInvariantPlaceholder(props.module.invariants.map((inv) => inv.text))
+    if (await blockDuplicate('invariant', text)) return
     emit('addInvariant', text)
   } else {
     const name =
       createName.value.trim() || nextProcessName(props.module.processes.map((p) => p.name))
+    if (name !== 'Init' && (await blockDuplicate('process', name))) return
     emit('addProcess', { name, isInit: createInit.value })
   }
   createKind.value = null
@@ -118,12 +142,12 @@ const createTitle = computed(() => {
     </header>
 
     <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
-      <OverviewStats :module="module" :disabled="disabled" @create="onCreate" />
+      <OverviewStats :module="module" :disabled="formDisabled" @create="onCreate" />
       <DeclarationEditor
         kind="const"
         :items="module.consts"
         :module-name="module.name"
-        :disabled="disabled"
+        :disabled="formDisabled"
         @patch="emit('patchDeclaration', $event)"
         @reveal-span="emit('revealSpan', $event)"
       />
@@ -132,7 +156,7 @@ const createTitle = computed(() => {
     <TypeGridPanel
       :items="module.types"
       :extra-types="typeNames"
-      :disabled="disabled"
+      :disabled="formDisabled"
       @patch="emit('patchDeclaration', { kind: 'type', ...$event })"
     />
 
@@ -143,7 +167,7 @@ const createTitle = computed(() => {
             <VarEntityList
               :items="module.vars"
               :type-names="typeNames"
-              :disabled="disabled"
+              :disabled="formDisabled"
               @patch="emit('patchDeclaration', { kind: 'var', ...$event })"
             />
           </div>
@@ -151,7 +175,9 @@ const createTitle = computed(() => {
         <template #second>
           <div class="h-full min-h-0 overflow-auto p-4">
             <InvariantEntityList
+              :module="module"
               :invariants="module.invariants ?? []"
+              :edit-disabled="formDisabled"
               :disabled="disabled"
               @patch="emit('patchInvariant', $event)"
               @remove="emit('removeInvariant', $event)"
@@ -165,6 +191,7 @@ const createTitle = computed(() => {
     <ProcessGridPanel
       :processes="module.processes"
       :disabled="disabled"
+      :edit-disabled="formDisabled"
       @edit="emit('editProcess', $event)"
       @remove="emit('removeProcess', $event)"
     />
@@ -206,20 +233,20 @@ const createTitle = computed(() => {
   >
     <div v-if="createKind === 'type' || createKind === 'var' || createKind === 'process'" class="space-y-3">
       <FormField :label="t('visual.create.name')">
-        <TextField v-model="createName" mono :disabled="disabled || createInit" />
+        <TextField v-model="createName" mono :disabled="formDisabled || createInit" />
       </FormField>
       <FormField v-if="createKind === 'var'" :label="t('visual.var.type')">
-        <select v-model="createType" class="visual-field w-full px-3 py-2 text-sm" :disabled="disabled">
+        <select v-model="createType" class="visual-field w-full px-3 py-2 text-sm" :disabled="formDisabled">
           <option v-for="ty in typeOptions" :key="ty" :value="ty">{{ ty }}</option>
         </select>
       </FormField>
       <label v-if="createKind === 'process'" class="flex items-center gap-2 text-sm text-content-primary">
-        <input v-model="createInit" type="checkbox" class="rounded border-border-subtle" :disabled="disabled" />
+        <input v-model="createInit" type="checkbox" class="rounded border-border-subtle" :disabled="formDisabled" />
         {{ t('visual.process.initProcess') }}
       </label>
     </div>
     <FormField v-else-if="createKind === 'inv'" :label="t('visual.inv.predicate')">
-      <TextField v-model="createPredicate" :rows="4" mono :disabled="disabled" />
+      <TextField v-model="createPredicate" :rows="4" mono :disabled="formDisabled" />
     </FormField>
   </VisualEditDialog>
 </template>

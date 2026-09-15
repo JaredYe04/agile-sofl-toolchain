@@ -1,16 +1,18 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import MonacoEditor from '../editor/MonacoEditor.vue'
 import VisualEditor from '../editor/visual/VisualEditor.vue'
 import GuiViewsPanel from './GuiViewsPanel.vue'
 import { useWorkspaceStore } from '../../stores/workspace'
 import type { TreeSelection } from '../../composables/useVisualModel'
+import { revealInCodeEditor } from '../../composables/useRevealCode'
 import VerticalResizeSplit from '../ui/VerticalResizeSplit.vue'
 import { initSpecAssistProviders } from '../../specAssist/init'
 import WorkspacePanel from './WorkspacePanel.vue'
 import PanelTitle from './PanelTitle.vue'
 import SegmentedSwitch from '../ui/SegmentedSwitch.vue'
+import type { SerializableSpan } from '../editor/MonacoEditor.vue'
 
 initSpecAssistProviders()
 
@@ -28,6 +30,9 @@ const hybridViewOptions = computed(() => [
 
 function onHybridMode(id: string): void {
   workspace.hybridMode = id === 'code' ? 'code' : 'visual'
+  if (id === 'code') {
+    void nextTick(() => monacoRef.value?.relayout())
+  }
 }
 
 watch(
@@ -38,12 +43,16 @@ watch(
 )
 
 watch(
-  () => workspace.selectedModule,
-  (mod) => {
-    if (!mod || workspace.hybridMode !== 'code') return
+  () => workspace.selectedModuleName,
+  async (name, prev) => {
+    if (!name || name === prev || workspace.hybridMode !== 'code') return
+    const mod = workspace.selectedModule
+    if (!mod) return
+    await nextTick()
+    monacoRef.value?.relayout()
     monacoRef.value?.revealSpan({
       start: mod.spanStart,
-      end: mod.spanEnd,
+      end: mod.spanStart,
       line: 1,
       column: 1
     })
@@ -55,11 +64,14 @@ function onVisualSelect(sel: TreeSelection): void {
   workspace.selectModule(sel.moduleName, sel)
 }
 
+function onRevealSpan(span: SerializableSpan): void {
+  void revealInCodeEditor(monacoRef.value, span, { hybrid: true })
+}
+
 defineExpose({
   runEditCommand: (cmd: string) => monacoRef.value?.runEditCommand(cmd),
   formatDocument: () => monacoRef.value?.formatDocument() ?? Promise.resolve(false),
-  revealSpan: (span: { start: number; end: number; line: number; column: number }) =>
-    monacoRef.value?.revealSpan(span)
+  revealSpan: (span: SerializableSpan) => void revealInCodeEditor(monacoRef.value, span, { hybrid: true })
 })
 </script>
 
@@ -84,16 +96,30 @@ defineExpose({
               @update:model-value="onHybridMode"
             />
           </header>
-          <div class="min-h-0 flex-1">
-            <MonacoEditor v-show="workspace.hybridMode === 'code'" v-if="hybridTabId" ref="monacoRef" :tab-id="hybridTabId" />
-            <VisualEditor
-              v-show="workspace.hybridMode === 'visual'"
-              ref="visualRef"
-              hide-navigator
-              :forced-selection="workspace.selection"
-              @reveal-span="monacoRef?.revealSpan($event)"
-              @select="onVisualSelect"
-            />
+          <div class="relative min-h-0 flex-1 overflow-hidden">
+            <div
+              class="absolute inset-0"
+              :class="workspace.hybridMode === 'code' ? 'z-10' : 'invisible pointer-events-none z-0'"
+            >
+              <MonacoEditor
+                v-if="hybridTabId"
+                ref="monacoRef"
+                :tab-id="hybridTabId"
+                :active="workspace.hybridMode === 'code'"
+              />
+            </div>
+            <div
+              class="absolute inset-0"
+              :class="workspace.hybridMode === 'visual' ? 'z-10' : 'hidden'"
+            >
+              <VisualEditor
+                ref="visualRef"
+                hide-navigator
+                :forced-selection="workspace.selection"
+                @reveal-span="onRevealSpan"
+                @select="onVisualSelect"
+              />
+            </div>
           </div>
         </WorkspacePanel>
       </template>
@@ -115,16 +141,30 @@ defineExpose({
           @update:model-value="onHybridMode"
         />
       </header>
-      <div class="min-h-0 flex-1">
-        <MonacoEditor v-show="workspace.hybridMode === 'code'" v-if="hybridTabId" ref="monacoRef" :tab-id="hybridTabId" />
-        <VisualEditor
-          v-show="workspace.hybridMode === 'visual'"
-          ref="visualRef"
-          hide-navigator
-          :forced-selection="workspace.selection"
-          @reveal-span="monacoRef?.revealSpan($event)"
-          @select="onVisualSelect"
-        />
+      <div class="relative min-h-0 flex-1 overflow-hidden">
+        <div
+          class="absolute inset-0"
+          :class="workspace.hybridMode === 'code' ? 'z-10' : 'invisible pointer-events-none z-0'"
+        >
+          <MonacoEditor
+            v-if="hybridTabId"
+            ref="monacoRef"
+            :tab-id="hybridTabId"
+            :active="workspace.hybridMode === 'code'"
+          />
+        </div>
+        <div
+          class="absolute inset-0"
+          :class="workspace.hybridMode === 'visual' ? 'z-10' : 'hidden'"
+        >
+          <VisualEditor
+            ref="visualRef"
+            hide-navigator
+            :forced-selection="workspace.selection"
+            @reveal-span="onRevealSpan"
+            @select="onVisualSelect"
+          />
+        </div>
       </div>
     </WorkspacePanel>
   </section>

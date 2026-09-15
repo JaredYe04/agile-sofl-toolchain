@@ -120,6 +120,12 @@ export function createDocumentTab(partial?: Partial<EditorTab>): EditorTab {
   }
 }
 
+export function monacoLanguageForDocumentKind(kind: DocumentKind): string {
+  if (kind === 'aspec') return 'agile-aspec'
+  if (kind === 'guispec') return 'html'
+  return 'agile-sofl'
+}
+
 /** @deprecated use createDocumentTab */
 export function createTab(partial?: Partial<EditorTab>): EditorTab {
   return createDocumentTab(partial)

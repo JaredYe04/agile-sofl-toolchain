@@ -211,7 +211,9 @@ export function useVisualModel(activeTabId: ComputedRef<string | undefined>) {
         ? `inv:reorder:${payload.moduleName}`
         : action === 'add'
           ? `inv:add:${payload.moduleName}`
-          : `inv:${payload.span?.start ?? 'x'}`
+          : action === 'patch' && payload.index != null
+            ? `inv:patch:${payload.moduleName}:${payload.index}`
+            : `inv:${payload.span?.start ?? 'x'}`
     const run = async (source: string) => {
       if (!window.studio?.patchInvariant) return source
       return window.studio.patchInvariant({ ...payload, source })

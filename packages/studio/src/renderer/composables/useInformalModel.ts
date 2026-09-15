@@ -9,6 +9,8 @@ import type {
   InformalModelPayload,
   InformalProcessPayload
 } from '../preload/index'
+import { isInformalDuplicate } from '../lib/informalEntityGuard'
+import { useI18n } from 'vue-i18n'
 
 const DEBOUNCE_MS = 300
 
@@ -17,6 +19,7 @@ export function useInformalModel(activeTabId: Ref<string | undefined>) {
   const history = useHistoryStore()
   const modal = useModalStore()
   const editorUi = useEditorUiStore()
+  const { t } = useI18n()
   const model = ref<InformalModelPayload | null>(null)
   const loading = ref(false)
   const lastRebuiltContent = ref('')
@@ -79,6 +82,21 @@ export function useInformalModel(activeTabId: Ref<string | undefined>) {
     void rebuildNow()
   }
 
+  async function blockInformalDuplicate(
+    moduleId: string,
+    kind: Parameters<typeof isInformalDuplicate>[1],
+    value: string
+  ): Promise<boolean> {
+    const mod = model.value?.modules.find((m) => m.id === moduleId)
+    if (!mod || !isInformalDuplicate(mod, kind, value)) return false
+    await modal.show({
+      title: t('visual.duplicateName.title'),
+      message: t('visual.duplicateName.message', { name: value }),
+      buttons: [t('dialog.ok')]
+    })
+    return true
+  }
+
   async function patchViaIpc(payload: Parameters<NonNullable<typeof window.studio>['patchAspec']>[0]): Promise<void> {
     const tab = activeTab.value
     if (!tab || !window.studio?.patchAspec) return
@@ -108,6 +126,7 @@ export function useInformalModel(activeTabId: Ref<string | undefined>) {
   }
 
   async function addProcess(moduleId: string, process: InformalProcessPayload): Promise<void> {
+    if (await blockInformalDuplicate(moduleId, 'process', process.name)) return
     await patchViaIpc({ action: 'add-process', moduleId, process })
   }
 
@@ -128,6 +147,7 @@ export function useInformalModel(activeTabId: Ref<string | undefined>) {
   }
 
   async function addFunction(moduleId: string, fn: { id: string; name: string; description?: string }): Promise<void> {
+    if (await blockInformalDuplicate(moduleId, 'function', fn.name)) return
     await patchViaIpc({ action: 'add-function', moduleId, function: fn })
   }
 
@@ -139,6 +159,7 @@ export function useInformalModel(activeTabId: Ref<string | undefined>) {
     moduleId: string,
     type: { id: string; name: string; typeHint?: string; description?: string }
   ): Promise<void> {
+    if (await blockInformalDuplicate(moduleId, 'type', type.name)) return
     await patchViaIpc({ action: 'add-type', moduleId, type })
   }
 
@@ -150,6 +171,7 @@ export function useInformalModel(activeTabId: Ref<string | undefined>) {
     moduleId: string,
     variable: { id: string; name: string; typeHint?: string; description?: string }
   ): Promise<void> {
+    if (await blockInformalDuplicate(moduleId, 'variable', variable.name)) return
     await patchViaIpc({ action: 'add-variable', moduleId, variable })
   }
 
@@ -161,6 +183,8 @@ export function useInformalModel(activeTabId: Ref<string | undefined>) {
     moduleId: string,
     invariant: { id: string; textHint?: string; description?: string }
   ): Promise<void> {
+    const key = (invariant.textHint ?? invariant.description ?? '').trim()
+    if (key && (await blockInformalDuplicate(moduleId, 'invariant', key))) return
     await patchViaIpc({ action: 'add-invariant', moduleId, invariant })
   }
 
@@ -172,6 +196,7 @@ export function useInformalModel(activeTabId: Ref<string | undefined>) {
     moduleId: string,
     constant: { id: string; name: string; valueHint?: string; description?: string }
   ): Promise<void> {
+    if (await blockInformalDuplicate(moduleId, 'constant', constant.name)) return
     await patchViaIpc({ action: 'add-constant', moduleId, constant })
   }
 
