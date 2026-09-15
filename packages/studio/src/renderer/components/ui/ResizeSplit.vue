@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { computed, onUnmounted, ref } from 'vue'
+import { splitPaneFlex, splitRatioFromDelta } from '../../lib/resizeSplit'
 
 const props = withDefaults(
   defineProps<{
@@ -13,41 +14,67 @@ const props = withDefaults(
 
 const emit = defineEmits<{ 'update:ratio': [value: number] }>()
 const container = ref<HTMLElement | null>(null)
-const dragging = ref(false)
+const isVertical = computed(() => props.direction === 'vertical')
 
-function clamp(r: number): number {
-  return Math.min(1 - props.minSecond, Math.max(props.minFirst, r))
+type DragState = {
+  pointerId: number
+  startPos: number
+  startRatio: number
+  available: number
 }
 
-function onMouseDown(e: MouseEvent): void {
-  dragging.value = true
+const drag = ref<DragState | null>(null)
+
+function onPointerDown(e: PointerEvent): void {
+  if (e.button !== 0 || !container.value) return
   e.preventDefault()
-}
-
-function onMouseMove(e: MouseEvent): void {
-  if (!dragging.value || !container.value) return
   const rect = container.value.getBoundingClientRect()
-  if (props.direction === 'vertical') {
-    emit('update:ratio', clamp((e.clientY - rect.top) / rect.height))
-  } else {
-    emit('update:ratio', clamp((e.clientX - rect.left) / rect.width))
+  const gutter = (e.currentTarget as HTMLElement).getBoundingClientRect()
+  const available = Math.max(
+    0,
+    isVertical.value ? rect.height - gutter.height : rect.width - gutter.width
+  )
+  drag.value = {
+    pointerId: e.pointerId,
+    startPos: isVertical.value ? e.clientY : e.clientX,
+    startRatio: props.ratio,
+    available
   }
+  ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+  document.body.style.cursor = isVertical.value ? 'row-resize' : 'col-resize'
+  document.body.style.userSelect = 'none'
 }
 
-function onMouseUp(): void {
-  dragging.value = false
+function onPointerMove(e: PointerEvent): void {
+  const d = drag.value
+  if (!d || e.pointerId !== d.pointerId) return
+  emit(
+    'update:ratio',
+    splitRatioFromDelta({
+      startRatio: d.startRatio,
+      startPos: d.startPos,
+      pos: isVertical.value ? e.clientY : e.clientX,
+      available: d.available,
+      minFirst: props.minFirst,
+      minSecond: props.minSecond
+    })
+  )
 }
 
-onMounted(() => {
-  window.addEventListener('mousemove', onMouseMove)
-  window.addEventListener('mouseup', onMouseUp)
-})
+function endDrag(e: PointerEvent): void {
+  const d = drag.value
+  if (!d || e.pointerId !== d.pointerId) return
+  const target = e.currentTarget as HTMLElement
+  if (target.hasPointerCapture(e.pointerId)) target.releasePointerCapture(e.pointerId)
+  drag.value = null
+  document.body.style.cursor = ''
+  document.body.style.userSelect = ''
+}
+
 onUnmounted(() => {
-  window.removeEventListener('mousemove', onMouseMove)
-  window.removeEventListener('mouseup', onMouseUp)
+  document.body.style.cursor = ''
+  document.body.style.userSelect = ''
 })
-
-const isVertical = props.direction === 'vertical'
 </script>
 
 <template>
@@ -58,25 +85,33 @@ const isVertical = props.direction === 'vertical'
   >
     <div
       class="min-h-0 min-w-0 overflow-hidden"
-      :class="isVertical ? 'w-full' : 'h-full'"
-      :style="
-        isVertical
-          ? { height: `${ratio * 100}%`, flex: '0 0 auto' }
-          : { width: `${ratio * 100}%`, flex: '0 0 auto' }
-      "
+      :style="{ flex: splitPaneFlex(ratio) }"
     >
       <slot name="first" />
     </div>
     <div
-      class="group shrink-0 bg-border-subtle transition-colors duration-150 hover:bg-accent/40"
+      class="group/resize relative z-20 shrink-0 touch-none bg-transparent"
       :class="
         isVertical
-          ? 'flex h-1 w-full cursor-row-resize items-stretch'
-          : 'flex h-full w-1 cursor-col-resize items-stretch'
+          ? 'h-3 w-full cursor-row-resize'
+          : 'h-full w-3 cursor-col-resize'
       "
-      @mousedown="onMouseDown"
-    />
-    <div class="min-h-0 min-w-0 flex-1 overflow-hidden">
+      @pointerdown="onPointerDown"
+      @pointermove="onPointerMove"
+      @pointerup="endDrag"
+      @pointercancel="endDrag"
+    >
+      <div
+        class="pointer-events-none absolute bg-border-subtle transition-colors duration-150 group-hover/resize:bg-accent/40"
+        :class="[
+          isVertical
+            ? 'inset-x-0 top-1/2 h-1 -translate-y-1/2'
+            : 'inset-y-0 left-1/2 w-1 -translate-x-1/2',
+          drag ? 'bg-accent/40' : ''
+        ]"
+      />
+    </div>
+    <div class="min-h-0 min-w-0 overflow-hidden" :style="{ flex: splitPaneFlex(1 - ratio) }">
       <slot name="second" />
     </div>
   </div>

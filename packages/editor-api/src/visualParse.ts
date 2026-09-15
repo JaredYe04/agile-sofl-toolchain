@@ -86,6 +86,7 @@ export type VisualModelResult = {
       screens: Array<{
         name: string
         span: ReturnType<typeof toSerializableSpan>
+        triggersProcess?: string
         widgets: Array<{
           name: string
           kind: string
@@ -288,6 +289,7 @@ export function buildVisualModelTolerant(source: string): VisualModelResult {
             screens: mod.gui.screens.map((s) => ({
               name: s.name,
               span: toSerializableSpan(s.span),
+              triggersProcess: s.triggersProcess,
               widgets: s.widgets.map((w) => ({
                 name: w.name,
                 kind: w.kind,

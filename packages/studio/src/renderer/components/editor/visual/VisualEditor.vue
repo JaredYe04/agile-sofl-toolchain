@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted, inject } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, inject, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { DeclarationKind, SerializableSpan, DiagnosticSummary, VisualModuleSummary } from '../../../preload/index'
 import { useDocumentStore } from '../../../stores/document'
@@ -17,13 +17,26 @@ import VisualContextMenu from './VisualContextMenu.vue'
 import ModuleTree from './ModuleTree.vue'
 import ModuleGraphView from './ModuleGraphView.vue'
 import ModuleOverview from './ModuleOverview.vue'
-import ProcessEditor from './ProcessEditor.vue'
-import FunctionEditor from './FunctionEditor.vue'
-import AliasProcessEditor from './AliasProcessEditor.vue'
+import ProcessEditDialog from './ProcessEditDialog.vue'
+import FunctionEditDialog from './FunctionEditDialog.vue'
+import type { ProcessEditorDraft } from './ProcessEditor.vue'
 import { useModalStore } from '../../../stores/modal'
 import ResizableSplit from '../../ui/ResizableSplit.vue'
 import type { SymbolHint } from './predicate/predicateTypes'
 import type { ProcessNodeMeta } from '@agile-sofl/editor-api'
+import {
+  composedTypeText,
+  nextFieldName,
+  varDeclText
+} from '../../../lib/visualDecls'
+import {
+  constDeclText,
+  nextConstName,
+  nextNumberedName,
+  nextProcessName,
+  nextTypeName,
+  nextVarName
+} from '../../../lib/visualNames'
 
 const PREDICATE_KEYWORDS: SymbolHint[] = [
   { label: 'and', kind: 'keyword' },
@@ -53,10 +66,10 @@ const editorUi = useEditorUiStore()
 const linkedHints = useLinkedInformalHints(computed(() => doc.activeTabId))
 const editorSelection = useEditorSelectionStore()
 const selected = ref<TreeSelection>(null)
-const processEditorRef = ref<InstanceType<typeof ProcessEditor> | null>(null)
-const functionEditorRef = ref<InstanceType<typeof FunctionEditor> | null>(null)
 const searchQuery = ref('')
 const contextMenu = ref<{ x: number; y: number; selection: TreeSelection } | null>(null)
+const editingProcessName = ref<string | null>(null)
+const editingFunctionName = ref<string | null>(null)
 
 const visual = inject(VISUAL_MODEL_KEY)
 if (!visual) throw new Error('VisualEditor requires VISUAL_MODEL_KEY provider')
@@ -69,6 +82,22 @@ const diagnostics = computed(
 watch(selected, (value) => {
   editorSelection.setSelection(value)
   emit('select', value)
+  if (value?.kind === 'process') {
+    editingProcessName.value = value.processName
+    editingFunctionName.value = null
+    void nextTick(() => {
+      document.getElementById(`visual-process-${value.processName}`)?.scrollIntoView({
+        block: 'nearest',
+        behavior: 'smooth'
+      })
+    })
+  } else if (value?.kind === 'function') {
+    editingFunctionName.value = value.functionName
+    editingProcessName.value = null
+  } else {
+    editingProcessName.value = null
+    editingFunctionName.value = null
+  }
 }, { immediate: true })
 
 watch(
@@ -197,11 +226,8 @@ const blockInformalFunction = computed(() => editorUi.fsfStrictMode && selected.
 const detailPanelKey = computed(() => {
   const tabId = doc.activeTabId
   const gen = visual.modelGen.value
-  const sel = selected.value
-  if (!sel) return `${tabId}-${gen}-none`
-  if (sel.kind === 'module') return `${tabId}-${gen}-mod-${sel.moduleName}`
-  if (sel.kind === 'process') return `${tabId}-${gen}-proc-${sel.moduleName}-${sel.processName}`
-  return `${tabId}-${gen}-fn-${sel.moduleName}-${sel.functionName}`
+  const name = selectedModule.value?.name ?? 'none'
+  return `${tabId}-${gen}-mod-${name}`
 })
 
 const breadcrumb = computed(() => {
@@ -326,6 +352,30 @@ async function onPatchInvariant(payload: { span: SerializableSpan; text: string 
   await visual.patchInvariant(payload)
 }
 
+async function onAddInvariant(text: string): Promise<void> {
+  if (writeDisabled.value || !selectedModule.value) return
+  await visual.patchInvariant({ action: 'add', moduleName: selectedModule.value.name, text })
+}
+
+async function onRemoveInvariant(index: number): Promise<void> {
+  if (writeDisabled.value || !selectedModule.value) return
+  await visual.patchInvariant({
+    action: 'remove',
+    moduleName: selectedModule.value.name,
+    index
+  })
+}
+
+async function onReorderInvariants(fromIndex: number, toIndex: number): Promise<void> {
+  if (writeDisabled.value || !selectedModule.value) return
+  await visual.patchInvariant({
+    action: 'reorder',
+    moduleName: selectedModule.value.name,
+    fromIndex,
+    toIndex
+  })
+}
+
 async function onRenameProcess(name?: string): Promise<void> {
   if (selected.value?.kind !== 'process') return
   let newName = name
@@ -371,9 +421,14 @@ async function onRenameFunction(name?: string): Promise<void> {
 async function onAddModule(): Promise<void> {
   if (writeDisabled.value || !selectedModule.value) return
   const parentName = selected.value?.kind === 'module' ? selectedModule.value.name : undefined
+  const defaultModule = nextNumberedName(
+    'Module',
+    modules.value.map((m) => m.name)
+  )
   const { index, value, checked } = await modal.show({
     title: t('visual.module.addTitle'),
     input: true,
+    inputValue: defaultModule,
     inputPlaceholder: t('visual.module.namePlaceholder'),
     checkbox: true,
     checkboxLabel: t('visual.module.systemModule'),
@@ -486,23 +541,48 @@ function onPatchAlias(target: string): void {
 }
 
 function onAddDeclaration(kind: DeclarationKind): void {
-  void onPatchDeclaration({ kind, action: 'add' })
+  const mod = selectedModule.value
+  if (!mod) return
+  if (kind === 'const') {
+    const name = nextConstName(mod.consts.map((c) => c.name))
+    void onPatchDeclaration({ kind, action: 'add', text: constDeclText(name) })
+    return
+  }
+  if (kind === 'type') {
+    const name = nextTypeName(mod.types.map((t) => t.name))
+    void onPatchDeclaration({
+      kind,
+      action: 'add',
+      text: composedTypeText(name, [{ name: nextFieldName([]), type: 'nat' }])
+    })
+    return
+  }
+  const name = nextVarName(mod.vars.map((v) => v.name))
+  void onPatchDeclaration({ kind, action: 'add', text: varDeclText(name, 'nat') })
 }
 
-async function onAddProcess(): Promise<void> {
+async function onAddProcess(preset?: { name: string; isInit: boolean }): Promise<void> {
   if (writeDisabled.value || !selectedModule.value) return
-  const defaultName = `Process${(selectedModule.value.processes.length ?? 0) + 1}`
-  const { index, value, checked } = await modal.show({
-    title: t('visual.process.addTitle'),
-    input: true,
-    inputValue: defaultName,
-    inputPlaceholder: t('visual.process.namePlaceholder'),
-    checkbox: true,
-    checkboxLabel: t('visual.process.initProcess'),
-    buttons: [t('dialog.ok'), t('dialog.cancel')]
-  })
-  if (index !== 0) return
-  const processName = checked ? 'Init' : (value?.trim() || defaultName)
+  let processName: string
+  let checked = false
+  if (preset) {
+    processName = preset.isInit ? 'Init' : preset.name
+    checked = preset.isInit
+  } else {
+    const defaultName = nextProcessName(selectedModule.value.processes.map((p) => p.name))
+    const { index, value, checked: isInit } = await modal.show({
+      title: t('visual.process.addTitle'),
+      input: true,
+      inputValue: defaultName,
+      inputPlaceholder: t('visual.process.namePlaceholder'),
+      checkbox: true,
+      checkboxLabel: t('visual.process.initProcess'),
+      buttons: [t('dialog.ok'), t('dialog.cancel')]
+    })
+    if (index !== 0) return
+    checked = Boolean(isInit)
+    processName = checked ? 'Init' : (value?.trim() || defaultName)
+  }
   const template = checked
     ? `process Init ()
     pre
@@ -512,17 +592,142 @@ async function onAddProcess(): Promise<void> {
 end_process`
     : undefined
   await onPatchProcess({ kind: 'process', action: 'add', name: processName, template })
-  selected.value = { kind: 'process', moduleName: selectedModule.value.name, processName }
+  openProcessEditor(processName)
 }
 
 function onAddFunction(): void {
-  const name = `fn${(selectedModule.value?.functions.length ?? 0) + 1}`
+  const existing = selectedModule.value?.functions.map((f) => f.name) ?? []
+  const name = nextNumberedName('fn', existing)
   void onPatchProcess({ kind: 'function', action: 'add', name })
 }
 
 function onAddScenario(): void {
-  if (selected.value?.kind === 'process') processEditorRef.value?.addScenario()
-  else if (selected.value?.kind === 'function') functionEditorRef.value?.addScenario()
+  if (selected.value?.kind === 'process') openProcessEditor(selected.value.processName)
+  else if (selected.value?.kind === 'function') openFunctionEditor(selected.value.functionName)
+}
+
+function openProcessEditor(name: string): void {
+  const moduleName = selectedModule.value?.name
+  if (!moduleName) return
+  selected.value = { kind: 'process', moduleName, processName: name }
+  editingProcessName.value = name
+}
+
+function closeProcessEditor(): void {
+  editingProcessName.value = null
+  const moduleName = selectedModule.value?.name
+  if (moduleName) selected.value = { kind: 'module', moduleName }
+}
+
+function openFunctionEditor(name: string): void {
+  const moduleName = selectedModule.value?.name
+  if (!moduleName) return
+  selected.value = { kind: 'function', moduleName, functionName: name }
+  editingFunctionName.value = name
+}
+
+function closeFunctionEditor(): void {
+  editingFunctionName.value = null
+  const moduleName = selectedModule.value?.name
+  if (moduleName) selected.value = { kind: 'module', moduleName }
+}
+
+async function onRemoveProcess(name: string): Promise<void> {
+  if (writeDisabled.value) return
+  const { index } = await modal.show({
+    title: t('visual.process.removeTitle'),
+    message: t('visual.process.removeMessage', { name }),
+    buttons: [t('dialog.delete'), t('dialog.cancel')]
+  })
+  if (index !== 0) return
+  await onPatchProcess({ kind: 'process', action: 'remove', name })
+  closeProcessEditor()
+}
+
+async function onRemoveFunction(name: string): Promise<void> {
+  if (writeDisabled.value) return
+  const { index } = await modal.show({
+    title: t('visual.function.removeTitle'),
+    message: t('visual.function.removeMessage', { name }),
+    buttons: [t('dialog.delete'), t('dialog.cancel')]
+  })
+  if (index !== 0) return
+  await onPatchProcess({ kind: 'function', action: 'remove', name })
+  closeFunctionEditor()
+}
+
+const dialogProcess = computed(() => {
+  if (!editingProcessName.value || !selectedModule.value) return null
+  return selectedModule.value.processes.find((p) => p.name === editingProcessName.value) ?? null
+})
+
+const dialogFunction = computed(() => {
+  if (!editingFunctionName.value || !selectedModule.value) return null
+  return selectedModule.value.functions.find((f) => f.name === editingFunctionName.value) ?? null
+})
+
+const dialogProcessFsf = computed(() => {
+  const name = editingProcessName.value
+  if (!name) return null
+  return (visual.fsfModels.value as FsfModelDto[]).find((m) => m.processName === name && !m.functionName) ?? null
+})
+
+const dialogFunctionFsf = computed(() => {
+  const name = editingFunctionName.value
+  const moduleName = selectedModule.value?.name
+  if (!name || !moduleName) return null
+  return (visual.fsfModels.value as FsfModelDto[]).find(
+    (m) => m.functionName === name && m.moduleName === moduleName
+  ) ?? null
+})
+
+async function applyProcessDraft(draft: ProcessEditorDraft): Promise<void> {
+  if (writeDisabled.value || !selectedModule.value || !editingProcessName.value) return
+  const moduleName = selectedModule.value.name
+  const currentName = editingProcessName.value
+  const current = dialogProcess.value
+  await visual.applySourcePatch(async (source) => {
+    if (!window.studio) return source
+    let s = source
+    if (current && draft.isInit !== Boolean(current.isInit)) {
+      s = await window.studio.patchProcessInit({
+        source: s,
+        moduleName,
+        processName: currentName,
+        isInit: draft.isInit,
+        fallbackName: draft.name
+      })
+    }
+    const afterInit = draft.isInit ? 'Init' : currentName
+    if (!draft.isInit && draft.name !== afterInit) {
+      s = await window.studio.patchProcess({
+        source: s,
+        moduleName,
+        kind: 'process',
+        action: 'rename',
+        name: afterInit,
+        newName: draft.name
+      })
+    }
+    const name = draft.isInit ? 'Init' : draft.name
+    s = await window.studio.patchProcessSignature({ source: s, moduleName, processName: name, signature: draft.signature })
+    s = await window.studio.patchExt({ source: s, moduleName, processName: name, vars: draft.ext })
+    s = await window.studio.patchDocument({ source: s, kind: 'pre', processName: name, text: draft.pre })
+    s = await window.studio.patchDocument({ source: s, kind: 'post', processName: name, text: draft.post })
+    s = await window.studio.patchDocument({ source: s, kind: 'decom', processName: name, text: draft.decom })
+    s = await window.studio.patchDocument({ source: s, kind: 'comment', processName: name, text: draft.comment })
+    if (draft.fsf) {
+      s = await window.studio.patchDocument({
+        source: s,
+        kind: 'fsf',
+        processName: name,
+        scenarios: draft.fsf.scenarios,
+        others: draft.fsf.others
+      })
+    }
+    return s
+  })
+  closeProcessEditor()
 }
 
 function onNavRatioUpdate(r: number): void {
@@ -563,7 +768,7 @@ function onContextAction(type: VisualActionType, _declarationKind?: DeclarationK
       if (sel.kind === 'function') void onPatchProcess({ kind: 'function', action: 'remove', name: sel.functionName })
       break
     case 'editProcess':
-      if (sel.kind === 'process') selected.value = sel
+      if (sel.kind === 'process') openProcessEditor(sel.processName)
       break
     case 'renameProcess':
       void onRenameProcess()
@@ -629,73 +834,26 @@ defineExpose({ setSelection })
       :hide-side-views="hideNavigator"
       @update:search-query="searchQuery = $event"
       @refresh="visual.rebuildNow()"
-      @add-declaration="onAddDeclaration"
-      @add-process="onAddProcess"
-      @add-function="onAddFunction"
-      @add-scenario="onAddScenario"
-      @rename-process="onRenameProcess()"
-      @rename-function="onRenameFunction()"
-      @add-module="onAddModule"
-      @rename-module="onRenameModule"
-      @remove-module="onRemoveModule"
     />
     <div v-if="hideNavigator" class="studio-scroll min-h-0 flex-1 overflow-y-auto">
       <ModuleOverview
-        v-if="selected?.kind === 'module' && selectedModule"
+        v-if="selectedModule"
         :key="detailPanelKey"
         :module="selectedModule"
         :disabled="writeDisabled"
         @patch-declaration="onPatchDeclaration"
         @patch-gui-widget="onPatchGuiWidget"
         @patch-invariant="onPatchInvariant"
-        @rename-module="onRenameModuleInline"
+        @add-invariant="onAddInvariant"
+        @remove-invariant="onRemoveInvariant"
+        @reorder-invariants="onReorderInvariants"
         @select="selected = $event"
         @reveal-span="emit('revealSpan', $event)"
-      />
-      <AliasProcessEditor
-        v-else-if="selected?.kind === 'process' && selectedProcess?.isAlias"
-        :key="detailPanelKey"
-        :process="selectedProcess"
-        :disabled="writeDisabled"
-        :write-disabled-reason="writeDisabledReason"
-        @patch-alias="onPatchAlias"
-        @rename="onRenameProcess"
-      />
-      <ProcessEditor
-        v-else-if="selected?.kind === 'process' && selectedProcess"
-        :key="detailPanelKey"
-        ref="processEditorRef"
-        :process="selectedProcess"
-        :process-name="selected.processName"
-        :module-name="selected.moduleName"
-        :initial-decom="selectedProcess.decom"
-        :initial-comment="selectedProcess.comment"
-        :fsf-model="selectedFsfModel"
-        :symbols="symbolHints"
-        :disabled="writeDisabled"
-        :write-disabled-reason="writeDisabledReason"
-        :block-informal="blockInformalPredicate"
-        @patch="onPatch"
-        @patch-ext="onPatchExt"
-        @patch-signature="onPatchProcessSignature"
-        @patch-init="onPatchProcessInit"
-        @rename="onRenameProcess"
-      />
-      <FunctionEditor
-        v-else-if="selected?.kind === 'function' && selectedFunction"
-        :key="detailPanelKey"
-        ref="functionEditorRef"
-        :fn="selectedFunction"
-        :module-name="selected.moduleName"
-        :fsf-model="selectedFunctionFsfModel"
-        :symbols="symbolHints"
-        :disabled="writeDisabled"
-        :write-disabled-reason="writeDisabledReason"
-        :block-informal="blockInformalFunction"
-        @patch="onPatchFunction"
-        @patch-signature="onPatchFunctionSignature"
-        @rename="onRenameFunction"
-        @reveal-span="emit('revealSpan', $event)"
+        @edit-process="openProcessEditor"
+        @remove-process="onRemoveProcess"
+        @edit-function="openFunctionEditor"
+        @remove-function="onRemoveFunction"
+        @add-process="onAddProcess"
       />
       <div v-else class="flex h-full items-center justify-center p-8 text-sm text-content-secondary">
         {{ t('visual.selectHint') }}
@@ -734,61 +892,23 @@ defineExpose({ setSelection })
       <template #right>
         <div class="studio-scroll h-full min-h-0 overflow-y-auto">
           <ModuleOverview
-            v-if="selected?.kind === 'module' && selectedModule"
+            v-if="selectedModule"
             :key="detailPanelKey"
             :module="selectedModule"
             :disabled="writeDisabled"
             @patch-declaration="onPatchDeclaration"
             @patch-gui-widget="onPatchGuiWidget"
             @patch-invariant="onPatchInvariant"
-            @rename-module="onRenameModuleInline"
+            @add-invariant="onAddInvariant"
+            @remove-invariant="onRemoveInvariant"
+            @reorder-invariants="onReorderInvariants"
             @select="selected = $event"
             @reveal-span="emit('revealSpan', $event)"
-          />
-          <AliasProcessEditor
-            v-else-if="selected?.kind === 'process' && selectedProcess?.isAlias"
-            :key="detailPanelKey"
-            :process="selectedProcess"
-            :disabled="writeDisabled"
-            :write-disabled-reason="writeDisabledReason"
-            @patch-alias="onPatchAlias"
-            @rename="onRenameProcess"
-          />
-          <ProcessEditor
-            v-else-if="selected?.kind === 'process' && selectedProcess"
-            :key="detailPanelKey"
-            ref="processEditorRef"
-            :process="selectedProcess"
-            :process-name="selected.processName"
-            :module-name="selected.moduleName"
-            :initial-decom="selectedProcess.decom"
-            :initial-comment="selectedProcess.comment"
-            :fsf-model="selectedFsfModel"
-            :symbols="symbolHints"
-            :disabled="writeDisabled"
-            :write-disabled-reason="writeDisabledReason"
-            :block-informal="blockInformalPredicate"
-            @patch="onPatch"
-            @patch-ext="onPatchExt"
-            @patch-signature="onPatchProcessSignature"
-            @patch-init="onPatchProcessInit"
-            @rename="onRenameProcess"
-          />
-          <FunctionEditor
-            v-else-if="selected?.kind === 'function' && selectedFunction"
-            :key="detailPanelKey"
-            ref="functionEditorRef"
-            :fn="selectedFunction"
-            :module-name="selected.moduleName"
-            :fsf-model="selectedFunctionFsfModel"
-            :symbols="symbolHints"
-            :disabled="writeDisabled"
-            :write-disabled-reason="writeDisabledReason"
-            :block-informal="blockInformalFunction"
-            @patch="onPatchFunction"
-            @patch-signature="onPatchFunctionSignature"
-            @rename="onRenameFunction"
-            @reveal-span="emit('revealSpan', $event)"
+            @edit-process="openProcessEditor"
+            @remove-process="onRemoveProcess"
+            @edit-function="openFunctionEditor"
+            @remove-function="onRemoveFunction"
+            @add-process="onAddProcess"
           />
           <div v-else class="flex h-full items-center justify-center p-8 text-sm text-content-secondary">
             {{ t('visual.selectHint') }}
@@ -796,6 +916,35 @@ defineExpose({ setSelection })
         </div>
       </template>
     </ResizableSplit>
+    <ProcessEditDialog
+      :open="Boolean(editingProcessName && dialogProcess)"
+      :process="dialogProcess"
+      :process-name="editingProcessName ?? ''"
+      :module-name="selectedModule?.name ?? ''"
+      :fsf-model="dialogProcessFsf"
+      :symbols="symbolHints"
+      :disabled="writeDisabled"
+      :write-disabled-reason="writeDisabledReason"
+      :block-informal="blockInformalPredicate"
+      @close="closeProcessEditor"
+      @apply="applyProcessDraft"
+      @patch-alias="onPatchAlias"
+    />
+    <FunctionEditDialog
+      :open="Boolean(editingFunctionName && dialogFunction)"
+      :fn="dialogFunction"
+      :module-name="selectedModule?.name ?? ''"
+      :fsf-model="dialogFunctionFsf"
+      :symbols="symbolHints"
+      :disabled="writeDisabled"
+      :write-disabled-reason="writeDisabledReason"
+      :block-informal="blockInformalFunction"
+      @close="closeFunctionEditor"
+      @patch="onPatchFunction"
+      @patch-signature="onPatchFunctionSignature"
+      @rename="onRenameFunction"
+      @reveal-span="emit('revealSpan', $event)"
+    />
     <VisualContextMenu
       v-if="contextMenu"
       :x="contextMenu.x"

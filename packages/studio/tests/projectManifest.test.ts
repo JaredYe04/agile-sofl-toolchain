@@ -23,7 +23,7 @@ describe('projectManifest', () => {
     expect(readManifest(nested)?.informal).toBe('informal.aspec')
     expect(readFileSync(join(nested, 'informal.aspec'), 'utf-8')).toContain('# Functions')
     expect(readFileSync(join(nested, 'hybrid.asfl'), 'utf-8')).toContain('module GUI_App')
-    expect(readFileSync(join(nested, 'gui.guispec'), 'utf-8')).toContain('bounds')
+    expect(readFileSync(join(nested, 'gui.html'), 'utf-8')).toContain('data-screen')
   })
 
   it('hybrid template parses as a program with a GUI module', async () => {
@@ -47,6 +47,6 @@ describe('projectManifest', () => {
     const inferred = await inferManifest(nested)
     expect(inferred.informal).toBe('informal.aspec')
     expect(inferred.hybrid).toContain('hybrid.asfl')
-    expect(inferred.gui).toBe('gui.guispec')
+    expect(inferred.gui).toBe('gui.html')
   })
 })

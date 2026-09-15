@@ -13,7 +13,7 @@ export function patchFingerprint(patch: {
 }
 
 export function validateAgentPatch(
-  target: 'informal' | 'hybrid',
+  target: 'informal' | 'hybrid' | 'gui',
   patch: InformalPatchPayload,
   options?: { mode?: 'crud' | 'source' }
 ): { ok: boolean; message: string } {
@@ -45,6 +45,30 @@ export function validateAgentPatch(
       return {
         ok: false,
         message: `Unknown source op "${kind}". Use replace, append, or replace-document.`
+      }
+    }
+    return { ok: true, message: 'ok' }
+  }
+  if (target === 'gui') {
+    const allowed = new Set([
+      'add',
+      'add-screen',
+      'remove',
+      'remove-screen',
+      'add-widget',
+      'replace-html',
+      'replace-screen-html',
+      'insert-html',
+      'patch-node',
+      'remove-node'
+    ])
+    for (const op of patch.operations) {
+      const kind = String(op.op || '')
+      if (!allowed.has(kind)) {
+        return {
+          ok: false,
+          message: `Unknown GUI op "${kind}". Use add-screen, add-widget, replace-html, replace-screen-html, insert-html.`
+        }
       }
     }
     return { ok: true, message: 'ok' }

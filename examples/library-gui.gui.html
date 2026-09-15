@@ -1,0 +1,25 @@
+<div class="as-app" data-app="LibraryApp">
+  <section class="as-screen" id="scr-home" data-screen="HomePage">
+    <h1 class="as-title">Library Home</h1>
+    <p class="as-muted">Main navigation for circulation tasks.</p>
+    <div class="as-stack as-gap-md">
+      <button class="as-btn" id="w-nav-borrow">Borrow</button>
+      <button class="as-btn" id="w-nav-return">Return</button>
+    </div>
+  </section>
+  <section class="as-screen" id="scr-borrow" data-screen="BorrowPage" data-process="proc-borrow">
+    <h1 class="as-title">Borrow Book</h1>
+    <p class="as-muted">Enter member and book identifiers.</p>
+    <div class="as-stack as-gap-md">
+      <label class="as-field">
+Member ID
+        <input class="as-input" id="w-member-id" data-bind="param:member_id" />
+      </label>
+      <label class="as-field">
+Book ID
+        <input class="as-input" id="w-book-id" data-bind="param:book_id" />
+      </label>
+      <button class="as-btn as-btn-primary" id="w-submit-borrow" data-process="submit">Borrow</button>
+    </div>
+  </section>
+</div>

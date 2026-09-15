@@ -56,6 +56,8 @@ export default defineConfig({
     resolve: {
       alias: {
         '@agile-sofl/editor-api': resolve(__dirname, 'src/renderer/lib/editorApiRenderer.ts'),
+        // Main process loads CJS from dist; renderer bundles ESM from source.
+        '@agile-sofl/gui': resolve(__dirname, '../gui/src/index.ts'),
         'monaco-editor-nls-adapter/proxy': resolve(__dirname, 'src/renderer/monaco/nlsProxy.js')
       }
     },

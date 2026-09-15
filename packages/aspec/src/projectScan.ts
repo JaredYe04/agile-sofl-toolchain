@@ -38,7 +38,7 @@ async function walk(
         await new Promise<void>((resolve) => setImmediate(resolve))
       }
       await walk(full, ext, out, counter)
-    } else if (name.endsWith(ext)) {
+    } else if (name.endsWith(ext) || (ext === '.gui.html' && name === 'gui.html')) {
       out.push(full)
     }
   }
@@ -51,6 +51,7 @@ export async function scanProject(root: string): Promise<ProjectScanResult> {
   const guispecFiles: string[] = []
   await walk(root, '.aspec', aspecFiles, counter)
   await walk(root, '.asfl', asflFiles, counter)
+  await walk(root, '.gui.html', guispecFiles, counter)
   await walk(root, '.guispec', guispecFiles, counter)
 
   const pairs: ProjectPair[] = aspecFiles.map((aspecPath) => {
@@ -58,7 +59,9 @@ export async function scanProject(root: string): Promise<ProjectScanResult> {
     const tracePath = join(dirname(aspecPath), `${base}.aspec.trace.json`)
     const candidateAsfl = asflFiles.find((p) => basename(p, '.asfl') === base.replace(/-informal$/, ''))
     const candidateGui =
+      guispecFiles.find((p) => basename(p, '.gui.html') === `${base}-gui`) ??
       guispecFiles.find((p) => basename(p, '.guispec') === `${base}-gui`) ??
+      guispecFiles.find((p) => basename(p, '.gui.html') === base.replace(/-informal$/, '') + '-gui') ??
       guispecFiles.find((p) => basename(p, '.guispec') === base.replace(/-informal$/, '') + '-gui')
     return {
       aspecPath,

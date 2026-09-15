@@ -17,13 +17,17 @@ import {
   type NodePath
 } from './predicateTree'
 
-const props = defineProps<{
-  modelValue: string
-  symbols?: SymbolHint[]
-  disabled?: boolean
-  blockInformal?: boolean
-  label?: string
-}>()
+const props = withDefaults(
+  defineProps<{
+    modelValue: string
+    symbols?: SymbolHint[]
+    disabled?: boolean
+    blockInformal?: boolean
+    label?: string
+    initialMode?: 'code' | 'visual'
+  }>(),
+  { initialMode: 'code' }
+)
 
 const emit = defineEmits<{
   'update:modelValue': [value: string]
@@ -31,7 +35,7 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
-const mode = ref<'code' | 'visual'>('code')
+const mode = ref<'code' | 'visual'>(props.initialMode)
 const codeText = ref(props.modelValue)
 const uiRoot = ref<PredicateUiNode | null>(null)
 const parseError = ref<string | null>(null)

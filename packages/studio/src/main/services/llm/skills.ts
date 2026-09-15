@@ -54,8 +54,9 @@ Pipeline — keep going after each applied patch until every enabled stage is do
 3. Per module: add types/variables from Data Resources (kind=type|var, parentId=mod:…).
 4. Per module: add process signatures from Functions (kind=process, pre/post).
 5. Per process: replace-process-body or add scenarios. Write structured natural-language pre/post, never FSF :. Enumerations use {<Tag>}.
-6. Add invariants (kind=inv) from Constraints; add GUI screens; keep traceability in explanations.
-After every applied write, call read_hybrid_specification and fix gaps with more CRUD until the inventory is correct. Last message = summary of completed stages.
+6. Add invariants (kind=inv) from Constraints. Do NOT dump GUI widgets into Hybrid CRUD.
+7. For UI, call read_gui_specification then propose_gui_changes using only whitelist HTML tags and as-* classes (data-screen, data-process, data-bind, data-nav). Hybrid gui blocks stay as slim screen→process traces.
+After every applied write, call read_hybrid_specification / read_gui_specification and fix gaps until inventories are correct. Last message = summary of completed stages.
 If CRUD fails, the file is empty/out of sync, or an uncovered parser/id issue appears, call read_hybrid_specification with view=source then propose_source_edit (unique replace/append/replace-document). Do not retry the same failing CRUD.
 Infer unstated GUI/navigation only when the parameter allows it; otherwise ask. Prefer small patches citing inventory ids.`
   }
@@ -259,6 +260,70 @@ export const AGENT_TOOLS = [
                     }
                   }
                 }
+              },
+              required: ['op']
+            }
+          }
+        },
+        required: ['operations']
+      }
+    }
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'read_gui_specification',
+      description:
+        'Read the current GUI HTML specification. view=inventory lists screens/widgets/bindings; view=source returns numbered .gui.html. Use whitelist tags and as-* classes only.',
+      parameters: {
+        type: 'object',
+        properties: {
+          view: {
+            type: 'string',
+            enum: ['inventory', 'source'],
+            description: 'inventory (default) or numbered HTML source'
+          }
+        }
+      }
+    }
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'propose_gui_changes',
+      description:
+        'Propose a structured GUI HTML patch. Ops: add-screen, remove-screen, add-widget, replace-html, replace-screen-html. Only whitelist HTML5 tags and as-* classes. Bind with data-process / data-bind / data-nav. Never emit <script>, style=, or arbitrary CSS.',
+      parameters: {
+        type: 'object',
+        properties: {
+          explanation: { type: 'string' },
+          operations: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                op: {
+                  type: 'string',
+                  enum: [
+                    'add-screen',
+                    'remove-screen',
+                    'add-widget',
+                    'replace-html',
+                    'replace-screen-html',
+                    'insert-html',
+                    'patch-node',
+                    'remove-node'
+                  ]
+                },
+                id: { type: 'string' },
+                name: { type: 'string' },
+                screenId: { type: 'string' },
+                kind: { type: 'string' },
+                label: { type: 'string' },
+                process: { type: 'string' },
+                nav: { type: 'string' },
+                html: { type: 'string' },
+                text: { type: 'string' }
               },
               required: ['op']
             }

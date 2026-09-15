@@ -24,6 +24,12 @@ export interface GuiBinds {
   param?: string
   variable?: string
   display?: string
+  out?: string
+}
+
+export interface GuiBindRef {
+  kind: 'param' | 'var' | 'out' | 'display'
+  name: string
 }
 
 export interface GuiBounds {
@@ -49,6 +55,8 @@ export interface GuiWidget {
   options?: string[]
   bounds?: GuiBounds
   events?: GuiWidgetEvent[]
+  process?: string
+  nav?: string
 }
 
 export interface GuiViewSize {
@@ -64,6 +72,7 @@ export interface GuiScreen {
   triggersProcess?: string
   widgets?: GuiWidget[]
   size?: GuiViewSize
+  html?: string
 }
 
 export interface GuiFlow {
@@ -96,6 +105,7 @@ export interface GuiDocument {
   guispecVersion: string
   meta: GuiMeta
   gui: GuiSection
+  html: string
 }
 
 export interface GuiScreenDto extends GuiScreen {
@@ -108,7 +118,8 @@ export interface GuiDocumentModel {
   screens: GuiScreenDto[]
   flows: GuiFlow[]
   diagnostics: GuiDiagnostic[]
-  sourceKind: 'guispec' | 'aspec-embedded'
+  sourceKind: 'guispec' | 'aspec-embedded' | 'gui-html'
+  html: string
 }
 
 export interface InformalProcessRef {
@@ -121,4 +132,12 @@ export interface InformalVariableRef {
   id: string
   name: string
   moduleId: string
+}
+
+export interface HybridProcessRef {
+  moduleName: string
+  processName: string
+  inputs: string[]
+  outputs: string[]
+  vars: string[]
 }

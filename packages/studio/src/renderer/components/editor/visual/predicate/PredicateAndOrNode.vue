@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
 import FieldGroup from '../ui/FieldGroup.vue'
+import IconActionButton from '../../../ui/IconActionButton.vue'
 import AddNodeMenu from './AddNodeMenu.vue'
 import PredicateNodeView from './PredicateNodeView.vue'
 import type { AddNodeKind, PredicateUiNode, SymbolHint } from './predicateTypes'
@@ -60,15 +61,14 @@ function removeChild(i: number): void {
       <AddNodeMenu :disabled="disabled" :block-informal="blockInformal" @select="onAdd" />
     </div>
     <div v-for="(child, i) in node.children" :key="i" class="relative ml-3 border-l border-border-subtle pl-3">
-      <button
-        type="button"
-        class="absolute -left-1 top-0 text-xs text-content-muted hover:text-danger disabled:opacity-40"
+      <IconActionButton
+        class="absolute -left-1 top-0"
+        icon="lucide:trash-2"
+        :label="t('visual.remove')"
+        variant="danger"
         :disabled="disabled"
-        :title="t('visual.remove')"
         @click="removeChild(i)"
-      >
-        ×
-      </button>
+      />
       <button
         type="button"
         class="absolute -left-1 top-5 text-xs text-accent hover:underline disabled:opacity-40"

@@ -1,32 +1,29 @@
 import type {
   GuiDocument,
   GuiDiagnostic,
+  HybridProcessRef,
   InformalProcessRef,
   InformalVariableRef
 } from './model.js'
 import { createDiagnostic, DiagnosticCodes } from './diagnostics/codes.js'
 
-function isNonEmptyString(v: unknown): v is string {
-  return typeof v === 'string' && v.trim().length > 0
+function processKey(moduleName: string, processName: string): string {
+  return `${moduleName}.${processName}`
 }
 
-function collectIds(document: GuiDocument): Map<string, string> {
-  const ids = new Map<string, string>()
-  for (const screen of document.gui.screens) {
-    if (ids.has(screen.id)) {
-      ids.set(screen.id, 'duplicate')
-    } else {
-      ids.set(screen.id, 'screen')
-    }
-    for (const w of screen.widgets ?? []) {
-      if (ids.has(w.id)) {
-        ids.set(w.id, 'duplicate')
-      } else {
-        ids.set(w.id, 'widget')
-      }
+function processMatches(ref: string, processes: HybridProcessRef[] | InformalProcessRef[]): boolean {
+  const needle = ref.trim()
+  if (!needle) return false
+  for (const p of processes) {
+    if ('processName' in p) {
+      if (p.processName === needle) return true
+      if (processKey(p.moduleName, p.processName) === needle) return true
+      if (`${p.moduleName}.${p.processName}`.toLowerCase() === needle.toLowerCase()) return true
+    } else if (p.id === needle || p.name === needle) {
+      return true
     }
   }
-  return ids
+  return false
 }
 
 export function validateGuiSpec(
@@ -34,86 +31,136 @@ export function validateGuiSpec(
   options?: {
     processRefs?: InformalProcessRef[]
     variableRefs?: InformalVariableRef[]
+    hybridProcesses?: HybridProcessRef[]
   }
 ): GuiDiagnostic[] {
   const diagnostics: GuiDiagnostic[] = []
-
-  if (document.guispecVersion !== '1.0') {
-    diagnostics.push(
-      createDiagnostic(DiagnosticCodes.SCHEMA_ERROR, 'guispecVersion must be "1.0"', 'error', 'guispecVersion')
-    )
-  }
-
-  if (!document.meta || !isNonEmptyString(document.meta.id) || !isNonEmptyString(document.meta.title)) {
-    diagnostics.push(
-      createDiagnostic(DiagnosticCodes.SCHEMA_ERROR, 'meta.id and meta.title are required', 'error', 'meta')
-    )
-  }
-
-  if (!document.gui?.app?.name?.trim()) {
-    diagnostics.push(
-      createDiagnostic(DiagnosticCodes.SCHEMA_ERROR, 'gui.app.name is required', 'error', 'gui.app.name')
-    )
-  }
-
-  const ids = collectIds(document)
-  for (const [id, kind] of ids) {
-    if (kind === 'duplicate') {
-      diagnostics.push(
-        createDiagnostic(DiagnosticCodes.STYLE_DUPLICATE_ID, `Duplicate id '${id}'`, 'error', id)
-      )
-    }
-  }
-
-  const processIds = new Set(options?.processRefs?.map((p) => p.id) ?? [])
+  const ids = new Map<string, string>()
   const screenIds = new Set(document.gui.screens.map((s) => s.id))
+  const screenNames = new Set(document.gui.screens.map((s) => s.name))
+
+  if (!document.gui.app.name.trim()) {
+    diagnostics.push(
+      createDiagnostic(DiagnosticCodes.SCHEMA_ERROR, 'data-app (application name) is required', 'error', 'data-app')
+    )
+  }
+
+  if (!document.gui.screens.length) {
+    diagnostics.push(createDiagnostic(DiagnosticCodes.STYLE_NO_SCREEN_CONTENT, 'No data-screen sections found', 'warning'))
+  }
 
   for (const screen of document.gui.screens) {
-    const hasContent =
-      Boolean(screen.description?.trim()) ||
-      Boolean(screen.title?.trim()) ||
-      (screen.widgets?.length ?? 0) > 0
+    if (ids.has(screen.id)) {
+      diagnostics.push(
+        createDiagnostic(DiagnosticCodes.STYLE_DUPLICATE_ID, `Duplicate screen id '${screen.id}'`, 'error', screen.id)
+      )
+    } else {
+      ids.set(screen.id, 'screen')
+    }
+    const hasContent = Boolean(screen.title?.trim()) || (screen.widgets?.length ?? 0) > 0
     if (!hasContent) {
       diagnostics.push(
         createDiagnostic(
           DiagnosticCodes.STYLE_NO_SCREEN_CONTENT,
-          `Screen '${screen.name}' has no widgets or description`,
+          `Screen '${screen.name}' has no widgets or title`,
           'warning',
-          `gui.screens.${screen.id}`
+          screen.id
         )
       )
     }
-
-    if (screen.triggersProcess && processIds.size > 0 && !processIds.has(screen.triggersProcess)) {
+    const processRefs = options?.hybridProcesses ?? options?.processRefs ?? []
+    if (screen.triggersProcess && processRefs.length > 0 && !processMatches(screen.triggersProcess, processRefs)) {
       diagnostics.push(
         createDiagnostic(
           DiagnosticCodes.STYLE_UNKNOWN_PROCESS,
-          `triggersProcess '${screen.triggersProcess}' not found in linked informal spec`,
+          `data-process '${screen.triggersProcess}' not found in Hybrid/Informal processes`,
           'warning',
-          `gui.screens.${screen.id}.triggersProcess`
+          `${screen.id}.data-process`
         )
       )
+    }
+    for (const widget of screen.widgets ?? []) {
+      if (ids.has(widget.id)) {
+        diagnostics.push(
+          createDiagnostic(DiagnosticCodes.STYLE_DUPLICATE_ID, `Duplicate id '${widget.id}'`, 'error', widget.id)
+        )
+      } else {
+        ids.set(widget.id, 'widget')
+      }
+      if (widget.process && processRefs.length > 0 && !processMatches(widget.process, processRefs)) {
+        diagnostics.push(
+          createDiagnostic(
+            DiagnosticCodes.STYLE_UNKNOWN_PROCESS,
+            `data-process '${widget.process}' not found`,
+            'warning',
+            widget.id
+          )
+        )
+      }
+      const bind = widget.binds
+      if (bind && options?.hybridProcesses?.length) {
+        const proc = options.hybridProcesses.find(
+          (p) =>
+            widget.process === p.processName ||
+            widget.process === `${p.moduleName}.${p.processName}` ||
+            screen.triggersProcess === p.processName ||
+            screen.triggersProcess === `${p.moduleName}.${p.processName}`
+        )
+        if (proc) {
+          if (bind.param && !proc.inputs.includes(bind.param)) {
+            diagnostics.push(
+              createDiagnostic(
+                DiagnosticCodes.UNKNOWN_BIND,
+                `data-bind param:${bind.param} is not an input of ${proc.moduleName}.${proc.processName}`,
+                'warning',
+                widget.id
+              )
+            )
+          }
+          if (bind.out && !proc.outputs.includes(bind.out)) {
+            diagnostics.push(
+              createDiagnostic(
+                DiagnosticCodes.UNKNOWN_BIND,
+                `data-bind out:${bind.out} is not an output of ${proc.moduleName}.${proc.processName}`,
+                'warning',
+                widget.id
+              )
+            )
+          }
+          if (bind.variable && !proc.vars.includes(bind.variable)) {
+            diagnostics.push(
+              createDiagnostic(
+                DiagnosticCodes.UNKNOWN_BIND,
+                `data-bind var:${bind.variable} is not a module variable`,
+                'warning',
+                widget.id
+              )
+            )
+          }
+        }
+      }
     }
   }
 
   for (const flow of document.gui.flows ?? []) {
-    if (!screenIds.has(flow.from)) {
+    const known = (id: string) => screenIds.has(id) || screenNames.has(id)
+    if (!known(flow.from)) {
       diagnostics.push(
         createDiagnostic(
           DiagnosticCodes.STYLE_UNKNOWN_FLOW_SCREEN,
-          `Flow 'from' references unknown screen '${flow.from}'`,
+          `data-nav source screen '${flow.from}' is unknown`,
           'warning',
-          `gui.flows.from.${flow.from}`
+          flow.from
         )
       )
     }
-    if (!screenIds.has(flow.to)) {
+    if (!known(flow.to)) {
       diagnostics.push(
         createDiagnostic(
           DiagnosticCodes.STYLE_UNKNOWN_FLOW_SCREEN,
-          `Flow 'to' references unknown screen '${flow.to}'`,
+          `data-nav target '${flow.to}' is unknown`,
           'warning',
-          `gui.flows.to.${flow.to}`
+          flow.to
         )
       )
     }

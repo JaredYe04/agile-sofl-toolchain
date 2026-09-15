@@ -100,6 +100,13 @@ export {
 } from './patch.js'
 
 export {
+  addInvariant,
+  removeInvariantInModule,
+  removeInvariantByIndex,
+  reorderInvariants
+} from './invariantPatch.js'
+
+export {
   patchConst,
   addConst,
   removeConst,

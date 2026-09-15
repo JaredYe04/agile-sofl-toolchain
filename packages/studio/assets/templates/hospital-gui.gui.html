@@ -1,0 +1,47 @@
+<div class="as-app" data-app="ClinicApp">
+  <section class="as-screen" id="view-home" data-screen="Home">
+    <h1 class="as-title">Hospital</h1>
+    <div class="as-stack as-gap-md">
+      <p class="as-muted" id="w-title">Hospital</p>
+      <button class="as-btn" id="w-register" data-nav="view-register">Register</button>
+      <button class="as-btn" id="w-triage" data-nav="view-triage">Triage</button>
+    </div>
+  </section>
+  <section class="as-screen" id="view-register" data-screen="Register" data-process="proc-register">
+    <h1 class="as-title">Register</h1>
+    <div class="as-stack as-gap-md">
+      <label class="as-field">
+Patient
+        <input class="as-input" id="w-patient" data-bind="param:patient" />
+      </label>
+      <label class="as-field">
+Department
+        <input class="as-input" id="w-dept" data-bind="param:dept" />
+      </label>
+      <button class="as-btn as-btn-primary" id="w-submit" data-process="submit">Register</button>
+      <button class="as-btn" id="w-assign" data-nav="view-assign">Assign</button>
+    </div>
+  </section>
+  <section class="as-screen" id="view-triage" data-screen="Triage">
+    <h1 class="as-title">Triage</h1>
+    <div class="as-stack as-gap-md">
+      <label class="as-field">
+Patient
+        <input class="as-input" id="w-patient2" />
+      </label>
+      <button class="as-btn as-btn-primary" id="w-submit-triage" data-process="submit">Triage</button>
+      <button class="as-btn" id="w-home" data-nav="view-home">Home</button>
+    </div>
+  </section>
+  <section class="as-screen" id="view-assign" data-screen="Assign">
+    <h1 class="as-title">Assign Doctor</h1>
+    <div class="as-stack as-gap-md">
+      <label class="as-field">
+Doctor
+        <input class="as-input" id="w-doctor" />
+      </label>
+      <button class="as-btn as-btn-primary" id="w-submit-assign" data-process="submit">Assign</button>
+      <button class="as-btn" id="w-home2" data-nav="view-home">Home</button>
+    </div>
+  </section>
+</div>

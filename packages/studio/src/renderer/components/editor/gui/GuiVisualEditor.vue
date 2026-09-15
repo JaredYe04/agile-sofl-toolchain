@@ -1,145 +1,39 @@
 <script setup lang="ts">
 import { ref, computed, inject, watch } from 'vue'
-import { useI18n } from 'vue-i18n'
 import { GUI_MODEL_KEY } from '../../../composables/guiModelContext'
 import { INFORMAL_MODEL_KEY } from '../../../composables/informalModelContext'
-import type { InformalProcessOption } from '../../../preload/index'
-import GuiToolbar from './GuiToolbar.vue'
-import GuiScreenTree from './GuiScreenTree.vue'
-import GuiScreenCard from './GuiScreenCard.vue'
-import GuiWireframePreview from './GuiWireframePreview.vue'
-import ResizableSplit from '../../ui/ResizableSplit.vue'
+import GuiDesignerCanvas from './GuiDesignerCanvas.vue'
 
-const props = defineProps<{ embedded?: boolean }>()
+defineProps<{ embedded?: boolean }>()
 
-const { t } = useI18n()
 const gui = inject(GUI_MODEL_KEY)
 if (!gui) throw new Error('GuiVisualEditor requires GUI_MODEL_KEY')
-
-const informal = inject(INFORMAL_MODEL_KEY, null)
+inject(INFORMAL_MODEL_KEY, null)
 
 const selectedScreenId = ref<string | null>(null)
-const selectedWidgetId = ref<string | null>(null)
-const previewMode = ref(false)
-
 const screens = computed(() => gui.model.value?.screens ?? [])
-const flows = computed(() => gui.model.value?.flows ?? [])
 
-watch(screens, (list) => {
-  if (!list.length) {
-    selectedScreenId.value = null
-    return
-  }
-  if (!selectedScreenId.value || !list.some((s) => s.id === selectedScreenId.value)) {
-    selectedScreenId.value = list[0]!.id
-  }
-}, { immediate: true })
-
-const selectedScreen = computed(() => screens.value.find((s) => s.id === selectedScreenId.value) ?? null)
-
-const processOptions = computed((): InformalProcessOption[] => {
-  const modules = informal?.model.value?.modules ?? []
-  const out: InformalProcessOption[] = []
-  for (const mod of modules) {
-    for (const p of mod.processes ?? []) {
-      out.push({ id: p.id, name: p.name, moduleId: mod.id })
+watch(
+  screens,
+  (list) => {
+    if (!list.length) {
+      selectedScreenId.value = null
+      return
     }
-  }
-  return out
-})
-
-const writeDisabled = computed(() => gui.hasErrors.value)
-
-function newId(prefix: string): string {
-  return `${prefix}-${Math.random().toString(36).slice(2, 8)}`
-}
-
-async function onAddScreen(): Promise<void> {
-  const id = newId('scr')
-  await gui.addScreen({ id, name: `${id}Page`, title: t('gui.newScreen'), widgets: [] })
-  selectedScreenId.value = id
-}
-
-async function onAddWidget(): Promise<void> {
-  const sid = selectedScreenId.value
-  if (!sid) return
-  await gui.addWidget(sid, { id: newId('w'), kind: 'label', label: t('gui.newWidget') })
-}
-
-async function onPatch(idPath: string, value: unknown): Promise<void> {
-  await gui.patchById(idPath, value)
-}
-
-function onSelectWidget(widgetId: string): void {
-  selectedWidgetId.value = widgetId
-}
-
-function onNavigate(screenId: string): void {
-  selectedScreenId.value = screenId
-  selectedWidgetId.value = null
-}
+    if (!selectedScreenId.value || !list.some((s) => s.id === selectedScreenId.value)) {
+      selectedScreenId.value = list[0]!.id
+    }
+  },
+  { immediate: true }
+)
 </script>
 
 <template>
   <div class="visual-panel flex h-full min-h-0 w-full min-w-0 flex-col">
-    <GuiToolbar
-      :disabled="writeDisabled"
-      :preview-mode="previewMode"
-      @toggle-preview="previewMode = !previewMode"
-      @add-screen="onAddScreen"
-      @add-widget="onAddWidget"
-      @format-yaml="gui.formatYaml()"
-    />
-    <ResizableSplit v-if="!previewMode" class="min-h-0 flex-1" :show-left="true" :show-right="true" :initial-left-percent="22">
-      <template #left>
-        <GuiScreenTree
-          :screens="screens"
-          :selected-id="selectedScreenId"
-          :disabled="writeDisabled"
-          @select="selectedScreenId = $event"
-        />
-      </template>
-      <template #right>
-        <ResizableSplit class="h-full" :show-left="true" :show-right="true" :initial-left-percent="50">
-          <template #left>
-            <div class="h-full overflow-y-auto studio-scroll p-4">
-              <GuiScreenCard
-                :screen="selectedScreen"
-                :process-options="processOptions"
-                :disabled="writeDisabled"
-                @patch="onPatch"
-                @add-widget="onAddWidget"
-                @remove-widget="(id) => gui.removeWidget(id)"
-              />
-              <p v-if="!selectedScreen && screens.length" class="text-sm text-content-muted">{{ t('gui.selectScreen') }}</p>
-              <p v-else-if="!screens.length" class="text-sm text-content-muted">{{ t('gui.noScreens') }}</p>
-            </div>
-          </template>
-          <template #right>
-            <GuiWireframePreview
-              :screen="selectedScreen"
-              :screens="screens"
-              :flows="flows"
-              :preview-mode="previewMode"
-              :selected-widget-id="selectedWidgetId"
-              @navigate="onNavigate"
-              @select-widget="onSelectWidget"
-            />
-          </template>
-        </ResizableSplit>
-      </template>
-    </ResizableSplit>
-    <GuiWireframePreview
-      v-else
+    <GuiDesignerCanvas
       class="min-h-0 flex-1"
-      :screen="selectedScreen"
-      :screens="screens"
-      :flows="flows"
-      :preview-mode="true"
-      @navigate="onNavigate"
+      :selected-view-id="selectedScreenId"
+      @update:selected-view-id="selectedScreenId = $event"
     />
-    <p v-if="props.embedded && informal?.model.value?.meta.guiTarget" class="border-t border-border-subtle px-3 py-1 text-xs text-content-muted">
-      {{ t('gui.linkedFile', { path: informal.model.value.meta.guiTarget }) }}
-    </p>
   </div>
 </template>

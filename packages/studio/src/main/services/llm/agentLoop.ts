@@ -5,6 +5,7 @@ import { newId, normalizePermissions, type AgentSpecPermissions } from './agentT
 import { saveSession } from './sessionStore'
 import { informalInventoryFromMarkdown } from '@agile-sofl/aspec/dist/informal/inventory.js'
 import { formatHybridInventory } from '@agile-sofl/editor-api'
+import { formatGuiInventory, numberedGuiSource } from '@agile-sofl/gui'
 import { numberedSource } from '../../../shared/sourceEdit.js'
 import {
   appliedToolResult,
@@ -25,6 +26,7 @@ export type AgentTurnContext = {
   moduleId?: string
   informalMarkdown: string
   hybridAsfl?: string
+  guiHtml?: string
   selectedNodeId?: string
   selectedNodeSummary?: string
   skillId?: string
@@ -51,6 +53,8 @@ function toolsFor(permissions: AgentSpecPermissions) {
     if (name === 'propose_changes') return permissions.informal.write
     if (name === 'read_hybrid_specification' || name === 'review_hybrid') return permissions.hybrid.read
     if (name === 'propose_hybrid_changes') return permissions.hybrid.write
+    if (name === 'read_gui_specification') return permissions.hybrid.read || permissions.informal.read
+    if (name === 'propose_gui_changes') return permissions.hybrid.write || permissions.informal.write
     if (name === 'propose_source_edit') return permissions.informal.write || permissions.hybrid.write
     return true
   })
@@ -79,8 +83,14 @@ function systemPrompt(ctx: AgentTurnContext, permissions: AgentSpecPermissions):
     toolLines.push('- read_hybrid_specification: Hybrid inventory (default) or numbered .asfl (view=source)')
     toolLines.push('- review_hybrid: Hybrid quality review')
   }
+  if (permissions.hybrid.read || permissions.informal.read) {
+    toolLines.push('- read_gui_specification: GUI HTML inventory or numbered .gui.html (view=source)')
+  }
   if (permissions.hybrid.write) {
     toolLines.push('- propose_hybrid_changes: incremental Hybrid CRUD (preferred)')
+  }
+  if (permissions.hybrid.write || permissions.informal.write) {
+    toolLines.push('- propose_gui_changes: GUI HTML structure patches (as-* classes, data-process/bind/nav)')
   }
   if (permissions.informal.write || permissions.hybrid.write) {
     toolLines.push(
@@ -124,6 +134,9 @@ After a write is applied, call read_hybrid_specification and keep patching until
   const hybridBlock = permissions.hybrid.read
     ? `Current Hybrid Specification inventory:\n${compactHybrid(ctx.hybridAsfl)}`
     : 'Hybrid Specification: (read permission off)'
+  const guiBlock = permissions.hybrid.read || permissions.informal.read
+    ? `Current GUI HTML inventory:\n${ctx.guiHtml?.trim() ? formatGuiInventory(ctx.guiHtml, 8000) : '(empty GUI specification)'}`
+    : 'GUI Specification: (read permission off)'
 
   return `You are the Agile-SOFL Specification Agent inside Studio.
 You help users build Informal Specification and/or Hybrid Specification (.asfl).
@@ -154,6 +167,8 @@ ${ctx.promptExtras ? `${ctx.promptExtras}\n` : ''}
 ${informalBlock}
 
 ${hybridBlock}
+
+${guiBlock}
 `
 }
 
@@ -412,13 +427,15 @@ export async function runAgentTurn(
         if (
           call.function.name === 'propose_changes' ||
           call.function.name === 'propose_hybrid_changes' ||
+          call.function.name === 'propose_gui_changes' ||
           call.function.name === 'propose_source_edit'
         ) {
           const mode: 'crud' | 'source' =
             call.function.name === 'propose_source_edit' ? 'source' : 'crud'
-          let target: 'informal' | 'hybrid'
+          let target: 'informal' | 'hybrid' | 'gui'
           if (call.function.name === 'propose_hybrid_changes') target = 'hybrid'
           else if (call.function.name === 'propose_changes') target = 'informal'
+          else if (call.function.name === 'propose_gui_changes') target = 'gui'
           else {
             const raw = typeof args.target === 'string' ? args.target : ''
             if (raw === 'hybrid' || raw === 'informal') {
@@ -450,7 +467,12 @@ export async function runAgentTurn(
               ? (args.operations as Array<Record<string, unknown>>)
               : []
           }
-          const allowed = target === 'hybrid' ? permissions.hybrid.write : permissions.informal.write
+          const allowed =
+            target === 'informal'
+              ? permissions.informal.write
+              : target === 'hybrid'
+                ? permissions.hybrid.write
+                : permissions.hybrid.write || permissions.informal.write
           if (!allowed) {
             session.messages.push({
               id: call.id,
@@ -573,6 +595,30 @@ export async function runAgentTurn(
             (view === 'source'
               ? 'Read the current Hybrid Specification source.'
               : 'Read the current Hybrid Specification inventory.')
+          continue
+        }
+        if (call.function.name === 'read_gui_specification') {
+          const view = args.view === 'source' ? 'source' : 'inventory'
+          const allowed = permissions.hybrid.read || permissions.informal.read
+          const body = !allowed
+            ? '(GUI read permission off)'
+            : view === 'source'
+              ? numberedGuiSource(ctx.guiHtml ?? '')
+              : formatGuiInventory(ctx.guiHtml ?? '', 20000)
+          session.messages.push({
+            id: call.id,
+            role: 'tool',
+            content: JSON.stringify({
+              ok: allowed,
+              view,
+              inventory: view === 'inventory' ? body : undefined,
+              source: view === 'source' ? body : undefined
+            }),
+            timestamp: new Date().toISOString()
+          })
+          live.content =
+            live.content ||
+            (view === 'source' ? 'Read the current GUI HTML source.' : 'Read the current GUI inventory.')
           continue
         }
         if (call.function.name === 'review_specification' || call.function.name === 'review_hybrid') {

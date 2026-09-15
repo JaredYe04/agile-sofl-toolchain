@@ -19,15 +19,25 @@ let untitledCounter = 1
 
 export function createUntitledTitle(kind: DocumentKind = 'asfl'): string {
   if (kind === 'aspec') return `Untitled-${untitledCounter++}.aspec`
-  if (kind === 'guispec') return `Untitled-${untitledCounter++}.guispec`
+  if (kind === 'guispec') return `Untitled-${untitledCounter++}.gui.html`
   return `Untitled-${untitledCounter++}.asfl`
 }
 
 export function inferDocumentKind(filePath: string | null, uri?: string): DocumentKind {
-  if (filePath?.toLowerCase().endsWith('.aspec')) return 'aspec'
-  if (filePath?.toLowerCase().endsWith('.guispec')) return 'guispec'
-  if (uri?.includes('.aspec')) return 'aspec'
-  if (uri?.includes('.guispec')) return 'guispec'
+  const path = filePath?.toLowerCase() ?? ''
+  const u = uri?.toLowerCase() ?? ''
+  if (path.endsWith('.aspec') || u.includes('.aspec')) return 'aspec'
+  if (
+    path.endsWith('.guispec') ||
+    path.endsWith('.gui.html') ||
+    path.endsWith('/gui.html') ||
+    path.endsWith('\\gui.html') ||
+    u.includes('.guispec') ||
+    u.includes('.gui.html') ||
+    u.endsWith('/gui.html')
+  ) {
+    return 'guispec'
+  }
   return 'asfl'
 }
 
@@ -41,26 +51,14 @@ export function defaultContentForKind(kind: DocumentKind): string {
 `
   }
   if (kind === 'guispec') {
-    return `guispecVersion: "1.0"
-meta:
-  id: "${crypto.randomUUID()}"
-  title: New GUI Spec
-gui:
-  app:
-    name: NewApp
-    description: |
-      Describe the application UI.
-  screens:
-    - id: scr-home
-      name: HomePage
-      title: Home
-      description: |
-        Landing screen.
-      widgets:
-        - id: w-title
-          kind: label
-          label: Welcome
-  flows: []
+    return `<div class="as-app" data-app="NewApp">
+  <section class="as-screen" data-screen="Home">
+    <h1 class="as-title">Home</h1>
+    <div class="as-stack as-gap-md">
+      <p class="as-muted">Describe the application UI.</p>
+    </div>
+  </section>
+</div>
 `
   }
   return 'module SYSTEM_New;\nend_module\n'
@@ -83,7 +81,7 @@ export function tabUriForPath(filePath: string | null, id: string, kind: Documen
   if (filePath) {
     return pathToFileUri(filePath)
   }
-  const ext = kind === 'aspec' ? 'aspec' : kind === 'guispec' ? 'guispec' : 'asfl'
+  const ext = kind === 'aspec' ? 'aspec' : kind === 'guispec' ? 'gui.html' : 'asfl'
   return `inmemory://studio/${id}.${ext}`
 }
 

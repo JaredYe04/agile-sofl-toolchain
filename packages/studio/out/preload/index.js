@@ -133,6 +133,7 @@ const studio = {
   buildGuiModel: (payload) => electron.ipcRenderer.invoke("studio:build-gui-model", payload),
   patchGui: (payload) => electron.ipcRenderer.invoke("studio:patch-gui", payload),
   formatGui: (source) => electron.ipcRenderer.invoke("studio:format-gui", source),
+  animateGuiProcess: (payload) => electron.ipcRenderer.invoke("studio:animate-gui-process", payload),
   resolveGuiForAspec: (payload) => electron.ipcRenderer.invoke("studio:resolve-gui-for-aspec", payload),
   patchAspecGui: (payload) => electron.ipcRenderer.invoke("studio:patch-aspec-gui", payload),
   findHybridSymbolSpan: (payload) => electron.ipcRenderer.invoke("studio:find-hybrid-symbol-span", payload)

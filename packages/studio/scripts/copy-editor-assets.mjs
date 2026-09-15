@@ -48,13 +48,13 @@ const templateFiles = [
   ['hospital-gui-module.asfl', join(templatesRoot, 'hospital-gui-module.asfl')],
   ['type-showcase-gui-module.asfl', join(templatesRoot, 'type-showcase-gui-module.asfl')],
   ['graph-showcase-gui-module.asfl', join(templatesRoot, 'graph-showcase-gui-module.asfl')],
-  ['informal-blank.guispec', join(studioRoot, 'public', 'templates', 'informal-blank.guispec')],
-  ['minimal-gui.guispec', join(studioRoot, 'assets', 'templates', 'minimal-gui.guispec')],
-  ['library-gui.guispec', join(studioRoot, 'assets', 'templates', 'library-gui.guispec')],
-  ['ecommerce-gui.guispec', join(studioRoot, 'assets', 'templates', 'ecommerce-gui.guispec')],
-  ['hospital-gui.guispec', join(studioRoot, 'assets', 'templates', 'hospital-gui.guispec')],
-  ['type-showcase-gui.guispec', join(studioRoot, 'assets', 'templates', 'type-showcase-gui.guispec')],
-  ['graph-showcase-gui.guispec', join(studioRoot, 'assets', 'templates', 'graph-showcase-gui.guispec')],
+  ['informal-blank.gui.html', join(studioRoot, 'public', 'templates', 'informal-blank.gui.html')],
+  ['minimal-gui.gui.html', join(studioRoot, 'assets', 'templates', 'minimal-gui.gui.html')],
+  ['library-gui.gui.html', join(studioRoot, 'assets', 'templates', 'library-gui.gui.html')],
+  ['ecommerce-gui.gui.html', join(studioRoot, 'assets', 'templates', 'ecommerce-gui.gui.html')],
+  ['hospital-gui.gui.html', join(studioRoot, 'assets', 'templates', 'hospital-gui.gui.html')],
+  ['type-showcase-gui.gui.html', join(studioRoot, 'assets', 'templates', 'type-showcase-gui.gui.html')],
+  ['graph-showcase-gui.gui.html', join(studioRoot, 'assets', 'templates', 'graph-showcase-gui.gui.html')],
   ['project-manifest.json', join(studioRoot, 'assets', 'templates', 'project-manifest.json')]
 ]
 

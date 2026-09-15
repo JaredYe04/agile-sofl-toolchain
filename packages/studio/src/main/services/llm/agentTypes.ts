@@ -19,7 +19,7 @@ export type ReviewIssue = {
 }
 
 export type InformalPatchPayload = {
-  target?: 'informal' | 'hybrid'
+  target?: 'informal' | 'hybrid' | 'gui'
   mode?: 'crud' | 'source'
   explanation?: string
   operations: Array<Record<string, unknown>>

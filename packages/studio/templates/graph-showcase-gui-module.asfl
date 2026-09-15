@@ -11,21 +11,9 @@ var
 inv
     current_view >= 0 and current_view <= 2 and alerts_open >= 0;
 gui CityGui;
-screen Dashboard;
-    label title "Smart City";
-    navigation goAlerts "Alerts" triggers OpenAlerts;
-    navigation goCitizens "Citizens" triggers OpenCitizens;
-end_screen;
-screen Alerts;
-    text-input sensorId "Sensor";
-    button dispatch "Dispatch" triggers DoDispatch;
-    navigation backDash "Dashboard" triggers OpenDashboard;
-end_screen;
-screen Citizens;
-    text-input citizenId "Citizen";
-    button register "Register" triggers DoRegister;
-    navigation backDash2 "Dashboard" triggers OpenDashboard;
-end_screen;
+  screen Dashboard;
+  screen Alerts triggers DoDispatch;
+  screen Citizens triggers DoRegister;
 end_gui;
 process OpenAlerts ()
     FSF :

@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n'
 import type { SymbolHint } from './predicate/predicateTypes'
 import PredicateBuilder from './predicate/PredicateBuilder.vue'
 import SectionCard from './ui/SectionCard.vue'
-import IconButton from './ui/IconButton.vue'
+import IconActionButton from '../../ui/IconActionButton.vue'
 import EmptyState from './ui/EmptyState.vue'
 
 export type FsfScenarioDto = {
@@ -235,9 +235,13 @@ defineExpose({ addScenario })
             <span class="cursor-grab text-content-muted" :title="t('visual.scenarioDrag')">⋮⋮</span>
             <span class="text-sm font-medium text-content-secondary">{{ t('visual.scenario') }} {{ index + 1 }}</span>
           </div>
-          <IconButton variant="danger" :disabled="disabled" @click="removeScenario(index)">
-            {{ t('visual.remove') }}
-          </IconButton>
+          <IconActionButton
+            icon="lucide:trash-2"
+            :label="t('visual.remove')"
+            variant="danger"
+            :disabled="disabled"
+            @click="removeScenario(index)"
+          />
         </div>
         <p v-if="scenarioError(scenario.id)" class="mb-2 text-xs text-semantic-error">
           {{ t('visual.scenarioParseError') }}: {{ scenarioError(scenario.id) }}

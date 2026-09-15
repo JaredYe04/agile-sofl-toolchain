@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
-import type { DockPanelId, DockZone } from '../../lib/dockLayout'
 import AgentPanel from './agent/AgentPanel.vue'
 import DockPanelChrome from './dock/DockPanelChrome.vue'
-import DockDropHighlight from './dock/DockDropHighlight.vue'
+import FullscreenPanel from './FullscreenPanel.vue'
 import WorkspacePanel from './WorkspacePanel.vue'
 import { useWorkspaceStore } from '../../stores/workspace'
 import { useInformalSpec } from '../../composables/useInformalSpec'
@@ -13,12 +12,7 @@ import { computed } from 'vue'
 
 defineProps<{
   title: string
-  dragPanel: DockPanelId | null
-  hoverTarget: DockPanelId | null
-  hoverZone: DockZone | null
 }>()
-
-defineEmits<{ dragStart: [e: PointerEvent] }>()
 
 const { t } = useI18n()
 const workspace = useWorkspaceStore()
@@ -42,15 +36,9 @@ async function onApplyHybridPatch(
 </script>
 
 <template>
+  <FullscreenPanel panel-id="agent">
   <WorkspacePanel panel="agent" class="relative flex h-full min-h-0 flex-col" data-dock-host="agent">
-    <DockDropHighlight :active="dragPanel !== null && hoverTarget === 'agent'" :zone="hoverZone" />
-    <DockPanelChrome
-      panel="agent"
-      :title="title"
-      :dragging="dragPanel !== null && hoverTarget === 'agent'"
-      :drop-zone="hoverTarget === 'agent' ? hoverZone : null"
-      @drag-start="(_p, e) => $emit('dragStart', e)"
-    />
+    <DockPanelChrome panel="agent" :title="title" />
     <AgentPanel
       embed-in-dock
       class="min-h-0 flex-1"
@@ -59,4 +47,5 @@ async function onApplyHybridPatch(
       :on-apply-hybrid-patch="onApplyHybridPatch"
     />
   </WorkspacePanel>
+  </FullscreenPanel>
 </template>

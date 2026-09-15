@@ -2,12 +2,10 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { TreeSelection } from '../../../composables/useVisualModel'
-import type { DeclarationKind } from '../../../preload/index'
 import { useEditorUiStore, type VisualSideView } from '../../../stores/editorUi'
 import IconActionButton from '../../ui/IconActionButton.vue'
-import DropdownMenu, { type MenuItem } from '../../ui/DropdownMenu.vue'
 
-const props = defineProps<{
+defineProps<{
   selection: TreeSelection
   parseFailed: boolean
   hasDiagnostics: boolean
@@ -19,69 +17,21 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   refresh: []
-  addDeclaration: [kind: DeclarationKind]
-  addScenario: []
-  addProcess: []
-  addFunction: []
-  renameProcess: []
-  renameFunction: []
-  addModule: []
-  renameModule: []
-  removeModule: []
   'update:searchQuery': [value: string]
 }>()
 
 const { t } = useI18n()
 const editorUi = useEditorUiStore()
 
-const declarationMenuItems = computed((): MenuItem[] =>
-  (['const', 'type', 'var'] as DeclarationKind[]).map((kind) => ({
-    id: kind,
-    label: t(`visual.section.${kind === 'const' ? 'const' : kind}`),
-    action: () => emit('addDeclaration', kind)
-  }))
-)
-
 const sideViews = computed(() => [
   { id: 'tree' as VisualSideView, label: t('toolbar.viewTree') },
   { id: 'graph' as VisualSideView, label: t('toolbar.viewGraph') }
 ])
 
-const writeDisabled = computed(() => props.parseFailed)
-
-function showAddDeclaration(): boolean {
-  return props.selection?.kind === 'module' && !writeDisabled.value
-}
-
-function showAddProcess(): boolean {
-  return props.selection?.kind === 'module' && !writeDisabled.value
-}
-
-function showAddFunction(): boolean {
-  return props.selection?.kind === 'module' && !writeDisabled.value
-}
-
-function showAddScenario(): boolean {
-  return (props.selection?.kind === 'process' || props.selection?.kind === 'function') && !writeDisabled.value
-}
-
-function showRenameProcess(): boolean {
-  return props.selection?.kind === 'process' && !writeDisabled.value
-}
-
-function showRenameFunction(): boolean {
-  return props.selection?.kind === 'function' && !writeDisabled.value
-}
-
-function showModuleActions(): boolean {
-  return props.selection?.kind === 'module' && !writeDisabled.value
-}
-
 function onZoomInput(e: Event): void {
   const v = Number.parseInt((e.target as HTMLInputElement).value, 10)
   if (!Number.isNaN(v)) editorUi.setGraphZoom(v)
 }
-
 </script>
 
 <template>
@@ -152,72 +102,6 @@ function onZoomInput(e: Event): void {
         :disabled="loading"
         @click="emit('refresh')"
       />
-      <DropdownMenu v-if="showAddDeclaration()" :items="declarationMenuItems" teleport>
-        <template #trigger="{ toggle }">
-          <IconActionButton
-            icon="lucide:list-plus"
-            :label="t('visual.toolbar.addDeclaration')"
-            variant="accent"
-            @click="toggle"
-          />
-        </template>
-      </DropdownMenu>
-      <IconActionButton
-        v-if="showModuleActions()"
-        icon="lucide:folder-plus"
-        :label="t('visual.toolbar.addModule')"
-        variant="accent"
-        @click="emit('addModule')"
-      />
-      <IconActionButton
-        v-if="showModuleActions()"
-        icon="lucide:folder-pen"
-        :label="t('visual.toolbar.renameModule')"
-        @click="emit('renameModule')"
-      />
-      <IconActionButton
-        v-if="showModuleActions()"
-        icon="lucide:folder-minus"
-        :label="t('visual.toolbar.removeModule')"
-        variant="danger"
-        @click="emit('removeModule')"
-      />
-      <IconActionButton
-        v-if="showAddProcess()"
-        icon="lucide:workflow"
-        :label="t('visual.toolbar.addProcess')"
-        variant="process"
-        @click="emit('addProcess')"
-      />
-      <IconActionButton
-        v-if="showAddFunction()"
-        icon="lucide:box"
-        :label="t('visual.toolbar.addFunction')"
-        variant="function"
-        @click="emit('addFunction')"
-      />
-      <IconActionButton
-        v-if="showRenameProcess()"
-        icon="lucide:route"
-        :label="t('visual.toolbar.renameProcess')"
-        variant="process"
-        @click="emit('renameProcess')"
-      />
-      <IconActionButton
-        v-if="showRenameFunction()"
-        icon="lucide:square-function"
-        :label="t('visual.toolbar.renameFunction')"
-        variant="function"
-        @click="emit('renameFunction')"
-      />
-      <IconActionButton
-        v-if="showAddScenario()"
-        icon="lucide:clipboard-list"
-        :label="t('visual.addScenario')"
-        variant="accent"
-        @click="emit('addScenario')"
-      />
     </div>
   </div>
 </template>
-

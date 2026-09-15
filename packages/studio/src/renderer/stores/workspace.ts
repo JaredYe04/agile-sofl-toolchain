@@ -13,13 +13,6 @@ import type { TreeSelection } from '../composables/useVisualModel'
 import { filePathsEqual } from './tabUtils'
 import { refreshGitFor } from '../composables/useGitStatus'
 import { consumeAgentLaunchPending, emitAgentLaunch } from '../lib/agentLaunchBus'
-import {
-  defaultDockLayout,
-  parseDockLayout,
-  serializeDockLayout,
-  type DockNode
-} from '../lib/dockLayout'
-
 const DEFAULT_COLUMN_WIDTHS = [0.18, 0.6, 0.22]
 
 export type WorkspacePanelId = 'tree' | 'informal' | 'agent' | 'hybrid' | 'gui' | 'structure'
@@ -50,13 +43,13 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   )
   const informalSelectedNodeId = ref<string | null>(null)
   const agentSplitRatio = ref(0.58)
-  const dockLayout = ref<DockNode>(defaultDockLayout())
   const informalGraphBodyVisible = ref(true)
   const savedModuleHashes = ref<Record<string, Record<string, string>>>({})
   const currentModuleHashes = ref<Record<string, Record<string, string>>>({})
   const loading = ref(false)
   const cachedModulesByProject = ref<Record<string, ProjectModuleInfo[]>>({})
   const focusedPanel = ref<WorkspacePanelId | null>(null)
+  const fullscreenPanel = ref<WorkspacePanelId | null>(null)
 
   const activeProject = computed(
     () => projects.value.find((p) => p.id === activeProjectId.value) ?? null
@@ -124,6 +117,15 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     focusedPanel.value = panel
     const tab = tabForFocusedPanel()
     if (tab) doc.setActive(tab.id)
+  }
+
+  function setFullscreenPanel(panel: WorkspacePanelId | null): void {
+    fullscreenPanel.value = panel
+    if (panel) setFocusedPanel(panel)
+  }
+
+  function toggleFullscreenPanel(panel: WorkspacePanelId): void {
+    setFullscreenPanel(fullscreenPanel.value === panel ? null : panel)
   }
 
   async function refreshProjects(): Promise<void> {
@@ -198,6 +200,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     loading.value = true
     const prevId = activeProjectId.value
     try {
+      if (prevId !== project.id) fullscreenPanel.value = null
       activeProjectId.value = project.id
       await window.studio.projectTouch?.(project.id)
       const payload = await window.studio.workspaceScan(project.rootPath)
@@ -224,7 +227,6 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       } else if (!expandedProjectIds.value.includes(project.id)) {
         expandedProjectIds.value = [...expandedProjectIds.value, project.id]
       }
-      loadDockLayoutForProject(project.id)
       await loadProjectFiles(payload)
       if (prevId && prevId !== project.id) {
         const { useHistoryStore } = await import('./history')
@@ -334,31 +336,6 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     void persistUi()
   }
 
-  function dockLayoutStorageKey(projectId: string): string {
-    return `studio-dock-layout:${projectId}`
-  }
-
-  function loadDockLayoutForProject(projectId: string): void {
-    if (typeof localStorage === 'undefined') {
-      dockLayout.value = defaultDockLayout()
-      return
-    }
-    try {
-      const raw = localStorage.getItem(dockLayoutStorageKey(projectId))
-      dockLayout.value = raw ? parseDockLayout(JSON.parse(raw)) : defaultDockLayout()
-    } catch {
-      dockLayout.value = defaultDockLayout()
-    }
-  }
-
-  function setDockLayout(node: DockNode): void {
-    dockLayout.value = node
-    const id = activeProjectId.value
-    if (id && typeof localStorage !== 'undefined') {
-      localStorage.setItem(dockLayoutStorageKey(id), JSON.stringify(serializeDockLayout(node)))
-    }
-  }
-
   async function markHybridSaved(filePath: string): Promise<void> {
     if (!window.studio?.moduleHashes) return
     const tab = doc.documentTabs.find((t) => t.filePath && filePathsEqual(t.filePath, filePath))
@@ -441,12 +418,13 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     informalViewMode,
     informalSelectedNodeId,
     agentSplitRatio,
-    dockLayout,
     informalGraphBodyVisible,
-    setDockLayout,
     requestAgentLaunch,
     consumeAgentLaunch,
     focusedPanel,
+    fullscreenPanel,
+    setFullscreenPanel,
+    toggleFullscreenPanel,
     loading,
     hasWorkspace,
     isGuiModuleSelected,

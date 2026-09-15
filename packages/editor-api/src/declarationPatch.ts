@@ -1,5 +1,6 @@
 import { parse, type ModuleNode, type ProgramNode } from '@agile-sofl/parser'
 import { namesEqual } from './hybridIds.js'
+import { insertLineInSection } from './moduleSourceRange.js'
 
 export type DeclarationKind = 'const' | 'type' | 'var'
 
@@ -159,6 +160,8 @@ export function patchConst(source: string, moduleName: string, constName: string
 }
 
 export function addConst(source: string, moduleName: string, lineText: string): string {
+  const scanned = insertLineInSection(source, moduleName, 'const', lineText)
+  if (scanned != null) return scanned
   const { ast } = parse(source)
   if (!ast || ast.type !== 'program') return source
   const mod = findModule(ast, moduleName)
@@ -191,6 +194,8 @@ export function patchType(source: string, moduleName: string, typeName: string, 
 }
 
 export function addType(source: string, moduleName: string, lineText: string): string {
+  const scanned = insertLineInSection(source, moduleName, 'type', lineText)
+  if (scanned != null) return scanned
   const { ast } = parse(source)
   if (!ast || ast.type !== 'program') return source
   const mod = findModule(ast, moduleName)
@@ -223,6 +228,8 @@ export function patchVar(source: string, moduleName: string, varName: string, li
 }
 
 export function addVar(source: string, moduleName: string, lineText: string): string {
+  const scanned = insertLineInSection(source, moduleName, 'var', lineText)
+  if (scanned != null) return scanned
   const { ast } = parse(source)
   if (!ast || ast.type !== 'program') return source
   const mod = findModule(ast, moduleName)

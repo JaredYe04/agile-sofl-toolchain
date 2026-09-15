@@ -4,8 +4,10 @@ import { useI18n } from 'vue-i18n'
 import type { VisualDeclarationItem, DeclarationKind } from '../../../preload/index'
 import SectionCard from './ui/SectionCard.vue'
 import TextField from './ui/TextField.vue'
-import IconButton from './ui/IconButton.vue'
+import IconActionButton from '../../ui/IconActionButton.vue'
 import EmptyState from './ui/EmptyState.vue'
+import { constDeclText, nextConstName, nextTypeName, nextVarName } from '../../../lib/visualNames'
+import { composedTypeText, nextFieldName } from '../../../lib/visualDecls'
 
 const BASIC_TYPES = ['nat', 'nat0', 'int', 'real', 'bool', 'string', 'char']
 
@@ -85,12 +87,23 @@ function removeItem(name: string): void {
 }
 
 function addItem(): void {
-  const defaults: Record<DeclarationKind, string> = {
-    const: 'NewConst = 0',
-    type: 'NewType = nat',
-    var: 'newVar: nat'
+  const names = props.items.map((i) => i.name)
+  if (props.kind === 'const') {
+    const name = nextConstName(names)
+    emit('patch', { kind: 'const', action: 'add', text: constDeclText(name) })
+    return
   }
-  emit('patch', { kind: props.kind, action: 'add', text: defaults[props.kind] })
+  if (props.kind === 'type') {
+    const name = nextTypeName(names)
+    emit('patch', {
+      kind: 'type',
+      action: 'add',
+      text: composedTypeText(name, [{ name: nextFieldName([]), type: 'nat' }])
+    })
+    return
+  }
+  const name = nextVarName(names)
+  emit('patch', { kind: 'var', action: 'add', text: `${name}: nat` })
 }
 
 const sectionLabel = {
@@ -132,9 +145,13 @@ const sectionLabel = {
           >
             {{ item.name }}
           </button>
-          <IconButton variant="danger" :disabled="disabled" @click="removeItem(item.name)">
-            {{ t('visual.remove') }}
-          </IconButton>
+          <IconActionButton
+            icon="lucide:trash-2"
+            :label="t('visual.remove')"
+            variant="danger"
+            :disabled="disabled"
+            @click="removeItem(item.name)"
+          />
         </div>
         <table
           v-if="kind === 'type' && fieldDrafts[item.name]?.length"
@@ -169,9 +186,13 @@ const sectionLabel = {
                 </select>
               </td>
               <td>
-                <IconButton variant="danger" :disabled="disabled" @click="removeField(item.name, fi)">
-                  {{ t('visual.remove') }}
-                </IconButton>
+                <IconActionButton
+                  icon="lucide:trash-2"
+                  :label="t('visual.remove')"
+                  variant="danger"
+                  :disabled="disabled"
+                  @click="removeField(item.name, fi)"
+                />
               </td>
             </tr>
           </tbody>

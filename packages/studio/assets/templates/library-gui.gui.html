@@ -1,0 +1,40 @@
+<div class="as-app" data-app="LibraryApp">
+  <section class="as-screen" id="view-home" data-screen="Home">
+    <h1 class="as-title">Library Home</h1>
+    <div class="as-stack as-gap-md">
+      <p class="as-muted" id="w-title">Library</p>
+      <button class="as-btn" id="w-nav-borrow" data-nav="view-borrow">Borrow</button>
+      <button class="as-btn" id="w-nav-return" data-nav="view-return">Return</button>
+    </div>
+  </section>
+  <section class="as-screen" id="view-borrow" data-screen="Borrow" data-process="proc-borrow">
+    <h1 class="as-title">Borrow Book</h1>
+    <div class="as-stack as-gap-md">
+      <label class="as-field">
+Member ID
+        <input class="as-input" id="w-member" data-bind="param:member_id" />
+      </label>
+      <label class="as-field">
+Book ID
+        <input class="as-input" id="w-book" data-bind="param:book_id" />
+      </label>
+      <button class="as-btn as-btn-primary" id="w-submit" data-process="submit">Borrow</button>
+      <button class="as-btn" id="w-back" data-nav="view-home">Home</button>
+    </div>
+  </section>
+  <section class="as-screen" id="view-return" data-screen="ReturnBook">
+    <h1 class="as-title">Return Book</h1>
+    <div class="as-stack as-gap-md">
+      <label class="as-field">
+Member ID
+        <input class="as-input" id="w-member2" />
+      </label>
+      <label class="as-field">
+Book ID
+        <input class="as-input" id="w-book2" />
+      </label>
+      <button class="as-btn as-btn-primary" id="w-submit-ret" data-process="submit">Return</button>
+      <button class="as-btn" id="w-back2" data-nav="view-home">Home</button>
+    </div>
+  </section>
+</div>

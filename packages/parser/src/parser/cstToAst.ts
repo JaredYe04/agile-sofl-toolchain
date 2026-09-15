@@ -181,9 +181,8 @@ function cstToRegularModule(cst: CstNode): ModuleNode {
 }
 
 function extractConsts(body: CstNode): ConstDeclNode[] {
-  const decls = childNodes(body, 'constDecls')
   const result: ConstDeclNode[] = []
-  for (const d of decls) {
+  for (const d of allRuleInstances(body, 'constDecls')) {
     for (const item of allRuleInstances(d, 'constItem')) {
       const id = tokensOf(item, 'Identifier')[0]
       const expr = singleChild(item, 'expression')
@@ -200,7 +199,7 @@ function extractConsts(body: CstNode): ConstDeclNode[] {
 
 function extractTypes(body: CstNode): TypeDeclNode[] {
   const result: TypeDeclNode[] = []
-  for (const d of childNodes(body, 'typeDecls')) {
+  for (const d of allRuleInstances(body, 'typeDecls')) {
     for (const item of allRuleInstances(d, 'typeItem')) {
       const id = tokensOf(item, 'Identifier')[0]
       const parentAccess = singleChild(item, 'moduleOrFieldAccess')
@@ -219,7 +218,7 @@ function extractTypes(body: CstNode): TypeDeclNode[] {
 
 function extractVars(body: CstNode): VarDeclNode[] {
   const result: VarDeclNode[] = []
-  for (const d of childNodes(body, 'varDecls')) {
+  for (const d of allRuleInstances(body, 'varDecls')) {
     for (const item of allRuleInstances(d, 'varItem')) {
       const variable = singleChild(item, 'variable')
       const typeExpr = singleChild(item, 'typeExpr')
@@ -249,7 +248,7 @@ function cstToVariable(cst: CstNode): VariableNode {
 
 function extractInvs(body: CstNode): InvariantNode[] {
   const result: InvariantNode[] = []
-  for (const d of childNodes(body, 'invDecls')) {
+  for (const d of allRuleInstances(body, 'invDecls')) {
     for (const p of allRuleInstances(d, 'predicate')) {
       result.push({ type: 'invariant', span: spanOf(p), condition: cstToPredicate(p) })
     }
@@ -272,55 +271,80 @@ function widgetKindFromWidgetCst(widgetCst: CstNode): GuiWidgetNode['kind'] | nu
 }
 
 function extractGui(body: CstNode): GuiBlockNode | undefined {
-  const block = singleChild(body, 'guiBlock')
-  if (!block) return undefined
-  const ids = tokensOf(block, 'Identifier')
-  const name = ids[0]?.image ?? ''
+  const blocks = allRuleInstances(body, 'guiBlock')
+  if (!blocks.length) return undefined
   const screens: GuiScreenNode[] = []
-  for (const screenCst of allRuleInstances(block, 'guiScreen')) {
-    const screenIds = tokensOf(screenCst, 'Identifier')
-    const screenName = screenIds[0]?.image ?? ''
-    const widgets: GuiWidgetNode[] = []
-    for (const widgetCst of allRuleInstances(screenCst, 'guiWidget')) {
-      const kind = widgetKindFromWidgetCst(widgetCst)
-      const widgetIds = tokensOf(widgetCst, 'Identifier')
-      const hasTextInput = Boolean(tokensOf(widgetCst, 'TextInput')[0])
-      const str = tokensOf(widgetCst, 'StringLiteral')[0]
-      const hasTrigger = Boolean(tokensOf(widgetCst, 'Triggers')[0])
-      widgets.push({
-        type: 'gui_widget',
-        kind: kind ?? 'label',
-        name: (hasTextInput ? widgetIds[0] : widgetIds[1])?.image ?? '',
-        text: str ? decodeStringLiteral(str.image) : '',
-        triggersProcess: hasTrigger ? widgetIds.at(-1)?.image : undefined,
-        span: spanOf(widgetCst)
+  for (const block of blocks) {
+    for (const screenCst of allRuleInstances(block, 'guiScreen')) {
+      const screenIds = tokensOf(screenCst, 'Identifier')
+      const screenName = screenIds[0]?.image ?? ''
+      const hasTrigger = Boolean(tokensOf(screenCst, 'Triggers')[0])
+      const widgets: GuiWidgetNode[] = []
+      for (const widgetCst of allRuleInstances(screenCst, 'guiWidget')) {
+        const kind = widgetKindFromWidgetCst(widgetCst)
+        const widgetIds = tokensOf(widgetCst, 'Identifier')
+        const hasTextInput = Boolean(tokensOf(widgetCst, 'TextInput')[0])
+        const str = tokensOf(widgetCst, 'StringLiteral')[0]
+        const hasTrigger = Boolean(tokensOf(widgetCst, 'Triggers')[0])
+        widgets.push({
+          type: 'gui_widget',
+          kind: kind ?? 'label',
+          name: (hasTextInput ? widgetIds[0] : widgetIds[1])?.image ?? '',
+          text: str ? decodeStringLiteral(str.image) : '',
+          triggersProcess: hasTrigger ? widgetIds.at(-1)?.image : undefined,
+          span: spanOf(widgetCst)
+        })
+      }
+      const informal = allRuleInstances(screenCst, 'guiInformalAtom')
+        .map((atom) => firstToken(atom)?.image ?? '')
+        .join('')
+        .trim()
+      if (informal && !widgets.some((w) => w.text === informal)) {
+        widgets.push({
+          type: 'gui_widget',
+          kind: 'label',
+          name: 'description',
+          text: informal,
+          span: spanOf(screenCst)
+        })
+      }
+      screens.push({
+        type: 'gui_screen',
+        name: screenName,
+        triggersProcess: hasTrigger
+          ? screenIds
+              .slice(1)
+              .map((t) => t.image)
+              .join('.')
+          : undefined,
+        widgets,
+        span: spanOf(screenCst)
       })
     }
-    screens.push({
-      type: 'gui_screen',
-      name: screenName,
-      widgets,
-      span: spanOf(screenCst)
-    })
   }
+  const name = tokensOf(blocks[0]!, 'Identifier')[0]?.image ?? ''
   return {
     type: 'gui_block',
     name,
     screens,
-    span: spanOf(block)
+    span: spanOf(blocks[0]!)
   }
 }
 
 function extractProcesses(body: CstNode): ProcessNode[] {
-  const specs = singleChild(body, 'processFunctionSpecs')
-  if (!specs) return []
-  return allRuleInstances(specs, 'processDef').map(cstToProcess)
+  const direct = allRuleInstances(body, 'processDef').map(cstToProcess)
+  const nested = childNodes(body, 'processFunctionSpecs').flatMap((specs) =>
+    allRuleInstances(specs, 'processDef').map(cstToProcess)
+  )
+  return direct.length ? direct : nested
 }
 
 function extractFunctions(body: CstNode): FunctionNode[] {
-  const specs = singleChild(body, 'processFunctionSpecs')
-  if (!specs) return []
-  return allRuleInstances(specs, 'functionDef').map(cstToFunction)
+  const direct = allRuleInstances(body, 'functionDef').map(cstToFunction)
+  const nested = childNodes(body, 'processFunctionSpecs').flatMap((specs) =>
+    allRuleInstances(specs, 'functionDef').map(cstToFunction)
+  )
+  return direct.length ? direct : nested
 }
 
 function cstToProcess(cst: CstNode): ProcessNode {
@@ -520,6 +544,11 @@ function cstToQualifiedName(cst: CstNode): QualifiedNameNode {
 }
 
 function cstToTypeExpr(cst: CstNode): TypeExprNode {
+  const arrow = singleChild(cst, 'arrowType')
+  if (arrow) return cstToArrowType(arrow)
+  if (cst.name === 'arrowType') return cstToArrowType(cst)
+  if (cst.name === 'postfixType') return cstToPostfixType(cst)
+  if (cst.name === 'coreType') return cstToCoreType(cst)
   const union = singleChild(cst, 'unionType')
   if (union) return cstToUnionType(union)
   const access = singleChild(cst, 'moduleOrFieldAccess')
@@ -532,6 +561,53 @@ function cstToTypeExpr(cst: CstNode): TypeExprNode {
   if (primary) return cstToTypePrimary(primary)
   const atomic = singleChild(cst, 'typeAtomic')
   if (atomic) return cstToTypeAtomic(atomic)
+  const implicit = singleChild(cst, 'implicitComposedType')
+  if (implicit) return cstToImplicitComposed(implicit)
+  return { type: 'basic_type', span: spanOf(cst), name: 'given' }
+}
+
+function cstToArrowType(cst: CstNode): TypeExprNode {
+  const parts = allRuleInstances(cst, 'postfixType').map(cstToPostfixType)
+  if (!parts.length) {
+    const core = singleChild(cst, 'coreType')
+    return core ? cstToCoreType(core) : { type: 'basic_type', span: spanOf(cst), name: 'given' }
+  }
+  if (parts.length === 1) return parts[0]!
+  return parts.reduce((domain, range) => ({
+    type: 'map_type',
+    span: mergeSpans(domain.span, range.span),
+    domain,
+    range
+  }))
+}
+
+function cstToPostfixType(cst: CstNode): TypeExprNode {
+  const core = singleChild(cst, 'coreType')
+  const inner = core ? cstToCoreType(core) : { type: 'basic_type' as const, span: spanOf(cst), name: 'given' as const }
+  const suffix = tokensOf(cst, 'Identifier').find((t) => t.image === '序列' || t.image === '集合')
+  if (suffix?.image === '序列') return { type: 'seq_type', span: spanOf(cst), element: inner }
+  if (suffix?.image === '集合') return { type: 'set_type', span: spanOf(cst), element: inner }
+  return inner
+}
+
+function cstToImplicitComposed(cst: CstNode): TypeExprNode {
+  const fields = singleChild(cst, 'fieldList')
+  return {
+    type: 'composed_type',
+    span: spanOf(cst),
+    fields: fields ? cstToFieldList(fields) : []
+  }
+}
+
+function cstToCoreType(cst: CstNode): TypeExprNode {
+  const implicit = singleChild(cst, 'implicitComposedType')
+  if (implicit) return cstToImplicitComposed(implicit)
+  const union = singleChild(cst, 'unionType')
+  if (union) return cstToUnionType(union)
+  const access = singleChild(cst, 'moduleOrFieldAccess')
+  if (access) {
+    return { type: 'named_type', span: spanOf(cst), qualified: cstToQualifiedName(access) }
+  }
   return { type: 'basic_type', span: spanOf(cst), name: 'given' }
 }
 
@@ -563,7 +639,16 @@ function cstToTypeAtomic(cst: CstNode): TypeExprNode {
   const basic = singleChild(cst, 'basicType')
   if (basic) {
     const tok = firstToken(basic)
-    const name = (tok?.image ?? 'given') as 'nat0' | 'nat' | 'int' | 'real' | 'char' | 'string' | 'bool' | 'given'
+    const name = (tok?.image ?? 'given') as
+      | 'nat0'
+      | 'nat'
+      | 'int'
+      | 'real'
+      | 'char'
+      | 'string'
+      | 'bool'
+      | 'given'
+      | 'time'
     return { type: 'basic_type', span: spanOf(cst), name }
   }
   const enumT = singleChild(cst, 'enumType')

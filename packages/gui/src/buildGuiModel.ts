@@ -1,15 +1,7 @@
-import type {
-  GuiDocumentModel,
-  InformalProcessRef,
-  InformalVariableRef
-} from './model.js'
+import type { GuiDocumentModel, InformalProcessRef, InformalVariableRef, HybridProcessRef } from './model.js'
 import { parseGuiSpec } from './parse.js'
 import { validateGuiSpec } from './validate.js'
-import {
-  extractGuiFromAspec,
-  guispecFromGuiSection,
-  mergeGuiSources
-} from './patch.js'
+import { extractGuiFromAspec, guispecFromGuiSection, mergeGuiSources } from './patch.js'
 import { parseGuiFromAspecYaml } from './parse.js'
 import { serializeGuiSpec } from './serialize.js'
 
@@ -47,16 +39,12 @@ export function buildGuiModel(
       processes?: Array<{ id: string; name: string }>
       variables?: Array<{ id: string; name: string }>
     }>
-    sourceKind?: 'guispec' | 'aspec-embedded'
+    hybridProcesses?: HybridProcessRef[]
+    sourceKind?: GuiDocumentModel['sourceKind']
   }
 ): GuiDocumentModel {
-  const processRefs = options?.informalModules
-    ? collectProcessRefs(options.informalModules)
-    : undefined
-  const variableRefs = options?.informalModules
-    ? collectVariableRefs(options.informalModules)
-    : undefined
-
+  const processRefs = options?.informalModules ? collectProcessRefs(options.informalModules) : undefined
+  const variableRefs = options?.informalModules ? collectVariableRefs(options.informalModules) : undefined
   const { document, diagnostics: parseDiags } = parseGuiSpec(source)
   if (!document) {
     return {
@@ -65,12 +53,15 @@ export function buildGuiModel(
       screens: [],
       flows: [],
       diagnostics: parseDiags,
-      sourceKind: options?.sourceKind ?? 'guispec'
+      sourceKind: options?.sourceKind ?? 'gui-html',
+      html: source
     }
   }
-
-  const styleDiags = validateGuiSpec(document, { processRefs, variableRefs })
-
+  const styleDiags = validateGuiSpec(document, {
+    processRefs,
+    variableRefs,
+    hybridProcesses: options?.hybridProcesses
+  })
   return {
     meta: document.meta,
     app: document.gui.app,
@@ -80,7 +71,8 @@ export function buildGuiModel(
     })),
     flows: document.gui.flows ?? [],
     diagnostics: [...parseDiags, ...styleDiags],
-    sourceKind: options?.sourceKind ?? 'guispec'
+    sourceKind: options?.sourceKind ?? 'gui-html',
+    html: document.html
   }
 }
 
@@ -108,19 +100,18 @@ export function buildGuiModelFromAspec(
       screens: [],
       flows: [],
       diagnostics: [],
-      sourceKind: 'aspec-embedded'
+      sourceKind: 'aspec-embedded',
+      html: ''
     }
   }
-
   const { meta } = parseGuiFromAspecYaml(aspecSource)
   const doc = guispecFromGuiSection(merged, {
     id: meta?.id ?? 'embedded-gui',
-    title: meta?.title ? `${meta.title} GUI` : 'Embedded GUI',
-    informalTarget: undefined
+    title: meta?.title ? `${meta.title} GUI` : 'Embedded GUI'
   })
   return buildGuiModel(serializeGuiSpec(doc), {
     informalModules,
-    sourceKind: 'aspec-embedded'
+    sourceKind: externalGuiSource ? 'gui-html' : 'aspec-embedded'
   })
 }
 

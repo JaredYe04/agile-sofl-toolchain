@@ -1,0 +1,262 @@
+module Auth;
+type
+  Role = {Investor} | {Broker} | {Admin};
+  Currency = {USD};
+  UserAccount = user_id: nat, role: Role, balance: real, available: real, frozen: real, total_assets: real, currency: Currency;
+  AuditRecord = actor: nat, action: string, target: string, time: time;
+process Login (user_id: nat, password: string) ok: bool
+    pre
+        输入 user_id 与 password 非空，系统可用。
+    post
+        if 凭据有效 then 建立会话，CurrentUser 赋值为对应 UserAccount，生成 SessionToken，按 role 初始化权限并写入 AuditLog else if 凭据无效 then 拒绝登录，不建立会话，写入 AuditLog else 返回系统不可用
+end_process;
+process Logout (user_id: nat) ok: bool
+    pre
+        当前存在有效会话。
+    post
+        清除 CurrentUser 与 SessionToken，写入 AuditLog。
+end_process;
+process CheckPermission (role: Role, action: string) ok: bool
+    pre
+        已登录且 role 已知。
+    post
+        if 目标为交易或行情或自选或查询 then Investor 允许访问 else if 目标为券商后台 then Broker 或 Admin 允许访问 else Admin 允许访问全部
+end_process;
+var
+  CurrentUser: UserAccount;
+  SessionToken: nat;
+  AuditLog: AuditRecord 序列;
+inv
+    所有登录、登出与权限变更等关键操作必须写入 AuditLog 留痕。;
+end_module;
+
+module MarketData;
+type
+  StockQuote = code: string, name: string, last: real, change_pct: real, prev_close: real, open: real, high: real, low: real, volume: nat, bid1: real, ask1: real, timestamp: time;
+  Candle = code: string, period: string, open: real, high: real, low: real, close: real, volume: nat, time: time;
+process QueryQuote (code: string) ok: StockQuote
+    pre
+        股票代码已订阅且行情源可用。
+    post
+        返回该代码的最新价、涨跌幅、成交量、盘口与时间戳。
+end_process;
+process QueryCandles (code: string, period: string) ok: Candle 序列
+    pre
+        代码与周期有效。
+    post
+        返回该代码指定周期的历史 K 线序列，供图表分析使用。
+end_process;
+process AnalyzeChart (code: string, period: string) ok: bool
+    pre
+        已获取历史行情。
+    post
+        基于 CandleSeries 生成 K 线与走势分析视图所需数据。
+end_process;
+var
+  QuoteStore: 股票代码 -> StockQuote;
+  CandleSeries: 股票代码 -> Candle 序列;
+end_module;
+
+module Trading;
+type
+  OrderDirection = {Buy} | {Sell};
+  OrderType = {Market} | {Limit} | {Stop} | {TakeProfit};
+  OrderValidity = {Day} | {GTC};
+  OrderStatus = {Submitted} | {PartiallyFilled} | {Filled} | {Cancelled} | {Rejected};
+  Order = order_id: nat, user_id: nat, code: string, direction: OrderDirection, order_type: OrderType, validity: OrderValidity, price: real, qty: real, status: OrderStatus, created: time, filled: time;
+  MarginPosition = user_id: nat, code: string, direction: OrderDirection, qty: real, margin: real, maintenance_margin: real;
+process PlaceOrder (user_id: nat, code: string, direction: OrderDirection, price: real, qty: real, validity: OrderValidity) ok: bool
+    pre
+        已登录且风控通过。
+    post
+        if 风控与合规通过 then 生成 Order 状态为 {Submitted} 进入撮合 else 拒绝并记录拒单原因
+end_process;
+process CancelOrder (order_id: nat) ok: bool
+    pre
+        订单存在且状态为 {Submitted} 或 {PartiallyFilled}。
+    post
+        订单状态置为 {Cancelled}，解冻相应资金或持仓。
+end_process;
+process QueryOrders (user_id: nat) ok: Order 序列
+    pre
+        已登录。
+    post
+        返回该用户全部订单及其状态。
+end_process;
+process ManageStopOrder (order_id: nat) ok: bool
+    pre
+        订单为 {Stop} 或 {TakeProfit} 且已达触发条件。
+    post
+        触发后生成市价委托并更新订单状态。
+end_process;
+process OpenMarginShort (user_id: nat, code: string, qty: real) ok: bool
+    pre
+        已开通融资融券且保证金充足。
+    post
+        建立 MarginPosition，记录保证金与维持保证金，纳入平仓管理。
+end_process;
+var
+  OrderStore: 订单ID -> Order;
+  MarginStore: 用户ID -> MarginPosition 集合;
+inv
+    订单有效期仅为 {Day} 或 {GTC}，到期自动失效。;
+    支持碎股交易，最小交易单位可为小数股。;
+end_module;
+
+module Account;
+type
+  Position = user_id: nat, code: string, qty: real, avg_cost: real, market_value: real, unrealized_pnl: real;
+  TradeRecord = record_id: nat, order_id: nat, user_id: nat, code: string, price: real, qty: real, time: time;
+  Statement = user_id: nat, period: string, total_assets: real, pnl: real;
+process QueryAccount (user_id: nat) ok: UserAccount
+    pre
+        已登录。
+    post
+        返回账户余额、可用资金、冻结资金与总资产。
+end_process;
+process QueryPositions (user_id: nat) ok: Position 集合
+    pre
+        已登录。
+    post
+        返回持仓数量、平均成本、市值与浮动盈亏。
+end_process;
+process GenerateStatement (user_id: nat, period: string) ok: Statement
+    pre
+        账户存在交易记录。
+    post
+        汇总期间资产与盈亏，生成对账单。
+end_process;
+var
+  Positions: 用户ID -> Position 集合;
+  TradeLog: TradeRecord 序列;
+  Statements: 用户ID -> Statement 序列;
+inv
+    模拟交易约束：系统仅用于教学与演示，不产生真实资金流动。;
+    总资产 = 现金余额 + 持仓市值。;
+end_module;
+
+module RiskControl;
+type
+  RiskCheckResult = passed: bool, reason: string;
+  RiskConfig = max_single_ratio: real, max_single_qty: nat, price_deviation: real, trading_hours: string;
+process CheckRisk (user_id: nat, code: string, price: real, qty: real) ok: RiskCheckResult
+    pre
+        订单参数有效。
+    post
+        if 资金充足且持仓与集中度达标且价格与时段合规 then 返回通过 else 返回拒绝并给出原因
+end_process;
+process CheckCompliance (order_id: nat) ok: RiskCheckResult
+    pre
+        订单已通过基础风控。
+    post
+        if 未命中异常交易或内幕交易规则 then 返回通过 else 拦截并记录
+end_process;
+var
+  Config: RiskConfig;
+inv
+    下单金额不得超过账户可用资金，卖出数量不得超过当前持仓。;
+    仅允许在美股交易时段内提交订单。;
+    单只股票持仓不得超过账户总资产的一定比例，并设单票持仓上限。;
+    委托价格不得超过最新价一定偏离范围，防止异常报价。;
+    对异常交易与内幕交易进行合规检查与拦截。;
+end_module;
+
+module WatchAlert;
+type
+  WatchItem = user_id: nat, code: string, added_time: time;
+  PriceAlert = alert_id: nat, user_id: nat, code: string, threshold: real, direction: string, triggered: bool, created: time;
+process AddWatch (user_id: nat, code: string) ok: bool
+    pre
+        已登录。
+    post
+        将代码加入该用户自选列表。
+end_process;
+process RemoveWatch (user_id: nat, code: string) ok: bool
+    pre
+        该代码在自选列表中。
+    post
+        从自选列表移除该代码。
+end_process;
+process SetPriceAlert (user_id: nat, code: string, threshold: real, direction: string) ok: bool
+    pre
+        代码与阈值有效。
+    post
+        创建 PriceAlert，初始为未触发。
+end_process;
+process TriggerAlert (alert_id: nat) ok: bool
+    pre
+        最新价达到阈值。
+    post
+        alert_id 标记为已触发，并向 Notification 推送预警。
+end_process;
+var
+  Watchlists: 用户ID -> WatchItem 集合;
+  Alerts: alert_id -> PriceAlert;
+end_module;
+
+module Query;
+type
+  QueryFilter = user_id: nat, code: string, from_time: time, to_time: time, status: string, order_type: string;
+process QueryHistory (filter: QueryFilter) ok: TradeRecord 序列
+    pre
+        已登录且查询条件有效。
+    post
+        返回符合条件的历史订单与成交明细。
+end_process;
+var
+  LastResult: TradeRecord 序列;
+end_module;
+
+module Notification;
+type
+  Notification = notif_id: nat, user_id: nat, category: string, message: string, time: time, read: bool;
+process PushNotification (user_id: nat, category: string, message: string) ok: bool
+    pre
+        存在待推送消息。
+    post
+        生成 Notification 入队并推送至用户。
+end_process;
+process MarkRead (notif_id: nat) ok: bool
+    pre
+        通知存在。
+    post
+        通知标记为已读。
+end_process;
+var
+  NotificationQueue: Notification 序列;
+end_module;
+
+module GUI;
+gui GUI_GUI;
+  screen LoginView;
+登录视图：输入用户名与密码，选择角色（投资者/券商/管理员），提交登录。
+  end_screen;
+  screen MarketView;
+行情视图：展示实时报价、涨跌幅、成交量与盘口，提供跳转图表。
+  end_screen;
+  screen ChartView;
+图表视图：展示 K 线与历史走势分析。
+  end_screen;
+  screen TradeView;
+交易下单视图：选择代码、方向、订单类型、价格、数量与有效期，提交订单。
+  end_screen;
+  screen OrderView;
+订单视图：查看订单状态并支持撤单。
+  end_screen;
+  screen PositionView;
+持仓账户视图：展示资金余额、可用资金、持仓与浮动盈亏。
+  end_screen;
+  screen WatchlistView;
+自选视图：维护自选股并设置价格提醒阈值。
+  end_screen;
+  screen QueryView;
+查询视图：按条件查询历史订单与成交明细。
+  end_screen;
+  screen NotificationView;
+通知视图：展示成交与预警推送。
+  end_screen;
+  screen AdminView;
+管理后台视图：券商/管理员功能与风控合规配置。
+  end_screen;
+end_gui;
+end_module;

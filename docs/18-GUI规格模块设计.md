@@ -1,79 +1,104 @@
 # 18 — GUI 规格模块设计
 
-本文档是 **GUI 规格模块**的权威设计，与 [17-Informal与Hybrid规格编辑器设计.md](./17-Informal与Hybrid规格编辑器设计.md) 互补。GUI 规格描述页面、控件与用户动作，比 FSF 更非形式；**不扩展 ASFL 文法**，经 trace 与 informal process/data 关联。
+本文档是 **GUI 规格模块**的权威设计，与 [17-Informal与Hybrid规格编辑器设计.md](./17-Informal与Hybrid规格编辑器设计.md)、[19-ASFL-GUI文法扩展.md](./19-ASFL-GUI文法扩展.md) 互补。权威语义来自 *Agile-SOFL: Agile Formal Engineering Method*（Springer, 2024）Ch.4 §4.2：GUI 不是形式规格本身，而是用户—开发者沟通媒介。
 
 ## 1. 目标与范围
 
 | 术语 | 含义 |
 |------|------|
-| **GUI Specification** | 页面/控件/导航流的非形式描述，存于 `.guispec` 或 `.aspec` 内嵌 `gui` 块 |
-| **Screen** | 一个 UI 页面或视图 |
-| **Widget** | 页面内控件（输入、按钮、列表等） |
-| **Flow** | 屏幕间导航关系 |
+| **GUI Specification** | 受限 HTML5 文档（`.gui.html`）：页面结构、`as-*` 布局/控件、`data-*` 绑定 |
+| **Screen** | `data-screen` 节，一个 UI 页面 |
+| **Prototype** | 同一 HTML 经 Shadow DOM + Studio 主题 token 渲染的高保真原型 |
+| **Scenario animation** | 填表 → `data-process` → 小求值/选 FSF 场景 → 写回 `out:` / `var:` |
 
 **范围**
 
-- `@agile-sofl/gui`：parse、validate、patch、buildGuiModel、trace/coverage 扩展
-- Studio：GuiVisualEditor + Cursor 风格线框预览（[awesome-design-md Cursor](https://github.com/VoltAgent/awesome-design-md)）
-- 双存储：独立 `.guispec` + `.aspec` 内嵌 / `meta.guiTarget` 互链
+- `@agile-sofl/gui`：受限 HTML parse / sanitize / validate / patch / inventory / 场景求值 / 主题 stylesheet
+- Studio：DOM 树 + class/`data-*` 检查器 + 主题化原型 + 同屏规格动画；Code Tab 编辑 `.gui.html`
+- Informal `meta.guiTarget` 指向外部 `.gui.html`
+- YAML `.guispec` 仅作一次性迁移源，不再是权威正文
 
-**不在范围**：ASFL `gui` 文法、精化生成 hybrid GUI、可交互原型。
+**不在范围**：完整 SOFL 谓词解释器、把规格译成 JS、spec 内 `<script>` / 自定义 CSS / 绝对定位。
 
 ## 2. 文件格式
 
-### 2.1 独立 `.guispec`
+### 2.1 独立 `.gui.html`
 
-见 `examples/library-gui.guispec`；Schema：`packages/gui/schema/guispec-v1.schema.json`。
+一份文档、多屏。只允许白名单标签与 `as-*` class。示意：
 
-### 2.2 `.aspec` 内嵌
+```html
+<div class="as-app" data-app="Trading">
+  <section class="as-screen" data-screen="Login">
+    <div class="as-stack as-gap-md">
+      <label class="as-field">
+        用户名
+        <input class="as-input" data-bind="param:user_id" />
+      </label>
+      <button class="as-btn as-btn-primary" data-process="Auth.Login" data-nav="Dashboard">登录</button>
+    </div>
+  </section>
+  <section class="as-screen is-hidden" data-screen="Dashboard">…</section>
+</div>
+```
 
-顶层可选 `gui:` 块（与 `modules` 并列）；`meta.guiTarget` 指向外部 `.guispec`。
+约定属性：
 
-合并策略（`mergeGuiSources`）：同 id 时 **external 优先**。
+| 属性 | 含义 |
+|------|------|
+| `data-screen` | 屏 id |
+| `data-process="Module.Proc"` | 触发的 Hybrid process |
+| `data-bind="param:x \| var:accounts \| out:ok"` | 入参 / 模块状态 / 出参 |
+| `data-nav="Screen"` | 无脚本屏间导航 |
+| `data-scenario` | 可选，动画时锁定 FSF 场景 |
 
-### 2.3 Widget kinds（MVP）
+class 设计系统（`as-*`，映射 Studio CSS variables，随 `.dark` 切换）：布局 `as-row|as-col|as-grid|as-stack|as-card`；控件 `as-btn|as-input|as-select|as-table|as-list|as-navbar|as-field|as-title|as-muted`。
 
-`label` | `text-input` | `button` | `checkbox` | `select` | `list` | `table` | `section` | `navigation`
+禁止：`<script>`、`on*`、`<iframe>`、`<style>`、inline `style`、任意 class。解析用白名单消毒；原型在 Shadow DOM 中渲染，spec HTML 永不 `eval`。
 
-### 2.4 绑定
+### 2.2 Informal 链接
 
-- `binds.param` — 关联 informal 过程参数字段名
-- `binds.variable` — 关联 aspec variable id
-- `binds.display` — 只读展示字段
+`informal-meta.json` 的 `guiTarget` 指向 `./gui.html`。`.aspec` 内嵌 YAML `gui:` 仅在迁移时读取。
 
-### 2.5 布局与事件（设计器）
+### 2.3 旧 YAML
 
-- `screens[].size`: `{ width, height }` 窗体客户区
-- `widgets[].bounds`: `{ x, y, width, height }` 绝对定位（缺省时设计器给流式坐标）
-- `widgets[].events`: `{ on, action, targetView }`；`action: navigate` 在运行模式切换 View
-- 仍保留 `flows` / `widget.action` 作为回退
-
-Studio GUI Views 可视化 Tab 为拖拽设计器，见 [22-GUI可视化设计器handoff.md](./22-GUI可视化设计器handoff.md)。
+`parseGuiSpec` 若检测到 `guispecVersion` / `gui:` YAML，则扁平 widgets → `as-stack` 骨架并丢弃 `bounds`。
 
 ## 3. 诊断码
 
 | 码 | 条件 |
 |----|------|
-| `GUI_SCHEMA_001` | 结构/schema 错误 |
-| `GUI_STYLE_001` | screen 无 widgets 且无 description |
-| `GUI_STYLE_002` | triggersProcess 在 linked informal 中不存在 |
-| `GUI_STYLE_003` | flow 引用未知 screen |
+| `GUI_PARSE_001` | HTML 为空或 YAML 无法迁移 |
+| `GUI_SCHEMA_001` | 缺 `data-app` 等结构错误 |
+| `GUI_STYLE_001` | screen 无内容 |
+| `GUI_STYLE_002` | `data-process` 在 Hybrid/Informal 中不存在 |
+| `GUI_STYLE_003` | `data-nav` 引用未知 screen |
 | `GUI_STYLE_004` | 重复 id |
+| `GUI_HTML_001` | 禁止标记（已消毒） |
+| `GUI_HTML_002` | 未知 class（已剥离） |
+| `GUI_HTML_003` | `data-bind` 名不对照 process 签名 / `var` |
+
+跨文件 check：`buildGuiModel(..., { hybridProcesses })` 用 Hybrid 签名校验 `data-process` 与 `data-bind`。
 
 ## 4. IPC（Studio）
 
 | Channel | 说明 |
 |---------|------|
-| `studio:build-gui-model` | 构建 GuiDocumentModel |
-| `studio:patch-gui` | patch 写回 YAML |
-| `studio:format-gui` | canonical serialize |
-| `studio:resolve-gui-for-aspec` | 合并 embedded + external |
+| `studio:build-gui-model` | HTML → GuiDocumentModel（可带 informal / hybrid 交叉校验） |
+| `studio:patch-gui` | 树补丁：`add-screen` / `insert-html` / `patch-node` / `replace-html` 等 |
+| `studio:format-gui` | 消毒后 pretty-print |
+| `studio:animate-gui-process` | `deriveFsf` + 小求值 / 选场景，返回 mock 输出 |
+| `studio:resolve-gui-for-aspec` | Informal 内嵌 + 外部 HTML 合并（外部优先） |
 
-## 5. Cursor 设计规约（预览区）
+## 5. 原型与主题
 
-GUI 线框预览使用 warm cream 画布、hairline 边框、Cursor Orange 主按钮；详见 [packages/studio/DESIGN.md](../packages/studio/DESIGN.md) §8。Shell IDE 区保持现有 VS Code 蓝 accent。
+`prototypeStylesheet` 把 `--gui-*` / `--surface-*` / `--accent` 注入 Shadow DOM。预览跟随 Studio 深浅色，不以强制浅色线框为默认。
 
-## 6. Trace / Coverage
+## 6. 规格动画
+
+Run 模式：读 `data-bind` 填 process 输入 → `deriveFsf` 列出场景 → 对字面量/标识符级条件求值（`x > 0`、`ok = true`）→ 失败则人选场景 → 把输出 mock 写回 `out:` / `var:`。半形式 FSF 一律走「选场景 + mock 输出」。不是完整解释器，也不译成 JS。
+
+## 7. Trace / Coverage
 
 - Trace link kind：`gui-screen` | `gui-widget`
-- Screen covered：当 `triggersProcess` 对应 process 在 hybrid 中 covered
+- Screen covered：当 `data-process` / `triggersProcess` 对应 process 在 hybrid 中 covered
+- Hybrid `.asfl` 只保留 slim `screen Name triggers Mod.Proc;` 追踪，权威结构在 HTML

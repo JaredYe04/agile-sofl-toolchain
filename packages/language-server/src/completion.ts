@@ -242,7 +242,7 @@ export function getCompletions(document: TextDocument, position: Position): Comp
           label: 'gui',
           kind: CompletionItemKind.Snippet,
           insertText:
-            'gui ${1:AppGui};\nscreen ${2:Home};\n    label ${3:welcome} "${4:Welcome}";\nend_screen;\nend_gui',
+            'gui ${1:AppGui};\n  screen ${2:Home} triggers ${3:Mod.Proc};\nend_gui;',
           insertTextFormat: InsertTextFormat.Snippet
         }
       ]

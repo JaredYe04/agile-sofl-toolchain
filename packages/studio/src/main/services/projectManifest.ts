@@ -1,5 +1,4 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs'
-import { randomUUID } from 'node:crypto'
 import { basename, join, relative } from 'node:path'
 import {
   MANIFEST_FILENAME,
@@ -8,6 +7,10 @@ import {
 import { writeInformalSpecFile } from './informalMeta.js'
 
 const SKIP_DIRS = new Set(['node_modules', 'dist', '.git'])
+
+function isGuiSpecFile(name: string): boolean {
+  return name === 'gui.html' || name.endsWith('.gui.html') || name.endsWith('.guispec')
+}
 
 function scanSpecFiles(root: string, ext: string, out: string[] = []): string[] {
   if (!existsSync(root)) return out
@@ -21,6 +24,18 @@ function scanSpecFiles(root: string, ext: string, out: string[] = []): string[] 
   return out
 }
 
+function scanGuiFiles(root: string, out: string[] = []): string[] {
+  if (!existsSync(root)) return out
+  for (const name of readdirSync(root)) {
+    if (name.startsWith('.') || SKIP_DIRS.has(name)) continue
+    const full = join(root, name)
+    const st = statSync(full)
+    if (st.isDirectory()) scanGuiFiles(full, out)
+    else if (isGuiSpecFile(name)) out.push(full)
+  }
+  return out
+}
+
 function scanProjectRoot(root: string): {
   aspecFiles: string[]
   asflFiles: string[]
@@ -29,7 +44,7 @@ function scanProjectRoot(root: string): {
   return {
     aspecFiles: scanSpecFiles(root, '.aspec'),
     asflFiles: scanSpecFiles(root, '.asfl'),
-    guispecFiles: scanSpecFiles(root, '.guispec')
+    guispecFiles: scanGuiFiles(root)
   }
 }
 
@@ -85,7 +100,9 @@ export async function inferManifest(root: string): Promise<AgileSoflManifest> {
   const guiRel = toRel(root, scan.guispecFiles[0])
   const base = basename(scan.aspecFiles[0] ?? '', '.aspec')
   const pairGui =
+    scan.guispecFiles.find((p) => basename(p, '.gui.html') === `${base}-gui`) ??
     scan.guispecFiles.find((p) => basename(p, '.guispec') === `${base}-gui`) ??
+    scan.guispecFiles.find((p) => basename(p, '.gui.html') === base.replace(/-informal$/, '') + '-gui') ??
     scan.guispecFiles.find((p) => basename(p, '.guispec') === base.replace(/-informal$/, '') + '-gui')
   return {
     version: '1.0',
@@ -119,7 +136,7 @@ export function createProjectTemplate(root: string, name: string): AgileSoflMani
   const ident = asflIdent(name)
   const informal = 'informal.aspec'
   const hybrid = 'hybrid.asfl'
-  const gui = 'gui.guispec'
+  const gui = 'gui.html'
   const manifest: AgileSoflManifest = {
     version: '1.0',
     name,
@@ -156,14 +173,8 @@ var
 inv
     current_view >= 0 and current_view <= 1;
 gui AppGui;
-screen Home;
-    label welcome "Welcome";
-    navigation goNext "Open" triggers OpenNext;
-end_screen;
-screen Next;
-    label body "Next view";
-    navigation goHome "Back" triggers OpenHome;
-end_screen;
+  screen Home triggers OpenNext;
+  screen Next triggers OpenHome;
 end_gui;
 process OpenNext ()
     pre
@@ -184,64 +195,22 @@ end_module
 
   writeFileSync(
     join(root, gui),
-    `guispecVersion: "1.0"
-meta:
-  id: "${randomUUID()}"
-  title: ${JSON.stringify(`${name} GUI`)}
-  informalTarget: ./${informal}
-gui:
-  app:
-    name: ${ident}App
-    description: |
-      Application views.
-  screens:
-    - id: view-home
-      name: Home
-      title: Home
-      size:
-        width: 640
-        height: 400
-      widgets:
-        - id: w-title
-          kind: label
-          label: Welcome
-          bounds: { x: 24, y: 24, width: 240, height: 32 }
-        - id: w-open
-          kind: navigation
-          label: Open
-          bounds: { x: 24, y: 72, width: 120, height: 32 }
-          events:
-            - on: click
-              action: navigate
-              targetView: view-next
-    - id: view-next
-      name: Next
-      title: Next
-      size:
-        width: 640
-        height: 400
-      widgets:
-        - id: w-next
-          kind: label
-          label: Next view
-          bounds: { x: 24, y: 24, width: 240, height: 32 }
-        - id: w-back
-          kind: navigation
-          label: Back
-          bounds: { x: 24, y: 72, width: 120, height: 32 }
-          events:
-            - on: click
-              action: navigate
-              targetView: view-home
-  flows:
-    - from: view-home
-      to: view-next
-      on: navigate
-      label: Open next
-    - from: view-next
-      to: view-home
-      on: navigate
-      label: Back home
+    `<div class="as-app" data-app="${ident}App">
+  <section class="as-screen" id="view-home" data-screen="Home">
+    <h1 class="as-title">Home</h1>
+    <div class="as-stack as-gap-md">
+      <p class="as-muted">Application views.</p>
+      <button class="as-btn as-btn-primary" data-process="OpenNext" data-nav="Next">Open</button>
+    </div>
+  </section>
+  <section class="as-screen is-hidden" id="view-next" data-screen="Next">
+    <h1 class="as-title">Next</h1>
+    <div class="as-stack as-gap-md">
+      <p class="as-muted">Next view</p>
+      <button class="as-btn" data-process="OpenHome" data-nav="Home">Back</button>
+    </div>
+  </section>
+</div>
 `,
     'utf-8'
   )

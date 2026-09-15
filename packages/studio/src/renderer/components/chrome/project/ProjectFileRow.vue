@@ -12,14 +12,15 @@ const props = defineProps<{
 defineEmits<{ open: [path: string]; contextmenu: [event: MouseEvent] }>()
 
 const ext = computed(() => {
-  if (props.path.endsWith('.guispec')) return '.guispec'
+  if (props.path.endsWith('.gui.html') || props.path.endsWith('.guispec') || /(?:^|[\\/])gui\.html$/i.test(props.path))
+    return '.gui.html'
   if (props.path.endsWith('.aspec')) return '.aspec'
   return '.asfl'
 })
 
 const badgeVariant = computed(() => {
   if (ext.value === '.aspec') return 'semi-formal' as const
-  if (ext.value === '.guispec') return 'neutral' as const
+  if (ext.value === '.gui.html' || ext.value === '.guispec') return 'neutral' as const
   return 'formal' as const
 })
 

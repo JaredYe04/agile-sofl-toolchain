@@ -5,6 +5,8 @@ import { useAppStore, type ThemeMode } from '../../stores/app'
 import { useSettingsStore } from '../../stores/settings'
 import { ACCENT_PRESETS, normalizeHex, type AccentId, type UiZoom } from '../../lib/appearance'
 import SegmentedSwitch from '../ui/SegmentedSwitch.vue'
+import WorkspaceLayoutSettings from '../settings/WorkspaceLayoutSettings.vue'
+import IconActionButton from '../ui/IconActionButton.vue'
 import type { Locale } from '../../i18n'
 
 type LlmPublic = {
@@ -286,18 +288,16 @@ async function copyDump(): Promise<void> {
       @click.self="settings.hide()"
     >
       <div
-        class="flex h-[min(720px,90vh)] w-full max-w-3xl flex-col overflow-hidden rounded-xl border border-border-subtle bg-surface-raised shadow-xl"
+        class="flex max-h-[min(640px,85vh)] w-full max-w-4xl flex-col overflow-hidden rounded-xl border border-border-subtle bg-surface-raised shadow-xl"
         @click.stop
       >
-        <header class="flex h-11 shrink-0 items-center justify-between border-b border-border-subtle px-4">
-          <h2 class="text-sm font-semibold text-content-primary">{{ t('settings.title') }}</h2>
-          <button
-            type="button"
-            class="rounded-md px-2 py-0.5 text-[12px] text-content-secondary hover:bg-surface-overlay"
+        <header class="flex h-11 shrink-0 items-center gap-2 border-b border-border-subtle px-4">
+          <h2 class="min-w-0 flex-1 truncate text-sm font-semibold text-content-primary">{{ t('settings.title') }}</h2>
+          <IconActionButton
+            icon="lucide:x"
+            :label="t('window.close')"
             @click="settings.hide()"
-          >
-            {{ t('dialog.ok') }}
-          </button>
+          />
         </header>
         <div class="flex min-h-0 flex-1">
           <nav class="flex w-40 shrink-0 flex-col gap-0.5 border-r border-border-subtle p-2">
@@ -382,6 +382,7 @@ async function copyDump(): Promise<void> {
                 />
                 <p class="mt-1.5 text-[11px] text-content-muted">{{ t('settings.transparencyHint') }}</p>
               </div>
+              <WorkspaceLayoutSettings />
             </section>
 
             <section v-else-if="section === 'editor'" class="flex flex-col gap-5">
@@ -539,6 +540,14 @@ async function copyDump(): Promise<void> {
             </section>
           </div>
         </div>
+        <footer class="flex shrink-0 items-center justify-end border-t border-border-subtle px-4 py-2">
+          <IconActionButton
+            icon="lucide:check"
+            :label="t('dialog.ok')"
+            variant="accent"
+            @click="settings.hide()"
+          />
+        </footer>
       </div>
     </div>
   </Teleport>

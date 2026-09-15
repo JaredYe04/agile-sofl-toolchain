@@ -1,71 +1,72 @@
-import { parse as parseYaml } from 'yaml'
-import type { GuiDocument, GuiSection } from './model.js'
+import type { GuiDocument, GuiMeta, GuiSection } from './model.js'
 import { createDiagnostic, DiagnosticCodes } from './diagnostics/codes.js'
 import type { GuiDiagnostic } from './model.js'
+import { emptyGuiHtml, GUI_HTML_VERSION, looksLikeYamlGui } from './dialect.js'
+import { parseHtmlFragment, sanitizeHtml } from './html.js'
+import { tryParseYamlGui } from './migrate.js'
+import { sectionFromRoot } from './project.js'
 
 export interface ParseResult {
   document: GuiDocument | null
   diagnostics: GuiDiagnostic[]
 }
 
-function isRecord(v: unknown): v is Record<string, unknown> {
-  return typeof v === 'object' && v !== null && !Array.isArray(v)
-}
-
-function normalizeGuiSection(raw: unknown): GuiSection | null {
-  if (!isRecord(raw) || !isRecord(raw.app) || !Array.isArray(raw.screens)) return null
-  return raw as unknown as GuiSection
-}
-
-function normalizeGuispec(raw: unknown): GuiDocument | null {
-  if (!isRecord(raw)) return null
-  const guispecVersion = String(raw.guispecVersion ?? '1.0')
-  if (!isRecord(raw.meta) || !raw.gui) return null
-  const gui = normalizeGuiSection(raw.gui)
-  if (!gui) return null
-  return {
-    guispecVersion,
-    meta: raw.meta as unknown as GuiDocument['meta'],
-    gui
-  }
+function defaultMeta(title = 'GUI'): GuiMeta {
+  return { id: 'gui', title }
 }
 
 export function parseGuiSpec(source: string): ParseResult {
   const diagnostics: GuiDiagnostic[] = []
-  try {
-    const raw = parseYaml(source)
-    const document = normalizeGuispec(raw)
-    if (!document) {
+  const trimmed = source.trim()
+  if (!trimmed) {
+    const html = emptyGuiHtml()
+    return {
+      document: {
+        guispecVersion: GUI_HTML_VERSION,
+        meta: defaultMeta(),
+        html,
+        gui: sectionFromRoot(parseHtmlFragment(html))
+      },
+      diagnostics
+    }
+  }
+
+  let html = source
+  let meta = defaultMeta()
+  if (looksLikeYamlGui(source)) {
+    const migrated = tryParseYamlGui(source)
+    if (!migrated) {
       diagnostics.push(
-        createDiagnostic(
-          DiagnosticCodes.SCHEMA_ERROR,
-          'Invalid guispec structure: requires guispecVersion, meta, gui',
-          'error'
-        )
+        createDiagnostic(DiagnosticCodes.PARSE_ERROR, 'Invalid YAML GUI spec; expected guispecVersion + gui', 'error')
       )
       return { document: null, diagnostics }
     }
-    return { document, diagnostics }
-  } catch (e) {
-    diagnostics.push(
-      createDiagnostic(
-        DiagnosticCodes.PARSE_ERROR,
-        e instanceof Error ? e.message : String(e),
-        'error'
-      )
-    )
+    html = migrated.html
+    meta = migrated.meta
+  }
+
+  const sanitized = sanitizeHtml(html)
+  if (!sanitized.trim()) {
+    diagnostics.push(createDiagnostic(DiagnosticCodes.PARSE_ERROR, 'GUI HTML is empty after sanitizing', 'error'))
     return { document: null, diagnostics }
+  }
+  const root = parseHtmlFragment(sanitized)
+  const gui = sectionFromRoot(root)
+  return {
+    document: {
+      guispecVersion: GUI_HTML_VERSION,
+      meta,
+      html: sanitized,
+      gui
+    },
+    diagnostics
   }
 }
 
-export function parseGuiFromAspecYaml(source: string): { gui: GuiSection | null; meta?: GuiDocument['meta'] } {
-  try {
-    const raw = parseYaml(source)
-    if (!isRecord(raw)) return { gui: null }
-    const gui = raw.gui ? normalizeGuiSection(raw.gui) : null
-    const meta = isRecord(raw.meta) ? (raw.meta as unknown as GuiDocument['meta']) : undefined
-    return { gui, meta }
-  } catch {
-    return { gui: null }
+export function parseGuiFromAspecYaml(source: string): { gui: GuiSection | null; meta?: GuiMeta } {
+  const migrated = tryParseYamlGui(source.includes('gui:') ? source : `gui:\n${source}`)
+  if (migrated) {
+    return { gui: sectionFromRoot(parseHtmlFragment(migrated.html)), meta: migrated.meta }
   }
+  return { gui: null }
 }

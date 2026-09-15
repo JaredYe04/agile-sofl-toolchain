@@ -15,7 +15,7 @@
       "informal": "minimal-informal.aspec",
       "hybrid": ["minimal-module.asfl"],
       "guiHybrid": "minimal-gui-module.asfl",
-      "gui": "minimal-gui.guispec",
+      "gui": "minimal-gui.gui.html",
       "guiModule": "GUI_App"
     },
     {
@@ -26,7 +26,7 @@
       "informal": "library-informal.aspec",
       "hybrid": ["library-system.asfl"],
       "guiHybrid": "library-gui-module.asfl",
-      "gui": "library-gui.guispec",
+      "gui": "library-gui.gui.html",
       "guiModule": "GUI_App"
     },
     {
@@ -37,7 +37,7 @@
       "informal": "ecommerce-informal.aspec",
       "hybrid": ["ecommerce.asfl"],
       "guiHybrid": "ecommerce-gui-module.asfl",
-      "gui": "ecommerce-gui.guispec",
+      "gui": "ecommerce-gui.gui.html",
       "guiModule": "GUI_App"
     },
     {
@@ -48,7 +48,7 @@
       "informal": "hospital-informal.aspec",
       "hybrid": ["hospital-registration.asfl"],
       "guiHybrid": "hospital-gui-module.asfl",
-      "gui": "hospital-gui.guispec",
+      "gui": "hospital-gui.gui.html",
       "guiModule": "GUI_App"
     },
     {
@@ -59,7 +59,7 @@
       "informal": "type-showcase-informal.aspec",
       "hybrid": ["type-showcase.asfl"],
       "guiHybrid": "type-showcase-gui-module.asfl",
-      "gui": "type-showcase-gui.guispec",
+      "gui": "type-showcase-gui.gui.html",
       "guiModule": "GUI_App"
     },
     {
@@ -70,7 +70,7 @@
       "informal": "graph-showcase-informal.aspec",
       "hybrid": ["graph-showcase.asfl"],
       "guiHybrid": "graph-showcase-gui-module.asfl",
-      "gui": "graph-showcase-gui.guispec",
+      "gui": "graph-showcase-gui.gui.html",
       "guiModule": "GUI_App"
     }
   ]

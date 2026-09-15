@@ -37,6 +37,7 @@ import {
   renameFunction,
   renameProcess
 } from './processPatch.js'
+import { insertInvLine } from './moduleSourceRange.js'
 import { buildVisualModelTolerant, type VisualModelResult } from './visualParse.js'
 
 export type HybridEntityKind =
@@ -228,6 +229,8 @@ function addDeclLine(
 }
 
 function insertInv(source: string, moduleName: string, text: string): string | null {
+  const scanned = insertInvLine(source, moduleName, ensureTrailingSemicolon(text))
+  if (scanned != null) return scanned
   const { ast } = parse(source)
   if (!ast || ast.type !== 'program') return null
   const mod = findAstModule(ast, moduleName)
@@ -273,8 +276,22 @@ function stripEmptyInvSection(source: string, moduleName: string): string {
 
 function typeLine(name: string, text?: string): string {
   if (!text?.trim()) return `${name} = nat`
-  const t = text.trim()
-  return t.includes('=') ? t : `${name} = ${t}`
+  const raw = text.trim()
+  let t = raw.includes('=') ? raw : `${name} = ${raw}`
+  t = t.replace(/(\S+)\s+序列\b/g, 'seq of $1')
+  t = t.replace(/(\S+)\s+集合\b/g, 'set of $1')
+  t = t.replace(/(\S+)\s*->\s*(\S+)/g, 'map $1 to $2')
+  const eq = t.match(/^(\S+)\s*=\s*([\s\S]+)$/)
+  if (
+    eq &&
+    /:\s*\S/.test(eq[2]!) &&
+    !/\bcomposed\s+of\b/i.test(eq[2]!) &&
+    !eq[2]!.trim().startsWith('{')
+  ) {
+    const fields = eq[2]!.replace(/,/g, ' ').replace(/\s+/g, ' ').trim()
+    return `${eq[1]} = composed of ${fields} end`
+  }
+  return t
 }
 
 function varLine(name: string, text?: string): string {
@@ -998,12 +1015,7 @@ function isRealModuleName(name: string): boolean {
 }
 
 function namedModuleNames(source: string): string[] {
-  const { ast } = parse(source)
-  if (ast?.type === 'program') {
-    const names = ast.modules.map((m) => m.name).filter(isRealModuleName)
-    if (names.length) return names
-  }
-  return []
+  return moduleHeaders(source).filter(isRealModuleName)
 }
 
 function moduleHeaders(source: string): string[] {

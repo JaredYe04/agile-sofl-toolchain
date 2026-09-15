@@ -138,5 +138,5 @@ Monaco 主题 `agile-sofl-light` / `agile-sofl-dark` 与上述 token 对齐；�
 
 工作区 chrome（列头、树、折叠 `<` `>`、tab）使用 `select-none`；Monaco、`.studio-text-selectable`、`.visual-panel` 内文本仍可选。
 
-`--gui-*` 定义在 `:root` / `.dark`，GUI 设计器跟 IDE 深浅色。产品线框预览可用 `.gui-preview-light` 强制浅色皮肤。
+`--gui-*` 定义在 `:root` / `.dark`，GUI 原型跟 Studio 深浅色。高保真预览使用 `as-*` 组件库映射这些 token，不再默认强制浅色线框。
 

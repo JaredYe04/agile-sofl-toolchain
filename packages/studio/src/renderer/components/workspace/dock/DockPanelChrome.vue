@@ -1,36 +1,41 @@
 <script setup lang="ts">
-import type { DockPanelId, DockZone } from '../../../lib/dockLayout'
-import StudioIcon from '../../ui/StudioIcon.vue'
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { useWorkspaceStore, type WorkspacePanelId } from '../../../stores/workspace'
+import IconActionButton from '../../ui/IconActionButton.vue'
 
-defineProps<{
-  panel: DockPanelId
+const props = defineProps<{
   title: string
   dirty?: boolean
-  dropZone: DockZone | null
-  dragging: boolean
+  panel?: WorkspacePanelId
 }>()
 
-const emit = defineEmits<{ dragStart: [panel: DockPanelId, e: PointerEvent] }>()
+const { t } = useI18n()
+const workspace = useWorkspaceStore()
+const isFullscreen = computed(() => Boolean(props.panel && workspace.fullscreenPanel === props.panel))
+
+function toggleFullscreen(): void {
+  if (!props.panel) return
+  workspace.toggleFullscreenPanel(props.panel)
+}
 </script>
 
 <template>
   <header
-    class="flex h-[32px] min-w-0 shrink-0 cursor-grab flex-nowrap items-center gap-1 overflow-hidden border-b border-border-subtle bg-surface-base px-1 active:cursor-grabbing"
-    :data-dock-panel="panel"
-    @pointerdown="emit('dragStart', panel, $event)"
+    class="relative z-[110] flex h-[32px] min-w-0 shrink-0 flex-nowrap items-center gap-1 overflow-hidden border-b border-border-subtle bg-surface-base px-2"
   >
-    <span
-      class="flex shrink-0 items-center text-content-muted"
-      :title="$t('workspace.dock.dragHint')"
-    >
-      <StudioIcon icon="lucide:grip-vertical" :size="14" />
-    </span>
     <slot name="title">
       <h2 class="min-w-0 truncate text-xs font-semibold text-content-primary">{{ title }}</h2>
       <span v-if="dirty" class="shrink-0 text-[10px] text-accent">●</span>
     </slot>
     <div class="ml-auto flex shrink-0 items-center gap-1">
       <slot name="actions" />
+      <IconActionButton
+        v-if="panel"
+        :icon="isFullscreen ? 'lucide:x' : 'lucide:maximize-2'"
+        :label="isFullscreen ? t('workspace.exitFullscreen') : t('workspace.fullscreen')"
+        @click="toggleFullscreen"
+      />
     </div>
   </header>
 </template>

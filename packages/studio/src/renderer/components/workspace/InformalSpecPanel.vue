@@ -1,14 +1,13 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import type { DockPanelId, DockZone } from '../../lib/dockLayout'
 import DocumentView from './informal/DocumentView.vue'
 import GraphicalView from './informal/GraphicalView.vue'
 import HybridGenerateDialog from './HybridGenerateDialog.vue'
 import SegmentedSwitch from '../ui/SegmentedSwitch.vue'
 import WorkspacePanel from './WorkspacePanel.vue'
 import DockPanelChrome from './dock/DockPanelChrome.vue'
-import DockDropHighlight from './dock/DockDropHighlight.vue'
+import FullscreenPanel from './FullscreenPanel.vue'
 import { useWorkspaceStore } from '../../stores/workspace'
 import { nestedNodes, useInformalSpec } from '../../composables/useInformalSpec'
 import { duplicateTitle, nextIndexedTitle } from '../../lib/informalTitles'
@@ -19,12 +18,7 @@ type SectionType = 'functions' | 'data-resources' | 'constraints'
 defineProps<{
   title: string
   dirty?: boolean
-  dragPanel: DockPanelId | null
-  hoverTarget: DockPanelId | null
-  hoverZone: DockZone | null
 }>()
-
-defineEmits<{ dragStart: [e: PointerEvent] }>()
 
 const { t } = useI18n()
 const workspace = useWorkspaceStore()
@@ -141,19 +135,13 @@ function onViewMode(id: string): void {
 </script>
 
 <template>
+  <FullscreenPanel panel-id="informal">
   <WorkspacePanel panel="informal" class="relative flex h-full min-h-0 flex-col" data-dock-host="informal">
-    <DockDropHighlight :active="dragPanel !== null && hoverTarget === 'informal'" :zone="hoverZone" />
-    <DockPanelChrome
-      panel="informal"
-      :title="title"
-      :dirty="dirty"
-      :dragging="dragPanel !== null && hoverTarget === 'informal'"
-      :drop-zone="hoverTarget === 'informal' ? hoverZone : null"
-      @drag-start="(_p, e) => $emit('dragStart', e)"
-    >
+    <DockPanelChrome panel="informal" :title="title" :dirty="dirty">
       <template #actions>
-        <div data-dock-no-drag class="flex min-w-0 items-center gap-2">
+        <div class="flex min-w-0 items-center gap-2">
           <SegmentedSwitch
+            class="min-w-0 shrink"
             :model-value="workspace.informalViewMode"
             :options="viewOptions"
             @update:model-value="onViewMode"
@@ -168,15 +156,15 @@ function onViewMode(id: string): void {
         </div>
       </template>
     </DockPanelChrome>
-    <div class="min-h-0 flex-1">
+    <div class="relative z-0 min-h-0 flex-1 overflow-hidden">
       <DocumentView
-        v-show="workspace.informalViewMode === 'document'"
+        v-if="workspace.informalViewMode === 'document'"
         ref="documentRef"
         :tab-id="tabId"
         @add="onAdd"
       />
       <GraphicalView
-        v-show="workspace.informalViewMode === 'graphical'"
+        v-else
         :spec="spec"
         @select="onSelect"
         @move="onMove"
@@ -189,4 +177,5 @@ function onViewMode(id: string): void {
     </div>
     <HybridGenerateDialog v-if="showGenerate" :source="workspace.informalTab?.content ?? ''" @close="showGenerate = false" />
   </WorkspacePanel>
+  </FullscreenPanel>
 </template>

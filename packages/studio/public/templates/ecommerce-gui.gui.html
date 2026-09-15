@@ -1,0 +1,40 @@
+<div class="as-app" data-app="ShopApp">
+  <section class="as-screen" id="view-home" data-screen="Home">
+    <h1 class="as-title">Store</h1>
+    <div class="as-stack as-gap-md">
+      <p class="as-muted" id="w-title">Store</p>
+      <button class="as-btn" id="w-cart" data-nav="view-cart">Cart</button>
+      <button class="as-btn" id="w-orders" data-nav="view-orders">Orders</button>
+    </div>
+  </section>
+  <section class="as-screen" id="view-cart" data-screen="Cart">
+    <h1 class="as-title">Cart</h1>
+    <div class="as-stack as-gap-md">
+      <label class="as-field">
+Product
+        <input class="as-input" id="w-product" data-bind="param:product" />
+      </label>
+      <button class="as-btn as-btn-primary" id="w-add" data-process="submit">Add</button>
+      <button class="as-btn" id="w-checkout" data-nav="view-checkout">Checkout</button>
+      <button class="as-btn" id="w-home" data-nav="view-home">Home</button>
+    </div>
+  </section>
+  <section class="as-screen" id="view-checkout" data-screen="Checkout" data-process="proc-checkout">
+    <h1 class="as-title">Checkout</h1>
+    <div class="as-stack as-gap-md">
+      <label class="as-field">
+Total
+        <input class="as-input" id="w-total" data-bind="param:total" />
+      </label>
+      <button class="as-btn as-btn-primary" id="w-pay" data-process="submit">Pay</button>
+      <button class="as-btn" id="w-back-cart" data-nav="view-cart">Cart</button>
+    </div>
+  </section>
+  <section class="as-screen" id="view-orders" data-screen="Orders">
+    <h1 class="as-title">Orders</h1>
+    <div class="as-stack as-gap-md">
+      <button class="as-btn as-btn-primary" id="w-refund" data-process="submit">Refund</button>
+      <button class="as-btn" id="w-home2" data-nav="view-home">Home</button>
+    </div>
+  </section>
+</div>

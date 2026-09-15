@@ -4,6 +4,7 @@ const node_fs = require("node:fs");
 const node_path = require("node:path");
 const promises = require("node:fs/promises");
 const editorApi = require("@agile-sofl/editor-api");
+const gui = require("@agile-sofl/gui");
 const node_crypto = require("node:crypto");
 const node_url = require("node:url");
 const initSqlJs = require("sql.js");
@@ -639,8 +640,9 @@ Pipeline — keep going after each applied patch until every enabled stage is do
 3. Per module: add types/variables from Data Resources (kind=type|var, parentId=mod:…).
 4. Per module: add process signatures from Functions (kind=process, pre/post).
 5. Per process: replace-process-body or add scenarios. Write structured natural-language pre/post, never FSF :. Enumerations use {<Tag>}.
-6. Add invariants (kind=inv) from Constraints; add GUI screens; keep traceability in explanations.
-After every applied write, call read_hybrid_specification and fix gaps with more CRUD until the inventory is correct. Last message = summary of completed stages.
+6. Add invariants (kind=inv) from Constraints. Do NOT dump GUI widgets into Hybrid CRUD.
+7. For UI, call read_gui_specification then propose_gui_changes using only whitelist HTML tags and as-* classes (data-screen, data-process, data-bind, data-nav). Hybrid gui blocks stay as slim screen→process traces.
+After every applied write, call read_hybrid_specification / read_gui_specification and fix gaps until inventories are correct. Last message = summary of completed stages.
 If CRUD fails, the file is empty/out of sync, or an uncovered parser/id issue appears, call read_hybrid_specification with view=source then propose_source_edit (unique replace/append/replace-document). Do not retry the same failing CRUD.
 Infer unstated GUI/navigation only when the parameter allows it; otherwise ask. Prefer small patches citing inventory ids.`
   }
@@ -836,6 +838,68 @@ const AGENT_TOOLS = [
                     }
                   }
                 }
+              },
+              required: ["op"]
+            }
+          }
+        },
+        required: ["operations"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "read_gui_specification",
+      description: "Read the current GUI HTML specification. view=inventory lists screens/widgets/bindings; view=source returns numbered .gui.html. Use whitelist tags and as-* classes only.",
+      parameters: {
+        type: "object",
+        properties: {
+          view: {
+            type: "string",
+            enum: ["inventory", "source"],
+            description: "inventory (default) or numbered HTML source"
+          }
+        }
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "propose_gui_changes",
+      description: "Propose a structured GUI HTML patch. Ops: add-screen, remove-screen, add-widget, replace-html, replace-screen-html. Only whitelist HTML5 tags and as-* classes. Bind with data-process / data-bind / data-nav. Never emit <script>, style=, or arbitrary CSS.",
+      parameters: {
+        type: "object",
+        properties: {
+          explanation: { type: "string" },
+          operations: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                op: {
+                  type: "string",
+                  enum: [
+                    "add-screen",
+                    "remove-screen",
+                    "add-widget",
+                    "replace-html",
+                    "replace-screen-html",
+                    "insert-html",
+                    "patch-node",
+                    "remove-node"
+                  ]
+                },
+                id: { type: "string" },
+                name: { type: "string" },
+                screenId: { type: "string" },
+                kind: { type: "string" },
+                label: { type: "string" },
+                process: { type: "string" },
+                nav: { type: "string" },
+                html: { type: "string" },
+                text: { type: "string" }
               },
               required: ["op"]
             }
@@ -1503,6 +1567,30 @@ function validateAgentPatch(target, patch, options) {
     }
     return { ok: true, message: "ok" };
   }
+  if (target === "gui") {
+    const allowed = /* @__PURE__ */ new Set([
+      "add",
+      "add-screen",
+      "remove",
+      "remove-screen",
+      "add-widget",
+      "replace-html",
+      "replace-screen-html",
+      "insert-html",
+      "patch-node",
+      "remove-node"
+    ]);
+    for (const op of patch.operations) {
+      const kind = String(op.op || "");
+      if (!allowed.has(kind)) {
+        return {
+          ok: false,
+          message: `Unknown GUI op "${kind}". Use add-screen, add-widget, replace-html, replace-screen-html, insert-html.`
+        };
+      }
+    }
+    return { ok: true, message: "ok" };
+  }
   for (const op of patch.operations) {
     const kind = String(op.op || "");
     if (kind === "replace-document" || typeof op.asflText === "string") {
@@ -1630,6 +1718,8 @@ function toolsFor(permissions) {
     if (name === "propose_changes") return permissions.informal.write;
     if (name === "read_hybrid_specification" || name === "review_hybrid") return permissions.hybrid.read;
     if (name === "propose_hybrid_changes") return permissions.hybrid.write;
+    if (name === "read_gui_specification") return permissions.hybrid.read || permissions.informal.read;
+    if (name === "propose_gui_changes") return permissions.hybrid.write || permissions.informal.write;
     if (name === "propose_source_edit") return permissions.informal.write || permissions.hybrid.write;
     return true;
   });
@@ -1655,8 +1745,14 @@ function systemPrompt(ctx, permissions) {
     toolLines.push("- read_hybrid_specification: Hybrid inventory (default) or numbered .asfl (view=source)");
     toolLines.push("- review_hybrid: Hybrid quality review");
   }
+  if (permissions.hybrid.read || permissions.informal.read) {
+    toolLines.push("- read_gui_specification: GUI HTML inventory or numbered .gui.html (view=source)");
+  }
   if (permissions.hybrid.write) {
     toolLines.push("- propose_hybrid_changes: incremental Hybrid CRUD (preferred)");
+  }
+  if (permissions.hybrid.write || permissions.informal.write) {
+    toolLines.push("- propose_gui_changes: GUI HTML structure patches (as-* classes, data-process/bind/nav)");
   }
   if (permissions.informal.write || permissions.hybrid.write) {
     toolLines.push(
@@ -1687,6 +1783,8 @@ After a write is applied, call read_hybrid_specification and keep patching until
 ${compactSpec(ctx.informalMarkdown)}` : "Informal Specification: (read permission off)";
   const hybridBlock = permissions.hybrid.read ? `Current Hybrid Specification inventory:
 ${compactHybrid(ctx.hybridAsfl)}` : "Hybrid Specification: (read permission off)";
+  const guiBlock = permissions.hybrid.read || permissions.informal.read ? `Current GUI HTML inventory:
+${ctx.guiHtml?.trim() ? gui.formatGuiInventory(ctx.guiHtml, 8e3) : "(empty GUI specification)"}` : "GUI Specification: (read permission off)";
   return `You are the Agile-SOFL Specification Agent inside Studio.
 You help users build Informal Specification and/or Hybrid Specification (.asfl).
 Markdown and SOFL text are views. You MUST NOT output a full document to apply.
@@ -1717,6 +1815,8 @@ ${ctx.promptExtras ? `${ctx.promptExtras}
 ${informalBlock}
 
 ${hybridBlock}
+
+${guiBlock}
 `;
 }
 function toApiMessages(session, ctx, permissions, options) {
@@ -1944,11 +2044,12 @@ async function runAgentTurn(session, projectRoot, ctx, userText, sink, signal) {
           emit(sink, { kind: "session", session });
           return session;
         }
-        if (call.function.name === "propose_changes" || call.function.name === "propose_hybrid_changes" || call.function.name === "propose_source_edit") {
+        if (call.function.name === "propose_changes" || call.function.name === "propose_hybrid_changes" || call.function.name === "propose_gui_changes" || call.function.name === "propose_source_edit") {
           const mode = call.function.name === "propose_source_edit" ? "source" : "crud";
           let target;
           if (call.function.name === "propose_hybrid_changes") target = "hybrid";
           else if (call.function.name === "propose_changes") target = "informal";
+          else if (call.function.name === "propose_gui_changes") target = "gui";
           else {
             const raw = typeof args.target === "string" ? args.target : "";
             if (raw === "hybrid" || raw === "informal") {
@@ -1978,7 +2079,7 @@ async function runAgentTurn(session, projectRoot, ctx, userText, sink, signal) {
             explanation: typeof args.explanation === "string" ? args.explanation : void 0,
             operations: Array.isArray(args.operations) ? args.operations : []
           };
-          const allowed = target === "hybrid" ? permissions.hybrid.write : permissions.informal.write;
+          const allowed = target === "informal" ? permissions.informal.write : target === "hybrid" ? permissions.hybrid.write : permissions.hybrid.write || permissions.informal.write;
           if (!allowed) {
             session.messages.push({
               id: call.id,
@@ -2077,6 +2178,24 @@ async function runAgentTurn(session, projectRoot, ctx, userText, sink, signal) {
             timestamp: (/* @__PURE__ */ new Date()).toISOString()
           });
           live.content = live.content || (view === "source" ? "Read the current Hybrid Specification source." : "Read the current Hybrid Specification inventory.");
+          continue;
+        }
+        if (call.function.name === "read_gui_specification") {
+          const view = args.view === "source" ? "source" : "inventory";
+          const allowed = permissions.hybrid.read || permissions.informal.read;
+          const body = !allowed ? "(GUI read permission off)" : view === "source" ? gui.numberedGuiSource(ctx.guiHtml ?? "") : gui.formatGuiInventory(ctx.guiHtml ?? "", 2e4);
+          session.messages.push({
+            id: call.id,
+            role: "tool",
+            content: JSON.stringify({
+              ok: allowed,
+              view,
+              inventory: view === "inventory" ? body : void 0,
+              source: view === "source" ? body : void 0
+            }),
+            timestamp: (/* @__PURE__ */ new Date()).toISOString()
+          });
+          live.content = live.content || (view === "source" ? "Read the current GUI HTML source." : "Read the current GUI inventory.");
           continue;
         }
         if (call.function.name === "review_specification" || call.function.name === "review_hybrid") {
@@ -2659,6 +2778,9 @@ function writeInformalSpecFile(projectRoot, relativePath, markdown, extra) {
   return meta;
 }
 const SKIP_DIRS = /* @__PURE__ */ new Set(["node_modules", "dist", ".git"]);
+function isGuiSpecFile(name) {
+  return name === "gui.html" || name.endsWith(".gui.html") || name.endsWith(".guispec");
+}
 function scanSpecFiles(root, ext, out = []) {
   if (!node_fs.existsSync(root)) return out;
   for (const name of node_fs.readdirSync(root)) {
@@ -2670,11 +2792,22 @@ function scanSpecFiles(root, ext, out = []) {
   }
   return out;
 }
+function scanGuiFiles(root, out = []) {
+  if (!node_fs.existsSync(root)) return out;
+  for (const name of node_fs.readdirSync(root)) {
+    if (name.startsWith(".") || SKIP_DIRS.has(name)) continue;
+    const full = node_path.join(root, name);
+    const st = node_fs.statSync(full);
+    if (st.isDirectory()) scanGuiFiles(full, out);
+    else if (isGuiSpecFile(name)) out.push(full);
+  }
+  return out;
+}
 function scanProjectRoot(root) {
   return {
     aspecFiles: scanSpecFiles(root, ".aspec"),
     asflFiles: scanSpecFiles(root, ".asfl"),
-    guispecFiles: scanSpecFiles(root, ".guispec")
+    guispecFiles: scanGuiFiles(root)
   };
 }
 function manifestPath(root) {
@@ -2719,7 +2852,7 @@ async function inferManifest(root) {
   const hybrid = scan.asflFiles.map((p) => toRel(root, p)).filter(Boolean);
   const guiRel = toRel(root, scan.guispecFiles[0]);
   const base = node_path.basename(scan.aspecFiles[0] ?? "", ".aspec");
-  const pairGui = scan.guispecFiles.find((p) => node_path.basename(p, ".guispec") === `${base}-gui`) ?? scan.guispecFiles.find((p) => node_path.basename(p, ".guispec") === base.replace(/-informal$/, "") + "-gui");
+  const pairGui = scan.guispecFiles.find((p) => node_path.basename(p, ".gui.html") === `${base}-gui`) ?? scan.guispecFiles.find((p) => node_path.basename(p, ".guispec") === `${base}-gui`) ?? scan.guispecFiles.find((p) => node_path.basename(p, ".gui.html") === base.replace(/-informal$/, "") + "-gui") ?? scan.guispecFiles.find((p) => node_path.basename(p, ".guispec") === base.replace(/-informal$/, "") + "-gui");
   return {
     version: "1.0",
     name: node_path.basename(root),
@@ -2745,14 +2878,14 @@ function createProjectTemplate(root, name) {
   const ident = asflIdent(name);
   const informal = "informal.aspec";
   const hybrid = "hybrid.asfl";
-  const gui = "gui.guispec";
+  const gui2 = "gui.html";
   const manifest = {
     version: "1.0",
     name,
     guiModule: "GUI_App",
     informal,
     hybrid: [hybrid],
-    gui
+    gui: gui2
   };
   writeInformalSpecFile(
     root,
@@ -2767,7 +2900,7 @@ function createProjectTemplate(root, name) {
       moduleId: ident,
       title: name,
       hybridTarget: `./${hybrid}`,
-      guiTarget: `./${gui}`
+      guiTarget: `./${gui2}`
     }
   );
   node_fs.writeFileSync(
@@ -2785,14 +2918,8 @@ var
 inv
     current_view >= 0 and current_view <= 1;
 gui AppGui;
-screen Home;
-    label welcome "Welcome";
-    navigation goNext "Open" triggers OpenNext;
-end_screen;
-screen Next;
-    label body "Next view";
-    navigation goHome "Back" triggers OpenHome;
-end_screen;
+  screen Home triggers OpenNext;
+  screen Next triggers OpenHome;
 end_gui;
 process OpenNext ()
     pre
@@ -2811,65 +2938,23 @@ end_module
     "utf-8"
   );
   node_fs.writeFileSync(
-    node_path.join(root, gui),
-    `guispecVersion: "1.0"
-meta:
-  id: "${node_crypto.randomUUID()}"
-  title: ${JSON.stringify(`${name} GUI`)}
-  informalTarget: ./${informal}
-gui:
-  app:
-    name: ${ident}App
-    description: |
-      Application views.
-  screens:
-    - id: view-home
-      name: Home
-      title: Home
-      size:
-        width: 640
-        height: 400
-      widgets:
-        - id: w-title
-          kind: label
-          label: Welcome
-          bounds: { x: 24, y: 24, width: 240, height: 32 }
-        - id: w-open
-          kind: navigation
-          label: Open
-          bounds: { x: 24, y: 72, width: 120, height: 32 }
-          events:
-            - on: click
-              action: navigate
-              targetView: view-next
-    - id: view-next
-      name: Next
-      title: Next
-      size:
-        width: 640
-        height: 400
-      widgets:
-        - id: w-next
-          kind: label
-          label: Next view
-          bounds: { x: 24, y: 24, width: 240, height: 32 }
-        - id: w-back
-          kind: navigation
-          label: Back
-          bounds: { x: 24, y: 72, width: 120, height: 32 }
-          events:
-            - on: click
-              action: navigate
-              targetView: view-home
-  flows:
-    - from: view-home
-      to: view-next
-      on: navigate
-      label: Open next
-    - from: view-next
-      to: view-home
-      on: navigate
-      label: Back home
+    node_path.join(root, gui2),
+    `<div class="as-app" data-app="${ident}App">
+  <section class="as-screen" id="view-home" data-screen="Home">
+    <h1 class="as-title">Home</h1>
+    <div class="as-stack as-gap-md">
+      <p class="as-muted">Application views.</p>
+      <button class="as-btn as-btn-primary" data-process="OpenNext" data-nav="Next">Open</button>
+    </div>
+  </section>
+  <section class="as-screen is-hidden" id="view-next" data-screen="Next">
+    <h1 class="as-title">Next</h1>
+    <div class="as-stack as-gap-md">
+      <p class="as-muted">Next view</p>
+      <button class="as-btn" data-process="OpenHome" data-nav="Home">Back</button>
+    </div>
+  </section>
+</div>
 `,
     "utf-8"
   );
@@ -2878,7 +2963,7 @@ gui:
 }
 const STANDARD_INFORMAL = "informal.aspec";
 const STANDARD_HYBRID = "hybrid.asfl";
-const STANDARD_GUI = "gui.guispec";
+const STANDARD_GUI = "gui.html";
 function resolveTemplatesDir() {
   const candidates = [
     node_path.join(__dirname, "../renderer/templates"),
@@ -3003,7 +3088,9 @@ function createProjectFromTemplate(root, name, templateId, templatesDir) {
   }
   let guiPath;
   if (entry.gui) {
-    const guiContent = rewriteCrossRefs(readTemplateFile(dir, entry.gui), entry);
+    let guiContent = rewriteCrossRefs(readTemplateFile(dir, entry.gui), entry);
+    const parsed = gui.parseGuiSpec(guiContent);
+    if (parsed.document?.html) guiContent = parsed.document.html;
     node_fs.writeFileSync(node_path.join(root, STANDARD_GUI), guiContent, "utf-8");
     guiPath = STANDARD_GUI;
   }

@@ -11,23 +11,9 @@ var
 inv
     current_view >= 0 and current_view <= 2 and session_ok >= 0;
 gui LibraryGui;
-screen Home;
-    label title "Library";
-    navigation goBorrow "Borrow" triggers OpenBorrow;
-    navigation goReturn "Return" triggers OpenReturn;
-end_screen;
-screen Borrow;
-    text-input memberId "Member ID";
-    text-input bookId "Book ID";
-    button submit "Borrow" triggers DoBorrow;
-    navigation backHome "Home" triggers OpenHome;
-end_screen;
-screen ReturnBook;
-    text-input memberId2 "Member ID";
-    text-input bookId2 "Book ID";
-    button submitRet "Return" triggers DoReturn;
-    navigation backHome2 "Home" triggers OpenHome;
-end_screen;
+  screen Home;
+  screen Borrow triggers DoBorrow;
+  screen ReturnBook triggers DoReturn;
 end_gui;
 process OpenBorrow ()
     FSF :

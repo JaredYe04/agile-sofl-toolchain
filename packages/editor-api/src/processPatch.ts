@@ -1,4 +1,5 @@
 import { parse, type ModuleNode, type ProgramNode } from '@agile-sofl/parser'
+import { findModuleRange, processInsertPoint } from './moduleSourceRange.js'
 import type { FsfScenarioDto } from './fsfModel.js'
 
 function buildFsfBody(scenarios: FsfScenarioDto[], others?: string): string {
@@ -19,7 +20,10 @@ function findModule(ast: ProgramNode, moduleName: string): ModuleNode | undefine
   return ast.modules.find((m) => m.name === bare || m.name === moduleName)
 }
 
-function moduleBodyInsertPoint(source: string, mod: ModuleNode): number {
+function moduleBodyInsertPoint(source: string, moduleName: string, mod?: ModuleNode): number {
+  const range = findModuleRange(source, moduleName)
+  if (range) return processInsertPoint(source, range)
+  if (!mod) return source.length
   const endModule = source.lastIndexOf('end_module', mod.span.end)
   return endModule >= 0 ? endModule : mod.span.end
 }
@@ -43,10 +47,11 @@ export function addProcess(
   processName: string,
   template?: string
 ): string {
+  const range = findModuleRange(source, moduleName)
   const { ast } = parse(source)
-  if (!ast || ast.type !== 'program') return source
-  const mod = findModule(ast, moduleName)
-  if (!mod) return source
+  const mod =
+    ast?.type === 'program' ? findModule(ast, moduleName) : undefined
+  if (!range && !mod) return source
   const block =
     template ??
     `process ${processName} (x: nat) ok: nat
@@ -55,8 +60,9 @@ export function addProcess(
     post
         ok = 1
 end_process`
-  const at = moduleBodyInsertPoint(source, mod)
-  return source.slice(0, at) + `\n${block}\n` + source.slice(at)
+  const at = moduleBodyInsertPoint(source, moduleName, mod)
+  const prefix = at > 0 && source[at - 1] !== '\n' ? '\n' : ''
+  return source.slice(0, at) + `${prefix}${block}\n` + source.slice(at)
 }
 
 export function removeProcess(source: string, moduleName: string, processName: string): string {
@@ -89,15 +95,16 @@ export function addFunction(
   functionName: string,
   template?: string
 ): string {
+  const range = findModuleRange(source, moduleName)
   const { ast } = parse(source)
-  if (!ast || ast.type !== 'program') return source
-  const mod = findModule(ast, moduleName)
-  if (!mod) return source
+  const mod = ast?.type === 'program' ? findModule(ast, moduleName) : undefined
+  if (!range && !mod) return source
   const block =
     template ??
     `function ${functionName}(x: nat): nat\n== x + 1\nend_function`
-  const at = moduleBodyInsertPoint(source, mod)
-  return source.slice(0, at) + `\n${block}\n` + source.slice(at)
+  const at = moduleBodyInsertPoint(source, moduleName, mod)
+  const prefix = at > 0 && source[at - 1] !== '\n' ? '\n' : ''
+  return source.slice(0, at) + `${prefix}${block}\n` + source.slice(at)
 }
 
 export function renameFunction(

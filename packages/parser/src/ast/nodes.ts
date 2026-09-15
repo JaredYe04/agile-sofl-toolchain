@@ -59,6 +59,7 @@ export interface GuiWidgetNode extends WithSpan {
 export interface GuiScreenNode extends WithSpan {
   type: 'gui_screen'
   name: string
+  triggersProcess?: string
   widgets: GuiWidgetNode[]
 }
 
@@ -256,7 +257,7 @@ export type TypeExprNode =
 
 export interface BasicTypeNode extends WithSpan {
   type: 'basic_type'
-  name: 'nat0' | 'nat' | 'int' | 'real' | 'char' | 'string' | 'bool' | 'given'
+  name: 'nat0' | 'nat' | 'int' | 'real' | 'char' | 'string' | 'bool' | 'given' | 'time'
 }
 
 export interface NamedTypeNode extends WithSpan {

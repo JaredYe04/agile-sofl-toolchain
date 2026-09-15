@@ -246,9 +246,10 @@ select:focus-visible {
 .visual-panel,
 html,
 body,
-.informal-vditor .vditor-content,
-.informal-vditor .vditor-wysiwyg,
-.informal-vditor .vditor-reset {
+.informal-vditor,
+.informal-vditor *,
+.agent-markdown-preview,
+.agent-markdown-preview * {
   scrollbar-width: thin;
   scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
 }
@@ -257,20 +258,27 @@ body,
 .visual-panel::-webkit-scrollbar,
 html::-webkit-scrollbar,
 body::-webkit-scrollbar,
-.informal-vditor .vditor-content::-webkit-scrollbar,
-.informal-vditor .vditor-wysiwyg::-webkit-scrollbar,
-.informal-vditor .vditor-reset::-webkit-scrollbar {
+.informal-vditor::-webkit-scrollbar,
+.informal-vditor *::-webkit-scrollbar,
+.agent-markdown-preview::-webkit-scrollbar,
+.agent-markdown-preview *::-webkit-scrollbar {
   width: var(--scrollbar-size);
   height: var(--scrollbar-size);
+}
+
+.informal-vditor .vditor-preview::-webkit-scrollbar,
+.agent-markdown-preview .vditor-preview::-webkit-scrollbar {
+  display: block;
 }
 
 .studio-scroll::-webkit-scrollbar-track,
 .visual-panel::-webkit-scrollbar-track,
 html::-webkit-scrollbar-track,
 body::-webkit-scrollbar-track,
-.informal-vditor .vditor-content::-webkit-scrollbar-track,
-.informal-vditor .vditor-wysiwyg::-webkit-scrollbar-track,
-.informal-vditor .vditor-reset::-webkit-scrollbar-track {
+.informal-vditor::-webkit-scrollbar-track,
+.informal-vditor *::-webkit-scrollbar-track,
+.agent-markdown-preview::-webkit-scrollbar-track,
+.agent-markdown-preview *::-webkit-scrollbar-track {
   background: var(--scrollbar-track);
   border-radius: 999px;
 }
@@ -279,9 +287,10 @@ body::-webkit-scrollbar-track,
 .visual-panel::-webkit-scrollbar-thumb,
 html::-webkit-scrollbar-thumb,
 body::-webkit-scrollbar-thumb,
-.informal-vditor .vditor-content::-webkit-scrollbar-thumb,
-.informal-vditor .vditor-wysiwyg::-webkit-scrollbar-thumb,
-.informal-vditor .vditor-reset::-webkit-scrollbar-thumb {
+.informal-vditor::-webkit-scrollbar-thumb,
+.informal-vditor *::-webkit-scrollbar-thumb,
+.agent-markdown-preview::-webkit-scrollbar-thumb,
+.agent-markdown-preview *::-webkit-scrollbar-thumb {
   background: var(--scrollbar-thumb);
   border-radius: 999px;
   border: 1px solid transparent;
@@ -292,9 +301,10 @@ body::-webkit-scrollbar-thumb,
 .visual-panel::-webkit-scrollbar-thumb:hover,
 html::-webkit-scrollbar-thumb:hover,
 body::-webkit-scrollbar-thumb:hover,
-.informal-vditor .vditor-content::-webkit-scrollbar-thumb:hover,
-.informal-vditor .vditor-wysiwyg::-webkit-scrollbar-thumb:hover,
-.informal-vditor .vditor-reset::-webkit-scrollbar-thumb:hover {
+.informal-vditor::-webkit-scrollbar-thumb:hover,
+.informal-vditor *::-webkit-scrollbar-thumb:hover,
+.agent-markdown-preview::-webkit-scrollbar-thumb:hover,
+.agent-markdown-preview *::-webkit-scrollbar-thumb:hover {
   background: var(--scrollbar-thumb-hover);
   background-clip: padding-box;
 }

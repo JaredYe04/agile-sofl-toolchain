@@ -1,21 +1,16 @@
 <script setup lang="ts">
-import { computed, inject, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import type { DockPanelId, DockZone } from '../../lib/dockLayout'
 import MonacoEditor from '../editor/MonacoEditor.vue'
 import VisualEditor from '../editor/visual/VisualEditor.vue'
 import GuiViewsPanel from './GuiViewsPanel.vue'
-import HybridGenerateDialog from './HybridGenerateDialog.vue'
 import DockPanelChrome from './dock/DockPanelChrome.vue'
-import DockDropHighlight from './dock/DockDropHighlight.vue'
+import FullscreenPanel from './FullscreenPanel.vue'
 import WorkspacePanel from './WorkspacePanel.vue'
 import SegmentedSwitch from '../ui/SegmentedSwitch.vue'
-import DropdownMenu, { type MenuItem } from '../ui/DropdownMenu.vue'
 import { useWorkspaceStore } from '../../stores/workspace'
 import type { TreeSelection } from '../../composables/useVisualModel'
-import { VISUAL_MODEL_KEY } from '../../composables/visualModelContext'
 import { initSpecAssistProviders } from '../../specAssist/init'
-import { insertHybridProcessSkeleton } from '../../specAssist/hybridSkeleton'
 import ResizeSplit from '../ui/ResizeSplit.vue'
 
 initSpecAssistProviders()
@@ -23,23 +18,13 @@ initSpecAssistProviders()
 defineProps<{
   title: string
   dirty?: boolean
-  dragPanel: DockPanelId | null
-  hoverTarget: DockPanelId | null
-  hoverZone: DockZone | null
 }>()
-
-defineEmits<{ dragStart: [e: PointerEvent] }>()
 
 const { t } = useI18n()
 const workspace = useWorkspaceStore()
-const visual = inject(VISUAL_MODEL_KEY, null)
 const monacoRef = ref<InstanceType<typeof MonacoEditor> | null>(null)
 const visualRef = ref<InstanceType<typeof VisualEditor> | null>(null)
 const guiSplitRatio = ref(0.62)
-const showGenerate = ref(false)
-const generateStages = ref<
-  { hybridSpec: boolean; modules: boolean; processes: boolean; scenarios: boolean } | undefined
->()
 
 const hybridTabId = computed(() => workspace.hybridTab?.id)
 const hybridViewOptions = computed(() => [
@@ -76,23 +61,10 @@ function onVisualSelect(sel: TreeSelection): void {
   workspace.selectModule(sel.moduleName, sel)
 }
 
-function onInsertSkeleton(): void {
-  void insertHybridProcessSkeleton(visual, t)
-}
-
-function openGenerate(): void {
-  generateStages.value = undefined
-  showGenerate.value = true
-}
-
-const aiMenuItems = computed((): MenuItem[] => [
-  { id: 'gen-hybrid', label: t('informal.generateHybrid'), action: () => openGenerate() }
-])
 </script>
 
 <template>
   <div class="relative flex h-full min-h-0 flex-col" data-dock-host="hybrid">
-    <DockDropHighlight :active="dragPanel !== null && hoverTarget === 'hybrid'" :zone="hoverZone" />
     <ResizeSplit
       v-if="workspace.isGuiModuleSelected"
       direction="vertical"
@@ -101,39 +73,13 @@ const aiMenuItems = computed((): MenuItem[] => [
       @update:ratio="guiSplitRatio = $event"
     >
       <template #first>
+        <FullscreenPanel panel-id="hybrid">
         <WorkspacePanel panel="hybrid" class="flex h-full min-h-0 flex-col">
-          <DockPanelChrome
-            panel="hybrid"
-            :title="title"
-            :dirty="dirty"
-            :dragging="dragPanel !== null && hoverTarget === 'hybrid'"
-            :drop-zone="null"
-            @drag-start="(_p, e) => $emit('dragStart', e)"
-          >
+          <DockPanelChrome panel="hybrid" :title="title" :dirty="dirty">
             <template #actions>
-              <div data-dock-no-drag class="flex min-w-0 flex-1 items-center gap-1">
-                <button
-                  type="button"
-                  class="shrink-0 rounded-md px-1.5 py-0.5 text-[11px] text-content-secondary hover:bg-surface-overlay"
-                  :title="t('hybrid.assist.skeletonTitle')"
-                  @click="onInsertSkeleton"
-                >
-                  {{ t('hybrid.assist.skeleton') }}
-                </button>
-                <DropdownMenu :items="aiMenuItems" teleport>
-                  <template #trigger="{ toggle }">
-                    <button
-                      type="button"
-                      class="shrink-0 rounded-md px-1.5 py-0.5 text-[11px] text-accent hover:bg-accent/10"
-                      :title="t('hybrid.aiMenu')"
-                      @click="toggle"
-                    >
-                      {{ t('hybrid.aiMenu') }}
-                    </button>
-                  </template>
-                </DropdownMenu>
+              <div class="ml-auto flex min-w-0 shrink-0 items-center">
                 <SegmentedSwitch
-                  class="ml-auto min-w-0 shrink"
+                  class="min-w-0 shrink"
                   :model-value="workspace.hybridMode"
                   :options="hybridViewOptions"
                   @update:model-value="onHybridMode"
@@ -158,6 +104,7 @@ const aiMenuItems = computed((): MenuItem[] => [
             />
           </div>
         </WorkspacePanel>
+        </FullscreenPanel>
       </template>
       <template #second>
         <WorkspacePanel panel="gui" class="h-full min-h-0">
@@ -165,39 +112,13 @@ const aiMenuItems = computed((): MenuItem[] => [
         </WorkspacePanel>
       </template>
     </ResizeSplit>
-    <WorkspacePanel v-else panel="hybrid" class="flex h-full min-h-0 flex-col">
-      <DockPanelChrome
-        panel="hybrid"
-        :title="title"
-        :dirty="dirty"
-        :dragging="dragPanel !== null && hoverTarget === 'hybrid'"
-        :drop-zone="null"
-        @drag-start="(_p, e) => $emit('dragStart', e)"
-      >
+    <FullscreenPanel v-if="!workspace.isGuiModuleSelected" panel-id="hybrid">
+    <WorkspacePanel panel="hybrid" class="flex h-full min-h-0 flex-col">
+      <DockPanelChrome panel="hybrid" :title="title" :dirty="dirty">
         <template #actions>
-          <div data-dock-no-drag class="flex min-w-0 flex-1 items-center gap-1">
-            <button
-              type="button"
-              class="shrink-0 rounded-md px-1.5 py-0.5 text-[11px] text-content-secondary hover:bg-surface-overlay"
-              :title="t('hybrid.assist.skeletonTitle')"
-              @click="onInsertSkeleton"
-            >
-              {{ t('hybrid.assist.skeleton') }}
-            </button>
-            <DropdownMenu :items="aiMenuItems" teleport>
-              <template #trigger="{ toggle }">
-                <button
-                  type="button"
-                  class="shrink-0 rounded-md px-1.5 py-0.5 text-[11px] text-accent hover:bg-accent/10"
-                  :title="t('hybrid.aiMenu')"
-                  @click="toggle"
-                >
-                  {{ t('hybrid.aiMenu') }}
-                </button>
-              </template>
-            </DropdownMenu>
+          <div class="ml-auto flex min-w-0 shrink-0 items-center">
             <SegmentedSwitch
-              class="ml-auto min-w-0 shrink"
+              class="min-w-0 shrink"
               :model-value="workspace.hybridMode"
               :options="hybridViewOptions"
               @update:model-value="onHybridMode"
@@ -217,11 +138,6 @@ const aiMenuItems = computed((): MenuItem[] => [
         />
       </div>
     </WorkspacePanel>
-    <HybridGenerateDialog
-      v-if="showGenerate"
-      :source="workspace.informalTab?.content ?? ''"
-      :initial-stages="generateStages"
-      @close="showGenerate = false"
-    />
+    </FullscreenPanel>
   </div>
 </template>

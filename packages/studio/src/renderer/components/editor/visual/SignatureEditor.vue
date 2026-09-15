@@ -14,23 +14,19 @@ import ParamGroupEditor from './ParamGroupEditor.vue'
 
 
 
-const props = defineProps<{
-
-  kind: 'process' | 'function'
-
-  signature: string
-
-  inputs?: ParamGroupItem[]
-
-  outputs?: ParamGroupItem[]
-
-  params?: ParamGroupItem[]
-
-  returnType?: string
-
-  disabled?: boolean
-
-}>()
+const props = withDefaults(
+  defineProps<{
+    kind: 'process' | 'function'
+    signature: string
+    inputs?: ParamGroupItem[]
+    outputs?: ParamGroupItem[]
+    params?: ParamGroupItem[]
+    returnType?: string
+    disabled?: boolean
+    hideCodeMode?: boolean
+  }>(),
+  { hideCodeMode: false }
+)
 
 
 
@@ -195,13 +191,10 @@ const label = () =>
       <span class="text-sm font-medium text-content-primary">{{ label() }}</span>
 
       <button
-
+        v-if="!hideCodeMode"
         type="button"
-
         class="text-xs text-accent hover:underline"
-
         @click="codeMode = !codeMode"
-
       >
 
         {{ codeMode ? t('visual.signature.visualMode') : t('visual.signature.codeMode') }}

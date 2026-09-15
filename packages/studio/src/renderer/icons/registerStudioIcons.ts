@@ -8,7 +8,9 @@ const STUDIO_LUCIDE_ICONS = [
   'send-horizontal',
   'chevron-left',
   'chevron-right',
-  'shield'
+  'shield',
+  'maximize-2',
+  'x'
 ] as const
 
 export function registerStudioIcons(): void {

@@ -1,4 +1,5 @@
 import { parse, type ModuleNode, type ProgramNode } from '@agile-sofl/parser'
+import { findModuleRange } from './moduleSourceRange.js'
 
 function escapeString(text: string): string {
   return `"${text.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`
@@ -13,16 +14,28 @@ function findModule(ast: ProgramNode, moduleName: string): ModuleNode | undefine
   return ast.modules.find((m) => m.name === bare || m.name === moduleName)
 }
 
-function defaultScreenBody(screenName: string): string {
-  return `    label Title "${screenName}";`
-}
-
 function screenBlock(screenName: string, body?: string): string {
-  const inner = body?.trim() || defaultScreenBody(screenName)
+  const inner = body?.trim() ?? ''
+  if (!inner) return `  screen ${screenName};`
+  if (
+    !inner.includes('\n') &&
+    !inner.includes('"') &&
+    !/^(label|button|text-input|navigation)\b/i.test(inner)
+  ) {
+    return `  screen ${screenName} triggers ${inner};`
+  }
   return `screen ${screenName};\n${inner}\n  end_screen;`
 }
 
-function guiInsertPoint(source: string, mod: ModuleNode): number {
+function guiInsertPoint(source: string, moduleName: string, mod?: ModuleNode): number {
+  const range = findModuleRange(source, moduleName)
+  if (range) {
+    const body = source.slice(range.bodyStart, range.endModule)
+    const proc = /\bprocess\b/i.exec(body)
+    if (proc) return range.bodyStart + proc.index
+    return range.endModule
+  }
+  if (!mod) return source.length
   if (mod.processes[0]) return mod.processes[0].span.start
   if (mod.functions[0]) return mod.functions[0].span.start
   const endModule = source.lastIndexOf('end_module', mod.span.end)
@@ -35,21 +48,29 @@ export function addGuiScreen(
   screenName: string,
   body?: string
 ): string | null {
+  const range = findModuleRange(source, moduleName)
   const { ast } = parse(source)
-  if (!ast || ast.type !== 'program') return null
-  const mod = findModule(ast, moduleName)
-  if (!mod) return null
+  const mod = ast?.type === 'program' ? findModule(ast, moduleName) : undefined
+  if (!range && !mod) return null
   const block = screenBlock(screenName, body)
-  if (mod.gui) {
-    const slice = source.slice(mod.gui.span.start, mod.gui.span.end)
+  const guiSpan = mod?.gui
+  const guiSliceStart = range
+    ? source.slice(range.bodyStart, range.endModule).toLowerCase().lastIndexOf('end_gui')
+    : -1
+  if (guiSpan) {
+    const slice = source.slice(guiSpan.span.start, guiSpan.span.end)
     const endGui = slice.toLowerCase().lastIndexOf('end_gui')
     if (endGui < 0) return null
-    const at = mod.gui.span.start + endGui
+    const at = guiSpan.span.start + endGui
     return source.slice(0, at) + `${block}\n` + source.slice(at)
   }
-  const guiName = `${mod.name}_GUI`
+  if (range && guiSliceStart >= 0) {
+    const at = range.bodyStart + guiSliceStart
+    return source.slice(0, at) + `${block}\n` + source.slice(at)
+  }
+  const guiName = `${(mod?.name ?? range?.name ?? moduleName)}_GUI`
   const guiBlock = `gui ${guiName};\n  ${block}\nend_gui;`
-  const at = guiInsertPoint(source, mod)
+  const at = guiInsertPoint(source, moduleName, mod)
   return source.slice(0, at) + `${guiBlock}\n` + source.slice(at)
 }
 

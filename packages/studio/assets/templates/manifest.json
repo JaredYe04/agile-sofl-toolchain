@@ -76,7 +76,7 @@
       "id": "gui-blank",
       "titleKey": "template.gui.blank.title",
       "descriptionKey": "template.gui.blank.description",
-      "file": "informal-blank.guispec",
+      "file": "informal-blank.gui.html",
       "category": "gui",
       "kind": "blank"
     },
@@ -84,7 +84,7 @@
       "id": "library-gui",
       "titleKey": "template.gui.library.title",
       "descriptionKey": "template.gui.library.description",
-      "file": "library-gui.guispec",
+      "file": "library-gui.gui.html",
       "category": "gui"
     }
   ]

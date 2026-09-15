@@ -1,107 +1,193 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { VisualModuleSummary, DeclarationKind, SerializableSpan } from '../../../preload/index'
 import type { TreeSelection } from '../../../composables/useVisualModel'
 import DeclarationEditor from './DeclarationEditor.vue'
-import InvariantPanel from './InvariantPanel.vue'
 import HybridGuiPanel from './HybridGuiPanel.vue'
-import Badge from './ui/Badge.vue'
-import InlineRename from './ui/InlineRename.vue'
+import ResizeSplit from '../../ui/ResizeSplit.vue'
+import OverviewStats from './overview/OverviewStats.vue'
+import TypeGridPanel from './overview/TypeGridPanel.vue'
+import VarEntityList from './overview/VarEntityList.vue'
+import InvariantEntityList from './overview/InvariantEntityList.vue'
+import ProcessGridPanel from './overview/ProcessGridPanel.vue'
+import VisualEditDialog from './overview/VisualEditDialog.vue'
+import VisualEntityMenu from './overview/VisualEntityMenu.vue'
+import FormField from './ui/FormField.vue'
+import TextField from './ui/TextField.vue'
+import SectionCard from './ui/SectionCard.vue'
+import { BASIC_TYPES, composedTypeText, nextFieldName, varDeclText } from '../../../lib/visualDecls'
+import {
+  nextInvariantPlaceholder,
+  nextProcessName,
+  nextTypeName,
+  nextVarName
+} from '../../../lib/visualNames'
 
 const props = defineProps<{ module: VisualModuleSummary; disabled?: boolean }>()
 const emit = defineEmits<{
   patchDeclaration: [payload: { kind: DeclarationKind; action: 'patch' | 'add' | 'remove'; name?: string; text?: string }]
   patchInvariant: [payload: { span: SerializableSpan; text: string }]
+  addInvariant: [text: string]
+  removeInvariant: [index: number]
+  reorderInvariants: [fromIndex: number, toIndex: number]
   revealSpan: [span: SerializableSpan]
   select: [selection: TreeSelection]
-  renameModule: [name: string]
   patchGuiWidget: [payload: { screenName: string; widgetName: string; text: string }]
+  editProcess: [name: string]
+  removeProcess: [name: string]
+  editFunction: [name: string]
+  removeFunction: [name: string]
+  addProcess: [payload: { name: string; isInit: boolean }]
 }>()
+
 const { t } = useI18n()
-const renaming = ref(false)
-const open = ref<Record<string, boolean>>({})
+const varInvRatio = ref(0.5)
+const createKind = ref<'type' | 'var' | 'inv' | 'process' | null>(null)
+const createName = ref('')
+const createType = ref('nat')
+const createInit = ref(false)
+const createPredicate = ref('')
 
-function toggle(name: string): void {
-  open.value = { ...open.value, [name]: open.value[name] === false }
+const typeNames = computed(() => props.module.types.map((ty) => ty.name))
+const typeOptions = computed(() => [...BASIC_TYPES, ...typeNames.value])
+
+function displayName(): string {
+  return props.module.isSystem ? `SYSTEM_${props.module.name}` : props.module.name
 }
 
-const displayName = () => (props.module.isSystem ? `SYSTEM_${props.module.name}` : props.module.name)
-
-function selectProcess(moduleName: string, processName: string): void {
-  emit('select', { kind: 'process', moduleName, processName })
+function onCreate(kind: 'type' | 'var' | 'inv' | 'process'): void {
+  createKind.value = kind
+  createInit.value = false
+  createType.value = 'nat'
+  if (kind === 'type') createName.value = nextTypeName(props.module.types.map((t) => t.name))
+  else if (kind === 'var') createName.value = nextVarName(props.module.vars.map((v) => v.name))
+  else if (kind === 'process') {
+    createName.value = nextProcessName(props.module.processes.map((p) => p.name))
+  } else if (kind === 'inv') {
+    createPredicate.value = nextInvariantPlaceholder(
+      props.module.invariants.map((inv) => inv.text)
+    )
+    createName.value = ''
+  } else createName.value = ''
 }
 
-function selectFunction(moduleName: string, functionName: string): void {
-  emit('select', { kind: 'function', moduleName, functionName })
+function confirmCreate(): void {
+  const kind = createKind.value
+  if (!kind) return
+  if (kind === 'type') {
+    const name = createName.value.trim() || nextTypeName(props.module.types.map((t) => t.name))
+    const fieldName = nextFieldName([])
+    emit('patchDeclaration', {
+      kind: 'type',
+      action: 'add',
+      text: composedTypeText(name, [{ name: fieldName, type: 'nat' }])
+    })
+  } else if (kind === 'var') {
+    const name = createName.value.trim() || nextVarName(props.module.vars.map((v) => v.name))
+    emit('patchDeclaration', { kind: 'var', action: 'add', text: varDeclText(name, createType.value) })
+  } else if (kind === 'inv') {
+    const text =
+      createPredicate.value.trim() ||
+      nextInvariantPlaceholder(props.module.invariants.map((inv) => inv.text))
+    emit('addInvariant', text)
+  } else {
+    const name =
+      createName.value.trim() || nextProcessName(props.module.processes.map((p) => p.name))
+    emit('addProcess', { name, isInit: createInit.value })
+  }
+  createKind.value = null
 }
+
+const createTitle = computed(() => {
+  if (createKind.value === 'type') return t('visual.type.createTitle')
+  if (createKind.value === 'var') return t('visual.var.createTitle')
+  if (createKind.value === 'inv') return t('visual.inv.createTitle')
+  if (createKind.value === 'process') return t('visual.process.createTitle')
+  return ''
+})
 </script>
 
 <template>
   <div class="visual-panel space-y-4 p-4">
     <header>
-      <h2 class="flex min-w-0 items-center gap-2 text-lg font-semibold text-content-primary">
-        <InlineRename
-          :model-value="displayName()"
-          :editing="renaming"
-          :disabled="disabled"
-          @update:editing="renaming = $event"
-          @commit="emit('renameModule', $event.replace(/^SYSTEM_/, ''))"
-        />
-      </h2>
+      <h2 class="text-lg font-semibold text-content-primary">{{ displayName() }}</h2>
       <p v-if="module.parentName" class="text-sm text-content-secondary">
         {{ t('visual.parentModule') }}: {{ module.parentName }}
       </p>
-      <div class="mt-3 grid grid-cols-2 gap-2 text-[12px] text-content-secondary sm:grid-cols-4">
-        <p>{{ t('visual.section.type') }} {{ module.typeCount }}</p>
-        <p>{{ t('visual.section.var') }} {{ module.varCount }}</p>
-        <p>{{ t('visual.section.inv') }} {{ module.invCount }}</p>
-        <p>{{ t('visual.section.processes') }} {{ module.processes.length }}</p>
-      </div>
-      <p class="mt-2 text-[12px] text-content-secondary">
-        {{ t('visual.specHealth') }}:
-        {{
-          Math.round(
-            (100 *
-              module.processes.filter((p) => (p.scenarioCount ?? 0) > 0 || p.hasFsf || p.hasPre).length) /
-              Math.max(1, module.processes.length)
-          )
-        }}%
-      </p>
     </header>
 
-    <DeclarationEditor
-      kind="const"
-      :items="module.consts"
-      :module-name="module.name"
-      :disabled="disabled"
-      @patch="emit('patchDeclaration', $event)"
-      @reveal-span="emit('revealSpan', $event)"
-    />
-    <DeclarationEditor
-      kind="type"
+    <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <OverviewStats :module="module" :disabled="disabled" @create="onCreate" />
+      <DeclarationEditor
+        kind="const"
+        :items="module.consts"
+        :module-name="module.name"
+        :disabled="disabled"
+        @patch="emit('patchDeclaration', $event)"
+        @reveal-span="emit('revealSpan', $event)"
+      />
+    </div>
+
+    <TypeGridPanel
       :items="module.types"
-      :module-name="module.name"
+      :extra-types="typeNames"
       :disabled="disabled"
-      @patch="emit('patchDeclaration', $event)"
-      @reveal-span="emit('revealSpan', $event)"
-    />
-    <DeclarationEditor
-      kind="var"
-      :items="module.vars"
-      :module-name="module.name"
-      :disabled="disabled"
-      @patch="emit('patchDeclaration', $event)"
-      @reveal-span="emit('revealSpan', $event)"
+      @patch="emit('patchDeclaration', { kind: 'type', ...$event })"
     />
 
-    <InvariantPanel
-      v-if="module.invariants?.length"
-      :invariants="module.invariants"
+    <section class="min-h-[220px] overflow-hidden rounded-lg border border-border-subtle bg-surface-raised">
+      <ResizeSplit direction="horizontal" :ratio="varInvRatio" @update:ratio="varInvRatio = $event">
+        <template #first>
+          <div class="h-full min-h-0 overflow-auto p-4">
+            <VarEntityList
+              :items="module.vars"
+              :type-names="typeNames"
+              :disabled="disabled"
+              @patch="emit('patchDeclaration', { kind: 'var', ...$event })"
+            />
+          </div>
+        </template>
+        <template #second>
+          <div class="h-full min-h-0 overflow-auto p-4">
+            <InvariantEntityList
+              :invariants="module.invariants ?? []"
+              :disabled="disabled"
+              @patch="emit('patchInvariant', $event)"
+              @remove="emit('removeInvariant', $event)"
+              @reorder="(from, to) => emit('reorderInvariants', from, to)"
+            />
+          </div>
+        </template>
+      </ResizeSplit>
+    </section>
+
+    <ProcessGridPanel
+      :processes="module.processes"
       :disabled="disabled"
-      @reveal-span="emit('revealSpan', $event)"
-      @patch="emit('patchInvariant', $event)"
+      @edit="emit('editProcess', $event)"
+      @remove="emit('removeProcess', $event)"
     />
+
+    <SectionCard v-if="module.functions.length">
+      <template #title>
+        <h3 class="text-sm font-semibold text-content-primary">{{ t('visual.section.functions') }}</h3>
+      </template>
+      <ul class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <li
+          v-for="f in module.functions"
+          :key="f.name"
+          class="flex items-center gap-2 rounded-lg border border-border-subtle bg-surface-base px-3 py-2"
+        >
+          <span class="min-w-0 flex-1 truncate font-mono text-sm text-content-primary">{{ f.name }}</span>
+          <VisualEntityMenu
+            :disabled="disabled"
+            @edit="emit('editFunction', f.name)"
+            @remove="emit('removeFunction', f.name)"
+          />
+        </li>
+      </ul>
+    </SectionCard>
 
     <HybridGuiPanel
       v-if="module.gui"
@@ -109,68 +195,31 @@ function selectFunction(moduleName: string, functionName: string): void {
       :module="module"
       :disabled="disabled"
       @reveal-span="emit('revealSpan', $event)"
-      @patch-widget="emit('patchGuiWidget', $event)"
     />
-
-    <section v-if="module.processes.length" class="space-y-2">
-      <h3 class="text-sm font-semibold text-content-primary">{{ t('visual.section.processes') }}</h3>
-      <article
-        v-for="p in module.processes"
-        :key="p.name"
-        class="rounded-lg border border-border-subtle bg-surface-raised p-3"
-      >
-        <div class="flex w-full items-center gap-2">
-          <button
-            type="button"
-            class="flex min-w-0 flex-1 items-center gap-2 text-left text-sm font-medium text-content-primary"
-            @click="toggle(p.name)"
-          >
-            <span class="text-content-muted">{{ open[p.name] === false ? '▶' : '▼' }}</span>
-            <Badge variant="process">{{ t('visual.nodeRole.process') }}</Badge>
-            <span class="flex-1 truncate">{{ p.isInit ? 'Init' : p.name }}</span>
-            <Badge v-if="p.formalizationStatus === 'formal'" variant="formal">{{ t('visual.status.formal') }}</Badge>
-            <Badge v-else variant="semi-formal">{{ t('visual.status.semiFormal') }}</Badge>
-          </button>
-          <button
-            type="button"
-            class="shrink-0 rounded-md px-2 py-0.5 text-[11px] text-accent hover:bg-accent/10"
-            @click="selectProcess(module.name, p.name)"
-          >
-            {{ t('visual.editProcess') }}
-          </button>
-        </div>
-        <div v-show="open[p.name] !== false" class="mt-2 space-y-2 pl-5 text-[12px] text-content-secondary">
-          <div v-if="p.inputs?.length">
-            <p class="font-medium text-content-muted">{{ t('visual.input') }}</p>
-            <p v-for="g in p.inputs" :key="g.names">{{ g.names }}: {{ g.type }}</p>
-          </div>
-          <div v-if="p.outputs?.length">
-            <p class="font-medium text-content-muted">{{ t('visual.output') }}</p>
-            <p v-for="g in p.outputs" :key="g.names">{{ g.names }}: {{ g.type }}</p>
-          </div>
-          <p v-if="p.comment" class="whitespace-pre-wrap">{{ p.comment }}</p>
-          <p v-if="p.pre">{{ t('visual.pre') }}: {{ p.pre }}</p>
-          <p>{{ t('visual.scenarios') }}: {{ p.scenarioCount ?? 0 }} · {{ t('visual.exceptionalScenarios') }}: {{ p.exceptionalCount ?? 0 }}</p>
-        </div>
-      </article>
-    </section>
-
-    <section v-if="module.functions.length" class="rounded-lg border border-border-subtle bg-surface-raised p-4">
-      <h3 class="mb-2 text-sm font-semibold text-content-primary">{{ t('visual.section.functions') }}</h3>
-      <ul class="space-y-1">
-        <li v-for="f in module.functions" :key="f.name">
-          <button
-            type="button"
-            class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-content-primary transition-colors hover:bg-surface-overlay"
-            @click="selectFunction(module.name, f.name)"
-          >
-            <Badge variant="function">{{ t('visual.nodeRole.function') }}</Badge>
-            <Badge v-if="f.fsfFormal === 'formal'" variant="formal">{{ t('visual.fsfFormal') }}</Badge>
-            <Badge v-else-if="f.fsfFormal === 'semi-formal'" variant="semi-formal">{{ t('visual.fsfSemiFormal') }}</Badge>
-            <span>{{ f.name }}</span>
-          </button>
-        </li>
-      </ul>
-    </section>
   </div>
+
+  <VisualEditDialog
+    :open="createKind != null"
+    :title="createTitle"
+    @close="createKind = null"
+    @confirm="confirmCreate"
+  >
+    <div v-if="createKind === 'type' || createKind === 'var' || createKind === 'process'" class="space-y-3">
+      <FormField :label="t('visual.create.name')">
+        <TextField v-model="createName" mono :disabled="disabled || createInit" />
+      </FormField>
+      <FormField v-if="createKind === 'var'" :label="t('visual.var.type')">
+        <select v-model="createType" class="visual-field w-full px-3 py-2 text-sm" :disabled="disabled">
+          <option v-for="ty in typeOptions" :key="ty" :value="ty">{{ ty }}</option>
+        </select>
+      </FormField>
+      <label v-if="createKind === 'process'" class="flex items-center gap-2 text-sm text-content-primary">
+        <input v-model="createInit" type="checkbox" class="rounded border-border-subtle" :disabled="disabled" />
+        {{ t('visual.process.initProcess') }}
+      </label>
+    </div>
+    <FormField v-else-if="createKind === 'inv'" :label="t('visual.inv.predicate')">
+      <TextField v-model="createPredicate" :rows="4" mono :disabled="disabled" />
+    </FormField>
+  </VisualEditDialog>
 </template>

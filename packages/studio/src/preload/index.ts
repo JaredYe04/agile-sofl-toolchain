@@ -387,11 +387,24 @@ const studio = {
     }>,
   gitInit: (rootPath: string) =>
     ipcRenderer.invoke('studio:git-init', rootPath) as Promise<{ ok: boolean; error?: string }>,
-  buildGuiModel: (payload: { source: string; informalSource?: string }) =>
+  buildGuiModel: (payload: { source: string; informalSource?: string; hybridSource?: string }) =>
     ipcRenderer.invoke('studio:build-gui-model', payload) as Promise<GuiModelPayload>,
   patchGui: (payload: PatchGuiPayload & { source: string }) =>
     ipcRenderer.invoke('studio:patch-gui', payload) as Promise<string>,
   formatGui: (source: string) => ipcRenderer.invoke('studio:format-gui', source) as Promise<string>,
+  animateGuiProcess: (payload: {
+    asfl: string
+    process: string
+    env: Record<string, string | number | boolean | null>
+    scenarioId?: string
+  }) =>
+    ipcRenderer.invoke('studio:animate-gui-process', payload) as Promise<{
+      process: string
+      unevaluable: boolean
+      matched: Array<{ id: string; name: string; kind: string; guard: string; definingCondition: string }>
+      scenarios: Array<{ id: string; name: string; kind: string; guard: string; definingCondition: string }>
+      outputs: Record<string, string | number | boolean | null>
+    }>,
   resolveGuiForAspec: (payload: { aspecSource: string; externalGuiSource?: string }) =>
     ipcRenderer.invoke('studio:resolve-gui-for-aspec', payload) as Promise<GuiModelPayload>,
   patchAspecGui: (payload: { aspecSource: string; action: PatchGuiActionOnly }) =>
@@ -482,6 +495,7 @@ export type VisualGuiWidget = {
 export type VisualGuiScreen = {
   name: string
   span: { start: number; end: number; line: number; column: number }
+  triggersProcess?: string
   widgets: VisualGuiWidget[]
 }
 
@@ -601,8 +615,13 @@ export type PatchDocumentPayload = {
 
 export type PatchInvariantPayload = {
   source: string
-  span: SerializableSpan
-  text: string
+  action?: 'patch' | 'add' | 'remove' | 'reorder'
+  moduleName?: string
+  span?: SerializableSpan
+  index?: number
+  text?: string
+  fromIndex?: number
+  toIndex?: number
 }
 
 export type PatchFunctionPayload = {
@@ -748,7 +767,7 @@ export type InformalParsePayload = {
 }
 
 export type InformalPatchPayload = {
-  target?: 'informal' | 'hybrid'
+  target?: 'informal' | 'hybrid' | 'gui'
   mode?: 'crud' | 'source'
   explanation?: string
   operations: Array<Record<string, unknown>>
@@ -789,6 +808,7 @@ export type AgentTurnContextPayload = {
   moduleId?: string
   informalMarkdown: string
   hybridAsfl?: string
+  guiHtml?: string
   selectedNodeId?: string
   selectedNodeSummary?: string
   skillId?: string
@@ -969,6 +989,8 @@ export type GuiWidget = {
   options?: string[]
   bounds?: { x: number; y: number; width: number; height: number }
   events?: Array<{ on: string; action: string; targetView?: string }>
+  process?: string
+  nav?: string
 }
 
 export type GuiScreenDto = {
@@ -988,7 +1010,8 @@ export type GuiModelPayload = {
   screens: GuiScreenDto[]
   flows: Array<{ from: string; to: string; on?: string; label?: string }>
   diagnostics: InformalDiagnostic[]
-  sourceKind: 'guispec' | 'aspec-embedded'
+  sourceKind: 'guispec' | 'aspec-embedded' | 'gui-html'
+  html: string
 }
 
 export type PatchGuiActionOnly =
@@ -1009,6 +1032,11 @@ export type PatchGuiActionOnly =
   | { action: 'add-flow'; flow: { from: string; to: string; on?: string } }
   | { action: 'remove-flow'; from: string; to: string }
   | { action: 'patch-app'; field: string; value: unknown }
+  | { action: 'replace-html'; html: string }
+  | { action: 'replace-screen-html'; screenId: string; html: string }
+  | { action: 'patch-node'; path: string; attrs?: Record<string, string | null>; text?: string }
+  | { action: 'insert-html'; parentPath: string; html: string }
+  | { action: 'remove-node'; path: string }
 
 export type PatchGuiPayload = PatchGuiActionOnly
 

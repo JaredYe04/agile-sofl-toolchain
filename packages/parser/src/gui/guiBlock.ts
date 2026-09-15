@@ -138,12 +138,39 @@ export function attachGuiBlocks(program: ProgramNode, source: string): Diagnosti
 
 export function validateGuiTriggers(program: ProgramNode): Diagnostic[] {
   const diagnostics: Diagnostic[] = []
+  const allProcess = new Map<string, Set<string>>()
+  for (const mod of program.modules) {
+    allProcess.set(mod.name, new Set(mod.processes.map((p) => p.name)))
+  }
   for (const mod of program.modules) {
     if (!mod.gui) continue
-    const processNames = new Set(mod.processes.map((p) => p.name))
+    const local = allProcess.get(mod.name) ?? new Set()
+    const known = (ref: string): boolean => {
+      if (local.has(ref)) return true
+      const dot = ref.lastIndexOf('.')
+      if (dot > 0) {
+        const moduleName = ref.slice(0, dot)
+        const proc = ref.slice(dot + 1)
+        return allProcess.get(moduleName)?.has(proc) ?? false
+      }
+      for (const names of allProcess.values()) {
+        if (names.has(ref)) return true
+      }
+      return false
+    }
     for (const screen of mod.gui.screens) {
+      if (screen.triggersProcess && !known(screen.triggersProcess)) {
+        diagnostics.push(
+          createDiagnostic(
+            DiagnosticCodes.GUI_UNKNOWN_TRIGGER,
+            `GUI screen '${screen.name}' triggers unknown process '${screen.triggersProcess}'`,
+            'warning',
+            screen.span
+          )
+        )
+      }
       for (const widget of screen.widgets) {
-        if (widget.triggersProcess && !processNames.has(widget.triggersProcess)) {
+        if (widget.triggersProcess && !known(widget.triggersProcess)) {
           diagnostics.push(
             createDiagnostic(
               DiagnosticCodes.GUI_UNKNOWN_TRIGGER,

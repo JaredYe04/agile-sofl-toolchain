@@ -149,6 +149,24 @@ end_module`
     expect(formatHybridInventory(content)).toContain('mod:Demo')
   })
 
+  it('lists slim gui screens without widget dumps', () => {
+    const content = `module SYSTEM_Demo;
+gui DemoGui;
+  screen Login triggers Demo.Login;
+  screen Home;
+end_gui;
+process Login (user_id: nat) ok: bool
+    pre
+        true
+    post
+        ok = true
+end_process
+end_module`
+    const inventory = formatHybridInventory(content)
+    expect(inventory).toContain('(gui-screen) Login → Demo.Login')
+    expect(inventory).not.toContain('widgets:')
+  })
+
   it('keeps modules when pre contains punctuation that is not a token', () => {
     const { content, error } = applyHybridPatch(SOURCE, {
       operations: [

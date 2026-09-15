@@ -115,6 +115,7 @@ import {
   String,
   Bool,
   Given,
+  Time,
   Tilde,
   Hash,
   Abs,
@@ -183,6 +184,7 @@ export class AgileSoflParser extends CstParser {
       $.OPTION1(() => $.CONSUME(Semicolon))
       $.SUBRULE($.moduleBody)
       $.CONSUME(EndModule)
+      $.OPTION2(() => $.CONSUME4(Semicolon))
     })
 
     $.RULE('module', () => {
@@ -204,15 +206,35 @@ export class AgileSoflParser extends CstParser {
       $.OPTION2(() => $.CONSUME1(Semicolon))
       $.SUBRULE($.moduleBody)
       $.CONSUME(EndModule)
+      $.OPTION3(() => $.CONSUME5(Semicolon))
     })
 
     $.RULE('moduleBody', () => {
-      $.OPTION3(() => $.SUBRULE($.constDecls))
-      $.OPTION4(() => $.SUBRULE($.typeDecls))
-      $.OPTION5(() => $.SUBRULE($.varDecls))
-      $.OPTION6(() => $.SUBRULE($.invDecls))
-      $.OPTION7(() => $.SUBRULE($.guiBlock))
-      $.SUBRULE($.processFunctionSpecs)
+      $.MANY3({
+        GATE: () => {
+          const t = $.LA(1).tokenType
+          return (
+            t === Const ||
+            t === Type ||
+            t === Var ||
+            t === Inv ||
+            t === Gui ||
+            t === Process ||
+            t === Function
+          )
+        },
+        DEF: () => {
+          $.OR3([
+            { GATE: () => $.LA(1).tokenType === Const, ALT: () => $.SUBRULE($.constDecls) },
+            { GATE: () => $.LA(1).tokenType === Type, ALT: () => $.SUBRULE($.typeDecls) },
+            { GATE: () => $.LA(1).tokenType === Var, ALT: () => $.SUBRULE($.varDecls) },
+            { GATE: () => $.LA(1).tokenType === Inv, ALT: () => $.SUBRULE($.invDecls) },
+            { GATE: () => $.LA(1).tokenType === Gui, ALT: () => $.SUBRULE($.guiBlock) },
+            { GATE: () => $.LA(1).tokenType === Process, ALT: () => $.SUBRULE($.processDef) },
+            { GATE: () => $.LA(1).tokenType === Function, ALT: () => $.SUBRULE($.functionDef) }
+          ])
+        }
+      })
     })
 
     $.RULE('guiBlock', () => {
@@ -229,12 +251,75 @@ export class AgileSoflParser extends CstParser {
     $.RULE('guiScreen', () => {
       $.CONSUME(Screen)
       $.CONSUME1(Identifier)
-      $.CONSUME2(Semicolon)
-      $.MANY1(() => {
-        $.SUBRULE($.guiWidget)
+      $.OPTION({
+        GATE: () => $.LA(1).tokenType === Triggers,
+        DEF: () => {
+          $.CONSUME(Triggers)
+          $.CONSUME2(Identifier)
+          $.OPTION2({
+            GATE: () => $.LA(1).tokenType === Dot,
+            DEF: () => {
+              $.CONSUME(Dot)
+              $.CONSUME3(Identifier)
+            }
+          })
+        }
       })
-      $.CONSUME(EndScreen)
-      $.OPTION1(() => $.CONSUME3(Semicolon))
+      $.CONSUME4(Semicolon)
+      $.MANY1({
+        GATE: () => {
+          const t = $.LA(1).tokenType
+          return (
+            t !== EndScreen &&
+            t !== EndGui &&
+            t !== EndModule &&
+            t !== Screen &&
+            t !== EOF &&
+            t !== Process &&
+            t !== Function
+          )
+        },
+        DEF: () => {
+          $.OR([
+            {
+              GATE: () => {
+                if ($.LA(1).tokenType === TextInput) return true
+                return (
+                  $.LA(1).tokenType === Identifier &&
+                  $.LA(2).tokenType === Identifier &&
+                  $.LA(3).tokenType === StringLiteral
+                )
+              },
+              ALT: () => $.SUBRULE($.guiWidget)
+            },
+            { ALT: () => $.SUBRULE($.guiInformalAtom) }
+          ])
+        }
+      })
+      $.OPTION1(() => {
+        $.CONSUME(EndScreen)
+        $.OPTION3(() => $.CONSUME5(Semicolon))
+      })
+    })
+
+    $.RULE('guiInformalAtom', () => {
+      $.OR4([
+        { ALT: () => $.CONSUME(Identifier) },
+        { ALT: () => $.CONSUME(TextWord) },
+        { ALT: () => $.CONSUME(Slash) },
+        { ALT: () => $.CONSUME(Colon) },
+        { ALT: () => $.CONSUME(Comma) },
+        { ALT: () => $.CONSUME(Dot) },
+        { ALT: () => $.CONSUME(LParen) },
+        { ALT: () => $.CONSUME(RParen) },
+        { ALT: () => $.CONSUME(Plus) },
+        { ALT: () => $.CONSUME(Minus) },
+        { ALT: () => $.CONSUME(Star) },
+        { ALT: () => $.CONSUME(Equals) },
+        { ALT: () => $.CONSUME(StringLiteral) },
+        { ALT: () => $.CONSUME(IntegerLiteral) },
+        { ALT: () => $.CONSUME(RealLiteral) }
+      ])
     })
 
     $.RULE('guiWidget', () => {
@@ -374,6 +459,7 @@ export class AgileSoflParser extends CstParser {
             $.OPTION1(() => $.SUBRULE1($.paramDecls))
             $.SUBRULE($.processBody)
             $.CONSUME(EndProcess)
+            $.OPTION2(() => $.CONSUME3(Semicolon))
           }
         },
         {
@@ -383,6 +469,7 @@ export class AgileSoflParser extends CstParser {
             $.CONSUME(Equal)
             $.SUBRULE($.moduleOrFieldAccess)
             $.CONSUME2(EndProcess)
+            $.OPTION3(() => $.CONSUME6(Semicolon))
           }
         }
       ])
@@ -630,6 +717,7 @@ export class AgileSoflParser extends CstParser {
         ])
       })
       $.CONSUME(EndFunction)
+      $.OPTION3(() => $.CONSUME3(Semicolon))
     })
 
     $.RULE('paramDecls', () => {
@@ -659,11 +747,44 @@ export class AgileSoflParser extends CstParser {
     })
 
     $.RULE('typeExpr', () => {
+      $.SUBRULE($.arrowType)
+    })
+
+    $.RULE('arrowType', () => {
+      $.SUBRULE($.postfixType)
+      $.MANY(() => {
+        $.CONSUME(Arrow)
+        $.SUBRULE2($.postfixType)
+      })
+    })
+
+    $.RULE('postfixType', () => {
+      $.SUBRULE($.coreType)
+      $.OPTION({
+        GATE: () => {
+          const tok = $.LA(1)
+          return tok.tokenType === Identifier && (tok.image === '序列' || tok.image === '集合')
+        },
+        DEF: () => $.CONSUME(Identifier)
+      })
+    })
+
+    $.RULE('coreType', () => {
       $.OR([
+        {
+          GATE: () => {
+            const t2 = $.LA(2).tokenType
+            if (t2 !== Colon) return false
+            const t1 = $.LA(1).tokenType
+            return t1 === Identifier || t1 === NameLike || Boolean(t1?.CATEGORIES?.includes(NameLike))
+          },
+          ALT: () => $.SUBRULE($.implicitComposedType)
+        },
         {
           ALT: () => $.SUBRULE($.moduleOrFieldAccess),
           GATE: () => {
             if ($.LA(1).tokenType !== Identifier) return false
+            if ($.LA(2).tokenType === Colon) return false
             if ($.LA(2).tokenType === Dot) return true
             const t2 = $.LA(2).tokenType
             if (t2 === Star || t2 === Pipe) return false
@@ -684,6 +805,7 @@ export class AgileSoflParser extends CstParser {
         t === String ||
         t === Bool ||
         t === Given ||
+        t === Time ||
         t === Set ||
         t === Seq ||
         t === Map ||
@@ -734,7 +856,8 @@ export class AgileSoflParser extends CstParser {
         { ALT: () => $.CONSUME(Char) },
         { ALT: () => $.CONSUME(String) },
         { ALT: () => $.CONSUME(Bool) },
-        { ALT: () => $.CONSUME(Given) }
+        { ALT: () => $.CONSUME(Given) },
+        { ALT: () => $.CONSUME(Time) }
       ])
     })
 
@@ -765,6 +888,10 @@ export class AgileSoflParser extends CstParser {
       $.CONSUME(Seq)
       $.CONSUME(Of)
       $.SUBRULE($.typeExpr)
+    })
+
+    $.RULE('implicitComposedType', () => {
+      $.SUBRULE($.fieldList)
     })
 
     $.RULE('composedType', () => {

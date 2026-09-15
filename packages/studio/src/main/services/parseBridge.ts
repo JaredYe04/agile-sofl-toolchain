@@ -2,7 +2,7 @@ import { ipcMain } from 'electron'
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { ProjectIndex, walk, textOf, parse, moduleSourceHashes } from '@agile-sofl/parser'
+import { ProjectIndex, walk, textOf, parse, moduleSourceHashes, deriveFsf } from '@agile-sofl/parser'
 import {
   buildModuleGraphLayout,
   buildVisualModelTolerant,
@@ -11,6 +11,10 @@ import {
   patchComment,
   patchDecom,
   patchInvariant,
+  addInvariant,
+  removeInvariantInModule,
+  removeInvariantByIndex,
+  reorderInvariants,
   patchDeclaration,
   patchProcess,
   patchFunction,
@@ -77,12 +81,31 @@ import {
   serializeGuiSpec,
   guispecFromGuiSection,
   extendCoverageWithGui,
-  type PatchGuiAction
+  matchScenarios,
+  applyDefiningOutputs,
+  type PatchGuiAction,
+  type HybridProcessRef
 } from '@agile-sofl/gui'
 import { loadOrCreateManifest } from './projectManifest.js'
 import type { ProjectFileInfo, ProjectModuleInfo, WorkspaceScanPayload } from '../../shared/projectTypes.js'
 import { cloneForIpc } from './ipcClone.js'
 import { isGuiModuleName, modulesFromSource } from '../../shared/modulesFromSource.js'
+
+function collectHybridProcessRefs(asfl?: string): HybridProcessRef[] {
+  if (!asfl?.trim()) return []
+  const { ast } = parse(asfl)
+  if (!ast || ast.type !== 'program') return []
+  return ast.modules.flatMap((m) => {
+    const vars = m.vars.map((v) => v.variable.name)
+    return m.processes.map((p) => ({
+      moduleName: m.name,
+      processName: p.name,
+      inputs: p.inputs.flatMap((g) => g.names),
+      outputs: p.outputs.flatMap((g) => g.names),
+      vars
+    }))
+  })
+}
 
 function collectAsflFiles(dir: string): string[] {
   const out: string[] = []
@@ -422,8 +445,42 @@ export function registerParseHandlers(): void {
     'studio:patch-invariant',
     (
       _event,
-      payload: { source: string; span: { start: number; end: number }; text: string }
-    ) => patchInvariant(payload.source, payload.span, payload.text)
+      payload: {
+        source: string
+        action?: 'patch' | 'add' | 'remove' | 'reorder'
+        moduleName?: string
+        span?: { start: number; end: number }
+        index?: number
+        text?: string
+        fromIndex?: number
+        toIndex?: number
+      }
+    ) => {
+      const action = payload.action ?? 'patch'
+      if (action === 'add' && payload.moduleName) {
+        return addInvariant(payload.source, payload.moduleName, payload.text ?? 'true')
+      }
+      if (action === 'remove' && payload.moduleName) {
+        if (typeof payload.index === 'number') {
+          return removeInvariantByIndex(payload.source, payload.moduleName, payload.index)
+        }
+        if (payload.span) {
+          return removeInvariantInModule(payload.source, payload.moduleName, payload.span)
+        }
+      }
+      if (
+        action === 'reorder' &&
+        payload.moduleName &&
+        typeof payload.fromIndex === 'number' &&
+        typeof payload.toIndex === 'number'
+      ) {
+        return reorderInvariants(payload.source, payload.moduleName, payload.fromIndex, payload.toIndex)
+      }
+      if (payload.span && payload.text != null) {
+        return patchInvariant(payload.source, payload.span, payload.text)
+      }
+      return payload.source
+    }
   )
 
   ipcMain.handle('studio:parse-predicate-ui', (_event, text: string) =>
@@ -656,8 +713,11 @@ export function registerParseHandlers(): void {
       const report = buildCoverageReport(payload.aspecSource, payload.asflSource, trace)
       if (payload.guiSource || payload.aspecSource.includes('\ngui:')) {
         const informalModules = buildInformalModel(payload.aspecSource).modules
-        const guiModel = payload.guiSource?.includes('guispecVersion')
-          ? buildGuiModel(payload.guiSource, { informalModules })
+        const guiModel = payload.guiSource
+          ? buildGuiModel(payload.guiSource, {
+              informalModules,
+              hybridProcesses: collectHybridProcessRefs(payload.asflSource)
+            })
           : buildGuiModelFromAspec(payload.aspecSource, payload.guiSource ?? null, informalModules)
         const processCovered = new Set(
           report.items.filter((i) => i.kind === 'process' && i.status === 'covered').map((i) => i.aspecId)
@@ -738,12 +798,20 @@ export function registerParseHandlers(): void {
 
   ipcMain.handle('studio:format-aspec', (_event, source: string) => formatAspec(source))
 
-  ipcMain.handle('studio:build-gui-model', (_event, payload: { source: string; informalSource?: string }) => {
-    const informalModules = payload.informalSource
-      ? buildInformalModel(payload.informalSource).modules
-      : undefined
-    return cloneForIpc(buildGuiModel(payload.source, { informalModules }))
-  })
+  ipcMain.handle(
+    'studio:build-gui-model',
+    (_event, payload: { source: string; informalSource?: string; hybridSource?: string }) => {
+      const informalModules = payload.informalSource
+        ? buildInformalModel(payload.informalSource).modules
+        : undefined
+      return cloneForIpc(
+        buildGuiModel(payload.source, {
+          informalModules,
+          hybridProcesses: collectHybridProcessRefs(payload.hybridSource)
+        })
+      )
+    }
+  )
 
   ipcMain.handle('studio:patch-gui', (_event, payload: { source: string } & PatchGuiAction) => {
     const { source, ...action } = payload
@@ -751,6 +819,61 @@ export function registerParseHandlers(): void {
   })
 
   ipcMain.handle('studio:format-gui', (_event, source: string) => formatGui(source))
+
+  ipcMain.handle(
+    'studio:animate-gui-process',
+    (
+      _event,
+      payload: {
+        asfl: string
+        process: string
+        env: Record<string, string | number | boolean | null>
+        scenarioId?: string
+      }
+    ) => {
+      const { ast } = parse(payload.asfl)
+      if (!ast || ast.type !== 'program') {
+        return { process: payload.process, scenarios: [], matched: [], unevaluable: true, outputs: payload.env }
+      }
+      const dotted = payload.process.includes('.')
+      const moduleName = dotted ? payload.process.slice(0, payload.process.lastIndexOf('.')) : undefined
+      const procName = dotted ? payload.process.slice(payload.process.lastIndexOf('.') + 1) : payload.process
+      let processNode = ast.modules.flatMap((m) => m.processes.map((p) => ({ m, p }))).find(({ m, p }) => {
+        if (p.name !== procName) return false
+        if (moduleName) return m.name === moduleName || m.name === moduleName.replace(/^SYSTEM_/, '')
+        return true
+      })
+      if (!processNode) {
+        return { process: payload.process, scenarios: [], matched: [], unevaluable: true, outputs: payload.env }
+      }
+      const form = deriveFsf(processNode.p)
+      const scenarios = [
+        ...(form?.scenarios ?? []),
+        ...(form?.exceptionalScenarios ?? [])
+      ].map((s) => ({
+        id: s.id,
+        name: s.name,
+        kind: s.kind,
+        guard: s.guard || s.testCondition || 'true',
+        definingCondition: s.definingCondition
+      }))
+      if (payload.scenarioId) {
+        const chosen = scenarios.find((s) => s.id === payload.scenarioId) ?? scenarios[0]
+        const outputs = chosen
+          ? applyDefiningOutputs(chosen.definingCondition, payload.env)
+          : payload.env
+        return {
+          process: payload.process,
+          scenarios,
+          matched: chosen ? [chosen] : [],
+          unevaluable: !chosen,
+          outputs
+        }
+      }
+      const result = matchScenarios(scenarios, payload.env)
+      return { process: payload.process, scenarios, ...result }
+    }
+  )
 
   ipcMain.handle(
     'studio:resolve-gui-for-aspec',

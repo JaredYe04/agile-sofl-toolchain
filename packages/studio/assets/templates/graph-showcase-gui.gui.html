@@ -1,0 +1,32 @@
+<div class="as-app" data-app="CityApp">
+  <section class="as-screen" id="view-dash" data-screen="Dashboard">
+    <h1 class="as-title">Smart City</h1>
+    <div class="as-stack as-gap-md">
+      <p class="as-muted" id="w-title">Smart City</p>
+      <button class="as-btn" id="w-alerts" data-nav="view-alerts">Alerts</button>
+      <button class="as-btn" id="w-citizens" data-nav="view-citizens">Citizens</button>
+    </div>
+  </section>
+  <section class="as-screen" id="view-alerts" data-screen="Alerts">
+    <h1 class="as-title">Alerts</h1>
+    <div class="as-stack as-gap-md">
+      <label class="as-field">
+Sensor
+        <input class="as-input" id="w-sensor" data-bind="param:sensor" />
+      </label>
+      <button class="as-btn as-btn-primary" id="w-dispatch" data-process="submit">Dispatch</button>
+      <button class="as-btn" id="w-back" data-nav="view-dash">Dashboard</button>
+    </div>
+  </section>
+  <section class="as-screen" id="view-citizens" data-screen="Citizens">
+    <h1 class="as-title">Citizens</h1>
+    <div class="as-stack as-gap-md">
+      <label class="as-field">
+Citizen
+        <input class="as-input" id="w-citizen" data-bind="param:citizen" />
+      </label>
+      <button class="as-btn as-btn-primary" id="w-register" data-process="submit">Register</button>
+      <button class="as-btn" id="w-back2" data-nav="view-dash">Dashboard</button>
+    </div>
+  </section>
+</div>

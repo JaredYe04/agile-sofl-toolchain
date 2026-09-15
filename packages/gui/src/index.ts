@@ -13,9 +13,11 @@ export type {
   GuiApp,
   GuiMeta,
   GuiBinds,
+  GuiBindRef,
   GuiDiagnostic,
   InformalProcessRef,
-  InformalVariableRef
+  InformalVariableRef,
+  HybridProcessRef
 } from './model.js'
 
 export { parseGuiSpec, parseGuiFromAspecYaml } from './parse.js'
@@ -38,7 +40,11 @@ export {
   removeGuiFromAspec,
   mergeGuiSources,
   guispecFromGuiSection,
-  formatGui
+  formatGui,
+  defaultGuiHtml,
+  patchHtmlNode,
+  insertHtml,
+  removeHtmlNode
 } from './patch.js'
 export type { PatchGuiAction } from './patch.js'
 
@@ -51,5 +57,25 @@ export {
 } from './buildGuiModel.js'
 
 export { DiagnosticCodes, createDiagnostic } from './diagnostics/codes.js'
-
 export { extendCoverageWithGui, buildGuiTraceLinks } from './trace/coverageGui.js'
+export { formatGuiInventory, formatGuiModelInventory, numberedGuiSource } from './inventory.js'
+export { buildSlimGuiBlock, buildSlimGuiBlockFromHtml } from './asflTrace.js'
+export {
+  evalSimpleCondition,
+  matchScenarios,
+  applyDefiningOutputs
+} from './scenarioEval.js'
+export type { ScenarioCandidate, ScenarioMatchResult, EvalValue } from './scenarioEval.js'
+export { prototypeStylesheet } from './stylesheet.js'
+export {
+  ALLOWED_TAGS,
+  ALLOWED_CLASSES,
+  ALLOWED_ATTRS,
+  GUI_HTML_VERSION,
+  emptyGuiHtml,
+  looksLikeYamlGui
+} from './dialect.js'
+export { parseHtmlFragment, sanitizeHtml, findElements, listHtmlTree, findTreeItem } from './html.js'
+export type { HtmlNode, HtmlTreeItem } from './html.js'
+export { parseBindAttr } from './project.js'
+export { tryParseYamlGui, migrateYamlDocument } from './migrate.js'

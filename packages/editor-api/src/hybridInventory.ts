@@ -4,6 +4,7 @@ import {
   namesEqual,
   uniqueSlug
 } from './hybridIds.js'
+import { findModuleRange, listModuleHeaders, scanModuleInvariants, scanModuleProcesses } from './moduleSourceRange.js'
 import { buildVisualModelTolerant, type VisualModelResult } from './visualParse.js'
 
 function clip(text: string, n: number): string {
@@ -99,8 +100,7 @@ function formatModuleInventory(model: VisualModelResult, mod: VisualModelResult[
   if (mod.gui) {
     const guiName = mod.gui.name || `${mod.name}_GUI`
     for (const screen of mod.gui.screens) {
-      const widgets = screen.widgets.map((w) => w.name).filter(Boolean).join(', ')
-      const desc = widgets ? ` widgets: ${clip(widgets, 200)}` : ''
+      const desc = screen.triggersProcess ? ` → ${screen.triggersProcess}` : ''
       lines.push(`- ${formatHybridId('gui', guiName, screen.name)} (gui-screen) ${screen.name}${desc}`)
     }
   }
@@ -111,6 +111,7 @@ function formatModuleInventory(model: VisualModelResult, mod: VisualModelResult[
 export function formatHybridInventory(source: string, maxChars = 12000): string {
   if (!source.trim()) return '(empty hybrid specification)'
   const model = buildVisualModelTolerant(source)
+  overlaySourceInventory(source, model)
   if (!model.modules.length) return '(empty hybrid specification)'
   const lines: string[] = []
   for (const mod of model.modules) {
@@ -120,6 +121,67 @@ export function formatHybridInventory(source: string, maxChars = 12000): string 
   const text = lines.join('\n').trim()
   if (text.length <= maxChars) return text
   return `${text.slice(0, maxChars)}\n…(truncated)`
+}
+
+function overlaySourceInventory(source: string, model: VisualModelResult): void {
+  const headers = listModuleHeaders(source)
+  for (const header of headers) {
+    const range = findModuleRange(source, header.name)
+    if (!range) continue
+    let mod = model.modules.find((m) => namesEqual(m.name, header.name))
+    if (!mod) {
+      mod = {
+        name: header.name,
+        isSystem: false,
+        span: { start: range.start, end: range.end, line: 1, column: 1 },
+        constCount: 0,
+        typeCount: 0,
+        varCount: 0,
+        invCount: 0,
+        invariants: [],
+        processes: [],
+        functions: [],
+        consts: [],
+        types: [],
+        vars: []
+      }
+      model.modules.push(mod)
+    }
+    if (!mod.processes.length) {
+      for (const name of scanModuleProcesses(source, range)) {
+        mod.processes.push({
+          name,
+          span: { start: range.start, end: range.end, line: 1, column: 1 },
+          decom: '',
+          comment: '',
+          hasFsf: false,
+          isAlias: false,
+          isInit: name === 'Init',
+          signature: '',
+          inputs: [],
+          outputs: [],
+          ext: [],
+          fsfFormal: null,
+          pre: '',
+          post: '',
+          hasPre: false,
+          hasPost: false,
+          scenarioCount: 0,
+          exceptionalCount: 0,
+          formalizationStatus: 'semi-formal'
+        })
+      }
+    }
+    if (!mod.invariants.length) {
+      for (const text of scanModuleInvariants(source, range)) {
+        mod.invariants.push({
+          text,
+          span: { start: range.start, end: range.end, line: 1, column: 1 }
+        })
+      }
+      mod.invCount = mod.invariants.length
+    }
+  }
 }
 
 export function hybridInventoryFromSource(source: string, maxChars = 12000): string {

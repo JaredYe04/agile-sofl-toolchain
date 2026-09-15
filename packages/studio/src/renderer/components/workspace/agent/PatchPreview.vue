@@ -12,7 +12,9 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{ apply: []; reject: [] }>()
 
-const target = computed(() => (props.patch.target === 'hybrid' ? 'hybrid' : 'informal'))
+const target = computed(() =>
+  props.patch.target === 'hybrid' ? 'hybrid' : props.patch.target === 'gui' ? 'gui' : 'informal'
+)
 const sourceMode = computed(() => props.patch.mode === 'source')
 
 function verb(op: Record<string, unknown>): string {
@@ -60,9 +62,11 @@ function label(op: Record<string, unknown>): string {
 
 function tone(op: Record<string, unknown>): string {
   const kind = String(op.op || '')
-  if (kind === 'add' || kind === 'append') return 'text-emerald-700 dark:text-emerald-300'
-  if (kind === 'remove') return 'text-rose-700 dark:text-rose-300'
-  if (kind === 'replace' || kind === 'replace-document') return 'text-amber-700 dark:text-amber-300'
+  if (kind === 'add' || kind === 'append' || kind === 'add-screen' || kind === 'add-widget' || kind === 'insert-html')
+    return 'text-emerald-700 dark:text-emerald-300'
+  if (kind === 'remove' || kind === 'remove-screen' || kind === 'remove-node') return 'text-rose-700 dark:text-rose-300'
+  if (kind === 'replace' || kind === 'replace-document' || kind === 'replace-html' || kind === 'replace-screen-html')
+    return 'text-amber-700 dark:text-amber-300'
   return 'text-content-secondary'
 }
 </script>
@@ -72,7 +76,11 @@ function tone(op: Record<string, unknown>): string {
     <p class="text-[11px] font-semibold uppercase tracking-wide text-content-muted">
       {{ $t('agent.proposedChanges') }}
       <span class="ml-1 font-normal normal-case">{{
-        target === 'hybrid' ? $t('agent.patchTargetHybrid') : $t('agent.patchTargetInformal')
+        target === 'hybrid'
+          ? $t('agent.patchTargetHybrid')
+          : target === 'gui'
+            ? $t('agent.patchTargetGui')
+            : $t('agent.patchTargetInformal')
       }}</span>
       <span v-if="sourceMode" class="ml-1 font-normal normal-case text-amber-600 dark:text-amber-400">{{
         $t('agent.patchModeSource')
@@ -93,7 +101,13 @@ function tone(op: Record<string, unknown>): string {
       </li>
     </ul>
     <p v-if="resolution === 'applied'" class="mt-2 text-[12px] text-content-muted">
-      {{ target === 'hybrid' ? $t('agent.appliedHybrid') : $t('agent.applied') }}
+      {{
+        target === 'hybrid'
+          ? $t('agent.appliedHybrid')
+          : target === 'gui'
+            ? $t('agent.appliedGui')
+            : $t('agent.applied')
+      }}
     </p>
     <p v-else-if="resolution === 'rejected'" class="mt-2 text-[12px] text-content-muted">{{ $t('agent.rejected') }}</p>
     <p v-else-if="resolution === 'error'" class="mt-2 text-[12px] text-rose-500">

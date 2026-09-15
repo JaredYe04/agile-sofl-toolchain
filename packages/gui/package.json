@@ -1,7 +1,7 @@
 {
   "name": "@agile-sofl/gui",
   "version": "0.1.0",
-  "description": "GUI specification (.guispec) parser, validator, and patch for Agile-SOFL",
+  "description": "GUI specification (.gui.html) parser, validator, and patch for Agile-SOFL",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": ["dist", "schema", "README.md"],
@@ -20,6 +20,5 @@
   "engines": {
     "node": ">=18"
   },
-  "license": "MIT",
-  "type": "module"
+  "license": "MIT"
 }

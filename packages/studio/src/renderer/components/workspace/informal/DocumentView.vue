@@ -7,6 +7,7 @@ import { useDocumentStore } from '../../../stores/document'
 import { useHistoryStore } from '../../../stores/history'
 import { HistoryKinds } from '../../../history/kinds'
 import { useAppStore } from '../../../stores/app'
+import { useWorkspaceStore } from '../../../stores/workspace'
 
 type InformalSection = 'functions' | 'data-resources' | 'constraints'
 
@@ -16,6 +17,7 @@ const { t, locale } = useI18n()
 const doc = useDocumentStore()
 const history = useHistoryStore()
 const app = useAppStore()
+const workspace = useWorkspaceStore()
 const host = ref<HTMLElement | null>(null)
 const isDark = ref(typeof document !== 'undefined' && document.documentElement.classList.contains('dark'))
 let editor: Vditor | null = null
@@ -132,6 +134,13 @@ watch(
 
 watch(() => app.theme, syncTheme)
 watch(locale, () => void mountEditor())
+watch(
+  () => workspace.fullscreenPanel,
+  async () => {
+    await nextTick()
+    if (tab.value) mountEditor()
+  }
+)
 
 onMounted(() => {
   syncTheme()
@@ -169,9 +178,19 @@ defineExpose({ revealSpan })
 }
 
 .informal-md-shell :deep(.vditor) {
+  position: relative;
+  z-index: 0;
   height: 100%;
   border: none;
   background: var(--gui-canvas);
+}
+
+.informal-md-shell :deep(.vditor--fullscreen) {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  z-index: 0 !important;
 }
 
 .informal-md-shell :deep(.vditor-toolbar) {

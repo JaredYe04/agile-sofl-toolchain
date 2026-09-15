@@ -196,11 +196,31 @@ export function useVisualModel(activeTabId: ComputedRef<string | undefined>) {
     })
   }
 
-  async function patchInvariant(payload: { span: { start: number; end: number }; text: string }): Promise<void> {
-    scheduleVisualPatch(`inv:${payload.span.start}`, async (source) => {
+  async function patchInvariant(payload: {
+    span?: { start: number; end: number }
+    index?: number
+    text?: string
+    action?: 'patch' | 'add' | 'remove' | 'reorder'
+    moduleName?: string
+    fromIndex?: number
+    toIndex?: number
+  }): Promise<void> {
+    const action = payload.action ?? 'patch'
+    const key =
+      action === 'reorder'
+        ? `inv:reorder:${payload.moduleName}`
+        : action === 'add'
+          ? `inv:add:${payload.moduleName}`
+          : `inv:${payload.span?.start ?? 'x'}`
+    const run = async (source: string) => {
       if (!window.studio?.patchInvariant) return source
       return window.studio.patchInvariant({ ...payload, source })
-    })
+    }
+    if (action === 'patch') {
+      scheduleVisualPatch(key, run)
+      return
+    }
+    await applySourcePatch(run)
   }
 
   async function patchExt(payload: {

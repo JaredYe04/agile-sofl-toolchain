@@ -1,11 +1,9 @@
 # @agile-sofl/gui
 
-GUI specification (`.guispec`) parser, validator, patch, and trace helpers for Agile-SOFL Studio.
+Restricted HTML5 GUI specification (`.gui.html`) parser, validator, patch, inventory, and scenario-animation helpers for Agile-SOFL Studio.
 
-## Usage
+The source of truth is sanitized HTML using `as-*` classes and `data-screen` / `data-process` / `data-bind` / `data-nav`. Legacy YAML `.guispec` files are migrated on parse.
 
 ```typescript
 import { parseGuiSpec, buildGuiModel, patchGui } from '@agile-sofl/gui'
 ```
-
-See [docs/18-GUI规格模块设计.md](../../docs/18-GUI规格模块设计.md).

@@ -9,6 +9,7 @@ import {
   writeManifest
 } from './projectManifest.js'
 import { inferModuleIdFromAsfl, writeInformalSpecFile } from './informalMeta.js'
+import { parseGuiSpec } from '@agile-sofl/gui'
 
 export interface ProjectTemplateEntry {
   id: string
@@ -25,7 +26,7 @@ export interface ProjectTemplateEntry {
 
 const STANDARD_INFORMAL = 'informal.aspec'
 const STANDARD_HYBRID = 'hybrid.asfl'
-const STANDARD_GUI = 'gui.guispec'
+const STANDARD_GUI = 'gui.html'
 
 export function resolveTemplatesDir(): string {
   const candidates = [
@@ -177,7 +178,9 @@ export function createProjectFromTemplate(
 
   let guiPath: string | undefined
   if (entry.gui) {
-    const guiContent = rewriteCrossRefs(readTemplateFile(dir, entry.gui), entry, name)
+    let guiContent = rewriteCrossRefs(readTemplateFile(dir, entry.gui), entry, name)
+    const parsed = parseGuiSpec(guiContent)
+    if (parsed.document?.html) guiContent = parsed.document.html
     writeFileSync(join(root, STANDARD_GUI), guiContent, 'utf-8')
     guiPath = STANDARD_GUI
   }

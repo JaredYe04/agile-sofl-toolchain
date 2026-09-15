@@ -101,6 +101,7 @@ function walkModule(mod: ModuleNode, visitor: Visitor): void {
   for (const c of mod.consts) {
     visitor.enterConstDecl?.(c)
     walkDeclName(c.span, c.name, visitor)
+    walkExpression(c.value, visitor)
     visitor.leaveConstDecl?.(c)
   }
   for (const t of mod.types) {

@@ -12,26 +12,10 @@ var
 inv
     current_view >= 0 and current_view <= 3 and cart_open >= 0;
 gui ShopGui;
-screen Home;
-    label title "Store";
-    navigation goCart "Cart" triggers OpenCart;
-    navigation goOrders "Orders" triggers OpenOrders;
-end_screen;
-screen Cart;
-    text-input productId "Product";
-    button add "Add" triggers DoAddToCart;
-    navigation goCheckout "Checkout" triggers OpenCheckout;
-    navigation backHome "Home" triggers OpenHome;
-end_screen;
-screen Checkout;
-    text-input total "Total";
-    button pay "Pay" triggers DoCheckout;
-    navigation backCart "Cart" triggers OpenCart;
-end_screen;
-screen Orders;
-    button refund "Refund" triggers DoRefund;
-    navigation backHome2 "Home" triggers OpenHome;
-end_screen;
+  screen Home;
+  screen Cart triggers DoAddToCart;
+  screen Checkout triggers DoCheckout;
+  screen Orders triggers DoRefund;
 end_gui;
 process OpenCart ()
     FSF :

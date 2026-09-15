@@ -1,5 +1,4 @@
 export type DockPanelId = 'informal' | 'agent' | 'hybrid'
-export type DockZone = 'left' | 'right' | 'top' | 'bottom'
 
 export type DockLeaf = { kind: 'panel'; panel: DockPanelId }
 export type DockSplit = {

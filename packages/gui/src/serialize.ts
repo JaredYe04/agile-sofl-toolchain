@@ -1,8 +1,8 @@
-import { stringify } from 'yaml'
 import type { GuiDocument, GuiSection } from './model.js'
+import { sanitizeHtml } from './html.js'
 
 export function serializeGuiSpec(document: GuiDocument): string {
-  return stringify(document, { lineWidth: 0 })
+  return sanitizeHtml(document.html || '')
 }
 
 export function formatGuiSpec(document: GuiDocument): string {
@@ -10,5 +10,5 @@ export function formatGuiSpec(document: GuiDocument): string {
 }
 
 export function guiSectionToYaml(gui: GuiSection): string {
-  return stringify({ gui }, { lineWidth: 0 })
+  return JSON.stringify({ gui }, null, 2)
 }

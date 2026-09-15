@@ -29,7 +29,7 @@ describe('projectTemplate', () => {
     const manifest = createProjectFromTemplate(nested, 'Library Demo', 'library', templatesDir)
     expect(manifest.informal).toBe('informal.aspec')
     expect(manifest.hybrid).toEqual(['hybrid.asfl'])
-    expect(manifest.gui).toBe('gui.guispec')
+    expect(manifest.gui).toBe('gui.html')
     expect(readManifest(nested)?.name).toBe('Library Demo')
     const informal = readFileSync(join(nested, 'informal.aspec'), 'utf-8')
     expect(informal).toContain('# Functions')
@@ -43,9 +43,9 @@ describe('projectTemplate', () => {
     expect(meta.hybridTarget).toBe('./hybrid.asfl')
     expect(meta.moduleId).toBe('Library')
     expect(readFileSync(join(nested, 'hybrid.asfl'), 'utf-8')).toContain('module SYSTEM_Library')
-    const gui = readFileSync(join(nested, 'gui.guispec'), 'utf-8')
-    expect(gui).toContain('informalTarget: ./informal.aspec')
-    expect(gui).toContain('targetView: view-borrow')
+    const gui = readFileSync(join(nested, 'gui.html'), 'utf-8')
+    expect(gui).toContain('data-screen')
+    expect(gui).toContain('data-nav="view-borrow"')
     const hybrid = readFileSync(join(nested, 'hybrid.asfl'), 'utf-8')
     expect(hybrid).toContain('module GUI_App / Library')
     expect(hybrid).toContain('current_view')
@@ -56,21 +56,21 @@ describe('projectTemplate', () => {
     dirs.push(root)
     const nested = join(root, 'Shop')
     const manifest = createProjectFromTemplate(nested, 'Shop', 'ecommerce', templatesDir)
-    expect(manifest.gui).toBe('gui.guispec')
+    expect(manifest.gui).toBe('gui.html')
     expect(manifest.guiModule).toBe('GUI_App')
     expect(readFileSync(join(nested, 'hybrid.asfl'), 'utf-8')).toContain('SYSTEM_Ecommerce')
     expect(readFileSync(join(nested, 'hybrid.asfl'), 'utf-8')).toContain('module GUI_App / Ecommerce')
     const informal = readFileSync(join(nested, 'informal.aspec'), 'utf-8')
     expect(informal).not.toContain('hybridTarget: ./hybrid.asfl')
-    expect(informal).not.toContain('guiTarget: ./gui.guispec')
+    expect(informal).not.toContain('guiTarget: ./gui.html')
     expect(informal).toContain('AddToCart')
     const meta = JSON.parse(readFileSync(join(nested, '.agile-sofl', 'informal-meta.json'), 'utf-8')) as {
       hybridTarget?: string
       guiTarget?: string
     }
     expect(meta.hybridTarget).toBe('./hybrid.asfl')
-    expect(meta.guiTarget).toBe('./gui.guispec')
-    expect(readFileSync(join(nested, 'gui.guispec'), 'utf-8')).toContain('view-checkout')
+    expect(meta.guiTarget).toBe('./gui.html')
+    expect(readFileSync(join(nested, 'gui.html'), 'utf-8')).toContain('view-checkout')
   })
 
   it('appended GUI module parses with the example hybrid', async () => {

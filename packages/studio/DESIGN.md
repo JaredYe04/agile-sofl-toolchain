@@ -121,7 +121,7 @@ Font: **Inter** (CursorGothic substitute). Scope: `.gui-preview` only — Shell 
 - **Width**: default 260px, draggable 200–420px; persisted in localStorage.
 - **Collapse**: toolbar panel icon, View menu, `Ctrl+B`, resize bar chevron (hover center); persisted visibility.
 - **Expand affordance**: when collapsed, hover the left edge (vertical center) to reveal a chevron button.
-- **Pair cards**: expandable; show `.aspec` / `.asfl` / `.guispec` rows with Badge; status pill (Full / Partial / Informal only).
+- **Pair cards**: expandable; show `.aspec` / `.asfl` / `.gui.html` rows with Badge; status pill (Full / Partial / Informal only).
 - **Unpaired section**: grouped by extension, collapsed by default.
 - **Context menu**: pair/file rows (open, reveal, copy path); panel blank (open folder, refresh, close project, collapse).
 - Active tab file path highlights matching row.

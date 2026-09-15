@@ -357,6 +357,16 @@ function printModule(writer: IndentWriter, level: number, mod: ModuleNode): void
     }
   }
 
+  if (mod.gui) {
+    writer.line(level, `gui ${mod.gui.name};`)
+    for (const screen of mod.gui.screens) {
+      const trigger = screen.triggersProcess || screen.widgets.find((w) => w.triggersProcess)?.triggersProcess
+      if (trigger) writer.line(itemLevel, `screen ${screen.name} triggers ${trigger};`)
+      else writer.line(itemLevel, `screen ${screen.name};`)
+    }
+    writer.line(level, 'end_gui;')
+  }
+
   for (const p of mod.processes) {
     printProcess(writer, level, p)
   }

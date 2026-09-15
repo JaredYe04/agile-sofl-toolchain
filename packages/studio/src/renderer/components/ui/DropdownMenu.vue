@@ -6,6 +6,7 @@ export interface MenuItem {
   label: string
   shortcut?: string
   disabled?: boolean
+  danger?: boolean
   action?: () => void
   separator?: boolean
 }
@@ -90,7 +91,12 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocClick))
               v-else
               role="menuitem"
               type="button"
-              class="flex w-full items-center justify-between px-3 py-1.5 text-left text-[13px] text-content-primary transition-colors duration-150 hover:bg-accent/10 disabled:opacity-40"
+              class="flex w-full items-center justify-between px-3 py-1.5 text-left text-[13px] transition-colors duration-150 disabled:opacity-40"
+              :class="
+                item.danger
+                  ? 'text-semantic-error hover:bg-semantic-error/10'
+                  : 'text-content-primary hover:bg-accent/10'
+              "
               :disabled="item.disabled"
               @click="onSelect(item)"
             >

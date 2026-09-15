@@ -103,6 +103,7 @@ export const Len = createToken({ name: 'Len', pattern: kw('len') })
 export const Nat0 = createToken({ name: 'Nat0', pattern: kw('nat0') })
 export const String = createToken({ name: 'String', pattern: kw('string'), categories: [NameLike] })
 export const Given = createToken({ name: 'Given', pattern: kw('given') })
+export const Time = createToken({ name: 'Time', pattern: kw('time'), categories: [NameLike] })
 export const Sign = createToken({ name: 'Sign', pattern: kw('sign') })
 export const Then = createToken({ name: 'Then', pattern: kw('then') })
 export const Else = createToken({ name: 'Else', pattern: kw('else') })
@@ -300,6 +301,7 @@ export const allTokens: TokenType[] = [
   String,
   Bool,
   Given,
+  Time,
   Sign,
   If,
   Then,

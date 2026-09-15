@@ -23,10 +23,13 @@ describe('tabUtils documentKind', () => {
   it('creates guispec tab', () => {
     const tab = createDocumentTab({ documentKind: 'guispec' })
     expect(tab.documentKind).toBe('guispec')
-    expect(tab.content).toContain('guispecVersion')
+    expect(tab.content).toContain('as-app')
+    expect(tab.content).toContain('data-screen')
   })
 
   it('infers guispec from path', () => {
     expect(inferDocumentKind('C:/x/ui.guispec')).toBe('guispec')
+    expect(inferDocumentKind('C:/x/ui.gui.html')).toBe('guispec')
+    expect(inferDocumentKind('C:/x/gui.html')).toBe('guispec')
   })
 })

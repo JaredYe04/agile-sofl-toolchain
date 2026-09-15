@@ -129,7 +129,7 @@ function onRowContext(e: MouseEvent, path?: string): void {
         @click="pair.guispecPath && emit('openFile', pair.guispecPath)"
         @contextmenu="pair.guispecPath && onRowContext($event, pair.guispecPath)"
       >
-        <Badge variant="neutral">.guispec</Badge>
+        <Badge variant="neutral">.gui.html</Badge>
         <span class="truncate">{{
           pair.guispecPath ? basename(pair.guispecPath) : t('sidebar.file.missing')
         }}</span>

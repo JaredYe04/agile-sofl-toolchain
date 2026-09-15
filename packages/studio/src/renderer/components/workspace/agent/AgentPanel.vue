@@ -12,10 +12,13 @@ import type {
 } from '../../../../preload/index'
 import { consumeAgentLaunchPending, subscribeAgentLaunch } from '../../../lib/agentLaunchBus'
 import { toIpcValue } from '../../../lib/toIpcValue'
+import { applyGuiDocumentPatch } from '../../../lib/applyGuiDocumentPatch'
 import ClarificationCard from './ClarificationCard.vue'
+import AgentMarkdownPreview from './AgentMarkdownPreview.vue'
 import PatchPreview from './PatchPreview.vue'
 import AgentSessionDialog from './AgentSessionDialog.vue'
 import StudioIcon from '../../ui/StudioIcon.vue'
+import ResizeSplit from '../../ui/ResizeSplit.vue'
 import { toggleClarificationDraft, type ClarificationDraft } from './clarificationDraft'
 import { contextMenuPoint } from '../../../lib/contextMenuPoint'
 
@@ -48,6 +51,7 @@ const writeMenuOpen = ref(false)
 const cardOpen = ref<Record<string, boolean>>({})
 const drafts = ref<Record<string, ClarificationDraft>>({})
 const showSessionDialog = ref(false)
+const sessionListRatio = ref(0.2)
 const copiedId = ref<string | null>(null)
 let copiedTimer: ReturnType<typeof setTimeout> | null = null
 let launchInFlight = false
@@ -71,6 +75,7 @@ function ctx() {
     moduleId: workspace.selectedModuleName ?? 'project',
     informalMarkdown: props.informalMarkdown,
     hybridAsfl: workspace.hybridTab?.content ?? '',
+    guiHtml: workspace.guiTab?.content ?? '',
     selectedNodeId: workspace.informalSelectedNodeId ?? undefined,
     skillId: session.value?.context.skillId || 'requirement-discovery',
     permissions: session.value?.context.permissions,
@@ -182,7 +187,12 @@ async function applyPatch(msg: AgentMessageView): Promise<boolean> {
   const result =
     patch.target === 'hybrid'
       ? await props.onApplyHybridPatch(patch)
-      : await props.onApplyPatch(patch)
+      : patch.target === 'gui'
+        ? await applyGuiDocumentPatch(patch, {
+            noTab: t('agent.noGuiTab'),
+            applyFailed: t('agent.applyFailed')
+          })
+        : await props.onApplyPatch(patch)
   const continueTurn = !stopRequested
   const toolId = session.value?.context.pendingToolCallId
   if (result.ok) {
@@ -554,56 +564,66 @@ function permBadge(s: AgentSessionPayload): string {
       <span class="h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
       <h3 class="truncate text-[12px] font-semibold text-content-primary">{{ t('agent.title') }}</h3>
     </header>
-    <div class="flex min-h-0 flex-1">
-      <aside class="flex w-[168px] shrink-0 flex-col border-r border-border-subtle">
-        <button
-          type="button"
-          class="m-1.5 rounded-md border border-dashed border-border-subtle px-2 py-1.5 text-left text-[11px] text-content-secondary transition-colors hover:border-content-primary/30 hover:bg-surface-overlay active:bg-surface-base"
-          @click="newSession"
-        >
-          + {{ t('agent.newSession') }}
-        </button>
-        <div class="min-h-0 flex-1 overflow-auto px-1.5 pb-1.5 studio-scroll">
+    <ResizeSplit
+      class="min-h-0 flex-1"
+      direction="horizontal"
+      :ratio="sessionListRatio"
+      :min-first="0.12"
+      :min-second="0.35"
+      @update:ratio="sessionListRatio = $event"
+    >
+      <template #first>
+        <aside class="flex h-full min-h-0 w-full flex-col">
           <button
-            v-for="s in visibleSessions"
-            :key="s.id"
             type="button"
-            class="mb-0.5 flex w-full items-center rounded-md px-1.5 py-1 text-left text-[11px] transition-colors"
-            :class="
-              session?.id === s.id
-                ? 'bg-content-primary/10 text-content-primary'
-                : 'text-content-secondary hover:bg-surface-overlay active:bg-surface-base'
-            "
-            @click="openSession(s.id)"
-            @contextmenu="openMenu($event, s.id)"
-            @dblclick.stop="startRename(s.id, s.title)"
+            class="m-1.5 rounded-md border border-dashed border-border-subtle px-2 py-1.5 text-left text-[11px] text-content-secondary transition-colors hover:border-content-primary/30 hover:bg-surface-overlay active:bg-surface-base"
+            @click="newSession"
           >
-            <span v-if="s.pinned" class="mr-1 text-[10px] text-content-muted">📌</span>
-            <input
-              v-if="renamingId === s.id"
-              v-model="renameDraft"
-              class="min-w-0 flex-1 rounded border border-field-border bg-field-bg px-1 py-0.5 text-[11px]"
-              @click.stop
-              @keydown.enter.prevent="commitRename"
-              @keydown.esc="renamingId = null"
-              @blur="commitRename"
-            />
-            <span v-else class="min-w-0 flex-1 truncate">{{ s.title }}</span>
-            <span class="ml-1 shrink-0 font-mono text-[9px] text-content-muted">{{ permBadge(s) }}</span>
+            + {{ t('agent.newSession') }}
           </button>
-          <p v-if="!visibleSessions.length" class="px-1 py-2 text-[11px] text-content-muted">
-            {{ t('agent.noSessions') }}
-          </p>
-        </div>
-        <button
-          type="button"
-          class="border-t border-border-subtle px-2 py-1 text-left text-[10px] text-content-muted hover:bg-surface-overlay"
-          @click="showArchived = !showArchived"
-        >
-          {{ showArchived ? t('agent.hideArchived') : t('agent.showArchived') }}
-        </button>
-      </aside>
-      <div class="flex min-h-0 min-w-0 flex-1 flex-col">
+          <div class="min-h-0 flex-1 overflow-auto px-1.5 pb-1.5 studio-scroll">
+            <button
+              v-for="s in visibleSessions"
+              :key="s.id"
+              type="button"
+              class="mb-0.5 flex w-full items-center rounded-md px-1.5 py-1 text-left text-[11px] transition-colors"
+              :class="
+                session?.id === s.id
+                  ? 'bg-content-primary/10 text-content-primary'
+                  : 'text-content-secondary hover:bg-surface-overlay active:bg-surface-base'
+              "
+              @click="openSession(s.id)"
+              @contextmenu="openMenu($event, s.id)"
+              @dblclick.stop="startRename(s.id, s.title)"
+            >
+              <span v-if="s.pinned" class="mr-1 text-[10px] text-content-muted">📌</span>
+              <input
+                v-if="renamingId === s.id"
+                v-model="renameDraft"
+                class="min-w-0 flex-1 rounded border border-field-border bg-field-bg px-1 py-0.5 text-[11px]"
+                @click.stop
+                @keydown.enter.prevent="commitRename"
+                @keydown.esc="renamingId = null"
+                @blur="commitRename"
+              />
+              <span v-else class="min-w-0 flex-1 truncate">{{ s.title }}</span>
+              <span class="ml-1 shrink-0 font-mono text-[9px] text-content-muted">{{ permBadge(s) }}</span>
+            </button>
+            <p v-if="!visibleSessions.length" class="px-1 py-2 text-[11px] text-content-muted">
+              {{ t('agent.noSessions') }}
+            </p>
+          </div>
+          <button
+            type="button"
+            class="border-t border-border-subtle px-2 py-1 text-left text-[10px] text-content-muted hover:bg-surface-overlay"
+            @click="showArchived = !showArchived"
+          >
+            {{ showArchived ? t('agent.hideArchived') : t('agent.showArchived') }}
+          </button>
+        </aside>
+      </template>
+      <template #second>
+      <div class="flex h-full min-h-0 min-w-0 flex-col">
         <div ref="thread" class="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-3 studio-scroll">
           <p v-if="!visibleMessages.length" class="text-[13px] leading-relaxed text-content-secondary">
             {{ t('agent.emptyHint') }}
@@ -623,7 +643,11 @@ function permBadge(s: AgentSessionPayload): string {
                 </summary>
                 <pre class="mt-1 max-h-40 overflow-auto whitespace-pre-wrap font-sans text-[12px] leading-relaxed studio-scroll">{{ msg.thinking }}</pre>
               </details>
-              <p v-if="msg.content" class="cursor-text whitespace-pre-wrap">{{ msg.content }}</p>
+              <AgentMarkdownPreview
+                v-if="msg.content && msg.role === 'assistant'"
+                :markdown="msg.content"
+              />
+              <p v-else-if="msg.content" class="cursor-text whitespace-pre-wrap">{{ msg.content }}</p>
               <p v-else-if="msg.streaming" class="text-[12px] text-content-muted">{{ t('agent.thinking') }}</p>
               <div
                 v-if="!msg.streaming || msg.content"
@@ -755,7 +779,8 @@ function permBadge(s: AgentSessionPayload): string {
           </button>
         </form>
       </div>
-    </div>
+      </template>
+    </ResizeSplit>
     <Teleport to="body">
       <div
         v-if="menu"

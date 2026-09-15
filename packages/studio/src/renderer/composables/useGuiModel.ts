@@ -1,6 +1,7 @@
 import { ref, watch, computed, type Ref } from 'vue'
 import { useDocumentStore } from '../stores/document'
 import { useHistoryStore } from '../stores/history'
+import { useWorkspaceStore } from '../stores/workspace'
 import { HistoryKinds } from '../history/kinds'
 import type { GuiWidgetKind, PatchGuiPayload } from '../preload/index'
 
@@ -16,6 +17,7 @@ export function useGuiModel(
 ) {
   const doc = useDocumentStore()
   const history = useHistoryStore()
+  const workspace = useWorkspaceStore()
   const model = ref<Awaited<ReturnType<NonNullable<typeof window.studio>['buildGuiModel']>> | null>(null)
   const loading = ref(false)
   const lastRebuiltContent = ref('')
@@ -67,7 +69,8 @@ export function useGuiModel(
       } else if (window.studio.buildGuiModel) {
         model.value = await window.studio.buildGuiModel({
           source: tab.content,
-          informalSource: informalTab.value?.content
+          informalSource: informalTab.value?.content,
+          hybridSource: workspace.hybridTab?.content
         })
       }
       lastRebuiltContent.value = tab.content
@@ -155,6 +158,22 @@ export function useGuiModel(
     await patchViaIpc({ action: 'remove-widget', widgetId })
   }
 
+  async function insertHtml(parentPath: string, html: string): Promise<void> {
+    await patchViaIpc({ action: 'insert-html', parentPath, html })
+  }
+
+  async function patchNode(
+    path: string,
+    attrs?: Record<string, string | null>,
+    text?: string
+  ): Promise<void> {
+    await patchViaIpc({ action: 'patch-node', path, attrs, text })
+  }
+
+  async function removeNode(path: string): Promise<void> {
+    await patchViaIpc({ action: 'remove-node', path })
+  }
+
   async function addFlow(flow: { from: string; to: string; on?: string }): Promise<void> {
     await patchViaIpc({ action: 'add-flow', flow })
   }
@@ -171,6 +190,9 @@ export function useGuiModel(
     removeScreen,
     addWidget,
     removeWidget,
+    insertHtml,
+    patchNode,
+    removeNode,
     addFlow
   }
 }
