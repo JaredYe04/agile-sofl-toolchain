@@ -47,6 +47,7 @@ export const Case = createToken({ name: 'Case', pattern: kw('case') })
 export const Of = createToken({ name: 'Of', pattern: kw('of') })
 export const And = createToken({ name: 'And', pattern: kw('and') })
 export const Or = createToken({ name: 'Or', pattern: kw('or') })
+export const Implies = createToken({ name: 'Implies', pattern: kw('implies') })
 export const Not = createToken({ name: 'Not', pattern: kw('not') })
 export const Div = createToken({ name: 'Div', pattern: kw('div') })
 export const Rem = createToken({ name: 'Rem', pattern: kw('rem') })
@@ -123,6 +124,7 @@ export const GreaterEqual = createToken({ name: 'GreaterEqual', pattern: />=/ })
 export const DoublePipe = createToken({ name: 'DoublePipe', pattern: /\|\|/ })
 export const DoubleAmp = createToken({ name: 'DoubleAmp', pattern: /&&/ })
 export const Arrow = createToken({ name: 'Arrow', pattern: /->/ })
+export const ImpliesArrow = createToken({ name: 'ImpliesArrow', pattern: /=>/ })
 export const Ellipsis = createToken({ name: 'Ellipsis', pattern: /\.\.\./ })
 export const PowerOp = createToken({ name: 'PowerOp', pattern: /\*\*/ })
 
@@ -215,6 +217,7 @@ export const allTokens: TokenType[] = [
   DoublePipe,
   DoubleAmp,
   Arrow,
+  ImpliesArrow,
   Ellipsis,
   PowerOp,
   IsTypePrefix,
@@ -312,6 +315,7 @@ export const allTokens: TokenType[] = [
   Of,
   And,
   Or,
+  Implies,
   Not,
   Div,
   Rem,

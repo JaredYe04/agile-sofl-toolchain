@@ -85,7 +85,14 @@ export {
 } from './signaturePatch.js'
 export type { SignatureValidationResult } from './signaturePatch.js'
 
-export { addModule, removeModule, renameModule, patchModule } from './modulePatch.js'
+export {
+  addModule,
+  removeModule,
+  renameModule,
+  patchModule,
+  setModuleParent,
+  stripOrphanParents
+} from './modulePatch.js'
 export type { ModulePatchAction } from './modulePatch.js'
 
 export {
@@ -151,7 +158,8 @@ export {
 } from './hybridIds.js'
 export type { HybridIdKind, ParsedHybridId } from './hybridIds.js'
 
-export { formatHybridInventory, hybridInventoryFromSource } from './hybridInventory.js'
+export { formatHybridInventory, hybridInventoryFromSource, formatHybridDiagnostics, collectHybridAgentDiagnostics } from './hybridInventory.js'
+export type { HybridAgentDiagnostic } from './hybridInventory.js'
 
 export { applyHybridPatch } from './hybridPatch.js'
 export type { HybridEntityKind, HybridPatchOp, HybridPatch, HybridScenarioInput } from './hybridPatch.js'

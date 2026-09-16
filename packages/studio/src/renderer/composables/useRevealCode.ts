@@ -3,8 +3,10 @@ import { useEditorUiStore } from '../stores/editorUi'
 import { useWorkspaceStore } from '../stores/workspace'
 import type { SerializableSpan } from '../components/editor/MonacoEditor.vue'
 
+export type RevealSpanOptions = { select?: boolean }
+
 export type CodeEditorHandle = {
-  revealSpan: (span: SerializableSpan) => void
+  revealSpan: (span: SerializableSpan, options?: RevealSpanOptions) => void
   relayout?: () => void
 }
 
@@ -12,7 +14,7 @@ export type CodeEditorHandle = {
 export async function revealInCodeEditor(
   editor: CodeEditorHandle | null | undefined,
   span: SerializableSpan | undefined,
-  options?: { hybrid?: boolean; gui?: boolean }
+  options?: { hybrid?: boolean; gui?: boolean; select?: boolean }
 ): Promise<void> {
   if (!span) return
   const editorUi = useEditorUiStore()
@@ -22,5 +24,5 @@ export async function revealInCodeEditor(
   if (options?.gui) workspace.guiMode = 'code'
   await nextTick()
   editor?.relayout?.()
-  editor?.revealSpan(span)
+  editor?.revealSpan(span, { select: options?.select })
 }

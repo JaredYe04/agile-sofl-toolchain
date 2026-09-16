@@ -8,6 +8,7 @@ import { useHistoryStore } from '../../../stores/history'
 import { HistoryKinds } from '../../../history/kinds'
 import { useAppStore } from '../../../stores/app'
 import { useWorkspaceStore } from '../../../stores/workspace'
+import { findHeadingIndex, selectElementText } from '../../../lib/structureNav'
 
 type InformalSection = 'functions' | 'data-resources' | 'constraints'
 
@@ -22,6 +23,12 @@ const host = ref<HTMLElement | null>(null)
 const isDark = ref(typeof document !== 'undefined' && document.documentElement.classList.contains('dark'))
 let editor: Vditor | null = null
 let applyingExternal = false
+type RevealRequest = {
+  span: { start: number; end: number; line: number; column: number; title?: string }
+  title?: string
+  select?: boolean
+}
+let pendingReveal: RevealRequest | null = null
 
 const tab = computed(() => {
   if (!props.tabId) return null
@@ -94,23 +101,49 @@ function mountEditor(): void {
       applyingExternal = true
       editor?.setValue(start, true)
       applyingExternal = false
+      void nextTick(() => applyPendingReveal())
     },
     input: (value: string) => onChange(value)
   })
 }
 
-function revealSpan(span: { start: number; end: number; line: number; column: number }): void {
+function headingElements(): HTMLElement[] {
   const root = host.value
-  if (!root) return
-  const lineIndex = Math.max(0, span.line - 1)
-  const blocks = root.querySelectorAll(
-    '.vditor-wysiwyg h1, .vditor-wysiwyg h2, .vditor-wysiwyg h3, .vditor-wysiwyg h4, .vditor-reset h1, .vditor-reset h2'
-  )
-  const target = (blocks[Math.min(lineIndex, Math.max(0, blocks.length - 1))] as HTMLElement | undefined) ?? null
+  if (!root) return []
+  return Array.from(
+    root.querySelectorAll(
+      '.vditor-wysiwyg h1, .vditor-wysiwyg h2, .vditor-wysiwyg h3, .vditor-wysiwyg h4, .vditor-wysiwyg h5, .vditor-wysiwyg h6, .vditor-reset h1, .vditor-reset h2, .vditor-reset h3'
+    )
+  ) as HTMLElement[]
+}
+
+function applyPendingReveal(): void {
+  const request = pendingReveal
+  if (!request || !host.value) return
+  const headings = headingElements()
+  const idx = findHeadingIndex(headings, {
+    title: request.title ?? request.span.title,
+    line: request.span.line
+  })
+  const target = idx >= 0 ? headings[idx] : undefined
   if (!target) return
+  pendingReveal = null
   target.scrollIntoView({ block: 'center', behavior: 'smooth' })
+  if (request.select !== false) selectElementText(target)
   target.classList.add('informal-md-flash')
   window.setTimeout(() => target.classList.remove('informal-md-flash'), 1800)
+}
+
+function revealSpan(
+  span: { start: number; end: number; line: number; column: number; title?: string },
+  options?: { title?: string; select?: boolean }
+): void {
+  pendingReveal = {
+    span,
+    title: options?.title ?? span.title,
+    select: options?.select
+  }
+  applyPendingReveal()
 }
 
 watch(
@@ -129,6 +162,7 @@ watch(
     applyingExternal = true
     editor.setValue(content, true)
     applyingExternal = false
+    void nextTick(() => applyPendingReveal())
   }
 )
 

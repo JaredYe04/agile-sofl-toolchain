@@ -16,7 +16,8 @@ function toPatchAction(op: Record<string, unknown>): PatchGuiActionOnly | null {
         id: String(op.id || op.name || `scr-${Date.now()}`),
         name: String(op.name || op.id || 'Screen'),
         title: typeof op.title === 'string' ? op.title : undefined,
-        widgets: []
+        widgets: [],
+        html: typeof op.html === 'string' ? op.html : typeof op.text === 'string' ? op.text : undefined
       }
     }
   }

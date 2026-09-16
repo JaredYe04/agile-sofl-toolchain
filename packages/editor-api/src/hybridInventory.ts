@@ -4,13 +4,73 @@ import {
   namesEqual,
   uniqueSlug
 } from './hybridIds.js'
-import { findModuleRange, listModuleHeaders, scanModuleInvariants, scanModuleProcesses } from './moduleSourceRange.js'
-import { buildVisualModelTolerant, type VisualModelResult } from './visualParse.js'
+import { findModuleRange, hybridLeftoverMessage, listModuleHeaders, scanModuleInvariants, scanModuleProcesses } from './moduleSourceRange.js'
+import { buildVisualModelTolerant, type VisualModelResult, type VisualParseDiagnostic } from './visualParse.js'
 
 function clip(text: string, n: number): string {
   const compact = text.replace(/\s+/g, ' ').trim()
   if (compact.length <= n) return compact
   return `${compact.slice(0, Math.max(0, n - 1))}…`
+}
+
+export type HybridAgentDiagnostic = {
+  severity: string
+  code: string
+  source: VisualParseDiagnostic['source']
+  module: string | null
+  line: number
+  column: number
+  message: string
+}
+
+function moduleNameForOffset(modules: VisualModelResult['modules'], start: number): string | null {
+  let best: { name: string; start: number } | null = null
+  for (const mod of modules) {
+    if (start >= mod.span.start && start <= mod.span.end) {
+      if (!best || mod.span.start >= best.start) best = { name: mod.name, start: mod.span.start }
+    }
+  }
+  return best?.name ?? null
+}
+
+function diagnosticsFromModel(model: VisualModelResult): HybridAgentDiagnostic[] {
+  const rank = (severity: string) =>
+    severity === 'error' ? 0 : severity === 'warning' ? 1 : 2
+  return model.diagnostics
+    .map((d) => ({
+      severity: d.severity,
+      code: d.code,
+      source: d.source,
+      module: moduleNameForOffset(model.modules, d.span.start),
+      line: d.span.line,
+      column: d.span.column,
+      message: d.message
+    }))
+    .sort((a, b) => rank(a.severity) - rank(b.severity) || a.line - b.line || a.column - b.column)
+}
+
+export function collectHybridAgentDiagnostics(source: string): HybridAgentDiagnostic[] {
+  if (!source.trim()) return []
+  return diagnosticsFromModel(buildVisualModelTolerant(source))
+}
+
+export function formatHybridDiagnostics(
+  sourceOrItems: string | HybridAgentDiagnostic[],
+  maxChars = 4000
+): string {
+  const items = typeof sourceOrItems === 'string' ? collectHybridAgentDiagnostics(sourceOrItems) : sourceOrItems
+  if (!items.length) return '(no hybrid diagnostics)'
+  const errors = items.filter((d) => d.severity === 'error').length
+  const lines = [
+    `## Diagnostics (${items.length}${errors ? `, ${errors} error${errors === 1 ? '' : 's'}` : ''})`
+  ]
+  for (const d of items) {
+    const mod = d.module ? `mod:${d.module}` : 'document'
+    lines.push(`- ${d.severity} [${d.source}/${d.code}] ${mod} L${d.line}:C${d.column} — ${d.message}`)
+  }
+  const text = lines.join('\n')
+  if (text.length <= maxChars) return text
+  return `${text.slice(0, maxChars)}\n…(truncated)`
 }
 
 function processScenarios(
@@ -109,17 +169,35 @@ function formatModuleInventory(model: VisualModelResult, mod: VisualModelResult[
 }
 
 export function formatHybridInventory(source: string, maxChars = 12000): string {
-  if (!source.trim()) return '(empty hybrid specification)'
+  if (!source.trim() || /^[.;\s]*$/.test(source.trim())) return '(empty hybrid specification)'
+  const leftover = hybridLeftoverMessage(source)
   const model = buildVisualModelTolerant(source)
   overlaySourceInventory(source, model)
-  if (!model.modules.length) return '(empty hybrid specification)'
+  const diagnostics = formatHybridDiagnostics(diagnosticsFromModel(model), 3500)
+  const hasIssues = diagnostics !== '(no hybrid diagnostics)'
+  if (!model.modules.length) {
+    const parts = [
+      hasIssues ? diagnostics : '',
+      leftover
+        ? `${leftover}. Do not treat this as empty — fix with propose_hybrid_changes or a unique propose_source_edit.`
+        : hasIssues
+          ? ''
+          : '(empty hybrid specification)'
+    ].filter(Boolean)
+    return parts.join('\n\n') || '(empty hybrid specification)'
+  }
   const lines: string[] = []
   for (const mod of model.modules) {
     lines.push(...formatModuleInventory(model, mod))
     lines.push('')
   }
-  const text = lines.join('\n').trim()
+  const inventory = lines.join('\n').trim() || '(empty hybrid specification)'
+  const text = hasIssues ? `${diagnostics}\n\n${inventory}` : inventory
   if (text.length <= maxChars) return text
+  if (hasIssues) {
+    const budget = Math.max(0, maxChars - diagnostics.length - 20)
+    return `${diagnostics}\n\n${inventory.slice(0, budget)}\n…(truncated)`
+  }
   return `${text.slice(0, maxChars)}\n…(truncated)`
 }
 

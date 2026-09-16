@@ -115,13 +115,6 @@ export function cstToProgram(cst: CstNode): ProgramNode {
   }
 }
 
-function moduleNameToken(cst: CstNode): IToken | undefined {
-  const gui = tokensOf(cst, 'Gui')[0]
-  const ids = tokensOf(cst, 'Identifier')
-  if (gui) return gui
-  return ids[0]
-}
-
 function cstToModules(cst: CstNode): ModuleNode[] {
   const modules: ModuleNode[] = []
   const top = singleChild(cst, 'topModule')
@@ -133,8 +126,12 @@ function cstToModules(cst: CstNode): ModuleNode[] {
 }
 
 function cstToTopModule(cst: CstNode): ModuleNode {
-  const id = moduleNameToken(cst)
+  const guiTok = tokensOf(cst, 'Gui')[0]
+  const ids = tokensOf(cst, 'Identifier')
+  const id = guiTok ?? ids[0]
   const sysPrefix = tokensOf(cst, 'SystemPrefix')[0]
+  const systemKw = tokensOf(cst, 'SystemKw')[0]
+  const parentTok = guiTok ? ids[0] : ids[1]
   const body = singleChild(cst, 'moduleBody')
   const endMod = tokensOf(cst, 'EndModule')[0]
   return {
@@ -143,7 +140,10 @@ function cstToTopModule(cst: CstNode): ModuleNode {
     name: id?.image ?? '',
     nameSpan: id ? spanOfToken(id) : undefined,
     systemPrefixSpan: sysPrefix ? spanOfToken(sysPrefix) : undefined,
-    isSystem: true,
+    isSystem: Boolean(sysPrefix || systemKw),
+    parent: parentTok
+      ? { type: 'qualified_name', span: spanOf(parentTok), name: parentTok.image }
+      : undefined,
     consts: body ? extractConsts(body) : [],
     types: body ? extractTypes(body) : [],
     vars: body ? extractVars(body) : [],

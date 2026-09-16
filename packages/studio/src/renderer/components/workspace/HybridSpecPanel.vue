@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, inject, nextTick, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import MonacoEditor from '../editor/MonacoEditor.vue'
 import VisualEditor from '../editor/visual/VisualEditor.vue'
@@ -14,6 +14,8 @@ import { revealInCodeEditor } from '../../composables/useRevealCode'
 import { initSpecAssistProviders } from '../../specAssist/init'
 import ResizeSplit from '../ui/ResizeSplit.vue'
 import type { SerializableSpan } from '../editor/MonacoEditor.vue'
+import { VISUAL_MODEL_KEY } from '../../composables/visualModelContext'
+import { spanForHybridSelection } from '../../lib/structureNav'
 
 initSpecAssistProviders()
 
@@ -24,6 +26,7 @@ defineProps<{
 
 const { t } = useI18n()
 const workspace = useWorkspaceStore()
+const visual = inject(VISUAL_MODEL_KEY, null)
 const monacoRef = ref<InstanceType<typeof MonacoEditor> | null>(null)
 const visualRef = ref<InstanceType<typeof VisualEditor> | null>(null)
 const guiSplitRatio = ref(0.62)
@@ -62,6 +65,35 @@ watch(
       line: 1,
       column: 1
     })
+  }
+)
+
+watch(
+  () => workspace.hybridRevealNonce,
+  async () => {
+    const sel = workspace.selection
+    if (!sel) return
+    await nextTick()
+    await nextTick()
+    monacoRef.value?.relayout()
+    let span = spanForHybridSelection(visual?.model.value ?? null, sel)
+    if (
+      !span &&
+      (sel.kind === 'process' || sel.kind === 'function') &&
+      window.studio?.findHybridSymbolSpan &&
+      workspace.hybridTab
+    ) {
+      span = await window.studio.findHybridSymbolSpan({
+        source: workspace.hybridTab.content,
+        symbolName: sel.kind === 'process' ? sel.processName : sel.functionName,
+        kind: sel.kind
+      })
+    }
+    if (!span && sel.kind === 'module' && workspace.selectedModule) {
+      const mod = workspace.selectedModule
+      span = { start: mod.spanStart, end: mod.spanEnd, line: 1, column: 1 }
+    }
+    if (span) monacoRef.value?.revealSpan(span, { select: true })
   }
 )
 

@@ -82,21 +82,17 @@ const diagnostics = computed(
 watch(selected, (value) => {
   editorSelection.setSelection(value)
   emit('select', value)
+  const editingThisProcess = value?.kind === 'process' && editingProcessName.value === value.processName
+  const editingThisFunction = value?.kind === 'function' && editingFunctionName.value === value.functionName
+  if (!editingThisProcess) editingProcessName.value = null
+  if (!editingThisFunction) editingFunctionName.value = null
   if (value?.kind === 'process') {
-    editingProcessName.value = value.processName
-    editingFunctionName.value = null
     void nextTick(() => {
       document.getElementById(`visual-process-${value.processName}`)?.scrollIntoView({
         block: 'nearest',
         behavior: 'smooth'
       })
     })
-  } else if (value?.kind === 'function') {
-    editingFunctionName.value = value.functionName
-    editingProcessName.value = null
-  } else {
-    editingProcessName.value = null
-    editingFunctionName.value = null
   }
 }, { immediate: true })
 

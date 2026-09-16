@@ -84,6 +84,15 @@ describe('modulePatch', () => {
     expect(ast?.modules.map((m) => m.name)).toEqual(['A', 'GUI'])
   })
 
+  it('prepends a SYSTEM_ module ahead of existing modules', () => {
+    const source = 'module GUI;\nend_module.'
+    const added = addModule(source, 'SYSTEM_Shop', { isSystem: true })
+    expect(added.indexOf('module SYSTEM_Shop')).toBeLessThan(added.indexOf('module GUI'))
+    const { ast } = parse(added)
+    expect(ast?.modules.map((m) => m.name)).toEqual(['Shop', 'GUI'])
+    expect(ast?.modules[0]?.isSystem).toBe(true)
+  })
+
   it('does not plant a dot between end_module; and the next module', () => {
     const source = 'module A;\nend_module;'
     const added = addModule(source, 'GUI')

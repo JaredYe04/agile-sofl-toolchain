@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import {
   applyHybridPatch,
+  collectHybridAgentDiagnostics,
+  formatHybridDiagnostics,
   formatHybridInventory,
   hybridInventoryFromSource
 } from '../src/index.js'
@@ -198,6 +200,35 @@ end_module`
 
   it('empty source inventory', () => {
     expect(formatHybridInventory('')).toBe('(empty hybrid specification)')
+  })
+
+  it('surfaces per-module syntax errors in inventory and diagnostics report', () => {
+    const broken = `module Auth;
+type
+  Role = {Investor} | {Broker}
+process Login (id: nat)
+    pre
+        true
+    post
+        ok = 1
+end_module
+`
+    const items = collectHybridAgentDiagnostics(broken)
+    expect(items.length).toBeGreaterThan(0)
+    expect(items.some((d) => d.severity === 'error')).toBe(true)
+    expect(items.some((d) => d.module === 'Auth' || d.line >= 1)).toBe(true)
+    const report = formatHybridDiagnostics(broken)
+    expect(report).toContain('## Diagnostics')
+    expect(report).toMatch(/L\d+:C\d+/)
+    expect(report).toMatch(/error/i)
+    const inventory = formatHybridInventory(broken)
+    expect(inventory).toContain('## Diagnostics')
+    expect(inventory).toContain('mod:Auth')
+  })
+
+  it('does not add a Diagnostics section when the hybrid spec parses cleanly', () => {
+    expect(formatHybridInventory(WITH_TYPE)).not.toContain('## Diagnostics')
+    expect(formatHybridDiagnostics(WITH_TYPE)).toBe('(no hybrid diagnostics)')
   })
 
   it('adds modules to an empty document without inventing SYSTEM_', () => {

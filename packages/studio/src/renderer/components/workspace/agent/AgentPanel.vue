@@ -21,6 +21,14 @@ import StudioIcon from '../../ui/StudioIcon.vue'
 import ResizeSplit from '../../ui/ResizeSplit.vue'
 import { toggleClarificationDraft, type ClarificationDraft } from './clarificationDraft'
 import { contextMenuPoint } from '../../../lib/contextMenuPoint'
+import {
+  composerAction,
+  enqueueMessage,
+  removeQueuedMessage,
+  shiftQueuedMessage,
+  updateQueuedMessage,
+  type AgentQueuedMessage
+} from './agentQueue'
 
 type MenuAction = 'copy' | 'rename' | 'delete' | 'pin' | 'archive'
 type AgentMessageView = AgentSessionPayload['messages'][0]
@@ -40,6 +48,10 @@ const sessions = ref<AgentSessionPayload[]>([])
 const session = ref<AgentSessionPayload | null>(null)
 const input = ref('')
 const busy = ref(false)
+const queuedMessages = ref<AgentQueuedMessage[]>([])
+const editingQueueId = ref<string | null>(null)
+const queueEditDraft = ref('')
+const queueEditInput = ref<HTMLInputElement | null>(null)
 const error = ref('')
 const configured = ref(true)
 const thread = ref<HTMLElement | null>(null)
@@ -56,6 +68,7 @@ const copiedId = ref<string | null>(null)
 let copiedTimer: ReturnType<typeof setTimeout> | null = null
 let launchInFlight = false
 let stopRequested = false
+let turnInFlight = false
 const agentSource = `agent-panel-${crypto.randomUUID()}`
 
 const projectRoot = computed(() => workspace.activeProject?.rootPath ?? '')
@@ -69,6 +82,7 @@ const lastClarificationId = computed(() => {
 const visibleMessages = computed(
   () => session.value?.messages.filter((m) => m.role !== 'tool') ?? []
 )
+const composerMode = computed(() => composerAction(busy.value, input.value))
 
 function ctx() {
   const root = workspace.activeProject?.rootPath ?? ''
@@ -124,8 +138,16 @@ async function ensureSession(): Promise<AgentSessionPayload | null> {
 }
 
 async function send(text?: string): Promise<void> {
+  const fromInput = text == null
   const body = (text ?? input.value).trim()
-  if (!body || busy.value) return
+  if (!body) {
+    if (!busy.value) await flushQueue()
+    return
+  }
+  if (busy.value) {
+    enqueueFromComposer(body)
+    return
+  }
   error.value = ''
   stopRequested = false
   if (!configured.value) {
@@ -134,7 +156,7 @@ async function send(text?: string): Promise<void> {
   }
   const pendingId = session.value?.context.pendingToolCallId
   if (pendingId) {
-    input.value = ''
+    if (fromInput) input.value = ''
     await resume(pendingId, body, true)
     return
   }
@@ -142,8 +164,9 @@ async function send(text?: string): Promise<void> {
   const current = await ensureSession()
   if (!current || !window.studio?.agentChat) return
   if (!stillOnProject(rootAtStart)) return
+  if (fromInput) input.value = ''
+  turnInFlight = true
   busy.value = true
-  input.value = ''
   try {
     const next = await window.studio.agentChat(
       toIpcValue({
@@ -162,9 +185,54 @@ async function send(text?: string): Promise<void> {
     error.value = e instanceof Error ? e.message : String(e)
   } finally {
     busy.value = false
+    turnInFlight = false
     await nextTick()
     thread.value?.scrollTo({ top: thread.value.scrollHeight, behavior: 'smooth' })
+    if (!stopRequested) await flushQueue()
   }
+}
+
+function enqueueFromComposer(text?: string): void {
+  const body = (text ?? input.value).trim()
+  const next = enqueueMessage(queuedMessages.value, body)
+  if (next !== queuedMessages.value) {
+    queuedMessages.value = next
+    input.value = ''
+  }
+}
+
+async function flushQueue(): Promise<void> {
+  if (busy.value || stopRequested) return
+  const { next, rest } = shiftQueuedMessage(queuedMessages.value)
+  if (!next) return
+  queuedMessages.value = rest
+  await send(next.text)
+}
+
+async function startQueueEdit(item: AgentQueuedMessage): Promise<void> {
+  editingQueueId.value = item.id
+  queueEditDraft.value = item.text
+  await nextTick()
+  queueEditInput.value?.focus()
+  queueEditInput.value?.select()
+}
+
+function commitQueueEdit(): void {
+  const id = editingQueueId.value
+  if (!id) return
+  queuedMessages.value = updateQueuedMessage(queuedMessages.value, id, queueEditDraft.value)
+  editingQueueId.value = null
+  queueEditDraft.value = ''
+}
+
+function cancelQueueEdit(): void {
+  editingQueueId.value = null
+  queueEditDraft.value = ''
+}
+
+function deleteQueued(id: string): void {
+  queuedMessages.value = removeQueuedMessage(queuedMessages.value, id)
+  if (editingQueueId.value === id) cancelQueueEdit()
 }
 
 async function resume(toolCallId: string, result: string, continueTurn = true): Promise<void> {
@@ -193,6 +261,7 @@ async function resume(toolCallId: string, result: string, continueTurn = true): 
     busy.value = false
     await nextTick()
     thread.value?.scrollTo({ top: thread.value.scrollHeight, behavior: 'smooth' })
+    if (!turnInFlight && !stopRequested) await flushQueue()
   }
 }
 
@@ -356,7 +425,11 @@ async function stopAgent(): Promise<void> {
 }
 
 async function onComposerSubmit(): Promise<void> {
-  if (busy.value) {
+  if (composerMode.value === 'enqueue') {
+    enqueueFromComposer()
+    return
+  }
+  if (composerMode.value === 'stop') {
     await stopAgent()
     return
   }
@@ -415,6 +488,7 @@ async function launchFromBootstrap(req: HybridAgentBootstrapPayload): Promise<vo
       return
     }
     stopRequested = false
+    turnInFlight = true
     busy.value = true
     session.value = await window.studio.agentChat(
       toIpcValue({
@@ -436,10 +510,12 @@ async function launchFromBootstrap(req: HybridAgentBootstrapPayload): Promise<vo
   } finally {
     launchInFlight = false
     busy.value = false
+    turnInFlight = false
     await nextTick()
     thread.value?.scrollTo({ top: thread.value.scrollHeight, behavior: 'smooth' })
-    const queued = consumeAgentLaunchPending()
-    if (queued) void launchFromBootstrap(queued)
+    const queuedLaunch = consumeAgentLaunchPending()
+    if (queuedLaunch) void launchFromBootstrap(queuedLaunch)
+    else if (!stopRequested) await flushQueue()
   }
 }
 
@@ -566,6 +642,10 @@ onMounted(() => {
 watch(projectRoot, () => {
   stopRequested = true
   session.value = null
+  queuedMessages.value = []
+  editingQueueId.value = null
+  queueEditDraft.value = ''
+  input.value = ''
   void refresh()
 })
 
@@ -740,7 +820,57 @@ function permBadge(s: AgentSessionPayload): string {
           </div>
           <p v-if="error" class="text-[12px] text-rose-500">{{ error }}</p>
         </div>
-        <form class="flex shrink-0 items-center gap-2 border-t border-border-subtle p-2" @submit.prevent="onComposerSubmit()">
+        <div class="shrink-0 border-t border-border-subtle">
+          <ul v-if="queuedMessages.length" class="max-h-28 overflow-y-auto studio-scroll px-2 py-1">
+            <li class="px-1 pb-0.5 text-[10px] uppercase tracking-wide text-content-muted">
+              {{ t('agent.queueTitle') }}
+            </li>
+            <li
+              v-for="(item, index) in queuedMessages"
+              :key="item.id"
+              class="group/queue flex items-center gap-1 rounded px-1 py-0.5 hover:bg-surface-overlay"
+            >
+              <span class="w-3 shrink-0 text-center text-[10px] text-content-muted">{{ index + 1 }}</span>
+              <input
+                v-if="editingQueueId === item.id"
+                ref="queueEditInput"
+                v-model="queueEditDraft"
+                class="min-w-0 flex-1 rounded border border-field-border bg-field-bg px-1.5 py-0.5 text-[12px] outline-none focus:ring-1 focus:ring-accent/40"
+                @keydown.enter.prevent="commitQueueEdit"
+                @keydown.escape.prevent="cancelQueueEdit"
+                @blur="commitQueueEdit"
+              />
+              <button
+                v-else
+                type="button"
+                class="min-w-0 flex-1 truncate text-left text-[12px] text-content-secondary"
+                :title="item.text"
+                @click="startQueueEdit(item)"
+              >
+                {{ item.text }}
+              </button>
+              <button
+                v-if="editingQueueId !== item.id"
+                type="button"
+                class="rounded p-0.5 text-content-muted opacity-0 hover:bg-surface-overlay hover:text-content-primary group-hover/queue:opacity-100"
+                :title="t('agent.queueEdit')"
+                :aria-label="t('agent.queueEdit')"
+                @click="startQueueEdit(item)"
+              >
+                <StudioIcon icon="lucide:pencil" :size="12" />
+              </button>
+              <button
+                type="button"
+                class="rounded p-0.5 text-content-muted opacity-0 hover:bg-semantic-error/10 hover:text-semantic-error group-hover/queue:opacity-100"
+                :title="t('agent.queueDelete')"
+                :aria-label="t('agent.queueDelete')"
+                @click="deleteQueued(item.id)"
+              >
+                <StudioIcon icon="lucide:trash-2" :size="12" />
+              </button>
+            </li>
+          </ul>
+          <form class="flex items-center gap-2 p-2" @submit.prevent="onComposerSubmit()">
           <div class="relative shrink-0">
             <button
               type="button"
@@ -784,26 +914,38 @@ function permBadge(s: AgentSessionPayload): string {
           <input
             v-model="input"
             class="min-w-0 flex-1 rounded-lg border border-field-border bg-field-bg px-3 py-2 text-[13px] outline-none focus:ring-2 focus:ring-accent/30"
-            :placeholder="t('agent.placeholder')"
-            :disabled="busy"
+            :placeholder="busy ? t('agent.queuePlaceholder') : t('agent.placeholder')"
           />
           <button
-            :type="busy ? 'button' : 'submit'"
+            type="submit"
             class="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-lg p-2.5 disabled:opacity-40"
             :class="
-              busy
+              composerMode === 'stop'
                 ? 'bg-rose-600 text-white hover:bg-rose-500'
                 : 'bg-accent text-accent-fg'
             "
-            :title="busy ? t('agent.stop') : t('agent.send')"
-            :aria-label="busy ? t('agent.stop') : t('agent.send')"
-            :disabled="!busy && !input.trim()"
-            @click="busy ? stopAgent() : undefined"
+            :title="
+              composerMode === 'stop'
+                ? t('agent.stop')
+                : composerMode === 'enqueue'
+                  ? t('agent.queueEnqueue')
+                  : t('agent.send')
+            "
+            :aria-label="
+              composerMode === 'stop'
+                ? t('agent.stop')
+                : composerMode === 'enqueue'
+                  ? t('agent.queueEnqueue')
+                  : t('agent.send')
+            "
+            :disabled="composerMode === 'send' && !input.trim() && !queuedMessages.length"
           >
-            <span v-if="busy" class="block h-3 w-3 rounded-[2px] bg-current" aria-hidden="true" />
+            <span v-if="composerMode === 'stop'" class="block h-3 w-3 rounded-[2px] bg-current" aria-hidden="true" />
+            <StudioIcon v-else-if="composerMode === 'enqueue'" icon="lucide:arrow-up" :size="18" />
             <StudioIcon v-else icon="lucide:send-horizontal" :size="18" />
           </button>
         </form>
+        </div>
       </div>
       </template>
     </ResizeSplit>

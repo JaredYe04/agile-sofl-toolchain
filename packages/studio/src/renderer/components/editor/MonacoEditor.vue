@@ -82,7 +82,7 @@ function applyModelValue(model: Monaco.editor.ITextModel, content: string): void
   else if (pos) ed.setPosition(pos)
 }
 
-function revealSpan(span: SerializableSpan): void {
+function revealSpan(span: SerializableSpan, options?: { select?: boolean }): void {
   const ed = editor.value
   const model = ed?.getModel()
   if (!ed || !model) return
@@ -93,11 +93,14 @@ function revealSpan(span: SerializableSpan): void {
   const end = model.getPositionAt(safeEnd)
   const shortRange =
     start.lineNumber === end.lineNumber && safeEnd - safeStart > 0 && safeEnd - safeStart <= 120
-  ed.revealLineInCenter(start.lineNumber)
-  if (shortRange) {
+  const shouldSelect = Boolean(options?.select) || shortRange
+  const range = new monaco.Range(start.lineNumber, start.column, end.lineNumber, end.column)
+  if (shouldSelect && safeEnd > safeStart) {
     ed.setSelection(new monaco.Selection(start.lineNumber, start.column, end.lineNumber, end.column))
+    ed.revealRangeInCenter(range)
   } else {
     ed.setPosition(start)
+    ed.revealLineInCenter(start.lineNumber)
   }
   ed.focus()
   highlightDecorations = ed.deltaDecorations(highlightDecorations, [

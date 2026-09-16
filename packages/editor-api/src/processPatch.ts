@@ -54,11 +54,11 @@ export function addProcess(
   if (!range && !mod) return source
   const block =
     template ??
-    `process ${processName} (x: nat) ok: nat
+    `process ${processName} ()
     pre
         true
     post
-        ok = 1
+        true
 end_process`
   const at = moduleBodyInsertPoint(source, moduleName, mod)
   const prefix = at > 0 && source[at - 1] !== '\n' ? '\n' : ''

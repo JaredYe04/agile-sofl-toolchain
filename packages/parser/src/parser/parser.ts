@@ -58,6 +58,8 @@ import {
   Pipe,
   And,
   Or,
+  Implies,
+  ImpliesArrow,
   Not,
   Amp,
   True,
@@ -181,6 +183,10 @@ export class AgileSoflParser extends CstParser {
       $.OR([{ ALT: () => $.CONSUME(Module) }, { ALT: () => $.CONSUME(SystemKw) }])
       $.OPTION(() => $.CONSUME(SystemPrefix))
       $.OR1([{ ALT: () => $.CONSUME1(Identifier) }, { ALT: () => $.CONSUME(Gui) }])
+      $.OPTION3(() => {
+        $.CONSUME(Slash)
+        $.CONSUME2(Identifier)
+      })
       $.OPTION1(() => $.CONSUME(Semicolon))
       $.SUBRULE($.moduleBody)
       $.CONSUME(EndModule)
@@ -1106,7 +1112,11 @@ export class AgileSoflParser extends CstParser {
     $.RULE('predicate', () => {
       $.SUBRULE($.conjunction)
       $.MANY(() => {
-        $.CONSUME(Or)
+        $.OR([
+          { ALT: () => $.CONSUME(Or) },
+          { ALT: () => $.CONSUME(Implies) },
+          { ALT: () => $.CONSUME(ImpliesArrow) }
+        ])
         $.SUBRULE2($.conjunction)
       })
     })

@@ -21,7 +21,7 @@ import {
   slug,
   type ParsedHybridId
 } from './hybridIds.js'
-import { addModule, removeModule, renameModule } from './modulePatch.js'
+import { addModule, removeModule, renameModule, setModuleParent } from './modulePatch.js'
 import {
   patchComment,
   patchFsfSpec,
@@ -37,7 +37,7 @@ import {
   renameFunction,
   renameProcess
 } from './processPatch.js'
-import { insertInvLine } from './moduleSourceRange.js'
+import { findModuleRange, hybridLeftoverMessage, insertInvLine } from './moduleSourceRange.js'
 import { buildVisualModelTolerant, type VisualModelResult } from './visualParse.js'
 
 export type HybridEntityKind =
@@ -311,14 +311,14 @@ function processSignature(op: Extract<HybridPatchOp, { op: 'add' }>): string {
   if (op.inputs != null || op.outputs != null) {
     return `(${op.inputs ?? ''})${op.outputs?.trim() ? ` ${op.outputs.trim()}` : ''}`
   }
-  return '(x: nat) ok: nat'
+  return '()'
 }
 
 function buildProcessTemplate(name: string, op: Extract<HybridPatchOp, { op: 'add' }>): string {
   const raw = op.text?.trim()
   if (raw && /^\s*process\b/i.test(raw) && !/\bend_module\b/i.test(raw)) return raw
   const pre = op.pre?.trim() || 'true'
-  const post = op.post?.trim() || 'ok = 1'
+  const post = op.post?.trim() || 'true'
   return `process ${name} ${processSignature(op)}
     pre
         ${pre}
@@ -615,7 +615,7 @@ function ensureNamedModule(source: string, moduleName: string): string {
   const fuzzy = model.modules.find((m) => labelsMatch(m.name, moduleName))
   if (fuzzy) return source
   const name = slug(moduleName) || moduleName
-  return addModule(source, name)
+  return addModule(source, name, { isSystem: /^SYSTEM_/i.test(moduleName) || /^SYSTEM_/i.test(name) })
 }
 
 function resolveParentProcess(
@@ -649,10 +649,16 @@ function applyAdd(source: string, op: Extract<HybridPatchOp, { op: 'add' }>): Op
   if (op.kind === 'module') {
     const parent = op.parentId ? parseHybridId(op.parentId) : null
     const parentName = parent ? canonicalModuleName(parent.moduleName) : undefined
-    const next = addModule(source, op.name, {
-      isSystem: !parentName && op.name.startsWith('SYSTEM_'),
-      parentName
-    })
+    const isSystem = Boolean(!parentName && op.name.startsWith('SYSTEM_'))
+    const existing = findModuleRange(source, op.name)
+    if (existing) {
+      if (parentName) {
+        const next = setModuleParent(source, existing.name, parentName)
+        return next === source ? ok(source) : ok(next)
+      }
+      return ok(source)
+    }
+    const next = addModule(source, op.name, { isSystem, parentName })
     return unchangedAdd(source, next, `module "${op.name}"`)
   }
 
@@ -1110,9 +1116,21 @@ export function applyHybridPatch(source: string, patch: HybridPatch): { content:
       )
       continue
     }
+    const leftoverAfter = hybridLeftoverMessage(result.content)
+    const leftoverBefore = hybridLeftoverMessage(content)
+    if (leftoverAfter && leftoverAfter !== leftoverBefore) {
+      const label =
+        ('kind' in op && op.kind ? `${op.op} ${op.kind}` : op.op) +
+        ('name' in op && op.name ? ` ${op.name}` : '') +
+        ('id' in op && op.id ? ` ${op.id}` : '')
+      warnings.push(`Skipped ${label.trim()}: ${leftoverAfter}`)
+      continue
+    }
     content = result.content
     if (nextNames.length) protectedNames = nextNames
   }
+  const leftover = hybridLeftoverMessage(content)
+  if (leftover) warnings.push(leftover)
   if (!warnings.length) return { content }
   return { content, error: warnings.join('; '), warnings }
 }

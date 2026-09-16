@@ -224,15 +224,6 @@ select:focus-visible {
   min-width: 0;
 }
 
-.workspace-panel.is-focused::after {
-  content: '';
-  pointer-events: none;
-  position: absolute;
-  inset: 0;
-  z-index: 50;
-  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--accent) 78%, transparent);
-}
-
 .agent-bubble {
   max-width: 100%;
   border: 1px solid var(--border-subtle);

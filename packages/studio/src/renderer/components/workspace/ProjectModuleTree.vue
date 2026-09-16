@@ -161,30 +161,30 @@ watch(
 
 <template>
   <WorkspacePanel panel="tree" class="flex flex-col overflow-hidden bg-surface-raised">
-    <div class="flex shrink-0 items-center gap-0.5 border-b border-border-subtle px-2 py-1.5">
+    <div class="flex h-7 shrink-0 items-center gap-0.5 border-b border-border-subtle px-1.5">
       <div
         class="flex min-w-0 flex-1 items-center px-1 text-content-primary"
         :title="t('workspace.fileHierarchy')"
       >
-        <StudioIcon icon="hugeicons:hierarchy-square-01" :size="18" />
+        <StudioIcon icon="hugeicons:hierarchy-square-01" :size="15" />
       </div>
       <button
         type="button"
-        class="rounded-md p-1.5 text-content-secondary hover:bg-surface-overlay hover:text-content-primary"
+        class="rounded p-1 text-content-secondary hover:bg-surface-overlay hover:text-content-primary"
         :title="t('workspace.newProject')"
         :aria-label="t('workspace.newProject')"
         @click="promptNewProject(t)"
       >
-        <StudioIcon icon="lucide:folder-plus" :size="16" />
+        <StudioIcon icon="lucide:folder-plus" :size="14" />
       </button>
       <button
         type="button"
-        class="rounded-md p-1.5 text-content-secondary hover:bg-surface-overlay hover:text-content-primary"
+        class="rounded p-1 text-content-secondary hover:bg-surface-overlay hover:text-content-primary"
         :title="t('workspace.openProject')"
         :aria-label="t('workspace.openProject')"
         @click="workspace.openProjectFolder()"
       >
-        <StudioIcon icon="lucide:folder-open" :size="16" />
+        <StudioIcon icon="lucide:folder-open" :size="14" />
       </button>
     </div>
     <div
@@ -194,13 +194,13 @@ watch(
       <p v-if="!workspace.projects.length" class="px-2 py-3 text-xs text-content-muted">
         {{ t('workspace.emptyProjects') }}
       </p>
-      <div v-for="project in workspace.projects" :key="project.id" class="mb-1.5">
+      <div v-for="project in workspace.projects" :key="project.id" class="mb-0.5">
         <div
-          class="flex w-full items-center gap-1 rounded-md border-l-2 px-2 py-1.5 text-left hover:bg-surface-overlay"
+          class="group/project flex h-6 w-full items-center gap-1 rounded px-1.5 text-left"
           :class="
             project.id === workspace.activeProjectId
-              ? 'border-accent bg-surface-overlay'
-              : 'border-transparent bg-surface-base/60'
+              ? 'bg-accent/20 text-content-primary ring-1 ring-inset ring-accent/35'
+              : 'bg-surface-overlay/80 text-content-secondary hover:bg-surface-overlay hover:text-content-primary'
           "
           :title="
             project.id === workspace.activeProjectId
@@ -211,22 +211,41 @@ watch(
           @dblclick="void onOpenProject(project)"
           @contextmenu="showMenu($event, { kind: 'project', project })"
         >
-          <span class="w-3 shrink-0 text-content-muted">
+          <span class="flex w-3 shrink-0 items-center justify-center text-[9px] text-content-muted">
             <template v-if="project.id === workspace.activeProjectId">
               {{ workspace.expandedProjectIds.includes(project.id) ? '▾' : '▸' }}
             </template>
           </span>
           <span
-            class="min-w-0 flex-1 truncate text-sm font-semibold text-content-primary"
+            class="shrink-0"
+            :class="project.id === workspace.activeProjectId ? 'text-accent' : 'text-content-muted'"
+          >
+            <StudioIcon
+              :icon="project.id === workspace.activeProjectId ? 'lucide:folder-open' : 'lucide:folder'"
+              :size="13"
+            />
+          </span>
+          <span
+            class="min-w-0 flex-1 truncate text-[12px] font-semibold tracking-tight"
             :class="gitClassForProject(project)"
           >{{ project.name }}</span>
+          <button
+            v-if="project.id !== workspace.activeProjectId"
+            type="button"
+            class="shrink-0 rounded px-1.5 py-px text-[10px] font-medium text-accent opacity-0 transition-opacity group-hover/project:opacity-100 hover:bg-accent/15 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent"
+            :title="t('workspace.treeMenu.switchToProject')"
+            :aria-label="t('workspace.treeMenu.switchToProject')"
+            @click.stop="void onOpenProject(project)"
+          >
+            {{ t('workspace.treeMenu.switchToProject') }}
+          </button>
         </div>
         <div
           v-if="
             project.id === workspace.activeProjectId &&
             workspace.expandedProjectIds.includes(project.id)
           "
-          class="mt-0.5"
+          class="mt-px border-l border-border-subtle ml-2"
         >
           <div
             v-for="mod in sortedModules(project.id)"
@@ -234,23 +253,19 @@ watch(
           >
             <button
               type="button"
-              class="flex w-full items-center border-l-2 py-1 pr-2 text-left text-xs hover:bg-surface-overlay"
+              class="flex h-5 w-full items-center pr-1.5 text-left text-[11px] font-normal hover:bg-surface-overlay/70"
               :class="[
                 project.id === workspace.activeProjectId && workspace.selectedModuleName === mod.name
-                  ? 'border-accent bg-accent/10 text-content-primary'
-                  : 'border-transparent text-content-secondary',
-                mod.isSystem ? 'font-medium text-content-primary' : '',
-                mod.isGui &&
-                !(project.id === workspace.activeProjectId && workspace.selectedModuleName === mod.name)
-                  ? 'border-accent/50'
-                  : ''
+                  ? 'bg-accent/10 text-content-primary'
+                  : 'text-content-secondary',
+                mod.isSystem ? 'text-content-primary' : ''
               ]"
-              :style="{ paddingLeft: `${8 + depthOf(project.id, mod.name) * 12}px` }"
+              :style="{ paddingLeft: `${6 + depthOf(project.id, mod.name) * 10}px` }"
               @click="void onSelectModule(project, mod.name)"
               @contextmenu="showMenu($event, moduleContext(project, mod))"
             >
               <span
-                class="w-3 shrink-0 text-content-muted"
+                class="flex w-3 shrink-0 items-center justify-center text-[9px] text-content-muted"
                 @click="namedMembers(mod).length ? toggleModuleExpanded(project.id, mod, $event) : undefined"
               >
                 <template v-if="namedMembers(mod).length">
@@ -262,20 +277,20 @@ watch(
               }}</span>
               <span
                 v-if="mod.isSystem"
-                class="ml-1 rounded bg-surface-overlay px-1 text-[9px] uppercase tracking-wide text-content-muted"
+                class="ml-1 rounded px-0.5 text-[8px] uppercase tracking-wide text-content-muted"
               >SYS</span>
               <span
                 v-if="mod.isGui"
-                class="ml-1 rounded bg-accent/20 px-1 text-[9px] uppercase tracking-wide text-accent"
+                class="ml-1 rounded px-0.5 text-[8px] uppercase tracking-wide text-accent"
               >GUI</span>
-              <span v-if="isDirty(project.id, mod.name)" class="ml-1 text-accent">●</span>
+              <span v-if="isDirty(project.id, mod.name)" class="ml-1 text-[9px] text-accent">●</span>
             </button>
-            <div v-if="isModuleExpanded(project.id, mod)" class="mb-0.5">
+            <div v-if="isModuleExpanded(project.id, mod)">
               <button
                 v-for="(member, idx) in namedMembers(mod)"
                 :key="`${moduleKey(project.id, mod)}:${member.kind}:${member.name}:${idx}`"
                 type="button"
-                class="flex w-full items-center gap-1 border-l-2 py-0.5 pr-2 text-left text-[11px] text-content-muted hover:bg-surface-overlay hover:text-content-secondary"
+                class="flex h-[18px] w-full items-center gap-1 pr-1.5 text-left text-[10px] text-content-muted hover:bg-surface-overlay/70 hover:text-content-secondary"
                 :class="
                   project.id === workspace.activeProjectId &&
                   workspace.selectedModuleName === mod.name &&
@@ -285,14 +300,14 @@ watch(
                     (member.kind === 'function' &&
                       workspace.selection?.kind === 'function' &&
                       workspace.selection.functionName === member.name))
-                    ? 'border-accent bg-accent/10 text-content-primary'
-                    : 'border-transparent'
+                    ? 'bg-accent/10 text-content-primary'
+                    : ''
                 "
-                :style="{ paddingLeft: `${26 + depthOf(project.id, mod.name) * 12}px` }"
+                :style="{ paddingLeft: `${22 + depthOf(project.id, mod.name) * 10}px` }"
                 :title="`${memberLabel(member.kind)} ${member.name}`"
                 @click="void onSelectMember(project, mod, member)"
               >
-                <span class="shrink-0 rounded bg-surface-overlay px-1 text-[9px] uppercase tracking-wide">{{
+                <span class="shrink-0 text-[8px] uppercase tracking-wide text-content-muted/80">{{
                   member.kind === 'gui-screen' ? 'gui' : member.kind === 'process' ? 'proc' : member.kind
                 }}</span>
                 <span class="min-w-0 flex-1 truncate">{{ member.name }}</span>

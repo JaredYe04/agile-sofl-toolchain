@@ -79,6 +79,30 @@ end_module`
     }
   })
 
+  it('parses a first module that still has a parent slash', () => {
+    const source = `module GUI_App / FoodDelivery;
+end_module`
+    const ast = expectParseOk(source, parse)
+    if (isProgramNode(ast)) {
+      expect(ast.modules).toHaveLength(1)
+      expect(ast.modules[0].name).toBe('GUI_App')
+      expect(ast.modules[0].isSystem).toBe(false)
+      expect(ast.modules[0].parent?.name).toBe('FoodDelivery')
+    }
+  })
+
+  it('parses implies and => in invariants', () => {
+    const source = `module SYSTEM_Shop;
+inv
+  logged_in = true implies cart_ok = true;
+  paid = true => order_ok = true;
+end_module`
+    const ast = expectParseOk(source, parse)
+    if (isProgramNode(ast)) {
+      expect(ast.modules[0].invariants.length).toBe(2)
+    }
+  })
+
   it('parses submodule with parent', () => {
     const source = `module SYSTEM_R;
 end_module;

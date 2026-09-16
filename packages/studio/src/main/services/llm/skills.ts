@@ -48,16 +48,20 @@ export const AGENT_SKILLS: Array<{ id: AgentSkillId; name: string; prompt: strin
     id: 'hybrid-generation',
     name: 'Hybrid Generation',
     prompt: `Turn Informal Specification into Hybrid (.asfl) incrementally via CRUD tools. NEVER dump a full SOFL file or use replace-document.
+Agile-SOFL architecture:
+- Exactly one top-level SYSTEM_ module named after the whole system (e.g. SYSTEM_FoodDelivery). It is the system module; other modules are children (module Auth / FoodDelivery;).
+- Add SYSTEM_ first (it is inserted at the file start). Then add semantic modules with parentId=mod:SYSTEM_…. A GUI_ module is a child, not the system module.
+- Process signatures default to () when ports are unknown. Never invent dummy (x: nat) ok: nat. Write real inputs/outputs when they exist. Invariants use implies or =>.
 Pipeline — keep going after each applied patch until every enabled stage is done, then summarize:
 1. Read Informal and Hybrid inventories. If Hybrid already exists and strategy is ask, call ask_clarification (merge vs rebuild).
-2. Module architecture: add each semantic module (and a GUI module) with propose_hybrid_changes op=add kind=module. Do not paste module source.
+2. Module architecture: add the SYSTEM_ module, then each semantic module (and a GUI module) with propose_hybrid_changes op=add kind=module. Do not paste module source.
 3. Per module: add types/variables from Data Resources (kind=type|var, parentId=mod:…).
 4. Per module: add process signatures from Functions (kind=process, pre/post).
 5. Per process: replace-process-body or add scenarios. Write structured natural-language pre/post, never FSF :. Enumerations use {<Tag>}.
 6. Add invariants (kind=inv) from Constraints. Do NOT dump GUI widgets into Hybrid CRUD.
-7. For UI, call read_gui_specification then propose_gui_changes using only whitelist HTML tags and as-* classes (data-screen, data-process, data-bind, data-nav). Hybrid gui blocks stay as slim screen→process traces.
+7. For UI, call read_gui_specification then propose_gui_changes. Build a high-fidelity HTML prototype (shell, sidebar, hero, cards, forms, lists, empty states) — not a page of three buttons. Use whitelist tags plus any as-* class. Bind with data-process / data-bind / data-nav. Prefer replace-screen-html with the full inner layout. Hybrid gui blocks stay as slim screen→process traces.
 After every applied write, call read_hybrid_specification / read_gui_specification and fix gaps until inventories are correct. Last message = summary of completed stages.
-If CRUD fails, the file is empty/out of sync, or an uncovered parser/id issue appears, call read_hybrid_specification with view=source then propose_source_edit (unique replace/append/replace-document). Do not retry the same failing CRUD.
+If CRUD fails, the file is empty/out of sync, diagnostics list syntax errors, or leftover unparsed text appears, call read_hybrid_specification with view=source then propose_source_edit (unique replace/append/replace-document). Do not retry the same failing CRUD. Prefer CRUD; source edit is last resort.
 Infer unstated GUI/navigation only when the parameter allows it; otherwise ask. Prefer small patches citing inventory ids.`
   }
 ]
@@ -192,7 +196,7 @@ export const AGENT_TOOLS = [
     function: {
       name: 'read_hybrid_specification',
       description:
-        'Return the current Hybrid Specification. Default view=inventory (mod:/proc:/scn:/type:/var:/inv:/gui:). Pass view=source for numbered .asfl text before propose_source_edit.',
+        'Return the current Hybrid Specification. Default view=inventory (mod:/proc:/scn:/type:/var:/inv:/gui:) plus per-module syntax/parse diagnostics when present. Pass view=source for numbered .asfl text before propose_source_edit. Always inspect diagnostics and fix remaining errors.',
       parameters: {
         type: 'object',
         properties: {
@@ -210,7 +214,7 @@ export const AGENT_TOOLS = [
     function: {
       name: 'propose_hybrid_changes',
       description:
-        'Propose an incremental Hybrid/.asfl CRUD patch against inventory ids (mod:, proc:Module.Name). Bare ids like proc:Login or Chinese titles are resolved when possible. Prefer this over source edits. Never emit raw SOFL or replace-document here — use propose_source_edit for text-level fixes. Use add/update/remove/replace-process-body. Write pre/post, not FSF :.',
+        'Propose an incremental Hybrid/.asfl CRUD patch against inventory ids (mod:, proc:Module.Name). Prefer this over source edits. SYSTEM_ is the unique top-level system module (named after the whole system) and is inserted first; other modules use parentId=mod:SYSTEM_…. Default process signature is (). Never emit raw SOFL or replace-document here. Use add/update/remove/replace-process-body. Write pre/post, not FSF :. Invariants may use implies or =>.',
       parameters: {
         type: 'object',
         properties: {
@@ -274,7 +278,7 @@ export const AGENT_TOOLS = [
     function: {
       name: 'read_gui_specification',
       description:
-        'Read the current GUI HTML specification. view=inventory lists screens/widgets/bindings; view=source returns numbered .gui.html. Use whitelist tags and as-* classes only.',
+        'Read the current GUI HTML specification. view=inventory lists screens plus a DOM outline of layout/widgets/bindings; view=source returns numbered .gui.html. Use whitelist tags and as-* classes. Design complete product screens, not a few isolated buttons.',
       parameters: {
         type: 'object',
         properties: {
@@ -292,7 +296,7 @@ export const AGENT_TOOLS = [
     function: {
       name: 'propose_gui_changes',
       description:
-        'Propose a structured GUI HTML patch. Ops: add-screen, remove-screen, add-widget, replace-html, replace-screen-html. Only whitelist HTML5 tags and as-* classes. Bind with data-process / data-bind / data-nav. Never emit <script>, style=, or arbitrary CSS.',
+        'Propose a structured GUI HTML patch. Prefer replace-screen-html with a complete inner layout (navbar/sidebar/hero/cards/forms/tables), not a single button. Ops: add-screen (optional html), remove-screen, add-widget, replace-html, replace-screen-html, insert-html, patch-node, remove-node. Whitelist HTML5 tags; any as-* class is allowed. Bind with data-process / data-bind / data-nav. Never emit <script>, style=, href, or src.',
       parameters: {
         type: 'object',
         properties: {
@@ -338,7 +342,7 @@ export const AGENT_TOOLS = [
     function: {
       name: 'propose_source_edit',
       description:
-        'Last-resort source-level edit of Informal markdown or Hybrid .asfl. Prefer propose_changes / propose_hybrid_changes. Use this when CRUD failed, inventory is empty/out of sync, or you must fix text the structured tools cannot express. Read view=source first. Ops: replace (unique oldText → newText; all:true to replace every match), append, replace-document.',
+        'Last-resort source-level edit of Informal markdown or Hybrid .asfl. Prefer propose_changes / propose_hybrid_changes. Use this only when CRUD failed, leftover unparsed text remains, inventory is empty/out of sync, or you must fix text the structured tools cannot express. Read view=source first. Ops: replace (unique oldText → newText; all:true to replace every match), append, replace-document.',
       parameters: {
         type: 'object',
         properties: {

@@ -4,7 +4,7 @@ import type { AgentMessage, AgentSession, InformalPatchPayload } from './agentTy
 import { newId, normalizePermissions, type AgentSpecPermissions } from './agentTypes'
 import { saveSession } from './sessionStore'
 import { informalInventoryFromMarkdown } from '@agile-sofl/aspec/dist/informal/inventory.js'
-import { formatHybridInventory } from '@agile-sofl/editor-api'
+import { formatHybridInventory, formatHybridDiagnostics, collectHybridAgentDiagnostics } from '@agile-sofl/editor-api'
 import { formatGuiInventory, numberedGuiSource } from '@agile-sofl/gui'
 import { numberedSource } from '../../../shared/sourceEdit.js'
 import {
@@ -70,6 +70,22 @@ function compactHybrid(asfl: string | undefined): string {
   return formatHybridInventory(asfl, 12000)
 }
 
+function hybridDiagnosticsPayload(asfl: string | undefined) {
+  const items = collectHybridAgentDiagnostics(asfl ?? '')
+  return {
+    count: items.length,
+    errors: items.filter((d) => d.severity === 'error').length,
+    items
+  }
+}
+
+function numberedHybridSource(asfl: string | undefined): string {
+  const source = numberedSource(asfl ?? '')
+  const report = formatHybridDiagnostics(asfl ?? '')
+  if (report === '(no hybrid diagnostics)') return source
+  return `${source}\n\n${report}`
+}
+
 function systemPrompt(ctx: AgentTurnContext, permissions: AgentSpecPermissions): string {
   const skill = skillById(ctx.skillId)
   const toolLines: string[] = ['- ask_clarification: when you need a decision (render options the user can click)']
@@ -81,7 +97,7 @@ function systemPrompt(ctx: AgentTurnContext, permissions: AgentSpecPermissions):
     toolLines.push('- propose_changes: Informal add/update/remove/move (preferred)')
   }
   if (permissions.hybrid.read) {
-    toolLines.push('- read_hybrid_specification: Hybrid inventory (default) or numbered .asfl (view=source)')
+    toolLines.push('- read_hybrid_specification: Hybrid inventory (default; includes per-module syntax/parse diagnostics) or numbered .asfl (view=source)')
     toolLines.push('- review_hybrid: Hybrid quality review')
   }
   if (permissions.hybrid.read || permissions.informal.read) {
@@ -91,7 +107,7 @@ function systemPrompt(ctx: AgentTurnContext, permissions: AgentSpecPermissions):
     toolLines.push('- propose_hybrid_changes: incremental Hybrid CRUD (preferred)')
   }
   if (permissions.hybrid.write || permissions.informal.write) {
-    toolLines.push('- propose_gui_changes: GUI HTML structure patches (as-* classes, data-process/bind/nav)')
+    toolLines.push('- propose_gui_changes: GUI HTML structure patches — full-screen prototypes with as-* layout, not a few buttons')
   }
   if (permissions.informal.write || permissions.hybrid.write) {
     toolLines.push(
@@ -111,20 +127,30 @@ Do not invent YAML frontmatter or document-level metadata.`
 
   const hybridGuide = permissions.hybrid.write
     ? `For propose_hybrid_changes, operate on Hybrid inventory ids with CRUD only:
-- add: kind (module|type|var|const|inv|process|function|scenario|gui-screen) + parentId (mod:Module or proc:Module.Name) + name. Bare ids like proc:Login or Chinese titles are resolved when possible, but prefer inventory ids. Types/vars/invs use text. Processes use pre/post/signature — NEVER FSF :.
-- update / remove: id of existing entity (mod:, proc:, type:, var:, inv:, scn:, gui:).
-- replace-process-body: id of proc:, set pre and/or post (structured NL or predicate).
+- add: kind (module|type|var|const|inv|process|function|scenario|gui-screen) + parentId (mod:Module or proc:Module.Name) + name. Bare ids like proc:Login or Chinese titles are resolved when possible, but prefer inventory ids. Types/vars/invs use text. Processes use pre/post/signature — NEVER FSF :. If ports are unknown, signature is () — do not invent dummy (x: nat) ok: nat.
+- update / remove: id of existing entity (mod:, proc:, type:, var:, inv:, scn:, gui:). Removing a parent module rewrites child headers (drops / Parent).
+- replace-process-body: id of proc:, set pre and/or post (structured NL or predicate; implies and => are valid).
 FORBIDDEN: replace-document, asflText, dumping several modules as one string, "-- comments" as source.
-Add one module at a time, then its types/vars/invs/processes as separate operations. Prefer updating an existing id over adding a duplicate.
+Add SYSTEM_ first, then one semantic module at a time with parentId pointing at the system module, then its types/vars/invs/processes as separate operations. Prefer updating an existing id over adding a duplicate.
 Never put end_module, a whole module, or a process block inside type/var/inv/pre/post text — that wipes the document.
-After a write is applied, call read_hybrid_specification and keep patching until the inventory matches the plan.`
+After a write is applied, call read_hybrid_specification and keep patching until the inventory matches the plan and Diagnostics is empty. If inventory reports leftover text without a module header, that is NOT empty — repair it with CRUD (or source edit only if CRUD cannot).`
     : 'You do not have Hybrid write permission. Do not call propose_hybrid_changes.'
+
+  const guiGuide =
+    permissions.hybrid.write || permissions.informal.write
+      ? `For propose_gui_changes, design a high-fidelity product prototype the user can walk through:
+- Each screen should look like a finished app surface: shell/sidebar or navbar, hero or toolbar, cards/lists/tables/forms, badges, empty states, primary+secondary actions.
+- Prefer replace-screen-html (or add-screen with html) with the FULL inner markup. All children are kept; do not flatten a layout down to the first widget.
+- Tags: common HTML5 (header/main/aside/nav/table/form/img/a/…). Classes: any as-* token (as-shell, as-hero, as-card, as-grid-3, as-btn-primary, …). Bind with data-process / data-bind / data-nav.
+- Do not ship a page that is only two or three unlabeled buttons. Navigation must be visible in the layout, not implied.
+- Never emit <script>, style=, href, or src.`
+      : 'You do not have GUI write permission. Do not call propose_gui_changes.'
 
   const sourceGuide =
     permissions.informal.write || permissions.hybrid.write
       ? `propose_source_edit is an escape hatch, not the default:
-- Prefer propose_changes / propose_hybrid_changes for almost every write.
-- Use source edit after CRUD fails, when inventory is empty/out of sync with the file, or when you must fix text CRUD cannot express.
+- Prefer propose_changes / propose_hybrid_changes / propose_gui_changes for almost every write.
+- Use source edit after CRUD fails, when leftover unparsed text remains, when inventory is empty/out of sync with the file, when Diagnostics lists syntax/parse errors CRUD cannot fix, or when you must fix text CRUD cannot express.
 - First call read_* with view=source. Then replace a UNIQUE oldText snippet, append, or replace-document.
 - Do not retry the same failing CRUD patch. After two CRUD failures you MUST switch to propose_source_edit.`
       : 'You do not have write permission for source edits.'
@@ -145,8 +171,15 @@ Markdown and SOFL text are views. You MUST NOT output a full document to apply.
 You MUST use tools:
 ${toolLines.join('\n')}
 
+Agile-SOFL conventions:
+- There is exactly one system module. Name it SYSTEM_<SystemName> after the whole product (e.g. SYSTEM_FoodDelivery). It is the root; every other module is a child: module Auth / FoodDelivery;
+- SYSTEM_ is listed first in the .asfl file. Do not treat GUI_App or a feature module as the system module.
+- Processes without known ports use signature (). Inventing (x: nat) ok: nat is wrong.
+- Invariants and pre/post may use implies or =>.
+- GUI is a walkable high-fidelity prototype, not a wireframe of a few buttons.
+
 Never claim you already modified the file. Writes go through propose_* tools. User Apply/Reject (or auto-write) is only a tool result — you MUST continue the same task.
-After any applied write, call read_specification and/or read_hybrid_specification, verify, and propose another patch if anything is missing or wrong. Repeat until correct.
+After any applied write, call read_specification and/or read_hybrid_specification, verify inventory and Hybrid Diagnostics, and propose another patch if anything is missing, wrong, or still has syntax errors. Repeat until correct.
 When the whole task is done, your LAST message is a short summary of what was completed. Do not wait for the user to say "continue".
 Prefer structured CRUD. Do not dump raw Markdown or raw SOFL through propose_changes / propose_hybrid_changes. If those tools fail or cannot express the fix, read view=source and use propose_source_edit.
 
@@ -155,6 +188,8 @@ You are scoped to ONE project. Read/write only this project's Informal, Hybrid, 
 ${informalGuide}
 
 ${hybridGuide}
+
+${guiGuide}
 
 ${sourceGuide}
 
@@ -581,8 +616,11 @@ export async function runAgentTurn(
           const body = !permissions.hybrid.read
             ? '(Hybrid read permission off)'
             : view === 'source'
-              ? numberedSource(ctx.hybridAsfl ?? '')
+              ? numberedHybridSource(ctx.hybridAsfl)
               : compactHybrid(ctx.hybridAsfl)
+          const diagnostics = permissions.hybrid.read
+            ? hybridDiagnosticsPayload(ctx.hybridAsfl)
+            : { count: 0, errors: 0, items: [] }
           session.messages.push({
             id: call.id,
             role: 'tool',
@@ -590,15 +628,20 @@ export async function runAgentTurn(
               ok: permissions.hybrid.read,
               view,
               inventory: view === 'inventory' ? body : undefined,
-              source: view === 'source' ? body : undefined
+              source: view === 'source' ? body : undefined,
+              diagnostics
             }),
             timestamp: new Date().toISOString()
           })
           live.content =
             live.content ||
             (view === 'source'
-              ? 'Read the current Hybrid Specification source.'
-              : 'Read the current Hybrid Specification inventory.')
+              ? diagnostics.errors
+                ? `Read the current Hybrid Specification source (${diagnostics.errors} syntax error(s)).`
+                : 'Read the current Hybrid Specification source.'
+              : diagnostics.errors
+                ? `Read the current Hybrid Specification inventory (${diagnostics.errors} syntax error(s)).`
+                : 'Read the current Hybrid Specification inventory.')
           continue
         }
         if (call.function.name === 'read_gui_specification') {

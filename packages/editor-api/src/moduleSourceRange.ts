@@ -100,7 +100,7 @@ export function sectionInsertPoint(
     const: 'type|var|inv|gui|process|function|end_module',
     type: 'var|inv|gui|process|function|end_module',
     var: 'inv|gui|process|function|end_module',
-    inv: 'const|type|var|gui|process|function|end_module'
+    inv: 'gui|process|function|end_module'
   }
   const next = new RegExp(`(^|\\n)(${following[keyword]})\\b`, 'im').exec(body)
   const at = next ? range.bodyStart + next.index + next[1]!.length : range.endModule
@@ -140,6 +140,23 @@ export function scanModuleProcesses(source: string, range: ModuleSourceRange): s
     if (match[1]) names.push(match[1])
   }
   return names
+}
+
+/** Detect leftover Hybrid text that is not a module header (CRUD must not report success). */
+export function hybridLeftoverMessage(source: string): string | null {
+  const trimmed = source.trim()
+  if (!trimmed || /^[.;\s]*$/.test(trimmed)) return null
+  const headers = listModuleHeaders(source)
+  if (!headers.length) {
+    const meaningful = trimmed.replace(/^[.;\s]+|[.;\s]+$/g, '')
+    if (!meaningful) return null
+    return 'Hybrid source has leftover text without a module header'
+  }
+  const prefix = source.slice(0, headers[0]!.start)
+  if (/[^\s.;]/.test(prefix)) {
+    return 'Hybrid source has unparsed leftover text before the first module'
+  }
+  return null
 }
 
 export function scanModuleInvariants(source: string, range: ModuleSourceRange): string[] {

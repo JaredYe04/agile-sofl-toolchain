@@ -135,19 +135,27 @@ export function useInformalSpec(tabId: Ref<string | undefined>) {
     return created?.id ?? null
   }
 
-  function revealNode(id: string): { start: number; end: number; line: number; column: number } | null {
+  function revealNode(
+    id: string
+  ): { start: number; end: number; line: number; column: number; title: string } | null {
     const current = tab.value
     if (!current) return null
     const title = findTitle(spec.value, id)
+    if (!title) return null
     const lines = current.content.split(/\r?\n/)
     const headingIdx = lines.findIndex((line) => {
       const heading = line.match(/^#{1,6}\s+(.+?)\s*$/)
       if (!heading) return false
       const text = heading[1]!.replace(/<!--\s*@id:[^>]+-->/gi, '').trim()
-      return (title && text === title) || line.includes(id)
+      return text === title || line.includes(id)
     })
-    if (headingIdx < 0) return null
-    return { start: 0, end: 0, line: headingIdx + 1, column: 1 }
+    return {
+      start: 0,
+      end: 0,
+      line: headingIdx >= 0 ? headingIdx + 1 : 0,
+      column: 1,
+      title
+    }
   }
 
   function selectNode(id: string | null): void {

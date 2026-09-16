@@ -11,7 +11,7 @@ import {
   serializeHtml,
   type HtmlNode
 } from './html.js'
-import { ALLOWED_CLASSES, emptyGuiHtml, escapeAttr, escapeText } from './dialect.js'
+import { emptyGuiHtml, escapeAttr, escapeText, isAllowedClass } from './dialect.js'
 import { migrateYamlDocument } from './migrate.js'
 
 function isRecord(v: unknown): v is Record<string, unknown> {
@@ -74,7 +74,48 @@ function widgetHtml(widget: GuiWidget): HtmlNode {
   return parseHtmlFragment(html).children[0]!
 }
 
+function isScreenRoot(node: HtmlNode | undefined): boolean {
+  if (!node || node.type !== 'element') return false
+  return (
+    node.tag === 'section' ||
+    Boolean(node.attrs['data-screen']) ||
+    Boolean(node.attrs.class?.split(/\s+/).includes('as-screen'))
+  )
+}
+
+function applyScreenIdentity(screen: HtmlNode, next: HtmlNode): void {
+  const id = screen.attrs.id
+  const dataScreen = screen.attrs['data-screen']
+  screen.attrs = { ...screen.attrs, ...next.attrs }
+  if (id) screen.attrs.id = id
+  if (dataScreen) screen.attrs['data-screen'] = dataScreen
+}
+
 function screenTemplate(screen: GuiScreen): HtmlNode {
+  if (screen.html?.trim()) {
+    const frag = parseHtmlFragment(screen.html)
+    const first = frag.children.find((c) => c.type === 'element')
+    if (first && isScreenRoot(first)) {
+      first.attrs.id = screen.id || first.attrs.id
+      first.attrs['data-screen'] = screen.name || first.attrs['data-screen']
+      if (screen.triggersProcess) first.attrs['data-process'] = screen.triggersProcess
+      if (!first.attrs.class?.includes('as-screen')) {
+        first.attrs.class = [first.attrs.class, 'as-screen'].filter(Boolean).join(' ')
+      }
+      return first
+    }
+    return {
+      type: 'element',
+      tag: 'section',
+      attrs: {
+        class: 'as-screen',
+        id: screen.id,
+        'data-screen': screen.name,
+        ...(screen.triggersProcess ? { 'data-process': screen.triggersProcess } : {})
+      },
+      children: frag.children
+    }
+  }
   const process = screen.triggersProcess ? ` data-process="${escapeAttr(screen.triggersProcess)}"` : ''
   const html = `<section class="as-screen" id="${escapeAttr(screen.id)}" data-screen="${escapeAttr(screen.name)}"${process}>
     <h1 class="as-title">${escapeText(screen.title ?? screen.name)}</h1>
@@ -214,7 +255,7 @@ function applyClassValue(value: string): string {
   return value
     .split(/\s+/)
     .map((c) => c.trim())
-    .filter((c) => c && ALLOWED_CLASSES.has(c))
+    .filter((c) => c && isAllowedClass(c))
     .join(' ')
 }
 
@@ -301,10 +342,15 @@ export function patchGui(source: string, payload: PatchGuiAction): string {
       return withRoot(source, (root) => {
         const screen = screenNode(root, payload.screenId)
         if (!screen) return
-        const next = parseHtmlFragment(payload.html).children[0]
-        if (!next) return
-        screen.attrs = { ...screen.attrs, ...next.attrs }
-        screen.children = next.children
+        const frag = parseHtmlFragment(payload.html)
+        const elements = frag.children.filter((c) => c.type === 'element')
+        const first = elements[0]
+        if (first && isScreenRoot(first) && elements.length === 1) {
+          applyScreenIdentity(screen, first)
+          screen.children = first.children
+          return
+        }
+        screen.children = frag.children
       })
     case 'patch-node':
       return patchHtmlNode(source, payload.path, { attrs: payload.attrs, text: payload.text })

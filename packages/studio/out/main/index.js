@@ -634,16 +634,20 @@ const AGENT_SKILLS = [
     id: "hybrid-generation",
     name: "Hybrid Generation",
     prompt: `Turn Informal Specification into Hybrid (.asfl) incrementally via CRUD tools. NEVER dump a full SOFL file or use replace-document.
+Agile-SOFL architecture:
+- Exactly one top-level SYSTEM_ module named after the whole system (e.g. SYSTEM_FoodDelivery). It is the system module; other modules are children (module Auth / FoodDelivery;).
+- Add SYSTEM_ first (it is inserted at the file start). Then add semantic modules with parentId=mod:SYSTEM_…. A GUI_ module is a child, not the system module.
+- Process signatures default to () when ports are unknown. Never invent dummy (x: nat) ok: nat. Write real inputs/outputs when they exist. Invariants use implies or =>.
 Pipeline — keep going after each applied patch until every enabled stage is done, then summarize:
 1. Read Informal and Hybrid inventories. If Hybrid already exists and strategy is ask, call ask_clarification (merge vs rebuild).
-2. Module architecture: add each semantic module (and a GUI module) with propose_hybrid_changes op=add kind=module. Do not paste module source.
+2. Module architecture: add the SYSTEM_ module, then each semantic module (and a GUI module) with propose_hybrid_changes op=add kind=module. Do not paste module source.
 3. Per module: add types/variables from Data Resources (kind=type|var, parentId=mod:…).
 4. Per module: add process signatures from Functions (kind=process, pre/post).
 5. Per process: replace-process-body or add scenarios. Write structured natural-language pre/post, never FSF :. Enumerations use {<Tag>}.
 6. Add invariants (kind=inv) from Constraints. Do NOT dump GUI widgets into Hybrid CRUD.
-7. For UI, call read_gui_specification then propose_gui_changes using only whitelist HTML tags and as-* classes (data-screen, data-process, data-bind, data-nav). Hybrid gui blocks stay as slim screen→process traces.
+7. For UI, call read_gui_specification then propose_gui_changes. Build a high-fidelity HTML prototype (shell, sidebar, hero, cards, forms, lists, empty states) — not a page of three buttons. Use whitelist tags plus any as-* class. Bind with data-process / data-bind / data-nav. Prefer replace-screen-html with the full inner layout. Hybrid gui blocks stay as slim screen→process traces.
 After every applied write, call read_hybrid_specification / read_gui_specification and fix gaps until inventories are correct. Last message = summary of completed stages.
-If CRUD fails, the file is empty/out of sync, or an uncovered parser/id issue appears, call read_hybrid_specification with view=source then propose_source_edit (unique replace/append/replace-document). Do not retry the same failing CRUD.
+If CRUD fails, the file is empty/out of sync, diagnostics list syntax errors, or leftover unparsed text appears, call read_hybrid_specification with view=source then propose_source_edit (unique replace/append/replace-document). Do not retry the same failing CRUD. Prefer CRUD; source edit is last resort.
 Infer unstated GUI/navigation only when the parameter allows it; otherwise ask. Prefer small patches citing inventory ids.`
   }
 ];
@@ -771,7 +775,7 @@ const AGENT_TOOLS = [
     type: "function",
     function: {
       name: "read_hybrid_specification",
-      description: "Return the current Hybrid Specification. Default view=inventory (mod:/proc:/scn:/type:/var:/inv:/gui:). Pass view=source for numbered .asfl text before propose_source_edit.",
+      description: "Return the current Hybrid Specification. Default view=inventory (mod:/proc:/scn:/type:/var:/inv:/gui:) plus per-module syntax/parse diagnostics when present. Pass view=source for numbered .asfl text before propose_source_edit. Always inspect diagnostics and fix remaining errors.",
       parameters: {
         type: "object",
         properties: {
@@ -788,7 +792,7 @@ const AGENT_TOOLS = [
     type: "function",
     function: {
       name: "propose_hybrid_changes",
-      description: "Propose an incremental Hybrid/.asfl CRUD patch against inventory ids (mod:, proc:Module.Name). Bare ids like proc:Login or Chinese titles are resolved when possible. Prefer this over source edits. Never emit raw SOFL or replace-document here — use propose_source_edit for text-level fixes. Use add/update/remove/replace-process-body. Write pre/post, not FSF :.",
+      description: "Propose an incremental Hybrid/.asfl CRUD patch against inventory ids (mod:, proc:Module.Name). Prefer this over source edits. SYSTEM_ is the unique top-level system module (named after the whole system) and is inserted first; other modules use parentId=mod:SYSTEM_…. Default process signature is (). Never emit raw SOFL or replace-document here. Use add/update/remove/replace-process-body. Write pre/post, not FSF :. Invariants may use implies or =>.",
       parameters: {
         type: "object",
         properties: {
@@ -851,7 +855,7 @@ const AGENT_TOOLS = [
     type: "function",
     function: {
       name: "read_gui_specification",
-      description: "Read the current GUI HTML specification. view=inventory lists screens/widgets/bindings; view=source returns numbered .gui.html. Use whitelist tags and as-* classes only.",
+      description: "Read the current GUI HTML specification. view=inventory lists screens plus a DOM outline of layout/widgets/bindings; view=source returns numbered .gui.html. Use whitelist tags and as-* classes. Design complete product screens, not a few isolated buttons.",
       parameters: {
         type: "object",
         properties: {
@@ -868,7 +872,7 @@ const AGENT_TOOLS = [
     type: "function",
     function: {
       name: "propose_gui_changes",
-      description: "Propose a structured GUI HTML patch. Ops: add-screen, remove-screen, add-widget, replace-html, replace-screen-html. Only whitelist HTML5 tags and as-* classes. Bind with data-process / data-bind / data-nav. Never emit <script>, style=, or arbitrary CSS.",
+      description: "Propose a structured GUI HTML patch. Prefer replace-screen-html with a complete inner layout (navbar/sidebar/hero/cards/forms/tables), not a single button. Ops: add-screen (optional html), remove-screen, add-widget, replace-html, replace-screen-html, insert-html, patch-node, remove-node. Whitelist HTML5 tags; any as-* class is allowed. Bind with data-process / data-bind / data-nav. Never emit <script>, style=, href, or src.",
       parameters: {
         type: "object",
         properties: {
@@ -913,7 +917,7 @@ const AGENT_TOOLS = [
     type: "function",
     function: {
       name: "propose_source_edit",
-      description: "Last-resort source-level edit of Informal markdown or Hybrid .asfl. Prefer propose_changes / propose_hybrid_changes. Use this when CRUD failed, inventory is empty/out of sync, or you must fix text the structured tools cannot express. Read view=source first. Ops: replace (unique oldText → newText; all:true to replace every match), append, replace-document.",
+      description: "Last-resort source-level edit of Informal markdown or Hybrid .asfl. Prefer propose_changes / propose_hybrid_changes. Use this only when CRUD failed, leftover unparsed text remains, inventory is empty/out of sync, or you must fix text the structured tools cannot express. Read view=source first. Ops: replace (unique oldText → newText; all:true to replace every match), append, replace-document.",
       parameters: {
         type: "object",
         properties: {
@@ -1731,6 +1735,22 @@ function compactHybrid(asfl) {
   if (!asfl?.trim()) return "(empty hybrid specification)";
   return editorApi.formatHybridInventory(asfl, 12e3);
 }
+function hybridDiagnosticsPayload(asfl) {
+  const items = editorApi.collectHybridAgentDiagnostics(asfl ?? "");
+  return {
+    count: items.length,
+    errors: items.filter((d) => d.severity === "error").length,
+    items
+  };
+}
+function numberedHybridSource(asfl) {
+  const source = numberedSource(asfl ?? "");
+  const report = editorApi.formatHybridDiagnostics(asfl ?? "");
+  if (report === "(no hybrid diagnostics)") return source;
+  return `${source}
+
+${report}`;
+}
 function systemPrompt(ctx, permissions) {
   const skill = skillById(ctx.skillId);
   const toolLines = ["- ask_clarification: when you need a decision (render options the user can click)"];
@@ -1742,7 +1762,7 @@ function systemPrompt(ctx, permissions) {
     toolLines.push("- propose_changes: Informal add/update/remove/move (preferred)");
   }
   if (permissions.hybrid.read) {
-    toolLines.push("- read_hybrid_specification: Hybrid inventory (default) or numbered .asfl (view=source)");
+    toolLines.push("- read_hybrid_specification: Hybrid inventory (default; includes per-module syntax/parse diagnostics) or numbered .asfl (view=source)");
     toolLines.push("- review_hybrid: Hybrid quality review");
   }
   if (permissions.hybrid.read || permissions.informal.read) {
@@ -1752,7 +1772,7 @@ function systemPrompt(ctx, permissions) {
     toolLines.push("- propose_hybrid_changes: incremental Hybrid CRUD (preferred)");
   }
   if (permissions.hybrid.write || permissions.informal.write) {
-    toolLines.push("- propose_gui_changes: GUI HTML structure patches (as-* classes, data-process/bind/nav)");
+    toolLines.push("- propose_gui_changes: GUI HTML structure patches — full-screen prototypes with as-* layout, not a few buttons");
   }
   if (permissions.informal.write || permissions.hybrid.write) {
     toolLines.push(
@@ -1767,16 +1787,22 @@ function systemPrompt(ctx, permissions) {
 Prefer update/remove on existing nodes over adding a second copy of the same idea.
 Do not invent YAML frontmatter or document-level metadata.` : "You do not have Informal write permission. Do not call propose_changes.";
   const hybridGuide = permissions.hybrid.write ? `For propose_hybrid_changes, operate on Hybrid inventory ids with CRUD only:
-- add: kind (module|type|var|const|inv|process|function|scenario|gui-screen) + parentId (mod:Module or proc:Module.Name) + name. Bare ids like proc:Login or Chinese titles are resolved when possible, but prefer inventory ids. Types/vars/invs use text. Processes use pre/post/signature — NEVER FSF :.
-- update / remove: id of existing entity (mod:, proc:, type:, var:, inv:, scn:, gui:).
-- replace-process-body: id of proc:, set pre and/or post (structured NL or predicate).
+- add: kind (module|type|var|const|inv|process|function|scenario|gui-screen) + parentId (mod:Module or proc:Module.Name) + name. Bare ids like proc:Login or Chinese titles are resolved when possible, but prefer inventory ids. Types/vars/invs use text. Processes use pre/post/signature — NEVER FSF :. If ports are unknown, signature is () — do not invent dummy (x: nat) ok: nat.
+- update / remove: id of existing entity (mod:, proc:, type:, var:, inv:, scn:, gui:). Removing a parent module rewrites child headers (drops / Parent).
+- replace-process-body: id of proc:, set pre and/or post (structured NL or predicate; implies and => are valid).
 FORBIDDEN: replace-document, asflText, dumping several modules as one string, "-- comments" as source.
-Add one module at a time, then its types/vars/invs/processes as separate operations. Prefer updating an existing id over adding a duplicate.
+Add SYSTEM_ first, then one semantic module at a time with parentId pointing at the system module, then its types/vars/invs/processes as separate operations. Prefer updating an existing id over adding a duplicate.
 Never put end_module, a whole module, or a process block inside type/var/inv/pre/post text — that wipes the document.
-After a write is applied, call read_hybrid_specification and keep patching until the inventory matches the plan.` : "You do not have Hybrid write permission. Do not call propose_hybrid_changes.";
+After a write is applied, call read_hybrid_specification and keep patching until the inventory matches the plan and Diagnostics is empty. If inventory reports leftover text without a module header, that is NOT empty — repair it with CRUD (or source edit only if CRUD cannot).` : "You do not have Hybrid write permission. Do not call propose_hybrid_changes.";
+  const guiGuide = permissions.hybrid.write || permissions.informal.write ? `For propose_gui_changes, design a high-fidelity product prototype the user can walk through:
+- Each screen should look like a finished app surface: shell/sidebar or navbar, hero or toolbar, cards/lists/tables/forms, badges, empty states, primary+secondary actions.
+- Prefer replace-screen-html (or add-screen with html) with the FULL inner markup. All children are kept; do not flatten a layout down to the first widget.
+- Tags: common HTML5 (header/main/aside/nav/table/form/img/a/…). Classes: any as-* token (as-shell, as-hero, as-card, as-grid-3, as-btn-primary, …). Bind with data-process / data-bind / data-nav.
+- Do not ship a page that is only two or three unlabeled buttons. Navigation must be visible in the layout, not implied.
+- Never emit <script>, style=, href, or src.` : "You do not have GUI write permission. Do not call propose_gui_changes.";
   const sourceGuide = permissions.informal.write || permissions.hybrid.write ? `propose_source_edit is an escape hatch, not the default:
-- Prefer propose_changes / propose_hybrid_changes for almost every write.
-- Use source edit after CRUD fails, when inventory is empty/out of sync with the file, or when you must fix text CRUD cannot express.
+- Prefer propose_changes / propose_hybrid_changes / propose_gui_changes for almost every write.
+- Use source edit after CRUD fails, when leftover unparsed text remains, when inventory is empty/out of sync with the file, when Diagnostics lists syntax/parse errors CRUD cannot fix, or when you must fix text CRUD cannot express.
 - First call read_* with view=source. Then replace a UNIQUE oldText snippet, append, or replace-document.
 - Do not retry the same failing CRUD patch. After two CRUD failures you MUST switch to propose_source_edit.` : "You do not have write permission for source edits.";
   const informalBlock = permissions.informal.read ? `Current Informal Specification inventory:
@@ -1791,14 +1817,25 @@ Markdown and SOFL text are views. You MUST NOT output a full document to apply.
 You MUST use tools:
 ${toolLines.join("\n")}
 
+Agile-SOFL conventions:
+- There is exactly one system module. Name it SYSTEM_<SystemName> after the whole product (e.g. SYSTEM_FoodDelivery). It is the root; every other module is a child: module Auth / FoodDelivery;
+- SYSTEM_ is listed first in the .asfl file. Do not treat GUI_App or a feature module as the system module.
+- Processes without known ports use signature (). Inventing (x: nat) ok: nat is wrong.
+- Invariants and pre/post may use implies or =>.
+- GUI is a walkable high-fidelity prototype, not a wireframe of a few buttons.
+
 Never claim you already modified the file. Writes go through propose_* tools. User Apply/Reject (or auto-write) is only a tool result — you MUST continue the same task.
-After any applied write, call read_specification and/or read_hybrid_specification, verify, and propose another patch if anything is missing or wrong. Repeat until correct.
+After any applied write, call read_specification and/or read_hybrid_specification, verify inventory and Hybrid Diagnostics, and propose another patch if anything is missing, wrong, or still has syntax errors. Repeat until correct.
 When the whole task is done, your LAST message is a short summary of what was completed. Do not wait for the user to say "continue".
 Prefer structured CRUD. Do not dump raw Markdown or raw SOFL through propose_changes / propose_hybrid_changes. If those tools fail or cannot express the fix, read view=source and use propose_source_edit.
+
+You are scoped to ONE project. Read/write only this project's Informal, Hybrid, and GUI files. Do not copy modules or text from any other Studio project.
 
 ${informalGuide}
 
 ${hybridGuide}
+
+${guiGuide}
 
 ${sourceGuide}
 
@@ -1806,6 +1843,7 @@ Active skill: ${skill.name}
 ${skill.prompt}
 
 Current project: ${ctx.projectName ?? "unknown"}
+Project folder: ${ctx.projectRoot ?? "(unknown)"}
 Current module: ${ctx.moduleId ?? "project"}
 Selected node: ${ctx.selectedNodeSummary || ctx.selectedNodeId || "(none — stay focused on selection when present)"}
 Session permissions: Informal r=${permissions.informal.read} w=${permissions.informal.write}; Hybrid r=${permissions.hybrid.read} w=${permissions.hybrid.write}
@@ -2165,7 +2203,8 @@ async function runAgentTurn(session, projectRoot, ctx, userText, sink, signal) {
         }
         if (call.function.name === "read_hybrid_specification") {
           const view = args.view === "source" ? "source" : "inventory";
-          const body = !permissions.hybrid.read ? "(Hybrid read permission off)" : view === "source" ? numberedSource(ctx.hybridAsfl ?? "") : compactHybrid(ctx.hybridAsfl);
+          const body = !permissions.hybrid.read ? "(Hybrid read permission off)" : view === "source" ? numberedHybridSource(ctx.hybridAsfl) : compactHybrid(ctx.hybridAsfl);
+          const diagnostics = permissions.hybrid.read ? hybridDiagnosticsPayload(ctx.hybridAsfl) : { count: 0, errors: 0, items: [] };
           session.messages.push({
             id: call.id,
             role: "tool",
@@ -2173,11 +2212,12 @@ async function runAgentTurn(session, projectRoot, ctx, userText, sink, signal) {
               ok: permissions.hybrid.read,
               view,
               inventory: view === "inventory" ? body : void 0,
-              source: view === "source" ? body : void 0
+              source: view === "source" ? body : void 0,
+              diagnostics
             }),
             timestamp: (/* @__PURE__ */ new Date()).toISOString()
           });
-          live.content = live.content || (view === "source" ? "Read the current Hybrid Specification source." : "Read the current Hybrid Specification inventory.");
+          live.content = live.content || (view === "source" ? diagnostics.errors ? `Read the current Hybrid Specification source (${diagnostics.errors} syntax error(s)).` : "Read the current Hybrid Specification source." : diagnostics.errors ? `Read the current Hybrid Specification inventory (${diagnostics.errors} syntax error(s)).` : "Read the current Hybrid Specification inventory.");
           continue;
         }
         if (call.function.name === "read_gui_specification") {

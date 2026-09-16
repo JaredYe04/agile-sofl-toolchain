@@ -12,7 +12,6 @@ function activate(): void {
 <template>
   <div
     class="workspace-panel h-full min-h-0 min-w-0"
-    :class="{ 'is-focused': workspace.focusedPanel === panel }"
     @pointerdown="activate"
     @focusin="activate"
   >

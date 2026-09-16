@@ -9,10 +9,14 @@ import type { TreeSelection } from '../../composables/useVisualModel'
 import WorkspacePanel from './WorkspacePanel.vue'
 import PanelTitle from './PanelTitle.vue'
 import SegmentedSwitch from '../ui/SegmentedSwitch.vue'
+import VerticalResizeSplit from '../ui/VerticalResizeSplit.vue'
+import { useInformalSpec } from '../../composables/useInformalSpec'
 
 const { t } = useI18n()
 const workspace = useWorkspaceStore()
 const visual = inject(VISUAL_MODEL_KEY, null)
+const informal = useInformalSpec(computed(() => workspace.informalTab?.id))
+const informalSpec = informal.spec
 
 const graph = computed(() => visual?.moduleGraph.value ?? null)
 
@@ -44,7 +48,20 @@ function onGraphSelect(sel: TreeSelection): void {
       />
     </header>
     <div class="min-h-0 flex-1">
-      <SpecificationStructureTree v-if="workspace.structureMode === 'tree'" />
+      <VerticalResizeSplit
+        v-if="workspace.structureMode === 'tree'"
+        :ratio="workspace.structureSplitRatio"
+        :min-top="0.18"
+        :min-bottom="0.18"
+        @update:ratio="workspace.structureSplitRatio = $event"
+      >
+        <template #top>
+          <SpecificationStructureTree pane="informal" :spec="informalSpec" />
+        </template>
+        <template #bottom>
+          <SpecificationStructureTree pane="hybrid" />
+        </template>
+      </VerticalResizeSplit>
       <ModuleGraphView
         v-else
         always-enabled

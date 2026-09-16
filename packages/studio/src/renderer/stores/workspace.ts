@@ -46,6 +46,9 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   )
   const informalSelectedNodeId = ref<string | null>(null)
   const agentSplitRatio = ref(0.58)
+  const structureSplitRatio = ref(0.5)
+  const informalRevealNonce = ref(0)
+  const hybridRevealNonce = ref(0)
   const informalGraphBodyVisible = ref(true)
   const savedModuleHashes = ref<Record<string, Record<string, string>>>({})
   const currentModuleHashes = ref<Record<string, Record<string, string>>>({})
@@ -425,6 +428,18 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     void persistUi()
   }
 
+  function revealInformalInDocument(id: string): void {
+    informalSelectedNodeId.value = id
+    informalViewMode.value = 'document'
+    informalRevealNonce.value += 1
+  }
+
+  function revealHybridInCode(name: string, extra?: TreeSelection): void {
+    hybridMode.value = 'code'
+    selectModule(name, extra)
+    hybridRevealNonce.value += 1
+  }
+
   function collapseAllProjects(): void {
     expandedProjectIds.value = []
     void persistUi()
@@ -542,7 +557,12 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     informalViewMode,
     informalSelectedNodeId,
     agentSplitRatio,
+    structureSplitRatio,
+    informalRevealNonce,
+    hybridRevealNonce,
     informalGraphBodyVisible,
+    revealInformalInDocument,
+    revealHybridInCode,
     requestAgentLaunch,
     consumeAgentLaunch,
     focusedPanel,

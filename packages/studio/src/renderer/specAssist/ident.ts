@@ -14,10 +14,10 @@ export function nextId(prefix: string): string {
 
 export function processStubTemplate(name: string, comment?: string): string {
   const note = comment?.trim() ? `    comment: ${comment.trim()}\n` : ''
-  return `process ${name} (x: nat) ok: nat
+  return `process ${name} ()
     pre
         true
     post
-        ok = 1
+        true
 ${note}end_process`
 }

@@ -28,20 +28,45 @@ export const ALLOWED_TAGS = new Set([
   'table',
   'thead',
   'tbody',
+  'tfoot',
   'tr',
   'th',
   'td',
   'ul',
   'ol',
   'li',
+  'dl',
+  'dt',
+  'dd',
   'form',
+  'fieldset',
+  'legend',
   'strong',
   'em',
   'small',
-  'hr'
+  'b',
+  'i',
+  'u',
+  'mark',
+  'abbr',
+  'time',
+  'code',
+  'pre',
+  'kbd',
+  'blockquote',
+  'figure',
+  'figcaption',
+  'img',
+  'a',
+  'hr',
+  'br',
+  'progress',
+  'meter',
+  'details',
+  'summary'
 ])
 
-export const VOID_TAGS = new Set(['input', 'hr'])
+export const VOID_TAGS = new Set(['input', 'hr', 'img', 'br'])
 
 export const ALLOWED_ATTRS = new Set([
   'id',
@@ -53,45 +78,95 @@ export const ALLOWED_ATTRS = new Set([
   'disabled',
   'checked',
   'selected',
+  'readonly',
+  'required',
   'rows',
   'cols',
   'for',
   'colspan',
   'rowspan',
   'alt',
+  'title',
+  'role',
+  'aria-label',
+  'aria-hidden',
+  'aria-current',
+  'maxlength',
+  'min',
+  'max',
+  'step',
+  'autocomplete',
   'data-app',
   'data-screen',
   'data-process',
   'data-bind',
   'data-nav',
   'data-scenario',
-  'data-id'
+  'data-id',
+  'data-placeholder',
+  'data-role',
+  'data-icon',
+  'data-state',
+  'data-layout',
+  'data-size'
 ])
 
 export const ALLOWED_CLASSES = new Set([
   'as-app',
   'as-screen',
+  'as-shell',
+  'as-sidebar',
+  'as-content',
+  'as-hero',
+  'as-toolbar',
+  'as-tabs',
+  'as-tab',
+  'as-tab-active',
+  'as-split',
+  'as-panel',
   'as-navbar',
   'as-row',
   'as-col',
   'as-grid',
+  'as-grid-3',
+  'as-grid-4',
   'as-stack',
   'as-card',
+  'as-card-media',
+  'as-stat',
+  'as-badge',
+  'as-chip',
+  'as-avatar',
+  'as-thumb',
+  'as-empty',
+  'as-alert',
+  'as-alert-warn',
+  'as-price',
   'as-gap-sm',
   'as-gap-md',
   'as-gap-lg',
+  'as-gap-xl',
   'as-btn',
   'as-btn-primary',
   'as-btn-ghost',
+  'as-btn-danger',
+  'as-btn-lg',
+  'as-btn-sm',
+  'as-btn-block',
   'as-input',
   'as-select',
   'as-table',
   'as-list',
+  'as-menu',
   'as-field',
   'as-title',
+  'as-subtitle',
   'as-muted',
   'as-hint',
-  'is-hidden'
+  'as-grow',
+  'as-center',
+  'is-hidden',
+  'is-active'
 ])
 
 export const DATA_ATTRS = [
@@ -105,7 +180,8 @@ export const DATA_ATTRS = [
 ] as const
 
 export function isAllowedClass(name: string): boolean {
-  return ALLOWED_CLASSES.has(name)
+  if (ALLOWED_CLASSES.has(name)) return true
+  return /^as-[a-z0-9-]+$/i.test(name)
 }
 
 export function isAllowedTag(name: string): boolean {
@@ -115,8 +191,12 @@ export function isAllowedTag(name: string): boolean {
 export function emptyGuiHtml(appName = 'App', screenName = 'Home'): string {
   return `<div class="as-app" data-app="${escapeAttr(appName)}">
   <section class="as-screen" data-screen="${escapeAttr(screenName)}">
-    <h1 class="as-title">${escapeText(screenName)}</h1>
-    <div class="as-stack as-gap-md"></div>
+    <header class="as-navbar">
+      <h1 class="as-title">${escapeText(screenName)}</h1>
+    </header>
+    <main class="as-stack as-gap-md">
+      <p class="as-muted">Compose a full prototype here — layout, cards, forms, and navigation.</p>
+    </main>
   </section>
 </div>
 `

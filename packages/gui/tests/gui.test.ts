@@ -74,6 +74,46 @@ describe('patchGui', () => {
     expect(buildGuiModel(removed).screens).toHaveLength(1)
   })
 
+  it('replace-screen-html keeps every child, not only the first', () => {
+    const source = `<div class="as-app" data-app="Shop"><section class="as-screen" id="Home" data-screen="Home"><h1 class="as-title">Home</h1></section></div>`
+    const next = patchGui(source, {
+      action: 'replace-screen-html',
+      screenId: 'Home',
+      html: `<header class="as-navbar"><h1 class="as-title">Store</h1></header>
+        <div class="as-hero"><p class="as-muted">Tonight only</p></div>
+        <div class="as-grid as-gap-md">
+          <article class="as-card"><h2 class="as-subtitle">Ramen</h2><button class="as-btn as-btn-primary" data-nav="Cart">Add</button></article>
+          <article class="as-card as-promo"><p>Deal</p></article>
+        </div>`
+    })
+    expect(next).toContain('as-navbar')
+    expect(next).toContain('as-hero')
+    expect(next).toContain('as-card')
+    expect(next).toContain('as-promo')
+    expect(next).toContain('data-nav="Cart"')
+    expect(formatGuiInventory(next)).toContain('<header>')
+    expect(formatGuiInventory(next)).toContain('as-hero')
+  })
+
+  it('add-screen accepts a full html layout', () => {
+    const source = `<div class="as-app" data-app="Shop"><section class="as-screen" data-screen="Home"><h1 class="as-title">Home</h1></section></div>`
+    const next = patchGui(source, {
+      action: 'add-screen',
+      screen: {
+        id: 'Cart',
+        name: 'Cart',
+        html: `<section class="as-screen" data-screen="Cart">
+          <header class="as-navbar"><h1 class="as-title">Cart</h1></header>
+          <ul class="as-list"><li>Item</li></ul>
+          <button class="as-btn as-btn-primary" data-process="Order.Checkout">Pay</button>
+        </section>`
+      }
+    })
+    expect(buildGuiModel(next).screens.map((s) => s.name)).toContain('Cart')
+    expect(next).toContain('data-process="Order.Checkout"')
+    expect(next).toContain('as-navbar')
+  })
+
   it('adds widget to screen', () => {
     const source = readFileSync(join(fixtures, 'minimal.gui.html'), 'utf8')
     const next = patchGui(source, {

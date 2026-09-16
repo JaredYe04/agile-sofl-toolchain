@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DocumentView from './informal/DocumentView.vue'
 import GraphicalView from './informal/GraphicalView.vue'
@@ -68,8 +68,21 @@ function onSelect(id: string): void {
   selectNode(id)
   if (workspace.informalViewMode !== 'document') return
   const span = revealNode(id)
-  if (span) documentRef.value?.revealSpan(span)
+  if (span) documentRef.value?.revealSpan(span, { title: span.title, select: true })
 }
+
+watch(
+  () => workspace.informalRevealNonce,
+  async () => {
+    const id = workspace.informalSelectedNodeId
+    if (!id) return
+    await nextTick()
+    await nextTick()
+    const span = revealNode(id)
+    if (!span) return
+    documentRef.value?.revealSpan(span, { title: span.title, select: true })
+  }
+)
 
 async function onMove(id: string, parentId: string, afterId?: string): Promise<void> {
   const section = spec.value?.sections.find((s) => s.id === parentId || s.type === parentId)
