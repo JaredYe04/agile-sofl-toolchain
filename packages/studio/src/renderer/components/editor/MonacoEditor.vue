@@ -14,6 +14,7 @@ import { useLspStore } from '../../stores/lsp'
 import { useLspDiagnosticsStore } from '../../stores/lspDiagnostics'
 import type { DiagnosticSummary, HybridRegionPayload } from '../../../preload/index'
 import { useEditorUiStore } from '../../stores/editorUi'
+import { useSettingsStore } from '../../stores/settings'
 import { monacoLanguageForDocumentKind } from '../../stores/tabUtils'
 
 export type SerializableSpan = {
@@ -41,6 +42,8 @@ const history = useHistoryStore()
 const lsp = useLspStore()
 const lspDiagnostics = useLspDiagnosticsStore()
 const editorUi = useEditorUiStore()
+const settings = useSettingsStore()
+let resizeObserver: ResizeObserver | null = null
 
 const activeDocumentTab = computed(() => {
   if (props.tabId) {
@@ -59,7 +62,13 @@ function runCommand(cmd: string): void {
 }
 
 function relayout(): void {
-  editor.value?.layout()
+  const el = container.value
+  const ed = editor.value
+  if (!el || !ed) return
+  const width = Math.max(0, Math.floor(el.clientWidth))
+  const height = Math.max(0, Math.floor(el.clientHeight))
+  if (width < 2 || height < 2) return
+  ed.layout({ width, height })
 }
 
 function applyModelValue(model: Monaco.editor.ITextModel, content: string): void {
@@ -291,7 +300,7 @@ onMounted(async () => {
   if (container.value) {
     editor.value = monaco.editor.create(container.value, {
       theme: isDark ? 'agile-sofl-dark' : 'agile-sofl-light',
-      automaticLayout: true,
+      automaticLayout: false,
       fontSize: 14,
       minimap: buildMinimapOptions(editorUi.showMinimap),
       lineNumbers: editorUi.showLineNumbers ? 'on' : 'off',
@@ -301,6 +310,9 @@ onMounted(async () => {
     })
     editor.value.onDidChangeModelContent(onContentChange)
     syncModel()
+    resizeObserver = new ResizeObserver(() => relayout())
+    resizeObserver.observe(container.value)
+    void nextTick(relayout)
   }
 
   await lsp.refresh()
@@ -338,20 +350,24 @@ watch(
   }
 )
 
-watch([() => editorUi.showMinimap, () => editorUi.showLineNumbers], applyEditorOptions)
+watch([() => editorUi.showMinimap, () => editorUi.showLineNumbers], () => {
+  applyEditorOptions()
+  void nextTick(relayout)
+})
+
+watch(() => settings.zoom, () => void nextTick(relayout))
 
 watch(
   () => props.active,
   (active) => {
     if (!active) return
-    void nextTick(() => {
-      relayout()
-      if (props.active) editor.value?.focus()
-    })
+    void nextTick(relayout)
   }
 )
 
 onUnmounted(() => {
+  resizeObserver?.disconnect()
+  resizeObserver = null
   markerSub?.dispose()
   const ed = editor.value
   editor.value = null
@@ -365,7 +381,9 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div ref="container" class="h-full min-h-0 w-full min-w-0 flex-1 select-text" />
+  <div class="monaco-editor-shell">
+    <div ref="container" class="monaco-editor-surface" />
+  </div>
 </template>
 
 <style>

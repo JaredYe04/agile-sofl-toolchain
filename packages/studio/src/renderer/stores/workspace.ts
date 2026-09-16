@@ -10,9 +10,12 @@ import type {
 import { useDocumentStore } from './document'
 import { dirtyModuleNames } from '../lib/moduleDirty'
 import type { TreeSelection } from '../composables/useVisualModel'
-import { filePathsEqual } from './tabUtils'
+import { fileBelongsToRoot, filePathsEqual } from './tabUtils'
 import { refreshGitFor } from '../composables/useGitStatus'
 import { consumeAgentLaunchPending, emitAgentLaunch } from '../lib/agentLaunchBus'
+import { useModalStore } from './modal'
+import { i18n } from '../i18n'
+
 const DEFAULT_COLUMN_WIDTHS = [0.18, 0.6, 0.22]
 
 export type WorkspacePanelId = 'tree' | 'informal' | 'agent' | 'hybrid' | 'gui' | 'structure'
@@ -50,33 +53,49 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const cachedModulesByProject = ref<Record<string, ProjectModuleInfo[]>>({})
   const focusedPanel = ref<WorkspacePanelId | null>(null)
   const fullscreenPanel = ref<WorkspacePanelId | null>(null)
+  const agentBusy = ref(false)
+  const agentBusySources = ref<Record<string, boolean>>({})
+  const agentAbortFns = new Map<string, () => Promise<void>>()
 
   const activeProject = computed(
     () => projects.value.find((p) => p.id === activeProjectId.value) ?? null
   )
-  const modules = computed(() => scan.value?.modules ?? [])
+  const modules = computed(() => {
+    const root = activeProject.value?.rootPath
+    const list = scan.value?.modules ?? []
+    if (!root) return list
+    return list.filter((m) => fileBelongsToRoot(m.filePath, root))
+  })
   const selectedModule = computed(
     () => modules.value.find((m) => m.name === selectedModuleName.value) ?? null
   )
   const isGuiModuleSelected = computed(() => Boolean(selectedModule.value?.isGui))
   const hasWorkspace = computed(() => Boolean(activeProjectId.value && scan.value))
 
+  function tabForProjectFile(path: string | undefined) {
+    if (!path) return undefined
+    const root = activeProject.value?.rootPath
+    if (root && !fileBelongsToRoot(path, root)) return undefined
+    return doc.documentTabs.find((t) => t.filePath && filePathsEqual(t.filePath, path))
+  }
+
   const informalTab = computed(() => {
     const path = scan.value?.files.find((f) => f.kind === 'aspec')?.path
-    if (!path) return undefined
-    return doc.documentTabs.find((t) => t.filePath && filePathsEqual(t.filePath, path))
+    return tabForProjectFile(path)
   })
 
   const hybridTab = computed(() => {
-    const path = selectedModule.value?.filePath ?? scan.value?.files.find((f) => f.kind === 'asfl')?.path
-    if (!path) return undefined
-    return doc.documentTabs.find((t) => t.filePath && filePathsEqual(t.filePath, path))
+    const root = activeProject.value?.rootPath
+    const fromModule = selectedModule.value?.filePath
+    const fromScan = scan.value?.files.find((f) => f.kind === 'asfl')?.path
+    const path =
+      fromModule && root && fileBelongsToRoot(fromModule, root) ? fromModule : fromScan
+    return tabForProjectFile(path)
   })
 
   const guiTab = computed(() => {
     const path = scan.value?.files.find((f) => f.kind === 'guispec')?.path
-    if (!path) return undefined
-    return doc.documentTabs.find((t) => t.filePath && filePathsEqual(t.filePath, path))
+    return tabForProjectFile(path)
   })
 
   const dirtyNames = computed(() =>
@@ -133,18 +152,86 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     projects.value = await window.studio.projectList()
   }
 
-  function modulesFor(projectId: string): ProjectModuleInfo[] {
-    if (projectId === activeProjectId.value) return modules.value
-    return cachedModulesByProject.value[projectId] ?? []
+  function tKey(key: string, params?: Record<string, unknown>): string {
+    return (i18n.global.t as (k: string, p?: Record<string, unknown>) => string)(key, params)
   }
 
-  async function refreshCachedModules(): Promise<void> {
-    if (!window.studio?.projectCachedModules) return
-    const next: Record<string, ProjectModuleInfo[]> = { ...cachedModulesByProject.value }
-    for (const project of projects.value) {
-      next[project.id] = await window.studio.projectCachedModules(project.id)
+  function modulesInActiveProject(list: ProjectModuleInfo[]): ProjectModuleInfo[] {
+    const root = activeProject.value?.rootPath
+    if (!root) return []
+    return list.filter((m) => fileBelongsToRoot(m.filePath, root))
+  }
+
+  function modulesFor(projectId: string): ProjectModuleInfo[] {
+    if (projectId !== activeProjectId.value) return []
+    return modules.value
+  }
+
+  function setAgentBusy(source: string, busy: boolean): void {
+    agentBusySources.value = { ...agentBusySources.value, [source]: busy }
+    agentBusy.value = Object.values(agentBusySources.value).some(Boolean)
+  }
+
+  function registerAgentAbort(source: string, fn: (() => Promise<void>) | null): void {
+    if (fn) agentAbortFns.set(source, fn)
+    else agentAbortFns.delete(source)
+  }
+
+  async function abortRunningAgent(): Promise<void> {
+    const fns = [...agentAbortFns.values()]
+    await Promise.all(fns.map((fn) => fn()))
+    const started = Date.now()
+    while (agentBusy.value && Date.now() - started < 4000) {
+      await new Promise((r) => setTimeout(r, 40))
     }
-    cachedModulesByProject.value = next
+    agentBusy.value = false
+    agentBusySources.value = {}
+  }
+
+  async function persistDirtyDocuments(): Promise<boolean> {
+    for (const tab of doc.documentTabs.filter((t) => t.isDirty)) {
+      let path = tab.filePath
+      const ext =
+        tab.documentKind === 'aspec' ? 'aspec' : tab.documentKind === 'guispec' ? 'guispec' : 'asfl'
+      if (!path) {
+        path = await window.studio?.fileSaveDialog?.(`${tab.title}.${ext}`, tab.documentKind)
+        if (!path) return false
+      }
+      await window.studio!.fileWrite(path, tab.content)
+      doc.markSaved(tab.id, path, path.split(/[/\\]/).pop() ?? tab.title)
+      if (tab.documentKind === 'asfl') await markHybridSaved(path)
+    }
+    return true
+  }
+
+  async function confirmLeaveActiveProject(): Promise<boolean> {
+    if (!activeProjectId.value) return true
+    const modal = useModalStore()
+    if (agentBusy.value) {
+      const { index } = await modal.show({
+        title: tKey('workspace.switch.abortAgentTitle'),
+        message: tKey('workspace.switch.abortAgentMessage', {
+          name: activeProject.value?.name ?? ''
+        }),
+        buttons: [tKey('workspace.switch.abortAndSwitch'), tKey('workspace.cancel')],
+        buttonVariants: ['warning', 'default']
+      })
+      if (index !== 0) return false
+      await abortRunningAgent()
+    }
+    const dirty = doc.documentTabs.filter((t) => t.isDirty)
+    if (!dirty.length) return true
+    const { index } = await modal.show({
+      title: tKey('dialog.unsaved.title'),
+      message: tKey('workspace.switch.unsavedMessage', {
+        name: activeProject.value?.name ?? '',
+        count: dirty.length
+      }),
+      buttons: [tKey('dialog.unsaved.save'), tKey('dialog.unsaved.dontSave'), tKey('workspace.cancel')]
+    })
+    if (index === 0) return persistDirtyDocuments()
+    if (index === 1) return true
+    return false
   }
 
   async function persistUi(): Promise<void> {
@@ -192,16 +279,47 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     currentModuleHashes.value = { ...saved }
   }
 
-  async function activateProject(project: IndexedProject): Promise<void> {
+  async function activateProject(
+    project: IndexedProject,
+    options?: { skipConfirm?: boolean }
+  ): Promise<boolean> {
     if (!window.studio?.workspaceScan) {
       void refreshGitFor(project.rootPath)
-      return
+      return true
+    }
+    const prevId = activeProjectId.value
+    if (prevId === project.id && scan.value) {
+      loading.value = true
+      try {
+        const payload = await window.studio.workspaceScan(project.rootPath)
+        scan.value = payload
+        await window.studio.projectCacheModules?.(project.id, payload.modules)
+        cachedModulesByProject.value = { ...cachedModulesByProject.value, [project.id]: payload.modules }
+        await loadProjectFiles(payload)
+        const preferred = selectedModuleName.value
+        const nextModule =
+          payload.modules.find((m) => m.name === preferred)?.name ?? payload.modules[0]?.name ?? null
+        selectModule(nextModule)
+      } finally {
+        loading.value = false
+        void refreshGitFor(project.rootPath)
+      }
+      return true
+    }
+    if (prevId && prevId !== project.id && !options?.skipConfirm) {
+      const allowed = await confirmLeaveActiveProject()
+      if (!allowed) return false
     }
     loading.value = true
-    const prevId = activeProjectId.value
     try {
-      if (prevId !== project.id) fullscreenPanel.value = null
+      if (prevId !== project.id) {
+        fullscreenPanel.value = null
+        doc.closeTabsOutsideRoot(project.rootPath)
+        const { useHistoryStore } = await import('./history')
+        useHistoryStore().clear()
+      }
       activeProjectId.value = project.id
+      expandedProjectIds.value = [project.id]
       await window.studio.projectTouch?.(project.id)
       const payload = await window.studio.workspaceScan(project.rootPath)
       scan.value = payload
@@ -221,34 +339,35 @@ export const useWorkspaceStore = defineStore('workspace', () => {
         } else {
           columnWidths.value = [...DEFAULT_COLUMN_WIDTHS]
         }
-        if (ui.expanded && !expandedProjectIds.value.includes(project.id)) {
-          expandedProjectIds.value = [...expandedProjectIds.value, project.id]
-        }
-      } else if (!expandedProjectIds.value.includes(project.id)) {
-        expandedProjectIds.value = [...expandedProjectIds.value, project.id]
       }
       await loadProjectFiles(payload)
-      if (prevId && prevId !== project.id) {
-        const { useHistoryStore } = await import('./history')
-        useHistoryStore().clear()
-      }
       const preferred = ui?.selectedModuleName
       const nextModule =
         payload.modules.find((m) => m.name === preferred)?.name ?? payload.modules[0]?.name ?? null
       selectModule(nextModule)
+      return true
     } finally {
       loading.value = false
       void refreshGitFor(project.rootPath)
     }
   }
 
+  async function requestActivateProject(project: IndexedProject): Promise<boolean> {
+    if (project.id === activeProjectId.value) {
+      if (!expandedProjectIds.value.includes(project.id)) {
+        expandedProjectIds.value = [project.id]
+      }
+      return true
+    }
+    return activateProject(project)
+  }
+
   async function init(): Promise<boolean> {
     await refreshProjects()
-    await refreshCachedModules()
     const first = projects.value[0]
     if (!first) return false
-    expandedProjectIds.value = projects.value.map((p) => p.id)
-    await activateProject(first)
+    expandedProjectIds.value = [first.id]
+    await activateProject(first, { skipConfirm: true })
     return true
   }
 
@@ -256,27 +375,27 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     const result = await window.studio?.projectCreate?.(name)
     if (!result) return false
     await refreshProjects()
-    await activateProject(result.project)
-    return true
+    return activateProject(result.project)
   }
 
   async function createProjectFromTemplate(name: string, templateId: string): Promise<boolean> {
     const result = await window.studio?.projectCreateFromTemplate?.(name, templateId)
     if (!result) return false
     await refreshProjects()
-    await activateProject(result.project)
-    return true
+    return activateProject(result.project)
   }
 
   async function openProjectFolder(): Promise<boolean> {
     const result = await window.studio?.projectOpenFolder?.()
     if (!result) return false
     await refreshProjects()
-    await activateProject(result.project)
-    return true
+    return activateProject(result.project)
   }
 
   async function removeFromList(projectId: string): Promise<void> {
+    if (activeProjectId.value === projectId) {
+      if (!(await confirmLeaveActiveProject())) return
+    }
     await window.studio?.projectRemove?.(projectId)
     if (activeProjectId.value === projectId) {
       activeProjectId.value = null
@@ -286,7 +405,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     }
     await refreshProjects()
     if (!activeProjectId.value && projects.value[0]) {
-      await activateProject(projects.value[0])
+      await activateProject(projects.value[0], { skipConfirm: true })
     }
   }
 
@@ -359,9 +478,13 @@ export const useWorkspaceStore = defineStore('workspace', () => {
 
   async function resyncModulesFromOpenTabs(): Promise<void> {
     if (typeof window === 'undefined' || !scan.value || !window.studio?.modulesFromSource) return
+    const root = activeProject.value?.rootPath
+    if (!root) return
     const guiModule = scan.value.manifest.guiModule
-    let modules = [...scan.value.modules]
-    const asflTabs = doc.documentTabs.filter((t) => t.documentKind === 'asfl' && t.filePath)
+    let modules = modulesInActiveProject(scan.value.modules)
+    const asflTabs = doc.documentTabs.filter(
+      (t) => t.documentKind === 'asfl' && t.filePath && fileBelongsToRoot(t.filePath, root)
+    )
     for (const tab of asflTabs) {
       const path = tab.filePath
       if (!path) continue
@@ -377,6 +500,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       }
       modules = modules.filter((m) => !filePathsEqual(m.filePath, path)).concat(next)
     }
+    modules = modulesInActiveProject(modules)
     scan.value = { ...scan.value, modules }
     const projectId = activeProjectId.value
     if (projectId) {
@@ -423,6 +547,10 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     consumeAgentLaunch,
     focusedPanel,
     fullscreenPanel,
+    agentBusy,
+    setAgentBusy,
+    registerAgentAbort,
+    abortRunningAgent,
     setFullscreenPanel,
     toggleFullscreenPanel,
     loading,
@@ -444,6 +572,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     createProjectFromTemplate,
     openProjectFolder,
     activateProject,
+    requestActivateProject,
     removeFromList,
     refreshActive,
     selectModule,

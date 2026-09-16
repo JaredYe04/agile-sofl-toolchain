@@ -9,6 +9,7 @@ export type WorkspaceTreeContext =
 export type WorkspaceTreeActionId =
   | 'newProject'
   | 'openProject'
+  | 'switchToProject'
   | 'collapseAll'
   | 'copyName'
   | 'copyPath'

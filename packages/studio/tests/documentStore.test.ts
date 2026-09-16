@@ -56,7 +56,28 @@ describe('document store', () => {
     expect(doc.documentTabs).toHaveLength(1)
     expect(second.id).toBe(first.id)
     expect(doc.activeTabId).toBe(first.id)
-    expect(doc.activeTab!.content).toBe('content')
+    expect(doc.activeTab!.content).toBe('other')
+  })
+
+  it('does not overwrite a dirty tab when reopening the same file', () => {
+    const doc = useDocumentStore()
+    const first = doc.openFromFile('/proj/spec.asfl', 'saved', 'spec.asfl')
+    doc.updateContent(first.id, 'unsaved')
+    doc.openFromFile('/proj/spec.asfl', 'from-disk', 'spec.asfl')
+    expect(doc.documentTabs).toHaveLength(1)
+    expect(doc.activeTab!.content).toBe('unsaved')
+  })
+
+  it('closes tabs that are not under the given project root', () => {
+    const doc = useDocumentStore()
+    doc.openFromFile('/asfl/test/hybrid.asfl', 'module Auth; end_module', 'hybrid.asfl')
+    doc.openFromFile('/asfl/food/hybrid.asfl', 'module Delivery; end_module', 'hybrid.asfl')
+    doc.openFromFile('/asfl/food/informal.aspec', '# Functions\n', 'informal.aspec')
+    doc.closeTabsOutsideRoot('/asfl/food')
+    expect(doc.documentTabs.map((t) => t.filePath)).toEqual([
+      '/asfl/food/hybrid.asfl',
+      '/asfl/food/informal.aspec'
+    ])
   })
 
   it('does not remove home tab', () => {

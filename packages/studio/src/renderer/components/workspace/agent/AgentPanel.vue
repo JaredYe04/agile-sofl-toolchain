@@ -56,6 +56,7 @@ const copiedId = ref<string | null>(null)
 let copiedTimer: ReturnType<typeof setTimeout> | null = null
 let launchInFlight = false
 let stopRequested = false
+const agentSource = `agent-panel-${crypto.randomUUID()}`
 
 const projectRoot = computed(() => workspace.activeProject?.rootPath ?? '')
 const visibleSessions = computed(() =>
@@ -70,8 +71,10 @@ const visibleMessages = computed(
 )
 
 function ctx() {
+  const root = workspace.activeProject?.rootPath ?? ''
   return toIpcValue({
     projectName: workspace.activeProject?.name,
+    projectRoot: root,
     moduleId: workspace.selectedModuleName ?? 'project',
     informalMarkdown: props.informalMarkdown,
     hybridAsfl: workspace.hybridTab?.content ?? '',
@@ -81,6 +84,10 @@ function ctx() {
     permissions: session.value?.context.permissions,
     promptExtras: session.value?.context.promptExtras
   })
+}
+
+function stillOnProject(root: string): boolean {
+  return Boolean(root) && workspace.activeProject?.rootPath === root
 }
 
 function isCardExpanded(id: string): boolean {
@@ -131,22 +138,27 @@ async function send(text?: string): Promise<void> {
     await resume(pendingId, body, true)
     return
   }
+  const rootAtStart = projectRoot.value
   const current = await ensureSession()
   if (!current || !window.studio?.agentChat) return
+  if (!stillOnProject(rootAtStart)) return
   busy.value = true
   input.value = ''
   try {
-    session.value = await window.studio.agentChat(
+    const next = await window.studio.agentChat(
       toIpcValue({
-        projectRoot: projectRoot.value,
+        projectRoot: rootAtStart,
         sessionId: current.id,
         text: body,
         context: ctx()
       })
     )
+    if (!stillOnProject(rootAtStart)) return
+    session.value = next
     await refresh()
     await maybeAutoApply()
   } catch (e) {
+    if (!stillOnProject(rootAtStart)) return
     error.value = e instanceof Error ? e.message : String(e)
   } finally {
     busy.value = false
@@ -158,11 +170,12 @@ async function send(text?: string): Promise<void> {
 async function resume(toolCallId: string, result: string, continueTurn = true): Promise<void> {
   if (!session.value || !window.studio?.agentResume) return
   if (stopRequested) continueTurn = false
+  const rootAtStart = projectRoot.value
   busy.value = true
   try {
-    session.value = await window.studio.agentResume(
+    const next = await window.studio.agentResume(
       toIpcValue({
-        projectRoot: projectRoot.value,
+        projectRoot: rootAtStart,
         sessionId: session.value.id,
         toolCallId,
         result,
@@ -170,8 +183,11 @@ async function resume(toolCallId: string, result: string, continueTurn = true): 
         continueTurn
       })
     )
+    if (!stillOnProject(rootAtStart)) return
+    session.value = next
     await refresh()
   } catch (e) {
+    if (!stillOnProject(rootAtStart)) return
     error.value = e instanceof Error ? e.message : String(e)
   } finally {
     busy.value = false
@@ -182,6 +198,8 @@ async function resume(toolCallId: string, result: string, continueTurn = true): 
 
 async function applyPatch(msg: AgentMessageView): Promise<boolean> {
   if (stopRequested) return false
+  const rootAtStart = projectRoot.value
+  if (!stillOnProject(rootAtStart)) return false
   if (!msg.proposedChanges) return false
   const patch = JSON.parse(JSON.stringify(msg.proposedChanges)) as InformalPatchPayload
   const result =
@@ -193,6 +211,7 @@ async function applyPatch(msg: AgentMessageView): Promise<boolean> {
             applyFailed: t('agent.applyFailed')
           })
         : await props.onApplyPatch(patch)
+  if (!stillOnProject(rootAtStart)) return false
   const continueTurn = !stopRequested
   const toolId = session.value?.context.pendingToolCallId
   if (result.ok) {
@@ -227,6 +246,7 @@ const autoApplyTried = new Set<string>()
 
 async function maybeAutoApply(): Promise<void> {
   if (settings.agentWriteMode !== 'auto') return
+  if (!stillOnProject(projectRoot.value)) return
   const pending = session.value?.messages.find((m) => m.pending && m.proposedChanges)
   if (!pending) return
   if (stopRequested) {
@@ -511,6 +531,7 @@ function openMenu(e: MouseEvent, id: string): void {
 }
 
 onMounted(() => {
+  workspace.registerAgentAbort(agentSource, stopAgent)
   void refresh()
   const closeMenu = () => {
     menu.value = null
@@ -522,7 +543,7 @@ onMounted(() => {
   })
   const unsub = window.studio?.onAgentDelta?.((payload) => {
     if (payload.kind === 'session' && payload.session) {
-      if (!session.value || session.value.id === payload.sessionId) session.value = payload.session
+      if (session.value && session.value.id === payload.sessionId) session.value = payload.session
       void refresh()
       return
     }
@@ -536,14 +557,19 @@ onMounted(() => {
     document.removeEventListener('mousedown', closeMenu)
     unsubLaunch()
     unsub?.()
+    workspace.registerAgentAbort(agentSource, null)
+    workspace.setAgentBusy(agentSource, false)
     if (copiedTimer) clearTimeout(copiedTimer)
   })
 })
 
 watch(projectRoot, () => {
+  stopRequested = true
   session.value = null
   void refresh()
 })
+
+watch(busy, (v) => workspace.setAgentBusy(agentSource, v), { immediate: true })
 
 function permBadge(s: AgentSessionPayload): string {
   const p = s.context.permissions

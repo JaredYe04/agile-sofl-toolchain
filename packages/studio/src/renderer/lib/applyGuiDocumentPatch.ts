@@ -1,6 +1,7 @@
 import { HistoryKinds } from '../history/kinds'
 import { useHistoryStore } from '../stores/history'
 import { useWorkspaceStore } from '../stores/workspace'
+import { fileBelongsToRoot } from '../stores/tabUtils'
 import type { InformalPatchPayload, PatchGuiActionOnly } from '../../preload/index'
 
 function toPatchAction(op: Record<string, unknown>): PatchGuiActionOnly | null {
@@ -69,7 +70,11 @@ export async function applyGuiDocumentPatch(
 ): Promise<{ ok: boolean; error?: string; applied?: boolean }> {
   const workspace = useWorkspaceStore()
   const guiTab = workspace.guiTab
+  const root = workspace.activeProject?.rootPath
   if (!guiTab) return { ok: false, error: errors.noTab }
+  if (root && guiTab.filePath && !fileBelongsToRoot(guiTab.filePath, root)) {
+    return { ok: false, error: errors.noTab }
+  }
   if (!window.studio?.patchGui) return { ok: false, error: errors.applyFailed }
   try {
     let next = guiTab.content

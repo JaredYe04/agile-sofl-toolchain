@@ -805,6 +805,7 @@ export type HybridAgentBootstrapPayload = {
 
 export type AgentTurnContextPayload = {
   projectName?: string
+  projectRoot?: string
   moduleId?: string
   informalMarkdown: string
   hybridAsfl?: string

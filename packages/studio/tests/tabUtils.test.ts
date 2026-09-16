@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest'
-import { createDocumentTab, inferDocumentKind, defaultContentForKind } from '../src/renderer/stores/tabUtils'
+import {
+  createDocumentTab,
+  inferDocumentKind,
+  defaultContentForKind,
+  fileBelongsToRoot
+} from '../src/renderer/stores/tabUtils'
 
 describe('tabUtils documentKind', () => {
   it('defaults to asfl', () => {
@@ -31,5 +36,14 @@ describe('tabUtils documentKind', () => {
     expect(inferDocumentKind('C:/x/ui.guispec')).toBe('guispec')
     expect(inferDocumentKind('C:/x/ui.gui.html')).toBe('guispec')
     expect(inferDocumentKind('C:/x/gui.html')).toBe('guispec')
+  })
+
+  it('treats files as inside a project root without matching sibling prefixes', () => {
+    expect(fileBelongsToRoot('D:\\asfl\\test\\hybrid.asfl', 'D:\\asfl\\test')).toBe(true)
+    expect(fileBelongsToRoot('D:\\asfl\\test2\\hybrid.asfl', 'D:\\asfl\\test')).toBe(false)
+    expect(fileBelongsToRoot('D:\\asfl\\模拟外卖系统\\模拟外卖系统\\hybrid.asfl', 'D:\\asfl\\test')).toBe(
+      false
+    )
+    expect(fileBelongsToRoot('D:\\asfl\\test', 'D:\\asfl\\test')).toBe(true)
   })
 })

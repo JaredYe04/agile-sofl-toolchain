@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import {
   createDocumentTab,
   createHomeTab,
+  fileBelongsToRoot,
   filePathsEqual,
   HOME_TAB_ID,
   pathToFileUri,
@@ -87,6 +88,12 @@ export const useDocumentStore = defineStore('document', () => {
     )
     if (existing) {
       activeTabId.value = existing.id
+      if (!existing.isDirty) {
+        existing.content = content
+        existing.title = title
+        existing.uri = pathToFileUri(filePath)
+        saveSession()
+      }
       return existing
     }
     const tab = createDocumentTab({ filePath, content, title, isDirty: false, documentKind: inferDocumentKind(filePath) })
@@ -133,6 +140,13 @@ export const useDocumentStore = defineStore('document', () => {
     saveSession()
   }
 
+  function closeTabsOutsideRoot(rootPath: string): void {
+    const ids = documentTabs.value
+      .filter((tab) => !tab.filePath || !fileBelongsToRoot(tab.filePath, rootPath))
+      .map((tab) => tab.id)
+    for (const id of ids) removeTab(id)
+  }
+
   function linkTabs(aspecTabId: string, asflTabId: string): void {
     const aspec = tabs.value.find((t) => t.id === aspecTabId)
     const asfl = tabs.value.find((t) => t.id === asflTabId)
@@ -161,6 +175,7 @@ export const useDocumentStore = defineStore('document', () => {
     updateContent,
     markSaved,
     removeTab,
+    closeTabsOutsideRoot,
     linkTabs
   }
 })

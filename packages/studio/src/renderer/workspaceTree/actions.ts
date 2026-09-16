@@ -48,6 +48,10 @@ export async function executeWorkspaceTreeAction(
     case 'openProject':
       await workspace.openProjectFolder()
       return
+    case 'switchToProject':
+      if (ctx.kind !== 'project') return
+      await workspace.requestActivateProject(ctx.project)
+      return
     case 'collapseAll':
       workspace.collapseAllProjects()
       return
@@ -100,7 +104,8 @@ export async function executeWorkspaceTreeAction(
     case 'revealInCode': {
       if (ctx.kind === 'blank' || ctx.kind === 'project') return
       if (ctx.project.id !== workspace.activeProjectId) {
-        await workspace.activateProject(ctx.project)
+        const ok = await workspace.requestActivateProject(ctx.project)
+        if (!ok) return
       }
       workspace.selectModule(ctx.module.name)
       workspace.hybridMode = 'code'
@@ -114,7 +119,8 @@ export async function executeWorkspaceTreeAction(
       if (ctx.kind === 'blank' || ctx.kind === 'project') return
       if (!visual) return
       if (ctx.project.id !== workspace.activeProjectId) {
-        await workspace.activateProject(ctx.project)
+        const ok = await workspace.requestActivateProject(ctx.project)
+        if (!ok) return
       }
       workspace.selectModule(ctx.module.name)
       const { index, value } = await modal.show({
@@ -143,7 +149,8 @@ export async function executeWorkspaceTreeAction(
       })
       if (index !== 0) return
       if (ctx.project.id !== workspace.activeProjectId) {
-        await workspace.activateProject(ctx.project)
+        const ok = await workspace.requestActivateProject(ctx.project)
+        if (!ok) return
       }
       await visual.patchModule({ action: 'remove', moduleName: ctx.module.name })
       await workspace.resyncModulesFromOpenTabs()

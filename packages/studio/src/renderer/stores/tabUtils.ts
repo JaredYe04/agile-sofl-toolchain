@@ -96,6 +96,15 @@ export function filePathsEqual(a: string, b: string): boolean {
   return normalizeFilePath(a) === normalizeFilePath(b)
 }
 
+/** True when `filePath` is the project root or a file inside it (not a sibling prefix like `test` vs `test2`). */
+export function fileBelongsToRoot(filePath: string, rootPath: string): boolean {
+  const file = normalizeFilePath(filePath)
+  let root = normalizeFilePath(rootPath)
+  if (root.endsWith('/')) root = root.slice(0, -1)
+  if (!root) return false
+  return file === root || file.startsWith(`${root}/`)
+}
+
 export function pathToFileUri(filePath: string): string {
   const normalized = filePath.replace(/\\/g, '/')
   if (/^[a-zA-Z]:/.test(normalized)) return `file:///${normalized}`

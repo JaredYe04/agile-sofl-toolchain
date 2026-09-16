@@ -97,7 +97,8 @@ async function onPick(action: Parameters<typeof executeWorkspaceTreeAction>[0]):
 
 async function onSelectModule(project: IndexedProject, name: string): Promise<void> {
   if (project.id !== workspace.activeProjectId) {
-    await workspace.activateProject(project)
+    const ok = await workspace.requestActivateProject(project)
+    if (!ok) return
   }
   workspace.selectModule(name)
 }
@@ -108,7 +109,8 @@ async function onSelectMember(
   member: ProjectModuleMember
 ): Promise<void> {
   if (project.id !== workspace.activeProjectId) {
-    await workspace.activateProject(project)
+    const ok = await workspace.requestActivateProject(project)
+    if (!ok) return
   }
   if (member.kind === 'process') {
     workspace.selectModule(mod.name, { kind: 'process', moduleName: mod.name, processName: member.name })
@@ -118,6 +120,15 @@ async function onSelectMember(
     workspace.selectModule(mod.name, { kind: 'module', moduleName: mod.name })
   }
   workspace.setFocusedPanel('hybrid')
+}
+
+function onProjectClick(project: IndexedProject): void {
+  if (project.id !== workspace.activeProjectId) return
+  workspace.toggleProjectExpanded(project.id)
+}
+
+async function onOpenProject(project: IndexedProject): Promise<void> {
+  await workspace.requestActivateProject(project)
 }
 
 function isDirty(projectId: string, name: string): boolean {
@@ -191,21 +202,32 @@ watch(
               ? 'border-accent bg-surface-overlay'
               : 'border-transparent bg-surface-base/60'
           "
-          @click="
-            workspace.toggleProjectExpanded(project.id);
-            void workspace.activateProject(project)
+          :title="
+            project.id === workspace.activeProjectId
+              ? project.name
+              : t('workspace.doubleClickToOpen')
           "
+          @click="onProjectClick(project)"
+          @dblclick="void onOpenProject(project)"
           @contextmenu="showMenu($event, { kind: 'project', project })"
         >
           <span class="w-3 shrink-0 text-content-muted">
-            {{ workspace.expandedProjectIds.includes(project.id) ? '▾' : '▸' }}
+            <template v-if="project.id === workspace.activeProjectId">
+              {{ workspace.expandedProjectIds.includes(project.id) ? '▾' : '▸' }}
+            </template>
           </span>
           <span
             class="min-w-0 flex-1 truncate text-sm font-semibold text-content-primary"
             :class="gitClassForProject(project)"
           >{{ project.name }}</span>
         </div>
-        <div v-if="workspace.expandedProjectIds.includes(project.id)" class="mt-0.5">
+        <div
+          v-if="
+            project.id === workspace.activeProjectId &&
+            workspace.expandedProjectIds.includes(project.id)
+          "
+          class="mt-0.5"
+        >
           <div
             v-for="mod in sortedModules(project.id)"
             :key="moduleKey(project.id, mod)"

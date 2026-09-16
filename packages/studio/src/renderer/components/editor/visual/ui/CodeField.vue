@@ -26,15 +26,13 @@ let modelUri: ReturnType<typeof monaco.Uri.parse> | null = null
 
 const LINE_H = 19
 
+const lineHeightPx = computed(() => props.rows * LINE_H + 12)
+
 const containerClass = computed(() => {
-  const base = 'code-field w-full overflow-hidden'
+  const base = 'code-field monaco-editor-surface w-full overflow-hidden'
   if (props.bordered) return `${base} visual-field`
   return base
 })
-
-function lineHeight(): number {
-  return props.rows * LINE_H + 12
-}
 
 function isDarkMode(): boolean {
   return document.documentElement.classList.contains('dark')
@@ -83,7 +81,6 @@ onMounted(async () => {
   fieldId += 1
   modelUri = monaco.Uri.parse(`inmemory://predicate/field-${fieldId}-${Date.now()}`)
   const model = monaco.editor.createModel(props.modelValue, 'agile-sofl', modelUri)
-  if (container.value) container.value.style.height = `${lineHeight()}px`
   applyFieldTheme()
   editor.value = monaco.editor.create(container.value!, {
     model,
@@ -138,7 +135,6 @@ watch(
 watch(
   () => props.rows,
   () => {
-    if (container.value) container.value.style.height = `${lineHeight()}px`
     editor.value?.layout()
   }
 )
@@ -158,7 +154,9 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div ref="container" :class="containerClass" />
+  <div class="monaco-editor-shell" :style="{ height: `${lineHeightPx}px` }">
+    <div ref="container" :class="containerClass" />
+  </div>
 </template>
 
 <style scoped>

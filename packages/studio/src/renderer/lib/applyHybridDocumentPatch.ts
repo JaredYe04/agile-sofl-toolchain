@@ -2,6 +2,7 @@ import { applySourceEdits, isSourcePatch } from '../../shared/sourceEdit'
 import { HistoryKinds } from '../history/kinds'
 import { useHistoryStore } from '../stores/history'
 import { useWorkspaceStore } from '../stores/workspace'
+import { fileBelongsToRoot } from '../stores/tabUtils'
 import type { InformalPatchPayload } from '../../preload/index'
 
 export async function applyHybridDocumentPatch(
@@ -10,7 +11,11 @@ export async function applyHybridDocumentPatch(
 ): Promise<{ ok: boolean; error?: string; applied?: boolean }> {
   const workspace = useWorkspaceStore()
   const hybridTab = workspace.hybridTab
+  const root = workspace.activeProject?.rootPath
   if (!hybridTab) return { ok: false, error: errors.noTab }
+  if (root && hybridTab.filePath && !fileBelongsToRoot(hybridTab.filePath, root)) {
+    return { ok: false, error: errors.noTab }
+  }
   if (isSourcePatch(patch)) {
     const result = applySourceEdits(hybridTab.content, patch.operations)
     const applied = result.content !== hybridTab.content

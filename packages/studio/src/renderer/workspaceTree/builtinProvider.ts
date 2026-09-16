@@ -1,4 +1,5 @@
 import { useGitStatus } from '../composables/useGitStatus'
+import { useWorkspaceStore } from '../stores/workspace'
 import type { WorkspaceTreeMenuItem, WorkspaceTreeMenuProvider } from './types'
 
 export const builtinWorkspaceTreeMenuProvider: WorkspaceTreeMenuProvider = {
@@ -14,11 +15,21 @@ export const builtinWorkspaceTreeMenuProvider: WorkspaceTreeMenuProvider = {
     }
     if (ctx.kind === 'project') {
       const { isRepo } = useGitStatus()
+      const workspace = useWorkspaceStore()
       const items: WorkspaceTreeMenuItem[] = [
+        {
+          id: 'switchToProject',
+          labelKey: 'workspace.treeMenu.switchToProject',
+          disabled: ctx.project.id === workspace.activeProjectId
+        },
         { id: 'copyName', labelKey: 'workspace.treeMenu.copyName' },
         { id: 'copyPath', labelKey: 'workspace.treeMenu.copyPath' },
         { id: 'revealInFolder', labelKey: 'workspace.treeMenu.revealInFolder' },
-        { id: 'refresh', labelKey: 'workspace.treeMenu.refresh' }
+        {
+          id: 'refresh',
+          labelKey: 'workspace.treeMenu.refresh',
+          disabled: ctx.project.id !== workspace.activeProjectId
+        }
       ]
       if (!isRepo(ctx.project.rootPath)) {
         items.push({ id: 'initGit', labelKey: 'workspace.treeMenu.initGit' })

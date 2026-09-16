@@ -23,6 +23,7 @@ const MAX_HISTORY = 20
 
 export type AgentTurnContext = {
   projectName?: string
+  projectRoot?: string
   moduleId?: string
   informalMarkdown: string
   hybridAsfl?: string
@@ -149,6 +150,8 @@ After any applied write, call read_specification and/or read_hybrid_specificatio
 When the whole task is done, your LAST message is a short summary of what was completed. Do not wait for the user to say "continue".
 Prefer structured CRUD. Do not dump raw Markdown or raw SOFL through propose_changes / propose_hybrid_changes. If those tools fail or cannot express the fix, read view=source and use propose_source_edit.
 
+You are scoped to ONE project. Read/write only this project's Informal, Hybrid, and GUI files. Do not copy modules or text from any other Studio project.
+
 ${informalGuide}
 
 ${hybridGuide}
@@ -159,6 +162,7 @@ Active skill: ${skill.name}
 ${skill.prompt}
 
 Current project: ${ctx.projectName ?? 'unknown'}
+Project folder: ${ctx.projectRoot ?? '(unknown)'}
 Current module: ${ctx.moduleId ?? 'project'}
 Selected node: ${ctx.selectedNodeSummary || ctx.selectedNodeId || '(none — stay focused on selection when present)'}
 Session permissions: Informal r=${permissions.informal.read} w=${permissions.informal.write}; Hybrid r=${permissions.hybrid.read} w=${permissions.hybrid.write}
