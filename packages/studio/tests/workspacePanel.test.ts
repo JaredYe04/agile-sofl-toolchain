@@ -38,6 +38,24 @@ describe('workspace panel focus and dirty', () => {
     expect(workspace.focusedPanel).toBe('hybrid')
   })
 
+  it('collapses the structure column independently of the center dock', () => {
+    const workspace = useWorkspaceStore()
+    expect(workspace.structureCollapsed).toBe(false)
+    expect(workspace.informalCollapsed).toBe(false)
+    workspace.setStructureCollapsed(true)
+    expect(workspace.structureCollapsed).toBe(true)
+    expect(workspace.informalCollapsed).toBe(false)
+  })
+
+  it('switches structure maps without treating graph as a mode', () => {
+    const workspace = useWorkspaceStore()
+    expect(workspace.structureMode).toBe('tree')
+    workspace.structureMode = 'architecture'
+    expect(workspace.structureMode).toBe('architecture')
+    workspace.structureMode = 'dataflow'
+    expect(workspace.structureMode).toBe('dataflow')
+  })
+
   it('isHybridDirty follows the hybrid document tab', () => {
     const doc = useDocumentStore()
     const workspace = useWorkspaceStore()

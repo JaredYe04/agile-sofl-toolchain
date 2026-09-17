@@ -566,12 +566,16 @@ async function chatEcnuStream(options) {
     }
     if (toolsChanged) {
       options.onDelta?.({
-        toolCalls: tools.map((t, index) => ({
-          index,
-          id: t.id,
-          name: t.name,
-          arguments: t.arguments
-        }))
+        toolCalls: tools.flatMap(
+          (t, index) => t ? [
+            {
+              index,
+              id: t.id,
+              name: t.name,
+              arguments: t.arguments
+            }
+          ] : []
+        )
       });
     }
   };
@@ -1107,7 +1111,7 @@ function loadSession(projectRoot, id) {
     return null;
   }
 }
-function saveSession(projectRoot, session) {
+function saveSession$1(projectRoot, session) {
   const dir = sessionsDir(projectRoot);
   ensureDir(dir);
   session.updatedAt = (/* @__PURE__ */ new Date()).toISOString();
@@ -1134,14 +1138,14 @@ function createSession(projectRoot, moduleId, title, options) {
       promptExtras: options?.promptExtras
     }
   };
-  saveSession(projectRoot, session);
+  saveSession$1(projectRoot, session);
   return session;
 }
 function renameSession(projectRoot, id, title) {
   const session = loadSession(projectRoot, id);
   if (!session) return null;
   session.title = title.trim() || session.title;
-  saveSession(projectRoot, session);
+  saveSession$1(projectRoot, session);
   return session;
 }
 function duplicateSession(projectRoot, id) {
@@ -1157,7 +1161,7 @@ function duplicateSession(projectRoot, id) {
     pinned: false,
     archived: false
   };
-  saveSession(projectRoot, copy);
+  saveSession$1(projectRoot, copy);
   return copy;
 }
 function forkSession(projectRoot, id, throughMessageId, options) {
@@ -1165,7 +1169,7 @@ function forkSession(projectRoot, id, throughMessageId, options) {
   if (!session) return null;
   const copy = forkSessionRecord(session, throughMessageId, options);
   if (!copy) return null;
-  saveSession(projectRoot, copy);
+  saveSession$1(projectRoot, copy);
   return copy;
 }
 function rewindSession(projectRoot, id, throughMessageId, options) {
@@ -1173,14 +1177,14 @@ function rewindSession(projectRoot, id, throughMessageId, options) {
   if (!session) return null;
   const next = applySessionSlice(session, throughMessageId, options?.mode ?? "reset");
   if (!next) return null;
-  saveSession(projectRoot, next);
+  saveSession$1(projectRoot, next);
   return next;
 }
 function setSessionFlag(projectRoot, id, flag, value) {
   const session = loadSession(projectRoot, id);
   if (!session) return null;
   session[flag] = value;
-  saveSession(projectRoot, session);
+  saveSession$1(projectRoot, session);
   return session;
 }
 const DiagnosticCodes = {
@@ -1948,7 +1952,22 @@ function parseArgs(raw) {
     return {};
   }
 }
+function settleFinishedToolCalls(session) {
+  for (const msg of session.messages) {
+    if (msg.role !== "assistant" || msg.streaming) continue;
+    for (const call of msg.toolCalls ?? []) {
+      if (call.status === "streaming" || call.status === "running" || !call.status) {
+        call.status = "done";
+      }
+    }
+  }
+}
+function saveSession(projectRoot, session) {
+  settleFinishedToolCalls(session);
+  saveSession$1(projectRoot, session);
+}
 function emit(sink, event) {
+  if (event.kind === "session") settleFinishedToolCalls(event.session);
   sink?.(event);
 }
 const TOOL_DELTA_THROTTLE_MS = 50;
@@ -2151,6 +2170,8 @@ async function runAgentTurn(session, projectRoot, ctx, userText, sink, signal) {
           status: "running"
         });
       });
+    } else {
+      live.toolCalls = void 0;
     }
     if (completion.toolCalls.length) {
       for (const call of completion.toolCalls) {
@@ -2169,6 +2190,8 @@ async function runAgentTurn(session, projectRoot, ctx, userText, sink, signal) {
           live.pending = true;
           session.context.pendingToolCallId = call.id;
           completeSiblingToolCalls(session, completion.toolCalls, call.id);
+          markCallStatus(live, call.id, "done", sink);
+          markRemainingToolCalls(live, "done", sink);
           saveSession(projectRoot, session);
           emit(sink, { kind: "session", session });
           return session;
@@ -2199,6 +2222,7 @@ async function runAgentTurn(session, projectRoot, ctx, userText, sink, signal) {
                 timestamp: (/* @__PURE__ */ new Date()).toISOString()
               });
               live.content = live.content || "Source edit needs an explicit target.";
+              markCallStatus(live, call.id, "error", sink);
               continue;
             }
           }
@@ -2221,6 +2245,7 @@ async function runAgentTurn(session, projectRoot, ctx, userText, sink, signal) {
               timestamp: (/* @__PURE__ */ new Date()).toISOString()
             });
             live.content = live.content || `No ${target} write permission.`;
+            markCallStatus(live, call.id, "error", sink);
             continue;
           }
           const blocked = crudBlockedByFailures(session.context.lastFailedWrite, {
@@ -2244,6 +2269,7 @@ async function runAgentTurn(session, projectRoot, ctx, userText, sink, signal) {
               timestamp: (/* @__PURE__ */ new Date()).toISOString()
             });
             live.content = live.content || `Patch rejected: ${blocked}`;
+            markCallStatus(live, call.id, "error", sink);
             continue;
           }
           const validity = validateAgentPatch(target, patch, { mode });
@@ -2264,6 +2290,7 @@ async function runAgentTurn(session, projectRoot, ctx, userText, sink, signal) {
               timestamp: (/* @__PURE__ */ new Date()).toISOString()
             });
             live.content = live.content || `Patch rejected: ${validity.message}`;
+            markCallStatus(live, call.id, "error", sink);
             continue;
           }
           live.content = patch.explanation || live.content || (mode === "source" ? `Proposed ${target} source edit.` : `Proposed ${target} specification changes.`);
@@ -2271,6 +2298,8 @@ async function runAgentTurn(session, projectRoot, ctx, userText, sink, signal) {
           live.pending = true;
           session.context.pendingToolCallId = call.id;
           completeSiblingToolCalls(session, completion.toolCalls, call.id);
+          markCallStatus(live, call.id, "done", sink);
+          markRemainingToolCalls(live, "done", sink);
           saveSession(projectRoot, session);
           emit(sink, { kind: "session", session });
           return session;
@@ -2290,6 +2319,7 @@ async function runAgentTurn(session, projectRoot, ctx, userText, sink, signal) {
             timestamp: (/* @__PURE__ */ new Date()).toISOString()
           });
           live.content = live.content || (view === "source" ? "Read the current Informal Specification source." : "Read the current Informal Specification inventory.");
+          markCallStatus(live, call.id, "done", sink);
           continue;
         }
         if (call.function.name === "read_hybrid_specification") {
@@ -2309,6 +2339,7 @@ async function runAgentTurn(session, projectRoot, ctx, userText, sink, signal) {
             timestamp: (/* @__PURE__ */ new Date()).toISOString()
           });
           live.content = live.content || (view === "source" ? diagnostics.errors ? `Read the current Hybrid Specification source (${diagnostics.errors} syntax error(s)).` : "Read the current Hybrid Specification source." : diagnostics.errors ? `Read the current Hybrid Specification inventory (${diagnostics.errors} syntax error(s)).` : "Read the current Hybrid Specification inventory.");
+          markCallStatus(live, call.id, "done", sink);
           continue;
         }
         if (call.function.name === "read_gui_specification") {
@@ -2327,6 +2358,7 @@ async function runAgentTurn(session, projectRoot, ctx, userText, sink, signal) {
             timestamp: (/* @__PURE__ */ new Date()).toISOString()
           });
           live.content = live.content || (view === "source" ? "Read the current GUI HTML source." : "Read the current GUI inventory.");
+          markCallStatus(live, call.id, "done", sink);
           continue;
         }
         if (call.function.name === "review_specification" || call.function.name === "review_hybrid") {
@@ -2343,6 +2375,7 @@ async function runAgentTurn(session, projectRoot, ctx, userText, sink, signal) {
             content: JSON.stringify({ ok: true, issues: typedIssues }),
             timestamp: (/* @__PURE__ */ new Date()).toISOString()
           });
+          markCallStatus(live, call.id, "done", sink);
           continue;
         }
         session.messages.push({
@@ -2351,7 +2384,9 @@ async function runAgentTurn(session, projectRoot, ctx, userText, sink, signal) {
           content: JSON.stringify({ ok: false, error: `Unknown tool ${call.function.name}` }),
           timestamp: (/* @__PURE__ */ new Date()).toISOString()
         });
+        markCallStatus(live, call.id, "error", sink);
       }
+      markRemainingToolCalls(live, "done", sink);
       saveSession(projectRoot, session);
       emit(sink, { kind: "session", session });
       continue;
@@ -2620,6 +2655,16 @@ function persist() {
   node_fs.mkdirSync(node_path.dirname(dbPath), { recursive: true });
   node_fs.writeFileSync(dbPath, Buffer.from(db.export()));
 }
+function tableHasColumn(database, table, column) {
+  const stmt = database.prepare(`PRAGMA table_info(${table})`);
+  let found = false;
+  while (stmt.step()) {
+    const row = stmt.getAsObject();
+    if (row.name === column) found = true;
+  }
+  stmt.free();
+  return found;
+}
 function migrate(database) {
   database.run(`
     CREATE TABLE IF NOT EXISTS projects (
@@ -2651,12 +2696,18 @@ function migrate(database) {
     CREATE TABLE IF NOT EXISTS ui_state (
       project_id TEXT PRIMARY KEY,
       informal_collapsed INTEGER NOT NULL DEFAULT 0,
+      structure_collapsed INTEGER NOT NULL DEFAULT 0,
       column_widths TEXT,
       selected_module TEXT,
       expanded INTEGER NOT NULL DEFAULT 1,
       FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
     );
   `);
+  if (!tableHasColumn(database, "ui_state", "structure_collapsed")) {
+    database.run(
+      "ALTER TABLE ui_state ADD COLUMN structure_collapsed INTEGER NOT NULL DEFAULT 0"
+    );
+  }
 }
 async function openProjectIndex(filePath) {
   const sql = await getSql();
@@ -2773,7 +2824,7 @@ function cachedModules(projectId) {
 function getUiState(projectId) {
   const database = requireDb();
   const stmt = database.prepare(
-    "SELECT informal_collapsed, column_widths, selected_module, expanded FROM ui_state WHERE project_id = ?"
+    "SELECT informal_collapsed, structure_collapsed, column_widths, selected_module, expanded FROM ui_state WHERE project_id = ?"
   );
   stmt.bind([projectId]);
   if (stmt.step()) {
@@ -2787,6 +2838,7 @@ function getUiState(projectId) {
     }
     return {
       informalCollapsed: Boolean(row.informal_collapsed),
+      structureCollapsed: Boolean(row.structure_collapsed),
       columnWidths: widths.length === 3 ? widths : widths.length === 4 ? [
         widths[0] ?? DEFAULT_COLUMN_WIDTHS[0],
         (widths[1] ?? 0.22) + (widths[2] ?? 0.38),
@@ -2799,6 +2851,7 @@ function getUiState(projectId) {
   stmt.free();
   return {
     informalCollapsed: false,
+    structureCollapsed: false,
     columnWidths: [...DEFAULT_COLUMN_WIDTHS],
     selectedModuleName: null,
     expanded: true
@@ -2806,16 +2859,18 @@ function getUiState(projectId) {
 }
 function saveUiState(projectId, state) {
   requireDb().run(
-    `INSERT INTO ui_state (project_id, informal_collapsed, column_widths, selected_module, expanded)
-     VALUES (?, ?, ?, ?, ?)
+    `INSERT INTO ui_state (project_id, informal_collapsed, structure_collapsed, column_widths, selected_module, expanded)
+     VALUES (?, ?, ?, ?, ?, ?)
      ON CONFLICT(project_id) DO UPDATE SET
        informal_collapsed = excluded.informal_collapsed,
+       structure_collapsed = excluded.structure_collapsed,
        column_widths = excluded.column_widths,
        selected_module = excluded.selected_module,
        expanded = excluded.expanded`,
     [
       projectId,
       state.informalCollapsed ? 1 : 0,
+      state.structureCollapsed ? 1 : 0,
       JSON.stringify(state.columnWidths),
       state.selectedModuleName,
       state.expanded ? 1 : 0

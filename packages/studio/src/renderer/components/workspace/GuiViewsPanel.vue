@@ -112,6 +112,14 @@ watch(
 )
 
 watch(
+  () => workspace.guiRevealNonce,
+  () => {
+    const id = workspace.guiRevealScreenId
+    if (id) selectScreen(id)
+  }
+)
+
+watch(
   [fullHtml, selectedViewId],
   () => {
     if (!codeActive.value) return

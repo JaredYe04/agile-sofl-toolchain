@@ -148,6 +148,44 @@ export { patchGuiWidgetText, addGuiScreen } from './guiPatch.js'
 export { toSerializableSpan, sliceText } from './span.js'
 
 export {
+  SPEC_MAP_KINDS,
+  PRIMARY_NODE_LIMIT,
+  isSpecMapKind,
+  structureModeFromChrome,
+  capSpecMap,
+  emptySpecMap,
+  mapId,
+  buildSpecMap,
+  buildSpecMaps,
+  layoutSpecMap
+} from './specMaps/index.js'
+export type {
+  SpecMapKind,
+  SpecMapSemanticKind,
+  SpecMapEdgeKind,
+  SpecMapEmptyReason,
+  SpecMapRef,
+  SpecMapNode,
+  SpecMapEdge,
+  SpecMapLane,
+  SpecMap,
+  HybridMapInput,
+  HybridModuleInput,
+  HybridProcessInput,
+  HybridFsfInput,
+  InformalMapNode,
+  InformalMapInput,
+  GuiMapInput,
+  GuiMapWidget,
+  SpecMapSource,
+  SpecMapBBox,
+  SpecMapLayout,
+  SpecMapLayoutNode,
+  SpecMapLayoutEdge,
+  SpecMapLayoutLane
+} from './specMaps/index.js'
+
+export {
   parseHybridId,
   formatHybridId,
   slug,

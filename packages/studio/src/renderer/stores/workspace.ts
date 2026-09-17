@@ -15,10 +15,12 @@ import { refreshGitFor } from '../composables/useGitStatus'
 import { consumeAgentLaunchPending, emitAgentLaunch } from '../lib/agentLaunchBus'
 import { useModalStore } from './modal'
 import { i18n } from '../i18n'
+import type { SpecMapKind } from '@agile-sofl/editor-api'
 
 const DEFAULT_COLUMN_WIDTHS = [0.18, 0.6, 0.22]
 
 export type WorkspacePanelId = 'tree' | 'informal' | 'agent' | 'hybrid' | 'gui' | 'structure'
+export type StructureMode = 'tree' | SpecMapKind
 
 function readStoredView<T extends string>(key: string, allowed: readonly T[], fallback: T): T {
   if (typeof localStorage === 'undefined') return fallback
@@ -34,13 +36,16 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const selectedModuleName = ref<string | null>(null)
   const selection = ref<TreeSelection>(null)
   const informalCollapsed = ref(false)
+  const structureCollapsed = ref(false)
   const columnWidths = ref<number[]>([...DEFAULT_COLUMN_WIDTHS])
   const expandedProjectIds = ref<string[]>([])
   const hybridMode = ref<'code' | 'visual'>(
     readStoredView('studio-default-hybrid-view', ['code', 'visual'] as const, 'visual')
   )
   const guiMode = ref<'visual' | 'code'>('visual')
-  const structureMode = ref<'tree' | 'graph'>('tree')
+  const structureMode = ref<StructureMode>('tree')
+  const guiRevealScreenId = ref<string | null>(null)
+  const guiRevealNonce = ref(0)
   const informalViewMode = ref<'document' | 'graphical'>(
     readStoredView('studio-default-informal-view', ['document', 'graphical'] as const, 'document')
   )
@@ -242,6 +247,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     if (!id || !window.studio?.projectSaveUiState) return
     const state: ProjectUiState = {
       informalCollapsed: Boolean(informalCollapsed.value),
+      structureCollapsed: Boolean(structureCollapsed.value),
       columnWidths: [...columnWidths.value],
       selectedModuleName:
         typeof selectedModuleName.value === 'string' ? selectedModuleName.value : null,
@@ -331,6 +337,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       const ui = await window.studio.projectUiState?.(project.id)
       if (ui) {
         informalCollapsed.value = ui.informalCollapsed
+        structureCollapsed.value = Boolean(ui.structureCollapsed)
         if (ui.columnWidths?.length === 3) {
           columnWidths.value = ui.columnWidths
         } else if (ui.columnWidths?.length === 4) {
@@ -440,6 +447,13 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     hybridRevealNonce.value += 1
   }
 
+  function revealGuiScreen(id: string): void {
+    guiRevealScreenId.value = id
+    guiMode.value = 'visual'
+    guiRevealNonce.value += 1
+    setFocusedPanel('gui')
+  }
+
   function collapseAllProjects(): void {
     expandedProjectIds.value = []
     void persistUi()
@@ -462,6 +476,11 @@ export const useWorkspaceStore = defineStore('workspace', () => {
 
   function setInformalCollapsed(v: boolean): void {
     informalCollapsed.value = v
+    void persistUi()
+  }
+
+  function setStructureCollapsed(v: boolean): void {
+    structureCollapsed.value = v
     void persistUi()
   }
 
@@ -549,6 +568,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     selectedModule,
     selection,
     informalCollapsed,
+    structureCollapsed,
     columnWidths,
     expandedProjectIds,
     hybridMode,
@@ -560,9 +580,12 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     structureSplitRatio,
     informalRevealNonce,
     hybridRevealNonce,
+    guiRevealNonce,
+    guiRevealScreenId,
     informalGraphBodyVisible,
     revealInformalInDocument,
     revealHybridInCode,
+    revealGuiScreen,
     requestAgentLaunch,
     consumeAgentLaunch,
     focusedPanel,
@@ -601,6 +624,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     collapseAllProjects,
     renameProject,
     setInformalCollapsed,
+    setStructureCollapsed,
     setColumnWidths,
     markHybridSaved,
     persistUi,

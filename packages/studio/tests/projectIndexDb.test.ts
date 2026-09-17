@@ -42,11 +42,13 @@ describe('projectIndexDb', () => {
     expect(cachedModules(project.id)[0]?.name).toBe('Lib')
     saveUiState(project.id, {
       informalCollapsed: true,
+      structureCollapsed: true,
       columnWidths: [0.2, 0.2, 0.4, 0.2],
       selectedModuleName: 'Lib',
       expanded: true
     })
     expect(getUiState(project.id).informalCollapsed).toBe(true)
+    expect(getUiState(project.id).structureCollapsed).toBe(true)
     expect(getUiState(project.id).selectedModuleName).toBe('Lib')
     removeProject(project.id)
     expect(listProjects()).toHaveLength(0)

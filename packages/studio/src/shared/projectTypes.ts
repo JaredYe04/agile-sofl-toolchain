@@ -60,6 +60,7 @@ export interface WorkspaceScanPayload {
 
 export interface ProjectUiState {
   informalCollapsed: boolean
+  structureCollapsed: boolean
   columnWidths: number[]
   selectedModuleName: string | null
   expanded: boolean

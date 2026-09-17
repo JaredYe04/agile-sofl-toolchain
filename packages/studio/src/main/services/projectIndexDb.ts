@@ -44,6 +44,17 @@ function persist(): void {
   writeFileSync(dbPath, Buffer.from(db.export()))
 }
 
+function tableHasColumn(database: Database, table: string, column: string): boolean {
+  const stmt = database.prepare(`PRAGMA table_info(${table})`)
+  let found = false
+  while (stmt.step()) {
+    const row = stmt.getAsObject() as { name: string }
+    if (row.name === column) found = true
+  }
+  stmt.free()
+  return found
+}
+
 function migrate(database: Database): void {
   database.run(`
     CREATE TABLE IF NOT EXISTS projects (
@@ -75,12 +86,18 @@ function migrate(database: Database): void {
     CREATE TABLE IF NOT EXISTS ui_state (
       project_id TEXT PRIMARY KEY,
       informal_collapsed INTEGER NOT NULL DEFAULT 0,
+      structure_collapsed INTEGER NOT NULL DEFAULT 0,
       column_widths TEXT,
       selected_module TEXT,
       expanded INTEGER NOT NULL DEFAULT 1,
       FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
     );
   `)
+  if (!tableHasColumn(database, 'ui_state', 'structure_collapsed')) {
+    database.run(
+      'ALTER TABLE ui_state ADD COLUMN structure_collapsed INTEGER NOT NULL DEFAULT 0'
+    )
+  }
 }
 
 export async function openProjectIndex(filePath: string): Promise<void> {
@@ -217,12 +234,13 @@ export function cachedModules(projectId: string): ProjectModuleInfo[] {
 export function getUiState(projectId: string): ProjectUiState {
   const database = requireDb()
   const stmt = database.prepare(
-    'SELECT informal_collapsed, column_widths, selected_module, expanded FROM ui_state WHERE project_id = ?'
+    'SELECT informal_collapsed, structure_collapsed, column_widths, selected_module, expanded FROM ui_state WHERE project_id = ?'
   )
   stmt.bind([projectId])
   if (stmt.step()) {
     const row = stmt.getAsObject() as {
       informal_collapsed: number
+      structure_collapsed: number
       column_widths: string | null
       selected_module: string | null
       expanded: number
@@ -236,6 +254,7 @@ export function getUiState(projectId: string): ProjectUiState {
     }
     return {
       informalCollapsed: Boolean(row.informal_collapsed),
+      structureCollapsed: Boolean(row.structure_collapsed),
       columnWidths:
         widths.length === 3
           ? widths
@@ -254,6 +273,7 @@ export function getUiState(projectId: string): ProjectUiState {
   stmt.free()
   return {
     informalCollapsed: false,
+    structureCollapsed: false,
     columnWidths: [...DEFAULT_COLUMN_WIDTHS],
     selectedModuleName: null,
     expanded: true
@@ -262,16 +282,18 @@ export function getUiState(projectId: string): ProjectUiState {
 
 export function saveUiState(projectId: string, state: ProjectUiState): void {
   requireDb().run(
-    `INSERT INTO ui_state (project_id, informal_collapsed, column_widths, selected_module, expanded)
-     VALUES (?, ?, ?, ?, ?)
+    `INSERT INTO ui_state (project_id, informal_collapsed, structure_collapsed, column_widths, selected_module, expanded)
+     VALUES (?, ?, ?, ?, ?, ?)
      ON CONFLICT(project_id) DO UPDATE SET
        informal_collapsed = excluded.informal_collapsed,
+       structure_collapsed = excluded.structure_collapsed,
        column_widths = excluded.column_widths,
        selected_module = excluded.selected_module,
        expanded = excluded.expanded`,
     [
       projectId,
       state.informalCollapsed ? 1 : 0,
+      state.structureCollapsed ? 1 : 0,
       JSON.stringify(state.columnWidths),
       state.selectedModuleName,
       state.expanded ? 1 : 0

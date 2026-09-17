@@ -24,7 +24,7 @@ const gui = useGuiModel(
 provide(GUI_MODEL_KEY, gui)
 
 /** [tree, center dock, structure] */
-const collapsed = computed(() => [false, workspace.informalCollapsed, false])
+const collapsed = computed(() => [false, false, workspace.structureCollapsed])
 </script>
 
 <template>
@@ -46,12 +46,12 @@ const collapsed = computed(() => [false, workspace.informalCollapsed, false])
       <button
         type="button"
         class="relative z-10 flex h-16 w-5 select-none items-center justify-center rounded-md border border-border-subtle bg-surface-raised text-content-secondary opacity-0 shadow-sm transition-all duration-150 group-hover/resize:opacity-100 hover:bg-surface-overlay hover:text-content-primary"
-        :title="workspace.informalCollapsed ? t('workspace.expandInformal') : t('workspace.collapseInformal')"
+        :title="workspace.structureCollapsed ? t('workspace.expandStructure') : t('workspace.collapseStructure')"
         @pointerdown.stop
-        @click="workspace.setInformalCollapsed(!workspace.informalCollapsed)"
+        @click="workspace.setStructureCollapsed(!workspace.structureCollapsed)"
       >
         <StudioIcon
-          :icon="workspace.informalCollapsed ? 'lucide:chevron-right' : 'lucide:chevron-left'"
+          :icon="workspace.structureCollapsed ? 'lucide:chevron-left' : 'lucide:chevron-right'"
           :size="14"
         />
       </button>
