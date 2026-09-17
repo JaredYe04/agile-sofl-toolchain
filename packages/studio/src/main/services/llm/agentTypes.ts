@@ -41,10 +41,13 @@ export type AgentSpecPermissions = {
 
 export type SpecPatchPayload = InformalPatchPayload
 
+export type AgentToolCallStatus = 'streaming' | 'running' | 'done' | 'error'
+
 export type AgentToolCall = {
   id: string
   name: string
   arguments: string
+  status?: AgentToolCallStatus
 }
 
 export type AgentMessage = {

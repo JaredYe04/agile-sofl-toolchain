@@ -16,12 +16,12 @@ export function resolveNavigateTarget(
 ): string | null {
   const nav = widget.events?.find((e) => e.action === 'navigate' && e.targetView)
   if (nav?.targetView) {
-    const hit = screens.find((s) => s.id === nav.targetView || s.name === nav.targetView)
-    if (hit) return hit.id
+    const hit = resolveGuiScreenId(screens, nav.targetView)
+    if (hit) return hit
   }
   if (widget.action) {
-    const byName = screens.find((s) => s.name === widget.action || s.id === widget.action)
-    if (byName) return byName.id
+    const byName = resolveGuiScreenId(screens, widget.action)
+    if (byName) return byName
   }
   const flow = flows.find(
     (f) =>
@@ -29,8 +29,24 @@ export function resolveNavigateTarget(
       (f.on === widget.id || f.on === widget.label || f.label === widget.label)
   )
   if (flow) {
-    const target = screens.find((s) => s.name === flow.to || s.id === flow.to)
-    return target?.id ?? null
+    return resolveGuiScreenId(screens, flow.to)
   }
   return null
+}
+
+/** Match a data-nav / list click against screen id or name. */
+export function resolveGuiScreenId(
+  screens: Array<{ id: string; name?: string }>,
+  ref?: string | null
+): string | null {
+  if (!ref?.trim()) return null
+  const key = ref.trim()
+  const hit = screens.find(
+    (s) =>
+      s.id === key ||
+      s.name === key ||
+      s.id.toLowerCase() === key.toLowerCase() ||
+      (s.name && s.name.toLowerCase() === key.toLowerCase())
+  )
+  return hit?.id ?? null
 }

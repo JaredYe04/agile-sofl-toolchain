@@ -74,8 +74,40 @@ export function applyEnv(root: ParentNode, env: Record<string, string | number |
 export function showScreen(root: ParentNode, screenId: string): void {
   root.querySelectorAll('[data-screen]').forEach((el) => {
     const id = el.getAttribute('data-screen') || el.id
-    el.classList.toggle('is-hidden', id !== screenId && el.id !== screenId)
+    const match =
+      id === screenId ||
+      el.id === screenId ||
+      (id && id.toLowerCase() === screenId.toLowerCase()) ||
+      (el.id && el.id.toLowerCase() === screenId.toLowerCase())
+    el.classList.toggle('is-hidden', !match)
   })
+}
+
+/** Map a path inside a single-screen prototype (app + that screen) back onto the full document. */
+export function prototypePathToFull(localPath: string | null, screenFullPath: string | null): string | null {
+  if (!localPath || !screenFullPath) return localPath
+  if (localPath === '0') {
+    const cut = screenFullPath.lastIndexOf('.')
+    return cut >= 0 ? screenFullPath.slice(0, cut) : '0'
+  }
+  if (localPath === '0.0') return screenFullPath
+  if (localPath.startsWith('0.0.')) return `${screenFullPath}.${localPath.slice(4)}`
+  return screenFullPath
+}
+
+/** Map a DOM-tree path of extractScreenHtml onto the full document. */
+export function screenTreePathToFull(localPath: string | null, screenFullPath: string | null): string | null {
+  if (!localPath || !screenFullPath) return screenFullPath
+  if (localPath === '0') return screenFullPath
+  const rest = localPath.split('.').slice(1).join('.')
+  return rest ? `${screenFullPath}.${rest}` : screenFullPath
+}
+
+export function fullPathToScreenTree(fullPath: string | null, screenFullPath: string | null): string | null {
+  if (!fullPath || !screenFullPath) return null
+  if (fullPath === screenFullPath) return '0'
+  if (fullPath.startsWith(`${screenFullPath}.`)) return `0.${fullPath.slice(screenFullPath.length + 1)}`
+  return null
 }
 
 export function pathOfElement(target: Element, shadow: ShadowRoot): string | null {

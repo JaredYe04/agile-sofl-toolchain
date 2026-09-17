@@ -30,9 +30,15 @@ function appNode(root: HtmlNode): HtmlNode {
 }
 
 function screenNode(root: HtmlNode, screenId: string): HtmlNode | undefined {
+  const key = screenId.trim()
+  if (!key) return undefined
   return findElements(
     root,
-    (n) => n.attrs['data-screen'] === screenId || n.attrs.id === screenId
+    (n) =>
+      n.attrs['data-screen'] === key ||
+      n.attrs.id === key ||
+      n.attrs['data-screen']?.toLowerCase() === key.toLowerCase() ||
+      n.attrs.id?.toLowerCase() === key.toLowerCase()
   )[0]
 }
 
@@ -421,4 +427,22 @@ export function formatGui(source: string): string {
 
 export function defaultGuiHtml(appName = 'App'): string {
   return emptyGuiHtml(appName)
+}
+
+/** Serialize one screen as a standalone HTML document fragment. */
+export function extractScreenHtml(source: string, screenId: string): string {
+  const { document } = parseGuiSpec(source)
+  if (!document) return ''
+  const root = parseHtmlFragment(document.html)
+  const screen = screenNode(root, screenId)
+  if (!screen) return ''
+  return sanitizeHtml(serializeHtml(screen))
+}
+
+/** Wrap a single screen so the prototype host can render it as its own page. */
+export function wrapPrototypeHtml(appName: string, screenHtml: string): string {
+  const inner = screenHtml.trim()
+  if (!inner) return emptyGuiHtml(appName)
+  if (/\bdata-app\s*=/.test(inner) || /\bas-app\b/.test(inner)) return sanitizeHtml(inner)
+  return sanitizeHtml(`<div class="as-app" data-app="${escapeAttr(appName)}">\n${inner}\n</div>\n`)
 }

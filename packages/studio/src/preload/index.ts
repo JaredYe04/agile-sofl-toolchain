@@ -316,20 +316,30 @@ const studio = {
   onAgentDelta: (
     cb: (payload: {
       sessionId: string
-      kind: 'session' | 'reasoning' | 'content'
+      kind: 'session' | 'reasoning' | 'content' | 'tool_call' | 'tool_status'
       session?: AgentSessionPayload
       messageId?: string
       text?: string
+      index?: number
+      id?: string
+      name?: string
+      arguments?: string
+      status?: AgentToolCallPayload['status']
     }) => void
   ) => {
     const handler = (
       _: unknown,
       payload: {
         sessionId: string
-        kind: 'session' | 'reasoning' | 'content'
+        kind: 'session' | 'reasoning' | 'content' | 'tool_call' | 'tool_status'
         session?: AgentSessionPayload
         messageId?: string
         text?: string
+        index?: number
+        id?: string
+        name?: string
+        arguments?: string
+        status?: AgentToolCallPayload['status']
       }
     ) => cb(payload)
     ipcRenderer.on('studio:agent-delta', handler)
@@ -817,6 +827,13 @@ export type AgentTurnContextPayload = {
   promptExtras?: string
 }
 
+export type AgentToolCallPayload = {
+  id: string
+  name: string
+  arguments: string
+  status?: 'streaming' | 'running' | 'done' | 'error'
+}
+
 export type AgentSessionPayload = {
   id: string
   moduleId: string
@@ -833,6 +850,7 @@ export type AgentSessionPayload = {
     skillId?: string
     thinking?: string
     streaming?: boolean
+    toolCalls?: AgentToolCallPayload[]
     proposedChanges?: InformalPatchPayload
     clarification?: {
       id: string

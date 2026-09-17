@@ -1,8 +1,13 @@
-import { chatEcnuStream, isChatAborted, type ChatMessage } from './chatEcnu'
+import { chatEcnuStream, isChatAborted, type ChatMessage, type ChatStreamDelta } from './chatEcnu'
 import { AGENT_TOOLS, skillById } from './skills'
-import type { AgentMessage, AgentSession, InformalPatchPayload } from './agentTypes'
+import type {
+  AgentMessage,
+  AgentSession,
+  AgentToolCallStatus,
+  InformalPatchPayload
+} from './agentTypes'
 import { newId, normalizePermissions, type AgentSpecPermissions } from './agentTypes'
-import { saveSession } from './sessionStore'
+import { saveSession as writeSession } from './sessionStore'
 import { informalInventoryFromMarkdown } from '@agile-sofl/aspec/dist/informal/inventory.js'
 import { formatHybridInventory, formatHybridDiagnostics, collectHybridAgentDiagnostics } from '@agile-sofl/editor-api'
 import { formatGuiInventory, numberedGuiSource } from '@agile-sofl/gui'
@@ -39,6 +44,22 @@ export type AgentStreamEvent =
   | { kind: 'session'; session: AgentSession }
   | { kind: 'reasoning'; messageId: string; text: string }
   | { kind: 'content'; messageId: string; text: string }
+  | {
+      kind: 'tool_call'
+      messageId: string
+      index: number
+      id: string
+      name: string
+      arguments: string
+      status: AgentToolCallStatus
+    }
+  | {
+      kind: 'tool_status'
+      messageId: string
+      index: number
+      id: string
+      status: AgentToolCallStatus
+    }
 
 export type AgentStreamSink = (event: AgentStreamEvent) => void
 
@@ -140,7 +161,8 @@ After a write is applied, call read_hybrid_specification and keep patching until
     permissions.hybrid.write || permissions.informal.write
       ? `For propose_gui_changes, design a high-fidelity product prototype the user can walk through:
 - Each screen should look like a finished app surface: shell/sidebar or navbar, hero or toolbar, cards/lists/tables/forms, badges, empty states, primary+secondary actions.
-- Prefer replace-screen-html (or add-screen with html) with the FULL inner markup. All children are kept; do not flatten a layout down to the first widget.
+- Each screen is a separate HTML page. Clicking data-nav must switch screens; the screen list follows. Do not put the whole app into one un-navigable view.
+- Prefer replace-screen-html (or add-screen with html) with the FULL inner markup of that screen. All children are kept; do not flatten a layout down to the first widget.
 - Tags: common HTML5 (header/main/aside/nav/table/form/img/a/…). Classes: any as-* token (as-shell, as-hero, as-card, as-grid-3, as-btn-primary, …). Bind with data-process / data-bind / data-nav.
 - Do not ship a page that is only two or three unlabeled buttons. Navigation must be visible in the layout, not implied.
 - Never emit <script>, style=, href, or src.`
@@ -298,8 +320,119 @@ function parseArgs(raw: string): Record<string, unknown> {
   }
 }
 
+function settleFinishedToolCalls(session: AgentSession): void {
+  for (const msg of session.messages) {
+    if (msg.role !== 'assistant' || msg.streaming) continue
+    for (const call of msg.toolCalls ?? []) {
+      if (call.status === 'streaming' || call.status === 'running' || !call.status) {
+        call.status = 'done'
+      }
+    }
+  }
+}
+
+function saveSession(projectRoot: string, session: AgentSession): void {
+  settleFinishedToolCalls(session)
+  writeSession(projectRoot, session)
+}
+
 function emit(sink: AgentStreamSink | undefined, event: AgentStreamEvent): void {
+  if (event.kind === 'session') settleFinishedToolCalls(event.session)
   sink?.(event)
+}
+
+const TOOL_DELTA_THROTTLE_MS = 50
+
+function emitToolCall(
+  sink: AgentStreamSink | undefined,
+  live: AgentMessage,
+  index: number,
+  status: AgentToolCallStatus
+): void {
+  const call = live.toolCalls?.[index]
+  if (!call) return
+  emit(sink, {
+    kind: 'tool_call',
+    messageId: live.id,
+    index,
+    id: call.id,
+    name: call.name,
+    arguments: call.arguments,
+    status
+  })
+}
+
+function markCallStatus(
+  live: AgentMessage,
+  id: string,
+  status: AgentToolCallStatus,
+  sink?: AgentStreamSink
+): void {
+  const index = live.toolCalls?.findIndex((c) => c.id === id) ?? -1
+  if (index < 0 || !live.toolCalls) return
+  live.toolCalls[index].status = status
+  emit(sink, { kind: 'tool_status', messageId: live.id, index, id, status })
+}
+
+function markRemainingToolCalls(
+  live: AgentMessage,
+  status: AgentToolCallStatus,
+  sink?: AgentStreamSink
+): void {
+  for (const call of live.toolCalls ?? []) {
+    if (call.status === 'done' || call.status === 'error') continue
+    markCallStatus(live, call.id, status, sink)
+  }
+}
+
+function attachStreamDeltas(live: AgentMessage, sink?: AgentStreamSink) {
+  let lastEmitAt = 0
+  let pending = false
+  const seenNames = new Set<string>()
+
+  const emitSnapshot = (): void => {
+    pending = false
+    lastEmitAt = Date.now()
+    for (let i = 0; i < (live.toolCalls?.length ?? 0); i++) {
+      emitToolCall(sink, live, i, live.toolCalls![i].status ?? 'streaming')
+    }
+  }
+
+  return {
+    onDelta(delta: ChatStreamDelta): void {
+      if (delta.reasoning != null) {
+        live.thinking = delta.reasoning
+        emit(sink, { kind: 'reasoning', messageId: live.id, text: delta.reasoning })
+      }
+      if (delta.content != null) {
+        live.content = delta.content
+        emit(sink, { kind: 'content', messageId: live.id, text: delta.content })
+      }
+      if (!delta.toolCalls) return
+      live.toolCalls = delta.toolCalls.map((c, i) => ({
+        id: c.id || live.toolCalls?.[i]?.id || `pending-${i}`,
+        name: c.name,
+        arguments: c.arguments,
+        status: 'streaming' as const
+      }))
+      const nameAppeared = (live.toolCalls ?? []).some((c, i) => {
+        if (!c.name) return false
+        const key = `${i}:${c.name}`
+        if (seenNames.has(key)) return false
+        seenNames.add(key)
+        return true
+      })
+      const now = Date.now()
+      if (nameAppeared || now - lastEmitAt >= TOOL_DELTA_THROTTLE_MS) {
+        emitSnapshot()
+        return
+      }
+      pending = true
+    },
+    flush(): void {
+      if (pending || live.toolCalls?.length) emitSnapshot()
+    }
+  }
 }
 
 export async function runAgentTurn(
@@ -338,6 +471,7 @@ export async function runAgentTurn(
     const live = [...session.messages].reverse().find((m) => m.role === 'assistant' && m.streaming)
     if (live) {
       live.streaming = false
+      markRemainingToolCalls(live, 'error', sink)
       if (!live.content.trim()) live.content = '已停止 / Stopped.'
     } else {
       session.messages.push({
@@ -375,26 +509,20 @@ export async function runAgentTurn(
       temperature: 0.35
     }
 
+    const streamDeltas = attachStreamDeltas(live, sink)
     let completion
     try {
       completion = await chatEcnuStream({
         ...request,
         thinking: true,
         signal,
-        onDelta: (delta) => {
-          if (delta.reasoning != null) {
-            live.thinking = delta.reasoning
-            emit(sink, { kind: 'reasoning', messageId: assistantId, text: delta.reasoning })
-          }
-          if (delta.content != null) {
-            live.content = delta.content
-            emit(sink, { kind: 'content', messageId: assistantId, text: delta.content })
-          }
-        }
+        onDelta: streamDeltas.onDelta
       })
     } catch (first) {
+      streamDeltas.flush()
       if (isChatAborted(first) || signal?.aborted) {
         live.streaming = false
+        markRemainingToolCalls(live, 'error', sink)
         if (!live.content.trim()) live.content = '已停止 / Stopped.'
         saveSession(projectRoot, session)
         emit(sink, { kind: 'session', session })
@@ -405,15 +533,12 @@ export async function runAgentTurn(
           ...request,
           thinking: false,
           signal,
-          onDelta: (delta) => {
-            if (delta.content != null) {
-              live.content = delta.content
-              emit(sink, { kind: 'content', messageId: assistantId, text: delta.content })
-            }
-          }
+          onDelta: streamDeltas.onDelta
         })
       } catch (err) {
+        streamDeltas.flush()
         live.streaming = false
+        markRemainingToolCalls(live, 'error', sink)
         if (isChatAborted(err) || signal?.aborted) {
           if (!live.content.trim()) live.content = '已停止 / Stopped.'
           saveSession(projectRoot, session)
@@ -427,6 +552,7 @@ export async function runAgentTurn(
       }
     }
 
+    streamDeltas.flush()
     live.streaming = false
     live.content = completion.content.trim()
     live.thinking = completion.reasoning.trim() || live.thinking
@@ -434,8 +560,22 @@ export async function runAgentTurn(
       live.toolCalls = completion.toolCalls.map((c) => ({
         id: c.id,
         name: c.function.name,
-        arguments: c.function.arguments
+        arguments: c.function.arguments,
+        status: 'running' as const
       }))
+      live.toolCalls.forEach((call, index) => {
+        emit(sink, {
+          kind: 'tool_call',
+          messageId: assistantId,
+          index,
+          id: call.id,
+          name: call.name,
+          arguments: call.arguments,
+          status: 'running'
+        })
+      })
+    } else {
+      live.toolCalls = undefined
     }
 
     if (completion.toolCalls.length) {
@@ -459,6 +599,8 @@ export async function runAgentTurn(
           live.pending = true
           session.context.pendingToolCallId = call.id
           completeSiblingToolCalls(session, completion.toolCalls, call.id)
+          markCallStatus(live, call.id, 'done', sink)
+          markRemainingToolCalls(live, 'done', sink)
           saveSession(projectRoot, session)
           emit(sink, { kind: 'session', session })
           return session
@@ -495,6 +637,7 @@ export async function runAgentTurn(
                 timestamp: new Date().toISOString()
               })
               live.content = live.content || 'Source edit needs an explicit target.'
+              markCallStatus(live, call.id, 'error', sink)
               continue
             }
           }
@@ -524,6 +667,7 @@ export async function runAgentTurn(
               timestamp: new Date().toISOString()
             })
             live.content = live.content || `No ${target} write permission.`
+            markCallStatus(live, call.id, 'error', sink)
             continue
           }
           const blocked = crudBlockedByFailures(session.context.lastFailedWrite, {
@@ -547,6 +691,7 @@ export async function runAgentTurn(
               timestamp: new Date().toISOString()
             })
             live.content = live.content || `Patch rejected: ${blocked}`
+            markCallStatus(live, call.id, 'error', sink)
             continue
           }
           const validity = validateAgentPatch(target, patch, { mode })
@@ -570,6 +715,7 @@ export async function runAgentTurn(
               timestamp: new Date().toISOString()
             })
             live.content = live.content || `Patch rejected: ${validity.message}`
+            markCallStatus(live, call.id, 'error', sink)
             continue
           }
           live.content =
@@ -582,6 +728,8 @@ export async function runAgentTurn(
           live.pending = true
           session.context.pendingToolCallId = call.id
           completeSiblingToolCalls(session, completion.toolCalls, call.id)
+          markCallStatus(live, call.id, 'done', sink)
+          markRemainingToolCalls(live, 'done', sink)
           saveSession(projectRoot, session)
           emit(sink, { kind: 'session', session })
           return session
@@ -609,6 +757,7 @@ export async function runAgentTurn(
             (view === 'source'
               ? 'Read the current Informal Specification source.'
               : 'Read the current Informal Specification inventory.')
+          markCallStatus(live, call.id, 'done', sink)
           continue
         }
         if (call.function.name === 'read_hybrid_specification') {
@@ -642,6 +791,7 @@ export async function runAgentTurn(
               : diagnostics.errors
                 ? `Read the current Hybrid Specification inventory (${diagnostics.errors} syntax error(s)).`
                 : 'Read the current Hybrid Specification inventory.')
+          markCallStatus(live, call.id, 'done', sink)
           continue
         }
         if (call.function.name === 'read_gui_specification') {
@@ -666,6 +816,7 @@ export async function runAgentTurn(
           live.content =
             live.content ||
             (view === 'source' ? 'Read the current GUI HTML source.' : 'Read the current GUI inventory.')
+          markCallStatus(live, call.id, 'done', sink)
           continue
         }
         if (call.function.name === 'review_specification' || call.function.name === 'review_hybrid') {
@@ -684,6 +835,7 @@ export async function runAgentTurn(
             content: JSON.stringify({ ok: true, issues: typedIssues }),
             timestamp: new Date().toISOString()
           })
+          markCallStatus(live, call.id, 'done', sink)
           continue
         }
         session.messages.push({
@@ -692,7 +844,9 @@ export async function runAgentTurn(
           content: JSON.stringify({ ok: false, error: `Unknown tool ${call.function.name}` }),
           timestamp: new Date().toISOString()
         })
+        markCallStatus(live, call.id, 'error', sink)
       }
+      markRemainingToolCalls(live, 'done', sink)
       saveSession(projectRoot, session)
       emit(sink, { kind: 'session', session })
       continue

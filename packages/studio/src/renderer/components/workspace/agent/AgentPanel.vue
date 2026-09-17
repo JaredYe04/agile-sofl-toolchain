@@ -17,6 +17,7 @@ import ClarificationCard from './ClarificationCard.vue'
 import AgentMarkdownPreview from './AgentMarkdownPreview.vue'
 import PatchPreview from './PatchPreview.vue'
 import AgentSessionDialog from './AgentSessionDialog.vue'
+import AgentToolActivity from './AgentToolActivity.vue'
 import StudioIcon from '../../ui/StudioIcon.vue'
 import ResizeSplit from '../../ui/ResizeSplit.vue'
 import { toggleClarificationDraft, type ClarificationDraft } from './clarificationDraft'
@@ -29,6 +30,15 @@ import {
   updateQueuedMessage,
   type AgentQueuedMessage
 } from './agentQueue'
+import {
+  activeToolCall,
+  formatToolArgsSize,
+  isThinkingLive,
+  resolvedToolStatus,
+  shouldShowThinkingPlaceholder,
+  toolLabelKey,
+  upsertToolCall
+} from './agentToolUx'
 
 type MenuAction = 'copy' | 'rename' | 'delete' | 'pin' | 'archive'
 type AgentMessageView = AgentSessionPayload['messages'][0]
@@ -69,6 +79,7 @@ let copiedTimer: ReturnType<typeof setTimeout> | null = null
 let launchInFlight = false
 let stopRequested = false
 let turnInFlight = false
+let pinThreadToBottom = true
 const agentSource = `agent-panel-${crypto.randomUUID()}`
 
 const projectRoot = computed(() => workspace.activeProject?.rootPath ?? '')
@@ -83,6 +94,26 @@ const visibleMessages = computed(
   () => session.value?.messages.filter((m) => m.role !== 'tool') ?? []
 )
 const composerMode = computed(() => composerAction(busy.value, input.value))
+const liveToolStatus = computed(() => {
+  if (!busy.value) return ''
+  const msgs = session.value?.messages ?? []
+  for (let i = msgs.length - 1; i >= 0; i--) {
+    const msg = msgs[i]
+    const active = activeToolCall(msg.toolCalls, {
+      messageStreaming: Boolean(msg.streaming),
+      busy: true
+    })
+    if (!active) continue
+    const name = active.name ? t(toolLabelKey(active.name)) : t('agent.tool.generic')
+    const verb =
+      resolvedToolStatus(active, { messageStreaming: Boolean(msg.streaming), busy: true }) === 'running'
+        ? t('agent.toolRunning', { name })
+        : t('agent.toolGenerating', { name })
+    return `${verb} · ${formatToolArgsSize(active.arguments || '')}`
+  }
+  if (msgs.some((m) => m.role === 'assistant' && isThinkingLive(m))) return t('agent.thinking')
+  return t('agent.working')
+})
 
 function ctx() {
   const root = workspace.activeProject?.rootPath ?? ''
@@ -102,6 +133,18 @@ function ctx() {
 
 function stillOnProject(root: string): boolean {
   return Boolean(root) && workspace.activeProject?.rootPath === root
+}
+
+function onThreadScroll(): void {
+  const el = thread.value
+  if (!el) return
+  pinThreadToBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 72
+}
+
+async function scrollThreadIfPinned(): Promise<void> {
+  if (!pinThreadToBottom) return
+  await nextTick()
+  thread.value?.scrollTo({ top: thread.value.scrollHeight })
 }
 
 function isCardExpanded(id: string): boolean {
@@ -165,6 +208,7 @@ async function send(text?: string): Promise<void> {
   if (!current || !window.studio?.agentChat) return
   if (!stillOnProject(rootAtStart)) return
   if (fromInput) input.value = ''
+  pinThreadToBottom = true
   turnInFlight = true
   busy.value = true
   try {
@@ -239,6 +283,7 @@ async function resume(toolCallId: string, result: string, continueTurn = true): 
   if (!session.value || !window.studio?.agentResume) return
   if (stopRequested) continueTurn = false
   const rootAtStart = projectRoot.value
+  pinThreadToBottom = true
   busy.value = true
   try {
     const next = await window.studio.agentResume(
@@ -488,6 +533,7 @@ async function launchFromBootstrap(req: HybridAgentBootstrapPayload): Promise<vo
       return
     }
     stopRequested = false
+    pinThreadToBottom = true
     turnInFlight = true
     busy.value = true
     session.value = await window.studio.agentChat(
@@ -621,6 +667,7 @@ onMounted(() => {
     if (payload.kind === 'session' && payload.session) {
       if (session.value && session.value.id === payload.sessionId) session.value = payload.session
       void refresh()
+      void scrollThreadIfPinned()
       return
     }
     if (!session.value || session.value.id !== payload.sessionId || !payload.messageId) return
@@ -628,6 +675,23 @@ onMounted(() => {
     if (!msg) return
     if (payload.kind === 'reasoning') msg.thinking = payload.text
     if (payload.kind === 'content') msg.content = payload.text
+    if (payload.kind === 'tool_call' && payload.index != null) {
+      msg.toolCalls = upsertToolCall(msg.toolCalls, payload.index, {
+        id: payload.id ?? '',
+        name: payload.name ?? '',
+        arguments: payload.arguments ?? '',
+        status: payload.status
+      })
+    }
+    if (payload.kind === 'tool_status' && payload.index != null && msg.toolCalls?.[payload.index]) {
+      const calls = [...msg.toolCalls]
+      calls[payload.index] = {
+        ...calls[payload.index],
+        status: payload.status ?? calls[payload.index].status
+      }
+      msg.toolCalls = calls
+    }
+    void scrollThreadIfPinned()
   })
   onUnmounted(() => {
     document.removeEventListener('mousedown', closeMenu)
@@ -730,7 +794,11 @@ function permBadge(s: AgentSessionPayload): string {
       </template>
       <template #second>
       <div class="flex h-full min-h-0 min-w-0 flex-col">
-        <div ref="thread" class="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-3 studio-scroll">
+        <div
+          ref="thread"
+          class="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-3 studio-scroll"
+          @scroll.passive="onThreadScroll"
+        >
           <p v-if="!visibleMessages.length" class="text-[13px] leading-relaxed text-content-secondary">
             {{ t('agent.emptyHint') }}
           </p>
@@ -742,19 +810,26 @@ function permBadge(s: AgentSessionPayload): string {
               <details
                 v-if="msg.thinking"
                 class="mb-2 text-[12px] text-content-muted"
-                :open="msg.streaming && !msg.content"
+                :open="isThinkingLive(msg)"
               >
                 <summary class="cursor-pointer select-none text-[11px] font-medium uppercase tracking-wide">
-                  {{ msg.streaming && !msg.content ? t('agent.thinking') : t('agent.thought') }}
+                  {{ isThinkingLive(msg) ? t('agent.thinking') : t('agent.thought') }}
                 </summary>
                 <pre class="mt-1 max-h-40 overflow-auto whitespace-pre-wrap font-sans text-[12px] leading-relaxed studio-scroll">{{ msg.thinking }}</pre>
               </details>
+              <AgentToolActivity
+                v-for="(call, i) in msg.toolCalls"
+                :key="`${msg.id}-tool-${i}`"
+                :call="call"
+                :message-streaming="Boolean(msg.streaming)"
+                :busy="busy"
+              />
               <AgentMarkdownPreview
                 v-if="msg.content && msg.role === 'assistant'"
                 :markdown="msg.content"
               />
               <p v-else-if="msg.content" class="cursor-text whitespace-pre-wrap">{{ msg.content }}</p>
-              <p v-else-if="msg.streaming" class="text-[12px] text-content-muted">{{ t('agent.thinking') }}</p>
+              <p v-else-if="shouldShowThinkingPlaceholder(msg)" class="text-[12px] text-content-muted">{{ t('agent.thinking') }}</p>
               <div
                 v-if="!msg.streaming || msg.content"
                 class="mt-2 flex cursor-default select-none gap-1 border-t border-border-subtle pt-1.5"
@@ -868,8 +943,15 @@ function permBadge(s: AgentSessionPayload): string {
               >
                 <StudioIcon icon="lucide:trash-2" :size="12" />
               </button>
-            </li>
-          </ul>
+              </li>
+            </ul>
+          <p
+            v-if="busy && liveToolStatus"
+            class="flex items-center gap-1.5 px-3 pt-1.5 text-[11px] text-content-muted"
+          >
+            <span class="inline-block h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-accent" />
+            <span class="min-w-0 truncate">{{ liveToolStatus }}</span>
+          </p>
           <form class="flex items-center gap-2 p-2" @submit.prevent="onComposerSubmit()">
           <div class="relative shrink-0">
             <button

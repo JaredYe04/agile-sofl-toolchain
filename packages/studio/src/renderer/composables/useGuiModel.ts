@@ -174,6 +174,10 @@ export function useGuiModel(
     await patchViaIpc({ action: 'remove-node', path })
   }
 
+  async function replaceScreenHtml(screenId: string, html: string): Promise<void> {
+    await patchViaIpc({ action: 'replace-screen-html', screenId, html })
+  }
+
   async function addFlow(flow: { from: string; to: string; on?: string }): Promise<void> {
     await patchViaIpc({ action: 'add-flow', flow })
   }
@@ -193,6 +197,7 @@ export function useGuiModel(
     insertHtml,
     patchNode,
     removeNode,
+    replaceScreenHtml,
     addFlow
   }
 }

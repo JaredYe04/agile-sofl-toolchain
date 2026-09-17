@@ -554,6 +554,7 @@ async function chatEcnuStream(options) {
       content += contentChunk;
       options.onDelta?.({ content });
     }
+    let toolsChanged = false;
     for (const call of delta.tool_calls ?? []) {
       const index = call.index ?? tools.length;
       const current = tools[index] ?? { id: "", name: "", arguments: "" };
@@ -561,6 +562,17 @@ async function chatEcnuStream(options) {
       if (call.function?.name) current.name += call.function.name;
       if (call.function?.arguments) current.arguments += call.function.arguments;
       tools[index] = current;
+      toolsChanged = true;
+    }
+    if (toolsChanged) {
+      options.onDelta?.({
+        toolCalls: tools.map((t, index) => ({
+          index,
+          id: t.id,
+          name: t.name,
+          arguments: t.arguments
+        }))
+      });
     }
   };
   while (true) {
@@ -645,7 +657,7 @@ Pipeline — keep going after each applied patch until every enabled stage is do
 4. Per module: add process signatures from Functions (kind=process, pre/post).
 5. Per process: replace-process-body or add scenarios. Write structured natural-language pre/post, never FSF :. Enumerations use {<Tag>}.
 6. Add invariants (kind=inv) from Constraints. Do NOT dump GUI widgets into Hybrid CRUD.
-7. For UI, call read_gui_specification then propose_gui_changes. Build a high-fidelity HTML prototype (shell, sidebar, hero, cards, forms, lists, empty states) — not a page of three buttons. Use whitelist tags plus any as-* class. Bind with data-process / data-bind / data-nav. Prefer replace-screen-html with the full inner layout. Hybrid gui blocks stay as slim screen→process traces.
+7. For UI, call read_gui_specification then propose_gui_changes. Each screen is its own HTML page (data-screen) with data-nav to sibling screens so the prototype can click-switch. Build a high-fidelity HTML prototype (shell, sidebar, hero, cards, forms, lists, empty states) — not a page of three buttons. Use whitelist tags plus any as-* class. Bind with data-process / data-bind / data-nav. Prefer replace-screen-html with the full inner layout of that one screen. Hybrid gui blocks stay as slim screen→process traces.
 After every applied write, call read_hybrid_specification / read_gui_specification and fix gaps until inventories are correct. Last message = summary of completed stages.
 If CRUD fails, the file is empty/out of sync, diagnostics list syntax errors, or leftover unparsed text appears, call read_hybrid_specification with view=source then propose_source_edit (unique replace/append/replace-document). Do not retry the same failing CRUD. Prefer CRUD; source edit is last resort.
 Infer unstated GUI/navigation only when the parameter allows it; otherwise ask. Prefer small patches citing inventory ids.`
@@ -1796,7 +1808,8 @@ Never put end_module, a whole module, or a process block inside type/var/inv/pre
 After a write is applied, call read_hybrid_specification and keep patching until the inventory matches the plan and Diagnostics is empty. If inventory reports leftover text without a module header, that is NOT empty — repair it with CRUD (or source edit only if CRUD cannot).` : "You do not have Hybrid write permission. Do not call propose_hybrid_changes.";
   const guiGuide = permissions.hybrid.write || permissions.informal.write ? `For propose_gui_changes, design a high-fidelity product prototype the user can walk through:
 - Each screen should look like a finished app surface: shell/sidebar or navbar, hero or toolbar, cards/lists/tables/forms, badges, empty states, primary+secondary actions.
-- Prefer replace-screen-html (or add-screen with html) with the FULL inner markup. All children are kept; do not flatten a layout down to the first widget.
+- Each screen is a separate HTML page. Clicking data-nav must switch screens; the screen list follows. Do not put the whole app into one un-navigable view.
+- Prefer replace-screen-html (or add-screen with html) with the FULL inner markup of that screen. All children are kept; do not flatten a layout down to the first widget.
 - Tags: common HTML5 (header/main/aside/nav/table/form/img/a/…). Classes: any as-* token (as-shell, as-hero, as-card, as-grid-3, as-btn-primary, …). Bind with data-process / data-bind / data-nav.
 - Do not ship a page that is only two or three unlabeled buttons. Navigation must be visible in the layout, not implied.
 - Never emit <script>, style=, href, or src.` : "You do not have GUI write permission. Do not call propose_gui_changes.";
@@ -1938,6 +1951,79 @@ function parseArgs(raw) {
 function emit(sink, event) {
   sink?.(event);
 }
+const TOOL_DELTA_THROTTLE_MS = 50;
+function emitToolCall(sink, live, index, status) {
+  const call = live.toolCalls?.[index];
+  if (!call) return;
+  emit(sink, {
+    kind: "tool_call",
+    messageId: live.id,
+    index,
+    id: call.id,
+    name: call.name,
+    arguments: call.arguments,
+    status
+  });
+}
+function markCallStatus(live, id, status, sink) {
+  const index = live.toolCalls?.findIndex((c) => c.id === id) ?? -1;
+  if (index < 0 || !live.toolCalls) return;
+  live.toolCalls[index].status = status;
+  emit(sink, { kind: "tool_status", messageId: live.id, index, id, status });
+}
+function markRemainingToolCalls(live, status, sink) {
+  for (const call of live.toolCalls ?? []) {
+    if (call.status === "done" || call.status === "error") continue;
+    markCallStatus(live, call.id, status, sink);
+  }
+}
+function attachStreamDeltas(live, sink) {
+  let lastEmitAt = 0;
+  let pending = false;
+  const seenNames = /* @__PURE__ */ new Set();
+  const emitSnapshot = () => {
+    pending = false;
+    lastEmitAt = Date.now();
+    for (let i = 0; i < (live.toolCalls?.length ?? 0); i++) {
+      emitToolCall(sink, live, i, live.toolCalls[i].status ?? "streaming");
+    }
+  };
+  return {
+    onDelta(delta) {
+      if (delta.reasoning != null) {
+        live.thinking = delta.reasoning;
+        emit(sink, { kind: "reasoning", messageId: live.id, text: delta.reasoning });
+      }
+      if (delta.content != null) {
+        live.content = delta.content;
+        emit(sink, { kind: "content", messageId: live.id, text: delta.content });
+      }
+      if (!delta.toolCalls) return;
+      live.toolCalls = delta.toolCalls.map((c, i) => ({
+        id: c.id || live.toolCalls?.[i]?.id || `pending-${i}`,
+        name: c.name,
+        arguments: c.arguments,
+        status: "streaming"
+      }));
+      const nameAppeared = (live.toolCalls ?? []).some((c, i) => {
+        if (!c.name) return false;
+        const key = `${i}:${c.name}`;
+        if (seenNames.has(key)) return false;
+        seenNames.add(key);
+        return true;
+      });
+      const now = Date.now();
+      if (nameAppeared || now - lastEmitAt >= TOOL_DELTA_THROTTLE_MS) {
+        emitSnapshot();
+        return;
+      }
+      pending = true;
+    },
+    flush() {
+      if (pending || live.toolCalls?.length) emitSnapshot();
+    }
+  };
+}
 async function runAgentTurn(session, projectRoot, ctx, userText, sink, signal) {
   if (userText?.trim()) {
     session.messages.push({
@@ -1966,6 +2052,7 @@ async function runAgentTurn(session, projectRoot, ctx, userText, sink, signal) {
     const live = [...session.messages].reverse().find((m) => m.role === "assistant" && m.streaming);
     if (live) {
       live.streaming = false;
+      markRemainingToolCalls(live, "error", sink);
       if (!live.content.trim()) live.content = "已停止 / Stopped.";
     } else {
       session.messages.push({
@@ -2000,26 +2087,20 @@ async function runAgentTurn(session, projectRoot, ctx, userText, sink, signal) {
       tools: toolsFor(permissions),
       temperature: 0.35
     };
+    const streamDeltas = attachStreamDeltas(live, sink);
     let completion;
     try {
       completion = await chatEcnuStream({
         ...request,
         thinking: true,
         signal,
-        onDelta: (delta) => {
-          if (delta.reasoning != null) {
-            live.thinking = delta.reasoning;
-            emit(sink, { kind: "reasoning", messageId: assistantId, text: delta.reasoning });
-          }
-          if (delta.content != null) {
-            live.content = delta.content;
-            emit(sink, { kind: "content", messageId: assistantId, text: delta.content });
-          }
-        }
+        onDelta: streamDeltas.onDelta
       });
     } catch (first) {
+      streamDeltas.flush();
       if (isChatAborted(first) || signal?.aborted) {
         live.streaming = false;
+        markRemainingToolCalls(live, "error", sink);
         if (!live.content.trim()) live.content = "已停止 / Stopped.";
         saveSession(projectRoot, session);
         emit(sink, { kind: "session", session });
@@ -2030,15 +2111,12 @@ async function runAgentTurn(session, projectRoot, ctx, userText, sink, signal) {
           ...request,
           thinking: false,
           signal,
-          onDelta: (delta) => {
-            if (delta.content != null) {
-              live.content = delta.content;
-              emit(sink, { kind: "content", messageId: assistantId, text: delta.content });
-            }
-          }
+          onDelta: streamDeltas.onDelta
         });
       } catch (err) {
+        streamDeltas.flush();
         live.streaming = false;
+        markRemainingToolCalls(live, "error", sink);
         if (isChatAborted(err) || signal?.aborted) {
           if (!live.content.trim()) live.content = "已停止 / Stopped.";
           saveSession(projectRoot, session);
@@ -2051,6 +2129,7 @@ async function runAgentTurn(session, projectRoot, ctx, userText, sink, signal) {
         throw err;
       }
     }
+    streamDeltas.flush();
     live.streaming = false;
     live.content = completion.content.trim();
     live.thinking = completion.reasoning.trim() || live.thinking;
@@ -2058,8 +2137,20 @@ async function runAgentTurn(session, projectRoot, ctx, userText, sink, signal) {
       live.toolCalls = completion.toolCalls.map((c) => ({
         id: c.id,
         name: c.function.name,
-        arguments: c.function.arguments
+        arguments: c.function.arguments,
+        status: "running"
       }));
+      live.toolCalls.forEach((call, index) => {
+        emit(sink, {
+          kind: "tool_call",
+          messageId: assistantId,
+          index,
+          id: call.id,
+          name: call.name,
+          arguments: call.arguments,
+          status: "running"
+        });
+      });
     }
     if (completion.toolCalls.length) {
       for (const call of completion.toolCalls) {

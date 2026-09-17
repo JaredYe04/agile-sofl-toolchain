@@ -2,6 +2,7 @@
 import { ref, computed, inject, watch } from 'vue'
 import { GUI_MODEL_KEY } from '../../../composables/guiModelContext'
 import { INFORMAL_MODEL_KEY } from '../../../composables/informalModelContext'
+import { resolveGuiScreenId } from '../../../lib/guiNavigate'
 import GuiDesignerCanvas from './GuiDesignerCanvas.vue'
 
 defineProps<{ embedded?: boolean }>()
@@ -13,6 +14,10 @@ inject(INFORMAL_MODEL_KEY, null)
 const selectedScreenId = ref<string | null>(null)
 const screens = computed(() => gui.model.value?.screens ?? [])
 
+function selectScreen(id: string | null): void {
+  selectedScreenId.value = id ? resolveGuiScreenId(screens.value, id) ?? id : null
+}
+
 watch(
   screens,
   (list) => {
@@ -20,9 +25,8 @@ watch(
       selectedScreenId.value = null
       return
     }
-    if (!selectedScreenId.value || !list.some((s) => s.id === selectedScreenId.value)) {
-      selectedScreenId.value = list[0]!.id
-    }
+    const resolved = resolveGuiScreenId(list, selectedScreenId.value)
+    selectedScreenId.value = resolved ?? list[0]!.id
   },
   { immediate: true }
 )
@@ -33,7 +37,7 @@ watch(
     <GuiDesignerCanvas
       class="min-h-0 flex-1"
       :selected-view-id="selectedScreenId"
-      @update:selected-view-id="selectedScreenId = $event"
+      @update:selected-view-id="selectScreen"
     />
   </div>
 </template>

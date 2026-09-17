@@ -10,7 +10,10 @@ const STUDIO_LUCIDE_ICONS = [
   'chevron-right',
   'shield',
   'maximize-2',
-  'x'
+  'x',
+  'loader-circle',
+  'check',
+  'circle-alert'
 ] as const
 
 export function registerStudioIcons(): void {

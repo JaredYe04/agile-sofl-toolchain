@@ -11,7 +11,9 @@ import {
   extractGuiFromAspec,
   embedGuiInAspec,
   mergeGuiSources,
-  formatGui
+  formatGui,
+  extractScreenHtml,
+  wrapPrototypeHtml
 } from '../src/patch.js'
 import { buildSlimGuiBlockFromHtml } from '../src/asflTrace.js'
 import { evalSimpleCondition, matchScenarios } from '../src/scenarioEval.js'
@@ -112,6 +114,33 @@ describe('patchGui', () => {
     expect(buildGuiModel(next).screens.map((s) => s.name)).toContain('Cart')
     expect(next).toContain('data-process="Order.Checkout"')
     expect(next).toContain('as-navbar')
+  })
+
+  it('extracts one screen as its own html file and wraps a prototype page', () => {
+    const source = `<div class="as-app" data-app="Shop">
+  <section class="as-screen" id="view-home" data-screen="Home"><h1 class="as-title">Home</h1>
+    <button class="as-btn" data-nav="Cart">Go</button>
+  </section>
+  <section class="as-screen" id="view-cart" data-screen="Cart"><h1 class="as-title">Cart</h1></section>
+</div>`
+    const home = extractScreenHtml(source, 'Home')
+    const cart = extractScreenHtml(source, 'view-cart')
+    expect(home).toContain('data-screen="Home"')
+    expect(home).toContain('data-nav="Cart"')
+    expect(home).not.toContain('data-screen="Cart"')
+    expect(cart).toContain('data-screen="Cart"')
+    expect(cart).not.toContain('data-screen="Home"')
+    const page = wrapPrototypeHtml('Shop', home)
+    expect(page).toContain('data-app="Shop"')
+    expect(page).toContain('data-screen="Home"')
+    expect(page).not.toContain('data-screen="Cart"')
+    const swapped = patchGui(source, {
+      action: 'replace-screen-html',
+      screenId: 'Cart',
+      html: '<header class="as-navbar"><h1 class="as-title">Bag</h1></header><button class="as-btn" data-nav="Home">Back</button>'
+    })
+    expect(extractScreenHtml(swapped, 'Cart')).toContain('data-nav="Home"')
+    expect(extractScreenHtml(swapped, 'Home')).toContain('data-nav="Cart"')
   })
 
   it('adds widget to screen', () => {

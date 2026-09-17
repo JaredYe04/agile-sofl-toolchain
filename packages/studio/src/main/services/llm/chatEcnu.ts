@@ -30,9 +30,17 @@ export type ChatCompletion = {
   finishReason: string
 }
 
+export type ChatStreamToolCall = {
+  index: number
+  id: string
+  name: string
+  arguments: string
+}
+
 export type ChatStreamDelta = {
   reasoning?: string
   content?: string
+  toolCalls?: ChatStreamToolCall[]
 }
 
 export class ChatAbortedError extends Error {
@@ -194,6 +202,7 @@ export async function chatEcnuStream(options: {
       content += contentChunk
       options.onDelta?.({ content })
     }
+    let toolsChanged = false
     for (const call of delta.tool_calls ?? []) {
       const index = call.index ?? tools.length
       const current = tools[index] ?? { id: '', name: '', arguments: '' }
@@ -201,6 +210,23 @@ export async function chatEcnuStream(options: {
       if (call.function?.name) current.name += call.function.name
       if (call.function?.arguments) current.arguments += call.function.arguments
       tools[index] = current
+      toolsChanged = true
+    }
+    if (toolsChanged) {
+      options.onDelta?.({
+        toolCalls: tools.flatMap((t, index) =>
+          t
+            ? [
+                {
+                  index,
+                  id: t.id,
+                  name: t.name,
+                  arguments: t.arguments
+                }
+              ]
+            : []
+        )
+      })
     }
   }
 

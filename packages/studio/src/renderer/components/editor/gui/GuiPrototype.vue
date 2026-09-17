@@ -6,7 +6,6 @@ import {
   collectEnv,
   pathOfElement,
   readThemeVars,
-  showScreen,
   type GuiProcessEvent
 } from '../../../lib/guiPrototype'
 
@@ -25,14 +24,20 @@ const emit = defineEmits<{
 const host = ref<HTMLDivElement | null>(null)
 let shadow: ShadowRoot | null = null
 
+function renderHtml(): void {
+  if (!shadow) return
+  const css = prototypeStylesheet(readThemeVars())
+  shadow.innerHTML = `<style>${css}</style>${sanitizeHtml(props.html || '')}`
+}
+
 function mountHtml(): void {
   const el = host.value
   if (!el) return
-  if (!shadow) shadow = el.attachShadow({ mode: 'open' })
-  const css = prototypeStylesheet(readThemeVars())
-  shadow.innerHTML = `<style>${css}</style>${sanitizeHtml(props.html || '')}`
-  if (props.screenId) showScreen(shadow, props.screenId)
-  shadow.addEventListener('click', onClick)
+  if (!shadow) {
+    shadow = el.attachShadow({ mode: 'open' })
+    shadow.addEventListener('click', onClick)
+  }
+  renderHtml()
 }
 
 function onClick(event: Event): void {
@@ -45,28 +50,22 @@ function onClick(event: Event): void {
     path
   })
   if (!props.interactive) return
-  const process = hit?.getAttribute('data-process') || hit?.closest('[data-screen]')?.getAttribute('data-process')
+  const process = hit?.getAttribute('data-process') || undefined
   const nav = hit?.getAttribute('data-nav') || undefined
   const screen = hit?.closest('[data-screen]')?.getAttribute('data-screen') || undefined
-  if (process) {
-    event.preventDefault()
-    emit('process', { process, env: collectEnv(shadow), nav, screen })
-    return
-  }
   if (nav) {
     event.preventDefault()
     emit('navigate', nav)
+  }
+  if (process) {
+    event.preventDefault()
+    emit('process', { process, env: collectEnv(shadow), nav, screen })
   }
 }
 
 watch(
   () => [props.html, props.screenId],
-  () => {
-    if (!shadow) return
-    const css = prototypeStylesheet(readThemeVars())
-    shadow.innerHTML = `<style>${css}</style>${sanitizeHtml(props.html || '')}`
-    if (props.screenId) showScreen(shadow, props.screenId)
-  }
+  () => renderHtml()
 )
 
 onMounted(() => mountHtml())

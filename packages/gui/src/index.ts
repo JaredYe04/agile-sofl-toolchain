@@ -42,6 +42,8 @@ export {
   guispecFromGuiSection,
   formatGui,
   defaultGuiHtml,
+  extractScreenHtml,
+  wrapPrototypeHtml,
   patchHtmlNode,
   insertHtml,
   removeHtmlNode

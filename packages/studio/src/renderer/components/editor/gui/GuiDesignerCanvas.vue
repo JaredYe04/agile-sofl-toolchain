@@ -1,13 +1,19 @@
 <script setup lang="ts">
 import { computed, inject, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ALLOWED_CLASSES, findTreeItem, listHtmlTree, type HtmlTreeItem } from '@agile-sofl/gui'
+import { ALLOWED_CLASSES, extractScreenHtml, findTreeItem, listHtmlTree, wrapPrototypeHtml, type HtmlTreeItem } from '@agile-sofl/gui'
 import { GUI_MODEL_KEY } from '../../../composables/guiModelContext'
 import { useWorkspaceStore } from '../../../stores/workspace'
 import GuiPrototype from './GuiPrototype.vue'
 import GuiDomTree from './GuiDomTree.vue'
 import ResizeSplit from '../../ui/ResizeSplit.vue'
-import type { GuiProcessEvent } from '../../../lib/guiPrototype'
+import {
+  fullPathToScreenTree,
+  prototypePathToFull,
+  screenTreePathToFull,
+  type GuiProcessEvent
+} from '../../../lib/guiPrototype'
+import { resolveGuiScreenId } from '../../../lib/guiNavigate'
 
 const PALETTE: Array<{ id: string; label: string; html: string }> = [
   { id: 'stack', label: 'Stack', html: '<div class="as-stack as-gap-md"></div>' },
@@ -66,32 +72,53 @@ const leftRatio = ref(0.22)
 const centerRatio = ref(0.72)
 
 const screens = computed(() => gui.model.value?.screens ?? [])
-const html = computed(() => gui.model.value?.html ?? '')
-const tree = computed(() => listHtmlTree(html.value))
-const selectedScreen = computed(() => screens.value.find((s) => s.id === props.selectedViewId) ?? null)
-const selectedNode = computed(() =>
-  selectedPath.value ? findTreeItem(tree.value, selectedPath.value) : undefined
-)
+const fullHtml = computed(() => gui.model.value?.html ?? '')
+const appName = computed(() => gui.model.value?.app.name || 'App')
+const selectedScreen = computed(() => {
+  const id = resolveGuiScreenId(screens.value, props.selectedViewId)
+  return screens.value.find((s) => s.id === id) ?? null
+})
+const screenHtml = computed(() => {
+  const screen = selectedScreen.value
+  if (!screen) return ''
+  return extractScreenHtml(fullHtml.value, screen.id) || extractScreenHtml(fullHtml.value, screen.name)
+})
+const prototypeHtml = computed(() => wrapPrototypeHtml(appName.value, screenHtml.value))
+const tree = computed(() => listHtmlTree(screenHtml.value))
+const selectedNode = computed(() => {
+  const local = fullPathToScreenTree(selectedPath.value, screenFullPath())
+  return local ? findTreeItem(tree.value, local) : undefined
+})
 const diags = computed(() => gui.model.value?.diagnostics ?? [])
 
-function screenPath(): string | null {
-  const id = props.selectedViewId
-  if (!id) return tree.value[0]?.children[0]?.path ?? tree.value[0]?.path ?? null
+function fullTree(): HtmlTreeItem[] {
+  return listHtmlTree(fullHtml.value)
+}
+
+function screenFullPath(): string | null {
+  const screen = selectedScreen.value
+  if (!screen) return tree.value[0]?.path ?? null
   const walk = (nodes: HtmlTreeItem[]): string | null => {
     for (const n of nodes) {
-      if (n.attrs['data-screen'] === id || n.id === id) return n.path
+      if (n.attrs['data-screen'] === screen.id || n.attrs['data-screen'] === screen.name || n.id === screen.id) {
+        return n.path
+      }
       const nested = walk(n.children)
       if (nested) return nested
     }
     return null
   }
-  return walk(tree.value)
+  return walk(fullTree()) ?? '0.0'
+}
+
+function screenPath(): string | null {
+  return screenFullPath()
 }
 
 function insertParent(): string | null {
   const node = selectedNode.value
   if (node && ['div', 'section', 'form', 'label', 'header', 'nav', 'main', 'article', 'aside'].includes(node.tag)) {
-    return node.path
+    return screenTreePathToFull(node.path, screenFullPath())
   }
   return screenPath()
 }
@@ -118,16 +145,26 @@ async function insertSnippet(snippet: string): Promise<void> {
 }
 
 function selectScreen(id: string): void {
-  emit('update:selectedViewId', id)
+  emit('update:selectedViewId', resolveGuiScreenId(screens.value, id) ?? id)
   selectedPath.value = null
+}
+
+function onNavigate(ref: string): void {
+  const id = resolveGuiScreenId(screens.value, ref)
+  if (id) emit('update:selectedViewId', id)
+}
+
+function onPrototypeSelect(payload: { id: string | null; path: string | null }): void {
+  selectedPath.value = prototypePathToFull(payload.path, screenFullPath())
+}
+
+function onTreeSelect(localPath: string): void {
+  selectedPath.value = screenTreePathToFull(localPath, screenFullPath())
 }
 
 async function onProcess(event: GuiProcessEvent): Promise<void> {
   const asfl = workspace.hybridTab?.content ?? ''
-  if (!window.studio?.animateGuiProcess || !asfl.trim()) {
-    if (event.nav) emit('update:selectedViewId', event.nav)
-    return
-  }
+  if (!window.studio?.animateGuiProcess || !asfl.trim()) return
   const result = await window.studio.animateGuiProcess({
     asfl,
     process: event.process,
@@ -137,7 +174,6 @@ async function onProcess(event: GuiProcessEvent): Promise<void> {
   mockDraft.value = JSON.stringify(result.outputs, null, 2)
   if (!result.unevaluable && result.matched[0]) {
     prototypeRef.value?.applyOutputs(result.outputs)
-    if (event.nav) emit('update:selectedViewId', event.nav)
   }
 }
 
@@ -154,7 +190,6 @@ async function pickScenario(id: string): Promise<void> {
   animation.value = { ...result, pendingNav: current.pendingNav }
   mockDraft.value = JSON.stringify(result.outputs, null, 2)
   prototypeRef.value?.applyOutputs(result.outputs)
-  if (current.pendingNav) emit('update:selectedViewId', current.pendingNav)
 }
 
 function applyMockOutputs(): void {
@@ -221,16 +256,17 @@ watch(
           <button
             type="button"
             class="mb-0.5 w-full rounded px-2 py-1 text-left text-xs"
-            :class="screen.id === selectedViewId ? 'bg-accent/15 text-accent' : 'hover:bg-surface-overlay'"
+            :class="screen.id === selectedScreen?.id ? 'bg-accent/15 text-accent' : 'hover:bg-surface-overlay'"
             @click="selectScreen(screen.id)"
           >
             {{ screen.title || screen.name }}
+            <span class="mt-0.5 block font-mono text-[10px] text-content-muted">{{ screen.name }}.html</span>
           </button>
         </li>
       </ul>
       <p class="px-2 pb-1 text-[10px] uppercase tracking-wide text-content-muted">{{ t('gui.domTree') }}</p>
       <div class="studio-scroll min-h-0 flex-1 overflow-auto px-1">
-        <GuiDomTree :nodes="tree" :selected-path="selectedPath" @select="selectedPath = $event" />
+        <GuiDomTree :nodes="tree" :selected-path="fullPathToScreenTree(selectedPath, screenFullPath())" @select="onTreeSelect" />
       </div>
       <div class="border-t border-border-subtle p-1">
         <p class="px-1 pb-1 text-[10px] uppercase tracking-wide text-content-muted">{{ t('gui.palette') }}</p>
@@ -265,12 +301,12 @@ watch(
       <GuiPrototype
         ref="prototypeRef"
         class="min-h-0 flex-1"
-        :html="html"
-        :screen-id="selectedViewId"
+        :html="prototypeHtml"
+        :screen-id="selectedScreen?.id"
         interactive
-        @navigate="emit('update:selectedViewId', $event)"
+        @navigate="onNavigate"
         @process="onProcess"
-        @select="selectedPath = $event.path"
+        @select="onPrototypeSelect"
       />
     </section>
       </template>
