@@ -26,7 +26,7 @@ const { t } = useI18n()
 const workspace = useWorkspaceStore()
 const visual = inject(VISUAL_MODEL_KEY, null)
 const gui = inject(GUI_MODEL_KEY, null)
-const informal = useInformalSpec(computed(() => workspace.informalTab?.id))
+const { spec: informalSpec } = useInformalSpec(computed(() => workspace.informalTab?.id))
 
 const chromeMode = computed(() => (workspace.structureMode === 'tree' ? 'tree' : 'map'))
 const mapKind = computed<SpecMapKind>(() =>
@@ -46,7 +46,7 @@ const specMap = computed(() =>
   buildSpecMap(
     mapKind.value,
     toSpecMapSource({
-      informal: informal.spec.value,
+      informal: informalSpec.value,
       hybrid: visual?.model.value ?? null,
       gui: gui?.model.value ?? null
     })
@@ -115,7 +115,7 @@ function onMapSelect(ref: SpecMapRef): void {
         @update:ratio="workspace.structureSplitRatio = $event"
       >
         <template #top>
-          <SpecificationStructureTree pane="informal" :spec="informal.spec" />
+          <SpecificationStructureTree pane="informal" :spec="informalSpec" />
         </template>
         <template #bottom>
           <SpecificationStructureTree pane="hybrid" />

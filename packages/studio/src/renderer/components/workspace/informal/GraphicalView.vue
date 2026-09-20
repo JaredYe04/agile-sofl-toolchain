@@ -220,17 +220,6 @@ function placeholderCount(type: SectionType): string {
 
 <template>
   <div class="flex h-full min-h-0 flex-col bg-surface-base" @mousedown="menu = null">
-    <div
-      v-if="selectedNode && !workspace.informalGraphBodyVisible"
-      class="flex shrink-0 justify-end border-b border-border-subtle px-2 py-1"
-    >
-      <IconActionButton
-        icon="lucide:panel-bottom-open"
-        :label="t('informal.showBodyPanel', { title: selectedNode.title })"
-        variant="accent"
-        @click="workspace.informalGraphBodyVisible = true"
-      />
-    </div>
     <div class="grid min-h-0 flex-1 grid-cols-3 gap-2 overflow-hidden p-2">
       <section
         v-for="col in columns"
@@ -322,10 +311,14 @@ function placeholderCount(type: SectionType): string {
       </section>
     </div>
     <aside
-      v-if="selectedNode && workspace.informalGraphBodyVisible"
-      class="flex max-h-[42%] min-h-[120px] shrink-0 flex-col border-t border-border-subtle bg-surface-raised"
+      v-if="selectedNode"
+      class="flex shrink-0 flex-col border-t border-border-subtle bg-surface-raised"
+      :class="workspace.informalGraphBodyVisible ? 'max-h-[42%] min-h-[120px]' : ''"
     >
-      <header class="flex h-8 shrink-0 items-center gap-2 border-b border-border-subtle px-2">
+      <header
+        class="flex h-8 shrink-0 items-center gap-2 px-2"
+        :class="workspace.informalGraphBodyVisible ? 'border-b border-border-subtle' : ''"
+      >
         <span class="text-[11px] font-semibold uppercase tracking-wide text-content-muted">{{
           t('informal.itemBody')
         }}</span>
@@ -333,12 +326,21 @@ function placeholderCount(type: SectionType): string {
           selectedNode.title
         }}</span>
         <IconActionButton
+          v-if="workspace.informalGraphBodyVisible"
           icon="lucide:panel-bottom-close"
           :label="t('informal.hideBodyPanel')"
           @click="workspace.informalGraphBodyVisible = false"
         />
+        <IconActionButton
+          v-else
+          icon="lucide:panel-bottom-open"
+          :label="t('informal.showBodyPanel', { title: selectedNode.title })"
+          variant="accent"
+          @click="workspace.informalGraphBodyVisible = true"
+        />
       </header>
       <textarea
+        v-if="workspace.informalGraphBodyVisible"
         v-model="bodyDraft"
         data-informal-body="1"
         class="min-h-0 flex-1 resize-none bg-transparent px-3 py-2 text-[13px] leading-relaxed text-content-primary outline-none studio-scroll"

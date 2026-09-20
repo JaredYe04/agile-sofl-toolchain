@@ -209,6 +209,10 @@ export function rejectedToolResult(): string {
   })
 }
 
+export function assistantTurnIsComplete(content: string, toolCallCount: number): boolean {
+  return toolCallCount === 0 && content.trim().length > 0
+}
+
 export function failedToolResult(error: string): string {
   return JSON.stringify({
     action: 'error',

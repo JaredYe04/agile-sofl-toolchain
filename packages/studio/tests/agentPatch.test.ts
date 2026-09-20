@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  assistantTurnIsComplete,
   continuationUserText,
   crudBlockedByFailures,
   failedToolResult,
@@ -118,6 +119,18 @@ describe('continuationUserText', () => {
     const text = continuationUserText(JSON.stringify({ action: 'error', error: 'skip' }), 2)
     expect(text).toMatch(/propose_source_edit/)
     expect(text).toMatch(/view=source/)
+  })
+})
+
+describe('assistantTurnIsComplete', () => {
+  it('treats a text reply with no tools as a finished summary', () => {
+    expect(assistantTurnIsComplete('已完成 Informal 规格。', 0)).toBe(true)
+  })
+
+  it('keeps the turn open on empty, thinking-only, or tool calls', () => {
+    expect(assistantTurnIsComplete('', 0)).toBe(false)
+    expect(assistantTurnIsComplete('   ', 0)).toBe(false)
+    expect(assistantTurnIsComplete('looking at the error', 1)).toBe(false)
   })
 })
 

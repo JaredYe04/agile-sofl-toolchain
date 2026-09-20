@@ -1,6 +1,11 @@
+import './fileRoot'
 import * as monaco from 'monaco-editor'
 import 'monaco-editor/esm/vs/basic-languages/html/html.contribution.js'
-import editorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker'
+import editorWorker from './workers/editor.worker.entry?worker'
+import htmlWorker from './workers/html.worker.entry?worker'
+import jsonWorker from './workers/json.worker.entry?worker'
+import cssWorker from './workers/css.worker.entry?worker'
+import tsWorker from './workers/ts.worker.entry?worker'
 import {
   agileSoflDarkFieldTheme,
   agileSoflDarkTheme,
@@ -23,8 +28,23 @@ let initialized = false
 
 self.MonacoEnvironment = {
   getWorker(_workerId: string, label: string) {
-    if (label === 'editor') return new editorWorker()
-    return new editorWorker()
+    switch (label) {
+      case 'json':
+        return new jsonWorker()
+      case 'css':
+      case 'scss':
+      case 'less':
+        return new cssWorker()
+      case 'html':
+      case 'handlebars':
+      case 'razor':
+        return new htmlWorker()
+      case 'typescript':
+      case 'javascript':
+        return new tsWorker()
+      default:
+        return new editorWorker()
+    }
   }
 }
 

@@ -1718,6 +1718,9 @@ function rejectedToolResult() {
     next: "Revise the plan. Ask if needed, propose a smaller CRUD patch, or propose_source_edit if the file is stuck."
   });
 }
+function assistantTurnIsComplete(content, toolCallCount) {
+  return content.trim().length > 0;
+}
 function failedToolResult(error) {
   return JSON.stringify({
     action: "error",
@@ -2066,6 +2069,7 @@ async function runAgentTurn(session, projectRoot, ctx, userText, sink, signal) {
   else ctx.promptExtras = session.context.promptExtras;
   ctx.permissions = permissions;
   const continuation = !userText?.trim();
+  let needsContinuationNudge = continuation;
   const stopIfAborted = () => {
     if (!signal?.aborted) return false;
     const live = [...session.messages].reverse().find((m) => m.role === "assistant" && m.streaming);
@@ -2102,7 +2106,7 @@ async function runAgentTurn(session, projectRoot, ctx, userText, sink, signal) {
     emit(sink, { kind: "session", session });
     const history = { ...session, messages: session.messages.filter((m) => m.id !== assistantId) };
     const request = {
-      messages: toApiMessages(history, ctx, permissions, { continuation: continuation && step === 0 }),
+      messages: toApiMessages(history, ctx, permissions, { continuation: needsContinuationNudge }),
       tools: toolsFor(permissions),
       temperature: 0.35
     };
@@ -2145,6 +2149,10 @@ async function runAgentTurn(session, projectRoot, ctx, userText, sink, signal) {
         live.content = err instanceof Error ? err.message : String(err);
         saveSession(projectRoot, session);
         emit(sink, { kind: "session", session });
+        if (continuation) {
+          session.messages = session.messages.filter((m) => m.id !== assistantId);
+          continue;
+        }
         throw err;
       }
     }
@@ -2389,16 +2397,13 @@ async function runAgentTurn(session, projectRoot, ctx, userText, sink, signal) {
       markRemainingToolCalls(live, "done", sink);
       saveSession(projectRoot, session);
       emit(sink, { kind: "session", session });
+      needsContinuationNudge = false;
       continue;
     }
-    if (!live.content && !live.thinking) {
-      if (continuation && step === 0) {
-        live.content = "继续当前任务：必要时再问一句，或提交下一组修改（CRUD 优先；卡住时用源文件编辑）；若已完成，请给出简短总结。";
-      } else {
-        session.messages = session.messages.filter((m) => m.id !== assistantId);
-      }
+    if (assistantTurnIsComplete(live.content)) {
+      break;
     }
-    break;
+    session.messages = session.messages.filter((m) => m.id !== assistantId);
   }
   saveSession(projectRoot, session);
   emit(sink, { kind: "session", session });

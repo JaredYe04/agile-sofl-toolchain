@@ -14,6 +14,7 @@ import { formatGuiInventory, numberedGuiSource } from '@agile-sofl/gui'
 import { numberedSource } from '../../../shared/sourceEdit.js'
 import {
   appliedToolResult,
+  assistantTurnIsComplete,
   continuationUserText,
   consecutiveWriteFailures,
   crudBlockedByFailures,
@@ -465,6 +466,7 @@ export async function runAgentTurn(
   else ctx.promptExtras = session.context.promptExtras
   ctx.permissions = permissions
   const continuation = !userText?.trim()
+  let needsContinuationNudge = continuation
 
   const stopIfAborted = (): boolean => {
     if (!signal?.aborted) return false
@@ -504,7 +506,7 @@ export async function runAgentTurn(
 
     const history = { ...session, messages: session.messages.filter((m) => m.id !== assistantId) }
     const request = {
-      messages: toApiMessages(history, ctx, permissions, { continuation: continuation && step === 0 }),
+      messages: toApiMessages(history, ctx, permissions, { continuation: needsContinuationNudge }),
       tools: toolsFor(permissions),
       temperature: 0.35
     }
@@ -548,6 +550,10 @@ export async function runAgentTurn(
         live.content = err instanceof Error ? err.message : String(err)
         saveSession(projectRoot, session)
         emit(sink, { kind: 'session', session })
+        if (continuation) {
+          session.messages = session.messages.filter((m) => m.id !== assistantId)
+          continue
+        }
         throw err
       }
     }
@@ -849,18 +855,15 @@ export async function runAgentTurn(
       markRemainingToolCalls(live, 'done', sink)
       saveSession(projectRoot, session)
       emit(sink, { kind: 'session', session })
+      needsContinuationNudge = false
       continue
     }
 
-    if (!live.content && !live.thinking) {
-      if (continuation && step === 0) {
-        live.content =
-          '继续当前任务：必要时再问一句，或提交下一组修改（CRUD 优先；卡住时用源文件编辑）；若已完成，请给出简短总结。'
-      } else {
-        session.messages = session.messages.filter((m) => m.id !== assistantId)
-      }
+    if (assistantTurnIsComplete(live.content, 0)) {
+      break
     }
-    break
+
+    session.messages = session.messages.filter((m) => m.id !== assistantId)
   }
 
   saveSession(projectRoot, session)
