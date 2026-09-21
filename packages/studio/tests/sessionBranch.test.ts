@@ -82,6 +82,17 @@ describe('sliceSessionMessages', () => {
     expect(thread[1]?.pending).toBe(false)
     expect(thread).toHaveLength(4)
   })
+
+  it('drops the target message and everything after when exclusive', () => {
+    const sliced = sliceSessionMessages(thread, 'a1', 'keep', true)
+    expect(sliced?.messages.map((m) => m.id)).toEqual(['u1'])
+    expect(sliced?.pendingToolCallId).toBeUndefined()
+  })
+
+  it('clears the thread when rewinding exclusively before the first message', () => {
+    const sliced = sliceSessionMessages(thread, 'u1', 'keep', true)
+    expect(sliced?.messages).toEqual([])
+  })
 })
 
 describe('forkSessionRecord', () => {

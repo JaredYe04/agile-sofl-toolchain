@@ -19,6 +19,7 @@ import PatchPreview from './PatchPreview.vue'
 import AgentSessionDialog from './AgentSessionDialog.vue'
 import AgentToolActivity from './AgentToolActivity.vue'
 import StudioIcon from '../../ui/StudioIcon.vue'
+import IconActionButton from '../../ui/IconActionButton.vue'
 import ResizeSplit from '../../ui/ResizeSplit.vue'
 import { toggleClarificationDraft, type ClarificationDraft } from './clarificationDraft'
 import { contextMenuPoint } from '../../../lib/contextMenuPoint'
@@ -62,6 +63,8 @@ const queuedMessages = ref<AgentQueuedMessage[]>([])
 const editingQueueId = ref<string | null>(null)
 const queueEditDraft = ref('')
 const queueEditInput = ref<HTMLInputElement | null>(null)
+const editingUserMessageId = ref<string | null>(null)
+const userMessageEditDraft = ref('')
 const error = ref('')
 const configured = ref(true)
 const thread = ref<HTMLElement | null>(null)
@@ -272,6 +275,53 @@ function commitQueueEdit(): void {
 function cancelQueueEdit(): void {
   editingQueueId.value = null
   queueEditDraft.value = ''
+}
+
+async function focusUserMessageEditor(messageId: string): Promise<void> {
+  await nextTick()
+  const el = thread.value?.querySelector<HTMLTextAreaElement>(
+    `textarea[data-user-message-edit="${messageId}"]`
+  )
+  el?.focus()
+  el?.select()
+}
+
+async function startUserMessageEdit(msg: AgentMessageView): Promise<void> {
+  if (msg.role !== 'user' || busy.value) return
+  editingUserMessageId.value = msg.id
+  userMessageEditDraft.value = msg.content || ''
+  await focusUserMessageEditor(msg.id)
+}
+
+function cancelUserMessageEdit(): void {
+  editingUserMessageId.value = null
+  userMessageEditDraft.value = ''
+}
+
+async function commitUserMessageEdit(msg: AgentMessageView): Promise<void> {
+  if (editingUserMessageId.value !== msg.id) return
+  const text = userMessageEditDraft.value.trim()
+  cancelUserMessageEdit()
+  if (!text || !session.value || busy.value || msg.role !== 'user') return
+  const original = (msg.content || '').trim()
+  const msgIdx = session.value.messages.findIndex((m) => m.id === msg.id)
+  const hasLater = msgIdx >= 0 && msgIdx < session.value.messages.length - 1
+  if (text === original && !hasLater) return
+  const next = await window.studio?.agentRewindSession?.(
+    toIpcValue({
+      projectRoot: projectRoot.value,
+      id: session.value.id,
+      throughMessageId: msg.id,
+      mode: 'keep',
+      exclusive: true
+    })
+  )
+  if (!next) return
+  session.value = next
+  queuedMessages.value = []
+  autoApplyTried.clear()
+  await refresh()
+  await send(text)
 }
 
 function deleteQueued(id: string): void {
@@ -828,28 +878,62 @@ function permBadge(s: AgentSessionPayload): string {
                 v-if="msg.content && msg.role === 'assistant'"
                 :markdown="msg.content"
               />
-              <p v-else-if="msg.content" class="cursor-text whitespace-pre-wrap">{{ msg.content }}</p>
+              <textarea
+                v-else-if="msg.role === 'user' && editingUserMessageId === msg.id"
+                :data-user-message-edit="msg.id"
+                v-model="userMessageEditDraft"
+                rows="3"
+                class="w-full resize-y rounded-md border border-field-border bg-field-bg px-2 py-1.5 text-[13px] leading-relaxed outline-none focus:ring-1 focus:ring-accent/40"
+                @keydown.escape.prevent="cancelUserMessageEdit"
+              />
+              <p
+                v-else-if="msg.content"
+                class="cursor-text whitespace-pre-wrap"
+                @dblclick="startUserMessageEdit(msg)"
+              >
+                {{ msg.content }}
+              </p>
               <p v-else-if="shouldShowThinkingPlaceholder(msg)" class="text-[12px] text-content-muted">{{ t('agent.thinking') }}</p>
               <div
                 v-if="!msg.streaming || msg.content"
-                class="mt-2 flex cursor-default select-none gap-1 border-t border-border-subtle pt-1.5"
+                class="mt-2 flex cursor-default select-none items-center gap-0.5 border-t border-border-subtle pt-1"
               >
-                <button
-                  type="button"
-                  class="rounded-md px-1.5 py-0.5 text-[11px] text-content-muted hover:bg-surface-overlay hover:text-content-primary disabled:opacity-40"
-                  :disabled="!messageText(msg)"
-                  @click="copyMessage(msg)"
-                >
-                  {{ copiedId === msg.id ? t('agent.copied') : t('agent.copyText') }}
-                </button>
-                <button
-                  type="button"
-                  class="rounded-md px-1.5 py-0.5 text-[11px] text-content-muted hover:bg-surface-overlay hover:text-content-primary disabled:opacity-40"
-                  :disabled="busy || Boolean(msg.streaming)"
-                  @click="forkFromMessage(msg)"
-                >
-                  {{ t('agent.forkChat') }}
-                </button>
+                <template v-if="msg.role === 'user' && editingUserMessageId === msg.id">
+                  <IconActionButton
+                    icon="lucide:check"
+                    :label="t('agent.resendEditedMessage')"
+                    variant="accent"
+                    :disabled="!userMessageEditDraft.trim() || busy"
+                    @click="commitUserMessageEdit(msg)"
+                  />
+                  <IconActionButton
+                    icon="lucide:x"
+                    :label="t('agent.cancelEdit')"
+                    @click="cancelUserMessageEdit"
+                  />
+                </template>
+                <template v-else>
+                  <IconActionButton
+                    :icon="copiedId === msg.id ? 'lucide:check' : 'lucide:copy'"
+                    :label="copiedId === msg.id ? t('agent.copied') : t('agent.copyText')"
+                    :variant="copiedId === msg.id ? 'accent' : 'neutral'"
+                    :disabled="!messageText(msg)"
+                    @click="copyMessage(msg)"
+                  />
+                  <IconActionButton
+                    v-if="msg.role === 'user'"
+                    icon="lucide:pencil"
+                    :label="t('agent.editUserMessage')"
+                    :disabled="busy || Boolean(msg.streaming)"
+                    @click="startUserMessageEdit(msg)"
+                  />
+                  <IconActionButton
+                    icon="lucide:git-branch"
+                    :label="t('agent.forkChat')"
+                    :disabled="busy || Boolean(msg.streaming)"
+                    @click="forkFromMessage(msg)"
+                  />
+                </template>
               </div>
             </div>
             <ClarificationCard

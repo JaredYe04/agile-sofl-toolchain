@@ -49,7 +49,7 @@ onUnmounted(() => {
 <template>
   <div
     ref="host"
-    class="agent-markdown-preview informal-vditor studio-scroll min-w-0 max-w-full cursor-text text-[13px] leading-relaxed"
+    class="agent-markdown-preview studio-text-selectable informal-vditor studio-scroll min-w-0 max-w-full cursor-text text-[13px] leading-relaxed"
   />
 </template>
 

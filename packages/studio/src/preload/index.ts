@@ -288,6 +288,7 @@ const studio = {
     id: string
     throughMessageId: string
     mode?: 'keep' | 'reset'
+    exclusive?: boolean
   }) =>
     ipcRenderer.invoke('studio:agent-rewind-session', payload) as Promise<AgentSessionPayload | null>,
   agentFlagSession: (payload: {

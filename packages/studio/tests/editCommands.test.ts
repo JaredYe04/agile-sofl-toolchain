@@ -20,8 +20,10 @@ describe('shouldUseNativeClipboard', () => {
     const anchorNode = { parentElement }
 
     vi.spyOn(window, 'getSelection').mockReturnValue({
-      toString: () => 'selected text',
-      anchorNode
+      rangeCount: 1,
+      isCollapsed: false,
+      anchorNode,
+      focusNode: anchorNode
     } as Selection)
 
     expect(shouldUseNativeClipboard()).toBe(true)
@@ -29,10 +31,30 @@ describe('shouldUseNativeClipboard', () => {
 
   it('returns false when there is no selection text', () => {
     vi.spyOn(window, 'getSelection').mockReturnValue({
-      toString: () => '',
-      anchorNode: null
+      rangeCount: 0,
+      isCollapsed: true,
+      anchorNode: null,
+      focusNode: null
     } as Selection)
 
     expect(shouldUseNativeClipboard()).toBe(false)
+  })
+
+  it('returns true when selection is inside agent-bubble', () => {
+    const bubble = {
+      closest(sel: string) {
+        return sel.includes('agent-bubble') ? bubble : null
+      }
+    }
+    const anchorNode = { parentElement: bubble }
+
+    vi.spyOn(window, 'getSelection').mockReturnValue({
+      rangeCount: 1,
+      isCollapsed: false,
+      anchorNode,
+      focusNode: anchorNode
+    } as Selection)
+
+    expect(shouldUseNativeClipboard()).toBe(true)
   })
 })

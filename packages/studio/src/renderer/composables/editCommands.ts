@@ -29,12 +29,27 @@ export function shouldUseNativeUndo(): boolean {
   return isEditableFieldFocused()
 }
 
+const NATIVE_CLIPBOARD_SELECTORS =
+  '.studio-text-selectable, .visual-panel, .agent-bubble, .agent-markdown-preview'
+
+function elementForSelectionNode(node: Node | null): Element | null {
+  if (!node) return null
+  if (node.nodeType === 1) return node as Element
+  return node.parentElement
+}
+
+function selectionInNativeClipboardRegion(sel: Selection): boolean {
+  for (const node of [sel.anchorNode, sel.focusNode]) {
+    const el = elementForSelectionNode(node)
+    if (el?.closest(NATIVE_CLIPBOARD_SELECTORS)) return true
+  }
+  return false
+}
+
 /** Let the browser handle clipboard when user selected text outside Monaco. */
 export function shouldUseNativeClipboard(): boolean {
   if (isMonacoFocused() || isEditableFieldFocused()) return true
   const sel = window.getSelection()
-  if (!sel?.toString()) return false
-  const node = sel.anchorNode as { closest?: (s: string) => unknown; parentElement?: { closest?: (s: string) => unknown } } | null
-  const el = node?.closest ? node : node?.parentElement?.closest ? node.parentElement : null
-  return Boolean(el?.closest?.('.studio-text-selectable, .visual-panel'))
+  if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return false
+  return selectionInNativeClipboardRegion(sel)
 }

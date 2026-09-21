@@ -42,10 +42,15 @@ function endIndexThrough(messages: AgentMessage[], idx: number, mode: SessionBra
 export function sliceSessionMessages(
   messages: AgentMessage[],
   throughMessageId: string,
-  mode: SessionBranchMode
+  mode: SessionBranchMode,
+  exclusive?: boolean
 ): { messages: AgentMessage[]; pendingToolCallId?: string } | null {
   const idx = messages.findIndex((m) => m.id === throughMessageId)
   if (idx < 0) return null
+  if (exclusive) {
+    const sliced = clone(messages.slice(0, idx))
+    return { messages: sliced, pendingToolCallId: lastPendingToolCallId(sliced) }
+  }
   const sliced = clone(messages.slice(0, endIndexThrough(messages, idx, mode) + 1))
   if (mode === 'reset') {
     const msg = sliced[Math.min(idx, sliced.length - 1)]!
@@ -65,9 +70,10 @@ export function sliceSessionMessages(
 export function applySessionSlice(
   session: AgentSession,
   throughMessageId: string,
-  mode: SessionBranchMode
+  mode: SessionBranchMode,
+  exclusive?: boolean
 ): AgentSession | null {
-  const sliced = sliceSessionMessages(session.messages, throughMessageId, mode)
+  const sliced = sliceSessionMessages(session.messages, throughMessageId, mode, exclusive)
   if (!sliced) return null
   return {
     ...session,

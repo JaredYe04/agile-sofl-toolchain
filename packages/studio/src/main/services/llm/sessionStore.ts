@@ -128,11 +128,11 @@ export function rewindSession(
   projectRoot: string,
   id: string,
   throughMessageId: string,
-  options?: { mode?: SessionBranchMode }
+  options?: { mode?: SessionBranchMode; exclusive?: boolean }
 ): AgentSession | null {
   const session = loadSession(projectRoot, id)
   if (!session) return null
-  const next = applySessionSlice(session, throughMessageId, options?.mode ?? 'reset')
+  const next = applySessionSlice(session, throughMessageId, options?.mode ?? 'reset', options?.exclusive)
   if (!next) return null
   saveSession(projectRoot, next)
   return next

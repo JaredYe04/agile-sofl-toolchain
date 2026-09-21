@@ -1041,9 +1041,13 @@ function endIndexThrough(messages, idx, mode) {
   }
   return end;
 }
-function sliceSessionMessages(messages, throughMessageId, mode) {
+function sliceSessionMessages(messages, throughMessageId, mode, exclusive) {
   const idx = messages.findIndex((m) => m.id === throughMessageId);
   if (idx < 0) return null;
+  if (exclusive) {
+    const sliced2 = clone$1(messages.slice(0, idx));
+    return { messages: sliced2, pendingToolCallId: lastPendingToolCallId(sliced2) };
+  }
   const sliced = clone$1(messages.slice(0, endIndexThrough(messages, idx, mode) + 1));
   if (mode === "reset") {
     const msg = sliced[Math.min(idx, sliced.length - 1)];
@@ -1059,8 +1063,8 @@ function sliceSessionMessages(messages, throughMessageId, mode) {
   }
   return { messages: sliced, pendingToolCallId: lastPendingToolCallId(sliced) };
 }
-function applySessionSlice(session, throughMessageId, mode) {
-  const sliced = sliceSessionMessages(session.messages, throughMessageId, mode);
+function applySessionSlice(session, throughMessageId, mode, exclusive) {
+  const sliced = sliceSessionMessages(session.messages, throughMessageId, mode, exclusive);
   if (!sliced) return null;
   return {
     ...session,
@@ -1175,7 +1179,7 @@ function forkSession(projectRoot, id, throughMessageId, options) {
 function rewindSession(projectRoot, id, throughMessageId, options) {
   const session = loadSession(projectRoot, id);
   if (!session) return null;
-  const next = applySessionSlice(session, throughMessageId, options?.mode ?? "reset");
+  const next = applySessionSlice(session, throughMessageId, options?.mode ?? "reset", options?.exclusive);
   if (!next) return null;
   saveSession$1(projectRoot, next);
   return next;
@@ -2557,7 +2561,8 @@ function registerAgentHandlers() {
     "studio:agent-rewind-session",
     (_e, payload) => clone(
       rewindSession(payload.projectRoot, payload.id, payload.throughMessageId, {
-        mode: payload.mode
+        mode: payload.mode,
+        exclusive: payload.exclusive
       })
     )
   );

@@ -146,11 +146,13 @@ export function registerAgentHandlers(): void {
         id: string
         throughMessageId: string
         mode?: 'keep' | 'reset'
+        exclusive?: boolean
       }
     ) =>
       clone(
         rewindSession(payload.projectRoot, payload.id, payload.throughMessageId, {
-          mode: payload.mode
+          mode: payload.mode,
+          exclusive: payload.exclusive
         })
       )
   )
