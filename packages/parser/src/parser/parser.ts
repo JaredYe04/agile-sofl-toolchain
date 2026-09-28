@@ -149,6 +149,7 @@ import {
   Subset,
   Psubset,
   Bound,
+  Sign,
   IsTypePrefix
 } from '../lexer/tokens.js'
 import { EOF } from 'chevrotain'
@@ -158,6 +159,8 @@ const TYPE_EXPR_STOP = [Semicolon, Comma, End, RParen, RBrace, EndModule, EndPro
 export class AgileSoflParser extends CstParser {
   public specification!: () => CstNode
   public module!: () => CstNode
+  public systemName!: () => CstNode
+  public commentText!: () => CstNode
 
   constructor(recoveryEnabled = true) {
     super([...allTokens, NameLike], { recoveryEnabled, skipValidations: true, nodeLocation: true })
@@ -185,12 +188,17 @@ export class AgileSoflParser extends CstParser {
       $.OR1([{ ALT: () => $.CONSUME1(Identifier) }, { ALT: () => $.CONSUME(Gui) }])
       $.OPTION3(() => {
         $.CONSUME(Slash)
-        $.CONSUME2(Identifier)
+        $.SUBRULE1($.systemName)
       })
       $.OPTION1(() => $.CONSUME(Semicolon))
       $.SUBRULE($.moduleBody)
       $.CONSUME(EndModule)
       $.OPTION2(() => $.CONSUME4(Semicolon))
+    })
+
+    $.RULE('systemName', () => {
+      $.OPTION(() => $.CONSUME(SystemPrefix))
+      $.CONSUME(Identifier)
     })
 
     $.RULE('module', () => {
@@ -207,7 +215,7 @@ export class AgileSoflParser extends CstParser {
       ])
       $.OPTION1(() => {
         $.CONSUME(Slash)
-        $.CONSUME2(Identifier)
+        $.SUBRULE2($.systemName)
       })
       $.OPTION2(() => $.CONSUME1(Semicolon))
       $.SUBRULE($.moduleBody)
@@ -507,7 +515,7 @@ export class AgileSoflParser extends CstParser {
       $.OPTION5(() => {
         $.CONSUME(Comment)
         $.CONSUME2(Colon)
-        $.SUBRULE($.text)
+        $.SUBRULE($.commentText)
       })
     })
 
@@ -1108,6 +1116,151 @@ export class AgileSoflParser extends CstParser {
     })
 
     // --- Predicates (DNF) ---
+
+    /**
+     * Comment body: `Text ::= String_of_characters` (the grammar makes comments
+     * arbitrary free text). Kept as a dedicated non-recursive rule (mirroring the
+     * broad clauseToken token set) so the oracle/spec comments may contain any words,
+     * including reserved words such as `module`, `process`, `end`, `map`, etc.
+     * The structural terminators (`pre`, `post`, `comment`, `decom`, `fsf`,
+     * `end_process`, `end_module`, `end_function`) are intentionally NOT consumed so a
+     * comment still stops at the next clause or process/mode closing.
+     */
+    $.RULE('commentText', () => {
+      $.AT_LEAST_ONE(() => {
+        $.OR([
+          { ALT: () => $.CONSUME(StringLiteral) },
+          { ALT: () => $.CONSUME(Identifier) },
+          { ALT: () => $.CONSUME(IntegerLiteral) },
+          { ALT: () => $.CONSUME(RealLiteral) },
+          { ALT: () => $.CONSUME(CharLiteral) },
+          { ALT: () => $.CONSUME(EnumValue) },
+          { ALT: () => $.CONSUME(TextWord) },
+          { ALT: () => $.CONSUME(SystemKw) },
+          { ALT: () => $.CONSUME(Exists) },
+          { ALT: () => $.CONSUME(In) },
+          { ALT: () => $.CONSUME(OfKw) },
+          { ALT: () => $.CONSUME(To) },
+          { ALT: () => $.CONSUME(And) },
+          { ALT: () => $.CONSUME(Or) },
+          { ALT: () => $.CONSUME(Implies) },
+          { ALT: () => $.CONSUME(Not) },
+          { ALT: () => $.CONSUME(True) },
+          { ALT: () => $.CONSUME(False) },
+          { ALT: () => $.CONSUME(Forall) },
+          { ALT: () => $.CONSUME(Forevery) },
+          { ALT: () => $.CONSUME(Forsome) },
+          { ALT: () => $.CONSUME(If) },
+          { ALT: () => $.CONSUME(Then) },
+          { ALT: () => $.CONSUME(Else) },
+          { ALT: () => $.CONSUME(Nat) },
+          { ALT: () => $.CONSUME(Nat0) },
+          { ALT: () => $.CONSUME(Int) },
+          { ALT: () => $.CONSUME(Real) },
+          { ALT: () => $.CONSUME(Char) },
+          { ALT: () => $.CONSUME(String) },
+          { ALT: () => $.CONSUME(Bool) },
+          { ALT: () => $.CONSUME(Given) },
+          { ALT: () => $.CONSUME(Nil) },
+          { ALT: () => $.CONSUME(Module) },
+          { ALT: () => $.CONSUME(Process) },
+          { ALT: () => $.CONSUME(Function) },
+          { ALT: () => $.CONSUME(Const) },
+          { ALT: () => $.CONSUME(Type) },
+          { ALT: () => $.CONSUME(Var) },
+          { ALT: () => $.CONSUME(Inv) },
+          { ALT: () => $.CONSUME(Gui) },
+          { ALT: () => $.CONSUME(Screen) },
+          { ALT: () => $.CONSUME(Triggers) },
+          { ALT: () => $.CONSUME(TextInput) },
+          { ALT: () => $.CONSUME(Ext) },
+          { ALT: () => $.CONSUME(Init) },
+          { ALT: () => $.CONSUME(Equal) },
+          { ALT: () => $.CONSUME(DoubleEquals) },
+          { ALT: () => $.CONSUME(Undefined) },
+          { ALT: () => $.CONSUME(Others) },
+          { ALT: () => $.CONSUME(Set) },
+          { ALT: () => $.CONSUME(Seq) },
+          { ALT: () => $.CONSUME(Map) },
+          { ALT: () => $.CONSUME(Composed) },
+          { ALT: () => $.CONSUME(End) },
+          { ALT: () => $.CONSUME(Universal) },
+          { ALT: () => $.CONSUME(Let) },
+          { ALT: () => $.CONSUME(Case) },
+          { ALT: () => $.CONSUME(Default) },
+          { ALT: () => $.CONSUME(Modify) },
+          { ALT: () => $.CONSUME(Mk) },
+          { ALT: () => $.CONSUME(Get) },
+          { ALT: () => $.CONSUME(Card) },
+          { ALT: () => $.CONSUME(Len) },
+          { ALT: () => $.CONSUME(Abs) },
+          { ALT: () => $.CONSUME(Floor) },
+          { ALT: () => $.CONSUME(Hd) },
+          { ALT: () => $.CONSUME(Tl) },
+          { ALT: () => $.CONSUME(Union) },
+          { ALT: () => $.CONSUME(Inter) },
+          { ALT: () => $.CONSUME(Diff) },
+          { ALT: () => $.CONSUME(Dunion) },
+          { ALT: () => $.CONSUME(Dinter) },
+          { ALT: () => $.CONSUME(Power) },
+          { ALT: () => $.CONSUME(Bound) },
+          { ALT: () => $.CONSUME(Override) },
+          { ALT: () => $.CONSUME(Inverse) },
+          { ALT: () => $.CONSUME(Elems) },
+          { ALT: () => $.CONSUME(Inds) },
+          { ALT: () => $.CONSUME(Dom) },
+          { ALT: () => $.CONSUME(Rng) },
+          { ALT: () => $.CONSUME(Comp) },
+          { ALT: () => $.CONSUME(Conc) },
+          { ALT: () => $.CONSUME(Dconc) },
+          { ALT: () => $.CONSUME(Domrt) },
+          { ALT: () => $.CONSUME(Rngrt) },
+          { ALT: () => $.CONSUME(Domrb) },
+          { ALT: () => $.CONSUME(Rngrb) },
+          { ALT: () => $.CONSUME(Subset) },
+          { ALT: () => $.CONSUME(Psubset) },
+          { ALT: () => $.CONSUME(Rd) },
+          { ALT: () => $.CONSUME(Wr) },
+          { ALT: () => $.CONSUME(Time) },
+          { ALT: () => $.CONSUME(Sign) },
+          { ALT: () => $.CONSUME(Equals) },
+          { ALT: () => $.CONSUME(NotEqual) },
+          { ALT: () => $.CONSUME(LessThan) },
+          { ALT: () => $.CONSUME(GreaterThan) },
+          { ALT: () => $.CONSUME(LessEqual) },
+          { ALT: () => $.CONSUME(GreaterEqual) },
+          { ALT: () => $.CONSUME(Plus) },
+          { ALT: () => $.CONSUME(Minus) },
+          { ALT: () => $.CONSUME(Star) },
+          { ALT: () => $.CONSUME(Slash) },
+          { ALT: () => $.CONSUME(PowerOp) },
+          { ALT: () => $.CONSUME(Div) },
+          { ALT: () => $.CONSUME(Rem) },
+          { ALT: () => $.CONSUME(Mod) },
+          { ALT: () => $.CONSUME(LParen) },
+          { ALT: () => $.CONSUME(RParen) },
+          { ALT: () => $.CONSUME(LBracket) },
+          { ALT: () => $.CONSUME(RBracket) },
+          { ALT: () => $.CONSUME(LBrace) },
+          { ALT: () => $.CONSUME(RBrace) },
+          { ALT: () => $.CONSUME(Comma) },
+          { ALT: () => $.CONSUME(Dot) },
+          { ALT: () => $.CONSUME(Colon) },
+          { ALT: () => $.CONSUME(Semicolon) },
+          { ALT: () => $.CONSUME(Pipe) },
+          { ALT: () => $.CONSUME(Amp) },
+          { ALT: () => $.CONSUME(DoubleAmp) },
+          { ALT: () => $.CONSUME(DoublePipe) },
+          { ALT: () => $.CONSUME(ImpliesArrow) },
+          { ALT: () => $.CONSUME(Inset) },
+          { ALT: () => $.CONSUME(Notin) },
+          { ALT: () => $.CONSUME(Arrow) },
+          { ALT: () => $.CONSUME(Ellipsis) },
+          { ALT: () => $.CONSUME(Hash) },
+          { ALT: () => $.CONSUME(Tilde) }
+        ])
+      })
+    })
 
     $.RULE('predicate', () => {
       $.SUBRULE($.conjunction)

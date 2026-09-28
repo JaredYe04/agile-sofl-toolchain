@@ -1,0 +1,56 @@
+module SYSTEM_KeyValueStore;
+type
+    Store = map string to string;
+var
+    store: Store;
+process Put (key: string, value: string) code: int
+    ext
+    wr store: Store
+    pre
+        key <> ""
+    post
+        code = 0
+    comment: store the value under the key and replace any previous value
+end_process
+process Get (key: string) code: int
+    ext
+    rd store: Store
+    pre
+        key <> ""
+    post
+        code = 0 or code = 2
+    comment: a present key prints the value then a newline and returns 0 an absent key returns 2 and the store is unchanged
+end_process
+process Delete (key: string) code: int
+    ext
+    wr store: Store
+    pre
+        key <> ""
+    post
+        code = 0 or code = 2
+    comment: a present key is removed and returns 0 an absent key returns 2 and the store is unchanged
+end_process
+process RejectEmptyKey (key: string) code: int
+    pre
+        key = ""
+    post
+        code = 3
+    comment: an empty key is rejected and the store is not modified
+end_process
+process Persist (key: string) code: int
+    ext
+    rd store: Store
+    pre
+        key <> ""
+    post
+        code = 0 or code = 2
+    comment: the store is kept in the data file named "--data" and a later invocation sees the same mapping
+end_process
+process CommandLine (command: string) code: int
+    pre
+        true
+    post
+        code = 0 or code = 2 or code = 3
+    comment: accepted commands are "put" "get" and "delete" and each invocation is separate
+end_process
+end_module

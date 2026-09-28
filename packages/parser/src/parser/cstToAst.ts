@@ -134,6 +134,7 @@ function cstToTopModule(cst: CstNode): ModuleNode {
   const parentTok = guiTok ? ids[0] : ids[1]
   const body = singleChild(cst, 'moduleBody')
   const endMod = tokensOf(cst, 'EndModule')[0]
+  const sysParent = cstToSystemParentName(cst)
   return {
     type: 'module',
     span: endMod ? mergeSpans(spanOf(cst), spanOfToken(endMod)) : spanOf(cst),
@@ -141,9 +142,11 @@ function cstToTopModule(cst: CstNode): ModuleNode {
     nameSpan: id ? spanOfToken(id) : undefined,
     systemPrefixSpan: sysPrefix ? spanOfToken(sysPrefix) : undefined,
     isSystem: Boolean(sysPrefix || systemKw),
-    parent: parentTok
-      ? { type: 'qualified_name', span: spanOf(parentTok), name: parentTok.image }
-      : undefined,
+    parent: sysParent
+      ? { type: 'qualified_name', span: sysParent.span, name: sysParent.name }
+      : parentTok
+        ? { type: 'qualified_name', span: spanOf(parentTok), name: parentTok.image }
+        : undefined,
     consts: body ? extractConsts(body) : [],
     types: body ? extractTypes(body) : [],
     vars: body ? extractVars(body) : [],
@@ -161,15 +164,18 @@ function cstToRegularModule(cst: CstNode): ModuleNode {
   const body = singleChild(cst, 'moduleBody')
   const parent = guiTok ? ids[0] : ids[1]
   const endMod = tokensOf(cst, 'EndModule')[0]
+  const sysParent = cstToSystemParentName(cst)
   return {
     type: 'module',
     span: endMod ? mergeSpans(spanOf(cst), spanOfToken(endMod)) : spanOf(cst),
     name: nameTok?.image ?? '',
     nameSpan: nameTok ? spanOfToken(nameTok) : undefined,
     isSystem: false,
-    parent: parent
-      ? { type: 'qualified_name', span: spanOf(parent), name: parent.image }
-      : undefined,
+    parent: sysParent
+      ? { type: 'qualified_name', span: sysParent.span, name: sysParent.name }
+      : parent
+        ? { type: 'qualified_name', span: spanOf(parent), name: parent.image }
+        : undefined,
     consts: body ? extractConsts(body) : [],
     types: body ? extractTypes(body) : [],
     vars: body ? extractVars(body) : [],
@@ -401,6 +407,30 @@ function decomIdentifier(cst: CstNode): IToken | undefined {
   return tokensOf(cst, 'Identifier').find((id) => id.startOffset > decomTok.startOffset)
 }
 
+/**
+ * Extract the parent-module name from a `systemName` child rule.
+ * The parent may be a plain Identifier (`/ Parent`) or a SYSTEM_-prefixed top module
+ * (`/ SYSTEM_Parent`) per `module M / SYSTEM_Parent;`. Returns the full text and span.
+ */
+function cstToSystemParentName(cst: CstNode): { name: string; span: typeof EMPTY_SPAN } | undefined {
+  const sysName = singleChild(cst, 'systemName')
+  if (!sysName) return undefined
+  const prefix = tokensOf(sysName, 'SystemPrefix')[0]
+  const id = tokensOf(sysName, 'Identifier')[0]
+  if (!id) return undefined
+  const idEnd = id.endOffset ?? 0
+  const start = prefix ? (prefix.startOffset ?? 0) : (id.startOffset ?? 0)
+  return {
+    name: (prefix ? prefix.image : '') + id.image,
+    span: {
+      start,
+      end: idEnd + 1,
+      line: id.startLine ?? 1,
+      column: prefix ? (prefix.startColumn ?? 1) : (id.startColumn ?? 1)
+    }
+  }
+}
+
 function flattenTokens(node: CstNode): IToken[] {
   const result: IToken[] = []
   const visit = (n: CstNode | IToken): void => {
@@ -447,7 +477,7 @@ function cstToProcessBody(cst: CstNode): ProcessBodyNode {
   const postClause = singleChild(cst, 'postClause')
   const fsfSpec = singleChild(cst, 'fsfSpec')
   const decomId = decomIdentifier(cst)
-  const commentText = singleChild(cst, 'text')
+  const commentText = singleChild(cst, 'commentText') ?? singleChild(cst, 'text')
   return {
     type: 'process_body',
     span: spanOf(cst),

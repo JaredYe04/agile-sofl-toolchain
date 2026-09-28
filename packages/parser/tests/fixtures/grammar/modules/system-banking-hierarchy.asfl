@@ -1,0 +1,37 @@
+module SYSTEM_Banking;
+const
+withdraw_limit = 10000;
+transfer_limit = 200000;
+type
+Customers = set of Member;
+A = seq of Customers;
+var
+salary: nat;
+customers: Customers;
+inv
+forall[c: customers] | c.deposite > 0;
+process A (x, y: int) q1: nat, q2: int, q3: int
+ext rd a: int
+wr b: nat
+FSF :
+x > y && q1 > q2 + q3 ||
+x = y && q1 > q2 * q3 ||
+others && q1 = q2 + q3
+decom: Banking_Decom
+comment: the module decomposes into Banking_Decom and defines the withdrawal and transfer limits
+end_process
+end_module
+module Banking_Decom / SYSTEM_Banking;
+process Withdraw (amount: int) cash: nat
+FSF :
+others && cash = amount
+comment: returns cash for a valid amount
+end_process
+end_module
+module D / Banking_Decom;
+process Init () ok: bool
+post
+	ok = true
+comment: the entry point of the banking decomposition
+end_process
+end_module

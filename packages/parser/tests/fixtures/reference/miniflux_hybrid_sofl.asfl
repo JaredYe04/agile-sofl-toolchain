@@ -1,0 +1,42 @@
+module SYSTEM_CategoryLibrary;
+process CreateCategory (title: string) status: int
+    pre
+        title <> ""
+    post
+        status = 201
+    comment: POST "/v1/categories" with admin basic authentication returns status 201 and a body with an integer "id" and the "title" and "GET /v1/categories" returns 200 and a JSON array including that category
+end_process
+process RejectEmptyTitle (title: string) status: int
+    pre
+        title = ""
+    post
+        status = 400
+    comment: a create or rename with an empty title is rejected and nothing is added or changed
+end_process
+process RejectDuplicateTitle (title: string) status: int
+    pre
+        title <> ""
+    post
+        status = 400
+    comment: a title already used by the same user is rejected and the existing category is unchanged
+end_process
+process RenameCategory (title: string) status: int
+    pre
+        title <> ""
+    post
+        status = 201
+    comment: PUT "/v1/categories/{id}" with a non empty "title" returns 201 and a later "GET /v1/categories" shows the new title
+end_process
+process DeleteCategory (subscriptions: int) status: int
+    pre
+        subscriptions = 0
+    post
+        status = 204
+    comment: DELETE "/v1/categories/{id}" for a category with no subscriptions returns 204 with no body and a later listing no longer shows it and an unknown id returns 404
+end_process
+process PersistCategory ()
+    post
+        true
+    comment: categories are stored per user and remain available on later requests until deleted
+end_process
+end_module

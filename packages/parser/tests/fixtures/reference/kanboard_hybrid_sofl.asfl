@@ -1,0 +1,56 @@
+module SYSTEM_TaskBoard;
+process CreateProject (name: string) project_id: int
+    post
+        project_id > 0
+    comment: "createProject" on POST "/jsonrpc.php" with admin basic authentication returns a project whose "getColumns" titles are Backlog then Ready then Work in progress then Done
+end_process
+process CreateTask (title: string, project_id: int) task_id: int
+    pre
+        title <> ""
+    post
+        task_id > 0
+    comment: "createTask" creates an open task in Backlog unless a column is selected and "getTask" returns title column priority owner active flag and swimlane
+end_process
+process RejectEmptyTitle (title: string) accepted: bool
+    pre
+        title = ""
+    post
+        accepted = false
+    comment: an empty title is rejected and no task is created
+end_process
+process RejectLongTitle (length: int) accepted: bool
+    pre
+        length > 65535
+    post
+        accepted = false
+    comment: a title longer than 65535 characters is rejected
+end_process
+process MoveTask (task_id: int, column_id: int) moved: bool
+    post
+        moved = true
+    comment: "moveTaskPosition" with project_id task_id column_id position and swimlane_id places the task in the destination column
+end_process
+process SetPriority (task_id: int, priority: int) stored: int
+    post
+        stored = priority
+    comment: "updateTask" stores the priority and a later "getTask" returns that priority
+end_process
+process RejectAssignment (task_id: int, owner_id: int) accepted: bool
+    post
+        accepted = false
+    comment: "createUser" makes a user who cannot receive assignments and "updateTask" with that owner_id is rejected so the task stays unassigned
+end_process
+process CloseTask (task_id: int) closed: bool
+    post
+        closed = true
+    comment: "closeTask" marks the task closed and it stays closed until "openTask"
+end_process
+process RemoveTask (task_id: int) present: bool
+    post
+        present = false
+    comment: "removeTask" makes a later read not yield the task so the task is absent and until then a task remains readable on a new connection
+end_process
+process JsonNames ()
+    comment: "createProject" returns an integer project id and "createTask" returns an integer task id and "createUser" returns an integer user id and "getTask" takes "task_id" and returns "title" "column_id" "priority" "owner_id" "is_active" and "swimlane_id" and "updateTask" takes "id" "priority" and "owner_id" and "closeTask" sets "is_active" to 0
+end_process
+end_module
