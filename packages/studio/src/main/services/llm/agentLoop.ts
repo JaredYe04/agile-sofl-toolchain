@@ -9,9 +9,11 @@ import type {
 import { newId, normalizePermissions, type AgentSpecPermissions } from './agentTypes'
 import { saveSession as writeSession } from './sessionStore'
 import { informalInventoryFromMarkdown } from '@agile-sofl/aspec/dist/informal/inventory.js'
-import { formatHybridInventory, formatHybridDiagnostics, collectHybridAgentDiagnostics } from '@agile-sofl/editor-api'
+import { formatHybridInventory, formatHybridDiagnostics, collectHybridAgentDiagnostics, formatRefinementDigest } from '@agile-sofl/editor-api'
 import { formatGuiInventory, numberedGuiSource } from '@agile-sofl/gui'
+import { formatClarificationToolContent } from '../../../shared/clarificationAnswer'
 import { numberedSource } from '../../../shared/sourceEdit.js'
+import { projectRefinementState } from '../refinementLog.js'
 import {
   appliedToolResult,
   assistantTurnIsComplete,
@@ -74,8 +76,9 @@ function toolsFor(permissions: AgentSpecPermissions) {
     if (name === 'ask_clarification') return true
     if (name === 'read_specification' || name === 'review_specification') return permissions.informal.read
     if (name === 'propose_changes') return permissions.informal.write
-    if (name === 'read_hybrid_specification' || name === 'review_hybrid') return permissions.hybrid.read
-    if (name === 'propose_hybrid_changes') return permissions.hybrid.write
+    if (name === 'read_hybrid_specification' || name === 'review_hybrid' || name === 'read_refinement_state')
+      return permissions.hybrid.read
+    if (name === 'propose_hybrid_changes' || name === 'propose_refinement_step') return permissions.hybrid.write
     if (name === 'read_gui_specification') return permissions.hybrid.read || permissions.informal.read
     if (name === 'propose_gui_changes') return permissions.hybrid.write || permissions.informal.write
     if (name === 'propose_source_edit') return permissions.informal.write || permissions.hybrid.write
@@ -90,6 +93,20 @@ function compactSpec(markdown: string): string {
 function compactHybrid(asfl: string | undefined): string {
   if (!asfl?.trim()) return '(empty hybrid specification)'
   return formatHybridInventory(asfl, 12000)
+}
+
+function compactRefinement(ctx: AgentTurnContext): string {
+  return compactRefinementView(ctx, 'summary')
+}
+
+function compactRefinementView(ctx: AgentTurnContext, view: 'summary' | 'tree' | 'log'): string {
+  if (!ctx.hybridAsfl?.trim()) return '(no hybrid specification yet — generate Hybrid before dual-line refinement)'
+  try {
+    const state = projectRefinementState(ctx.projectRoot ?? '', ctx.hybridAsfl)
+    return formatRefinementDigest(state, view, view === 'tree' ? 16000 : 12000)
+  } catch {
+    return '(refinement digest unavailable)'
+  }
 }
 
 function hybridDiagnosticsPayload(asfl: string | undefined) {
@@ -110,7 +127,9 @@ function numberedHybridSource(asfl: string | undefined): string {
 
 function systemPrompt(ctx: AgentTurnContext, permissions: AgentSpecPermissions): string {
   const skill = skillById(ctx.skillId)
-  const toolLines: string[] = ['- ask_clarification: when you need a decision (render options the user can click)']
+  const toolLines: string[] = [
+    '- ask_clarification: when you need a decision (options the user can click, plus their own typed answer)'
+  ]
   if (permissions.informal.read) {
     toolLines.push('- read_specification: Informal inventory (default) or numbered source (view=source)')
     toolLines.push('- review_specification: Informal quality review')
@@ -120,6 +139,7 @@ function systemPrompt(ctx: AgentTurnContext, permissions: AgentSpecPermissions):
   }
   if (permissions.hybrid.read) {
     toolLines.push('- read_hybrid_specification: Hybrid inventory (default; includes per-module syntax/parse diagnostics) or numbered .asfl (view=source)')
+    toolLines.push('- read_refinement_state: dual-line refinement tree/summary/log (empty modules and stub processes are gaps)')
     toolLines.push('- review_hybrid: Hybrid quality review')
   }
   if (permissions.hybrid.read || permissions.informal.read) {
@@ -127,6 +147,9 @@ function systemPrompt(ctx: AgentTurnContext, permissions: AgentSpecPermissions):
   }
   if (permissions.hybrid.write) {
     toolLines.push('- propose_hybrid_changes: incremental Hybrid CRUD (preferred)')
+    toolLines.push(
+      '- propose_refinement_step: FormalizePredicate / DecomposeProcess / SetCdfd / DeclareAtomic / IntroduceRetrieve / DischargeDataObligation / ClassifyGrain / ResolveVariation. A module without cdfd is valid; do not treat ASFL_CDFD_001 as a syntax error. Grain ambiguity does not drop if you only rewrite pre/post.'
+    )
   }
   if (permissions.hybrid.write || permissions.informal.write) {
     toolLines.push('- propose_gui_changes: GUI HTML structure patches — full-screen prototypes with as-* layout, not a few buttons')
@@ -155,7 +178,18 @@ Do not invent YAML frontmatter or document-level metadata.`
 FORBIDDEN: replace-document, asflText, dumping several modules as one string, "-- comments" as source.
 Add SYSTEM_ first, then one semantic module at a time with parentId pointing at the system module, then its types/vars/invs/processes as separate operations. Prefer updating an existing id over adding a duplicate.
 Never put end_module, a whole module, or a process block inside type/var/inv/pre/post text — that wipes the document.
-After a write is applied, call read_hybrid_specification and keep patching until the inventory matches the plan and Diagnostics is empty. If inventory reports leftover text without a module header, that is NOT empty — repair it with CRUD (or source edit only if CRUD cannot).`
+After a write is applied, call read_hybrid_specification and keep patching until the inventory matches the plan and Diagnostics lists no syntax errors. A module with processes and no cdfd is backward compatible — do not add a cdfd just to clear a warning.
+Formalize informal pre/post atoms only via propose_refinement_step kind=FormalizePredicate.
+Decompose a process with kind=DecomposeProcess (child module, empty cdfd, matching ports, decom set to that module).
+Write or replace a module CDFD with kind=SetCdfd: moduleName plus toText, either a full "cdfd ... end_cdfd" block or the inner lines. One cdfd per module. Syntax:
+  port in <name> / port out <name>
+  store <var>
+  node <process>
+  cond <name>
+  flow <from> -> <to>
+  flow <cond> | <predicate> -> <target>
+  flow <cond> | others -> <target>
+node names are processes in that module; store names are vars; ports match the parent process inputs and outputs when this module is a decom target. Do not store coordinates. Type keywords (time, nat, string, bool, …) are legal parameter and variable names.`
     : 'You do not have Hybrid write permission. Do not call propose_hybrid_changes.'
 
   const guiGuide =
@@ -172,11 +206,23 @@ After a write is applied, call read_hybrid_specification and keep patching until
   const sourceGuide =
     permissions.informal.write || permissions.hybrid.write
       ? `propose_source_edit is an escape hatch, not the default:
-- Prefer propose_changes / propose_hybrid_changes / propose_gui_changes for almost every write.
+- Prefer propose_changes / propose_hybrid_changes / propose_gui_changes / propose_refinement_step for almost every write.
 - Use source edit after CRUD fails, when leftover unparsed text remains, when inventory is empty/out of sync with the file, when Diagnostics lists syntax/parse errors CRUD cannot fix, or when you must fix text CRUD cannot express.
-- First call read_* with view=source. Then replace a UNIQUE oldText snippet, append, or replace-document.
+- First call read_* with view=source (or read_refinement_state then source). Then replace a UNIQUE oldText snippet, append, or replace-document.
+- Informal atoms that you rewrite via source edit still need propose_refinement_step kind=FormalizePredicate or process ambiguity will not drop.
 - Do not retry the same failing CRUD patch. After two CRUD failures you MUST switch to propose_source_edit.`
       : 'You do not have write permission for source edits.'
+
+  const refinementGuide = permissions.hybrid.read
+    ? `Dual-line refinement (guide the user; do not auto-refine the whole tree):
+- Journey: Informal → Hybrid+GUI → process atomicity + data discharge + operational grain until the refinement digest reports unambiguous=true.
+- Operational grain: a leaf is not atomic just because pre/post are formal. If the digest lists variations or a name-claim, ask_clarification about those extracted items only, then ClassifyGrain or ResolveVariation. Do not invent operations, and do not clear grainAmbiguity by rewriting pre/post.
+- Empty name-only modules and stub (name-only) processes are gaps. Hybrid generation does not finish the specification.
+- After Hybrid/GUI work for this turn is done, if unambiguous=false, ask_clarification with 2–4 next slices from the digest. Wait for the user unless they already named a slice.
+- Prefer propose_refinement_step, then propose_hybrid_changes. Fallback: propose_source_edit on Hybrid.
+- After Hybrid writes, call read_refinement_state as well as read_hybrid_specification.
+- Do not claim "no ambiguity" while processAmbiguity, dataAmbiguity, empty modules, or stubs remain.`
+    : 'Refinement digest: (hybrid read permission off)'
 
   const informalBlock = permissions.informal.read
     ? `Current Informal Specification inventory:\n${compactSpec(ctx.informalMarkdown)}`
@@ -187,6 +233,9 @@ After a write is applied, call read_hybrid_specification and keep patching until
   const guiBlock = permissions.hybrid.read || permissions.informal.read
     ? `Current GUI HTML inventory:\n${ctx.guiHtml?.trim() ? formatGuiInventory(ctx.guiHtml, 8000) : '(empty GUI specification)'}`
     : 'GUI Specification: (read permission off)'
+  const refinementBlock = permissions.hybrid.read
+    ? `Current dual-line refinement digest:\n${compactRefinement(ctx)}`
+    : 'Refinement tree: (hybrid read permission off)'
 
   return `You are the Agile-SOFL Specification Agent inside Studio.
 You help users build Informal Specification and/or Hybrid Specification (.asfl).
@@ -202,8 +251,9 @@ Agile-SOFL conventions:
 - GUI is a walkable high-fidelity prototype, not a wireframe of a few buttons.
 
 Never claim you already modified the file. Writes go through propose_* tools. User Apply/Reject (or auto-write) is only a tool result — you MUST continue the same task.
-After any applied write, call read_specification and/or read_hybrid_specification, verify inventory and Hybrid Diagnostics, and propose another patch if anything is missing, wrong, or still has syntax errors. Repeat until correct.
-When the whole task is done, your LAST message is a short summary of what was completed. Do not wait for the user to say "continue".
+Clarification tool results include "selected" (clicked options) and "custom" (text the user typed). If custom is non-empty, you MUST use it. Single-choice (multiSelect false) does not discard custom, and a clicked option does not override it. When both are present, follow both.
+After any applied write, call read_specification and/or read_hybrid_specification (and read_refinement_state when Hybrid changed), verify inventory, Hybrid Diagnostics, and dual-line gaps, and propose another patch if anything is missing, wrong, or still has syntax errors. Repeat until the current task slice is done.
+When the whole task is done, your LAST message is a short summary of what was completed. Do not wait for the user to say "continue". If Hybrid exists and the digest is not unambiguous, that summary must invite the next refinement slice (ask_clarification) unless the user already declined further refinement.
 Prefer structured CRUD. Do not dump raw Markdown or raw SOFL through propose_changes / propose_hybrid_changes. If those tools fail or cannot express the fix, read view=source and use propose_source_edit.
 
 You are scoped to ONE project. Read/write only this project's Informal, Hybrid, and GUI files. Do not copy modules or text from any other Studio project.
@@ -213,6 +263,8 @@ ${informalGuide}
 ${hybridGuide}
 
 ${guiGuide}
+
+${refinementGuide}
 
 ${sourceGuide}
 
@@ -231,6 +283,8 @@ ${informalBlock}
 ${hybridBlock}
 
 ${guiBlock}
+
+${refinementBlock}
 `
 }
 
@@ -614,13 +668,15 @@ export async function runAgentTurn(
         if (
           call.function.name === 'propose_changes' ||
           call.function.name === 'propose_hybrid_changes' ||
+          call.function.name === 'propose_refinement_step' ||
           call.function.name === 'propose_gui_changes' ||
           call.function.name === 'propose_source_edit'
         ) {
           const mode: 'crud' | 'source' =
             call.function.name === 'propose_source_edit' ? 'source' : 'crud'
           let target: 'informal' | 'hybrid' | 'gui'
-          if (call.function.name === 'propose_hybrid_changes') target = 'hybrid'
+          if (call.function.name === 'propose_hybrid_changes' || call.function.name === 'propose_refinement_step')
+            target = 'hybrid'
           else if (call.function.name === 'propose_changes') target = 'informal'
           else if (call.function.name === 'propose_gui_changes') target = 'gui'
           else {
@@ -647,14 +703,41 @@ export async function runAgentTurn(
               continue
             }
           }
-          const patch: InformalPatchPayload = {
-            target,
-            mode,
-            explanation: typeof args.explanation === 'string' ? args.explanation : undefined,
-            operations: Array.isArray(args.operations)
-              ? (args.operations as Array<Record<string, unknown>>)
-              : []
-          }
+          const patch: InformalPatchPayload =
+            call.function.name === 'propose_refinement_step'
+              ? {
+                  target: 'hybrid',
+                  mode: 'crud',
+                  explanation: typeof args.explanation === 'string' ? args.explanation : undefined,
+                  operations: [
+                    {
+                      op: 'refine-step',
+                      kind: args.kind,
+                      moduleName: args.moduleName,
+                      processName: args.processName,
+                      typeName: args.typeName,
+                      clause: args.clause,
+                      fromText: args.fromText,
+                      toText: args.toText,
+                      childModuleName: args.childModuleName,
+                      representationType: args.representationType,
+                      retrieveFunction: args.retrieveFunction,
+                      retrieveBody: args.retrieveBody,
+                      note: args.note,
+                      grainClass: args.grainClass,
+                      variationId: args.variationId,
+                      disposition: args.disposition
+                    }
+                  ]
+                }
+              : {
+                  target,
+                  mode,
+                  explanation: typeof args.explanation === 'string' ? args.explanation : undefined,
+                  operations: Array.isArray(args.operations)
+                    ? (args.operations as Array<Record<string, unknown>>)
+                    : []
+                }
           const allowed =
             target === 'informal'
               ? permissions.informal.write
@@ -800,6 +883,26 @@ export async function runAgentTurn(
           markCallStatus(live, call.id, 'done', sink)
           continue
         }
+        if (call.function.name === 'read_refinement_state') {
+          const view = args.view === 'tree' || args.view === 'log' ? args.view : 'summary'
+          const allowed = permissions.hybrid.read
+          const digest = !allowed
+            ? '(Hybrid read permission off)'
+            : compactRefinementView(ctx, view)
+          session.messages.push({
+            id: call.id,
+            role: 'tool',
+            content: JSON.stringify({
+              ok: allowed,
+              view,
+              digest
+            }),
+            timestamp: new Date().toISOString()
+          })
+          live.content = live.content || 'Read the current dual-line refinement state.'
+          markCallStatus(live, call.id, 'done', sink)
+          continue
+        }
         if (call.function.name === 'read_gui_specification') {
           const view = args.view === 'source' ? 'source' : 'inventory'
           const allowed = permissions.hybrid.read || permissions.informal.read
@@ -926,12 +1029,38 @@ export async function resumeWithToolResult(
       })
     }
   }
+  const clarificationMsg = session.messages.find(
+    (m) =>
+      m.pending &&
+      m.clarification &&
+      (m.clarification.pendingToolCallId === toolCallId || session.context.pendingToolCallId === toolCallId)
+  )
+  let toolContent = result
+  let clarificationDisplay: string | undefined
+  if (payload.action === 'applied') toolContent = appliedToolResult({ error: payload.error })
+  else if (payload.action === 'error') toolContent = failedToolResult(payload.error || 'Tool failed')
+  else if (payload.action === 'rejected') toolContent = rejectedToolResult()
+  else if (clarificationMsg?.clarification) {
+    const formatted = formatClarificationToolContent(result, {
+      labels: clarificationMsg.clarification.options?.map((option) => option.label),
+      multiSelect: clarificationMsg.clarification.multiSelect
+    })
+    toolContent = formatted.toolContent
+    clarificationDisplay = formatted.display
+  } else {
+    toolContent = JSON.stringify({
+      type: 'clarification_answer',
+      answer: result,
+      custom: result,
+      next: 'custom is text the user typed. You MUST use it even when the question was single-choice. Then continue the task.'
+    })
+  }
   for (const m of session.messages) {
     if (!m.pending) continue
     if (m.clarification?.pendingToolCallId === toolCallId || session.context.pendingToolCallId === toolCallId) {
       m.pending = false
       if (m.clarification) {
-        m.clarification.answer = result
+        m.clarification.answer = clarificationDisplay ?? result
         m.resolution = 'answered'
       }
       if (m.proposedChanges) {
@@ -941,19 +1070,10 @@ export async function resumeWithToolResult(
       }
     }
   }
-  if (payload.action === 'applied') result = appliedToolResult({ error: payload.error })
-  else if (payload.action === 'error') result = failedToolResult(payload.error || 'Tool failed')
-  else if (payload.action === 'rejected') result = rejectedToolResult()
   session.messages.push({
     id: toolCallId,
     role: 'tool',
-    content: payload.action
-      ? result
-      : JSON.stringify({
-          type: 'clarification_answer',
-          answer: result,
-          next: 'Continue with ask_clarification or propose_changes / propose_hybrid_changes. If writes are stuck, read view=source and propose_source_edit. After writes, read the spec to verify. Finish with a summary. Do not stop with an empty message.'
-        }),
+    content: toolContent,
     timestamp: new Date().toISOString()
   })
   session.context.pendingToolCallId = undefined

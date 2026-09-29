@@ -14,6 +14,8 @@ import {
   NameLike,
   Semicolon,
   EndModule,
+  EndCdfd,
+  EndRefine,
   Const,
   Type,
   Var,
@@ -41,6 +43,10 @@ import {
   Post,
   Decom,
   Comment,
+  Cdfd,
+  Refine,
+  Retrieve,
+  By,
   Equal,
   DoubleEquals,
   Undefined,
@@ -154,7 +160,7 @@ import {
 } from '../lexer/tokens.js'
 import { EOF } from 'chevrotain'
 
-const TYPE_EXPR_STOP = [Semicolon, Comma, End, RParen, RBrace, EndModule, EndProcess, EndFunction, To, Star]
+const TYPE_EXPR_STOP = [Semicolon, Comma, End, RParen, RBrace, EndModule, EndProcess, EndFunction, EndCdfd, EndRefine, To, Star]
 
 export class AgileSoflParser extends CstParser {
   public specification!: () => CstNode
@@ -234,7 +240,9 @@ export class AgileSoflParser extends CstParser {
             t === Inv ||
             t === Gui ||
             t === Process ||
-            t === Function
+            t === Function ||
+            t === Cdfd ||
+            t === Refine
           )
         },
         DEF: () => {
@@ -244,6 +252,8 @@ export class AgileSoflParser extends CstParser {
             { GATE: () => $.LA(1).tokenType === Var, ALT: () => $.SUBRULE($.varDecls) },
             { GATE: () => $.LA(1).tokenType === Inv, ALT: () => $.SUBRULE($.invDecls) },
             { GATE: () => $.LA(1).tokenType === Gui, ALT: () => $.SUBRULE($.guiBlock) },
+            { GATE: () => $.LA(1).tokenType === Cdfd, ALT: () => $.SUBRULE($.cdfdBlock) },
+            { GATE: () => $.LA(1).tokenType === Refine, ALT: () => $.SUBRULE($.refineBlock) },
             { GATE: () => $.LA(1).tokenType === Process, ALT: () => $.SUBRULE($.processDef) },
             { GATE: () => $.LA(1).tokenType === Function, ALT: () => $.SUBRULE($.functionDef) }
           ])
@@ -260,6 +270,105 @@ export class AgileSoflParser extends CstParser {
       })
       $.CONSUME(EndGui)
       $.OPTION(() => $.CONSUME1(Semicolon))
+    })
+
+    $.RULE('cdfdBlock', () => {
+      $.CONSUME(Cdfd)
+      $.MANY({
+        GATE: () => {
+          const t = $.LA(1)
+          if (t.tokenType !== Identifier) return false
+          return ['port', 'store', 'node', 'cond', 'flow'].includes(t.image)
+        },
+        DEF: () => {
+          $.OR([
+            { GATE: () => $.LA(1).image === 'port', ALT: () => $.SUBRULE($.cdfdPort) },
+            { GATE: () => $.LA(1).image === 'store', ALT: () => $.SUBRULE($.cdfdStore) },
+            { GATE: () => $.LA(1).image === 'node', ALT: () => $.SUBRULE($.cdfdNode) },
+            { GATE: () => $.LA(1).image === 'cond', ALT: () => $.SUBRULE($.cdfdCond) },
+            { GATE: () => $.LA(1).image === 'flow', ALT: () => $.SUBRULE($.cdfdFlow) }
+          ])
+        }
+      })
+      $.CONSUME(EndCdfd)
+      $.OPTION(() => $.CONSUME1(Semicolon))
+    })
+
+    $.RULE('cdfdPort', () => {
+      $.CONSUME(Identifier)
+      $.OR([
+        { ALT: () => $.CONSUME(In) },
+        { GATE: () => $.LA(1).image === 'out', ALT: () => $.CONSUME1(Identifier) }
+      ])
+      $.CONSUME2(Identifier)
+      $.OPTION(() => $.CONSUME(Semicolon))
+    })
+
+    $.RULE('cdfdStore', () => {
+      $.CONSUME(Identifier)
+      $.CONSUME1(Identifier)
+      $.OPTION(() => $.CONSUME(Semicolon))
+    })
+
+    $.RULE('cdfdNode', () => {
+      $.CONSUME(Identifier)
+      $.CONSUME1(Identifier)
+      $.OPTION(() => $.CONSUME(Semicolon))
+    })
+
+    $.RULE('cdfdCond', () => {
+      $.CONSUME(Identifier)
+      $.CONSUME1(Identifier)
+      $.OPTION(() => $.CONSUME(Semicolon))
+    })
+
+    $.RULE('cdfdFlow', () => {
+      $.CONSUME(Identifier)
+      $.CONSUME1(Identifier)
+      $.OPTION1(() => {
+        $.CONSUME(Pipe)
+        $.OR2([
+          { GATE: () => $.LA(1).tokenType === Others, ALT: () => $.CONSUME(Others) },
+          { ALT: () => $.SUBRULE($.predicate) }
+        ])
+      })
+      $.CONSUME(Arrow)
+      $.CONSUME2(Identifier)
+      $.OPTION2(() => $.CONSUME1(Semicolon))
+    })
+
+    $.RULE('refineBlock', () => {
+      $.CONSUME(Refine)
+      $.MANY({
+        GATE: () => $.LA(1).tokenType === Type,
+        DEF: () => $.SUBRULE($.refineItem)
+      })
+      $.CONSUME(EndRefine)
+      $.OPTION(() => $.CONSUME1(Semicolon))
+    })
+
+    $.RULE('refineItem', () => {
+      $.CONSUME(Type)
+      $.CONSUME(Identifier)
+      $.CONSUME(By)
+      $.SUBRULE($.refineTypeName)
+      $.CONSUME(Retrieve)
+      $.CONSUME2(Identifier)
+      $.OPTION(() => $.CONSUME(Semicolon))
+    })
+
+    $.RULE('refineTypeName', () => {
+      $.OR([
+        { ALT: () => $.CONSUME1(Identifier) },
+        { ALT: () => $.CONSUME(Nat0) },
+        { ALT: () => $.CONSUME(Nat) },
+        { ALT: () => $.CONSUME(Int) },
+        { ALT: () => $.CONSUME(Real) },
+        { ALT: () => $.CONSUME(Char) },
+        { ALT: () => $.CONSUME(String) },
+        { ALT: () => $.CONSUME(Bool) },
+        { ALT: () => $.CONSUME(Given) }
+      ])
     })
 
     $.RULE('guiScreen', () => {
@@ -287,10 +396,14 @@ export class AgileSoflParser extends CstParser {
             t !== EndScreen &&
             t !== EndGui &&
             t !== EndModule &&
+            t !== EndCdfd &&
+            t !== EndRefine &&
             t !== Screen &&
             t !== EOF &&
             t !== Process &&
-            t !== Function
+            t !== Function &&
+            t !== Cdfd &&
+            t !== Refine
           )
         },
         DEF: () => {
@@ -419,9 +532,25 @@ export class AgileSoflParser extends CstParser {
 
     $.RULE('variable', () => {
       $.OR([
-        { ALT: () => { $.CONSUME(Ext); $.CONSUME(Identifier) } },
-        { ALT: () => { $.CONSUME1(Ext); $.CONSUME(Hash); $.CONSUME2(Identifier) } },
-        { ALT: () => { $.CONSUME3(Identifier) } }
+        { ALT: () => { $.CONSUME(Ext); $.SUBRULE($.bindingName) } },
+        { ALT: () => { $.CONSUME1(Ext); $.CONSUME(Hash); $.SUBRULE1($.bindingName) } },
+        { ALT: () => $.SUBRULE2($.bindingName) }
+      ])
+    })
+
+    /** Identifier or a basic-type keyword used as a name (`time: string`). */
+    $.RULE('bindingName', () => {
+      $.OR([
+        { ALT: () => $.CONSUME(Identifier) },
+        { ALT: () => $.CONSUME(Time) },
+        { ALT: () => $.CONSUME(Nat) },
+        { ALT: () => $.CONSUME(Nat0) },
+        { ALT: () => $.CONSUME(Int) },
+        { ALT: () => $.CONSUME(Real) },
+        { ALT: () => $.CONSUME(Char) },
+        { ALT: () => $.CONSUME(String) },
+        { ALT: () => $.CONSUME(Bool) },
+        { ALT: () => $.CONSUME(Given) }
       ])
     })
 
@@ -436,8 +565,12 @@ export class AgileSoflParser extends CstParser {
             t !== Process &&
             t !== Function &&
             t !== EndModule &&
+            t !== EndCdfd &&
+            t !== EndRefine &&
             t !== Const &&
-            t !== Gui
+            t !== Gui &&
+            t !== Cdfd &&
+            t !== Refine
           )
         },
         DEF: () => {
@@ -534,7 +667,8 @@ export class AgileSoflParser extends CstParser {
           return tok !== Pre && tok !== Post && tok !== Fsf && tok !== Decom && tok !== Comment &&
             tok !== EndProcess && tok !== Function && tok !== Process && tok !== EndModule &&
             tok !== EndFunction && tok !== Module && tok !== Const && tok !== Type && tok !== Var &&
-            tok !== Inv && tok !== Gui && tok !== EOF
+            tok !== Inv && tok !== Gui && tok !== Cdfd && tok !== Refine && tok !== EndCdfd &&
+            tok !== EndRefine && tok !== EOF
         },
         DEF: () => $.SUBRULE($.clauseToken)
       })
@@ -573,6 +707,7 @@ export class AgileSoflParser extends CstParser {
         { ALT: () => $.CONSUME(String) },
         { ALT: () => $.CONSUME(Bool) },
         { ALT: () => $.CONSUME(Given) },
+        { ALT: () => $.CONSUME(Time) },
         { ALT: () => $.CONSUME(Equals) },
         { ALT: () => $.CONSUME(NotEqual) },
         { ALT: () => $.CONSUME(LessThan) },
@@ -743,10 +878,10 @@ export class AgileSoflParser extends CstParser {
     })
 
     $.RULE('paramGroup', () => {
-      $.CONSUME(Identifier)
+      $.SUBRULE($.bindingName)
       $.MANY(() => {
         $.CONSUME(Comma)
-        $.CONSUME2(Identifier)
+        $.SUBRULE2($.bindingName)
       })
       $.CONSUME(Colon)
       $.SUBRULE($.typeExpr)
@@ -1167,6 +1302,12 @@ export class AgileSoflParser extends CstParser {
           { ALT: () => $.CONSUME(Function) },
           { ALT: () => $.CONSUME(Const) },
           { ALT: () => $.CONSUME(Type) },
+          { ALT: () => $.CONSUME(Cdfd) },
+          { ALT: () => $.CONSUME(Refine) },
+          { ALT: () => $.CONSUME(Retrieve) },
+          { ALT: () => $.CONSUME(By) },
+          { ALT: () => $.CONSUME(EndCdfd) },
+          { ALT: () => $.CONSUME(EndRefine) },
           { ALT: () => $.CONSUME(Var) },
           { ALT: () => $.CONSUME(Inv) },
           { ALT: () => $.CONSUME(Gui) },
@@ -1368,10 +1509,10 @@ export class AgileSoflParser extends CstParser {
     })
 
     $.RULE('bindingGroup', () => {
-      $.CONSUME(Identifier)
+      $.SUBRULE($.bindingName)
       $.MANY(() => {
         $.CONSUME(Comma)
-        $.CONSUME2(Identifier)
+        $.SUBRULE2($.bindingName)
       })
       $.CONSUME(Colon)
       $.SUBRULE($.typeExpr)
@@ -1738,13 +1879,13 @@ export class AgileSoflParser extends CstParser {
 
     $.RULE('generalPostfix', () => {
       $.OR([
-        { ALT: () => { $.CONSUME(Dot); $.CONSUME(Identifier) } },
+        { ALT: () => { $.CONSUME(Dot); $.SUBRULE($.bindingName) } },
         { ALT: () => { $.CONSUME3(LParen); $.OPTION(() => $.SUBRULE($.expressionList)); $.CONSUME3(RParen) } }
       ])
     })
     $.RULE('simpleVariable', () => {
       $.OPTION(() => $.CONSUME(Tilde))
-      $.CONSUME(Identifier)
+      $.SUBRULE($.bindingName)
     })
 
     $.RULE('compoundExpr', () => {

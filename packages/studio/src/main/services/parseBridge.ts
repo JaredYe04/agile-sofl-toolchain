@@ -40,7 +40,8 @@ import {
   type DeclarationKind,
   applyHybridPatch,
   formatHybridInventory,
-  type HybridPatch
+  type HybridPatch,
+  type RefinementStep
 } from '@agile-sofl/editor-api'
 import {
   buildInformalModel,
@@ -71,6 +72,7 @@ import {
 } from '@agile-sofl/aspec'
 import { chatEcnu } from './llm/chatEcnu.js'
 import { migrateInformalSource, readInformalMeta } from './informalMeta.js'
+import { applyProjectRefinementStep, projectRefinementState } from './refinementLog.js'
 import {
   buildGuiModel,
   buildGuiModelFromAspec,
@@ -227,6 +229,20 @@ export function registerParseHandlers(): void {
   )
 
   ipcMain.handle(
+    'studio:refinement-step',
+    (
+      _event,
+      payload: { source: string; projectRoot: string; step: RefinementStep }
+    ) => cloneForIpc(applyProjectRefinementStep(payload.projectRoot, payload.source, cloneForIpc(payload.step)))
+  )
+
+  ipcMain.handle(
+    'studio:refinement-state',
+    (_event, payload: { source: string; projectRoot: string }) =>
+      cloneForIpc(projectRefinementState(payload.projectRoot, payload.source))
+  )
+
+  ipcMain.handle(
     'studio:generate-hybrid',
     async (
       _event,
@@ -310,6 +326,7 @@ export function registerParseHandlers(): void {
       documentModel: result.ast ? { modules: result.modules } : null,
       diagnostics: result.diagnostics,
       moduleGraph: result.moduleGraph,
+      cdfdGraphs: result.cdfdGraphs,
       fsfModels: result.fsfModels,
       modules: result.modules
     })

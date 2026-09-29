@@ -39,8 +39,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const structureCollapsed = ref(false)
   const columnWidths = ref<number[]>([...DEFAULT_COLUMN_WIDTHS])
   const expandedProjectIds = ref<string[]>([])
-  const hybridMode = ref<'code' | 'visual'>(
-    readStoredView('studio-default-hybrid-view', ['code', 'visual'] as const, 'visual')
+  const hybridMode = ref<'code' | 'visual' | 'refine'>(
+    readStoredView('studio-default-hybrid-view', ['code', 'visual', 'refine'] as const, 'visual')
   )
   const guiMode = ref<'visual' | 'code'>('visual')
   const structureMode = ref<StructureMode>('tree')

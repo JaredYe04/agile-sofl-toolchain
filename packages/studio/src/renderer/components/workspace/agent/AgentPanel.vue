@@ -22,6 +22,11 @@ import StudioIcon from '../../ui/StudioIcon.vue'
 import IconActionButton from '../../ui/IconActionButton.vue'
 import ResizeSplit from '../../ui/ResizeSplit.vue'
 import { toggleClarificationDraft, type ClarificationDraft } from './clarificationDraft'
+import {
+  composeClarificationAnswer,
+  encodeClarificationAnswer,
+  mergeClarificationCustom
+} from '../../../../shared/clarificationAnswer'
 import { contextMenuPoint } from '../../../lib/contextMenuPoint'
 import {
   composerAction,
@@ -75,6 +80,7 @@ const menu = ref<{ x: number; y: number; id: string } | null>(null)
 const writeMenuOpen = ref(false)
 const cardOpen = ref<Record<string, boolean>>({})
 const drafts = ref<Record<string, ClarificationDraft>>({})
+const pendingAnswerDrafts = ref<Record<string, ClarificationDraft>>({})
 const showSessionDialog = ref(false)
 const sessionListRatio = ref(0.2)
 const copiedId = ref<string | null>(null)
@@ -203,7 +209,7 @@ async function send(text?: string): Promise<void> {
   const pendingId = session.value?.context.pendingToolCallId
   if (pendingId) {
     if (fromInput) input.value = ''
-    await resume(pendingId, body, true)
+    await resume(pendingId, clarificationResumePayload(pendingId, body), true)
     return
   }
   const rootAtStart = projectRoot.value
@@ -424,13 +430,48 @@ async function maybeAutoApply(): Promise<void> {
   await maybeAutoApply()
 }
 
+function clarificationResumePayload(pendingId: string, composerText: string): string {
+  const msg = session.value?.messages.find(
+    (item) => item.pending && item.clarification?.pendingToolCallId === pendingId
+  )
+  if (!msg?.clarification) return composerText
+  const draft = pendingAnswerDrafts.value[msg.id]
+  const labels = (msg.clarification.options ?? [])
+    .filter((option) => draft?.ids.includes(option.id))
+    .map((option) => option.label)
+  const custom = [draft?.custom, composerText]
+    .map((part) => (part ?? '').trim())
+    .filter(Boolean)
+    .join('\n')
+  const nextDrafts = { ...pendingAnswerDrafts.value }
+  delete nextDrafts[msg.id]
+  pendingAnswerDrafts.value = nextDrafts
+  return encodeClarificationAnswer(
+    composeClarificationAnswer({
+      selectedLabels: labels,
+      custom,
+      multiSelect: msg.clarification.multiSelect
+    })
+  )
+}
+
+function onClarificationDraft(msg: AgentMessageView, draft: ClarificationDraft): void {
+  pendingAnswerDrafts.value = { ...pendingAnswerDrafts.value, [msg.id]: draft }
+}
+
 async function answer(msg: AgentMessageView, value: string): Promise<void> {
   const toolId = msg.clarification?.pendingToolCallId || session.value?.context.pendingToolCallId
   if (!toolId) return
+  const composer = input.value.trim()
+  const payload = composer ? mergeClarificationCustom(value, composer) : value
+  if (composer) input.value = ''
   const nextDrafts = { ...drafts.value }
   delete nextDrafts[msg.id]
   drafts.value = nextDrafts
-  await resume(toolId, value, true)
+  const nextPending = { ...pendingAnswerDrafts.value }
+  delete nextPending[msg.id]
+  pendingAnswerDrafts.value = nextPending
+  await resume(toolId, payload, true)
   await maybeAutoApply()
 }
 
@@ -949,6 +990,7 @@ function permBadge(s: AgentSessionPayload): string {
               :prefill-ids="drafts[msg.id]?.ids"
               :prefill-custom="drafts[msg.id]?.custom"
               @toggle="toggleCard(msg.id)"
+              @draft="onClarificationDraft(msg, $event)"
               @submit="answer(msg, $event)"
               @change="reopenClarification(msg, $event)"
             />

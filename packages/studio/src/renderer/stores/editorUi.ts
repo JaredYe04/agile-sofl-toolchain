@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
 
 export type ViewMode = 'code' | 'visual' | 'split'
-export type VisualSideView = 'tree' | 'graph'
+export type VisualSideView = 'tree' | 'graph' | 'refine'
 const VIEW_KEY = 'studio-view-mode'
 const GRAPH_ZOOM_KEY = 'studio-graph-zoom-percent'
 const MINIMAP_KEY = 'studio-show-minimap'
@@ -23,6 +23,13 @@ export const PROJECT_SIDEBAR_DEFAULT_WIDTH = 260
 const TREE_DEFAULT_RATIO = 0.22
 const GRAPH_DEFAULT_RATIO = 0.5
 
+const SIDE_VIEWS: VisualSideView[] = ['tree', 'graph', 'refine']
+
+function readSideView(): VisualSideView {
+  const stored = localStorage.getItem(SIDE_VIEW_KEY)
+  return SIDE_VIEWS.includes(stored as VisualSideView) ? (stored as VisualSideView) : 'tree'
+}
+
 function readBool(key: string, fallback: boolean): boolean {
   const v = localStorage.getItem(key)
   if (v === null) return fallback
@@ -35,9 +42,7 @@ export const useEditorUiStore = defineStore('editorUi', () => {
   const showLineNumbers = ref(readBool(LINENUMBERS_KEY, true))
   const splitRatio = ref(Number.parseFloat(localStorage.getItem(SPLIT_KEY) ?? '0.5') || 0.5)
 
-  const sideView = ref<VisualSideView>(
-    (localStorage.getItem(SIDE_VIEW_KEY) as VisualSideView | null) ?? 'tree'
-  )
+  const sideView = ref<VisualSideView>(readSideView())
   const visualNavRatioManual = ref(readBool(VISUAL_NAV_MANUAL_KEY, false))
   const visualNavRatio = ref(
     Number.parseFloat(localStorage.getItem(VISUAL_NAV_RATIO_KEY) ?? String(TREE_DEFAULT_RATIO)) ||
@@ -83,7 +88,7 @@ export const useEditorUiStore = defineStore('editorUi', () => {
   }
 
   function defaultNavRatioFor(mode: VisualSideView): number {
-    return mode === 'graph' ? GRAPH_DEFAULT_RATIO : TREE_DEFAULT_RATIO
+    return mode === 'graph' || mode === 'refine' ? GRAPH_DEFAULT_RATIO : TREE_DEFAULT_RATIO
   }
 
   function setSideView(mode: VisualSideView): void {

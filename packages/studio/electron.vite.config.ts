@@ -58,7 +58,8 @@ export default defineConfig({
         '@agile-sofl/editor-api': resolve(__dirname, 'src/renderer/lib/editorApiRenderer.ts'),
         // Main process loads CJS from dist; renderer bundles ESM from source.
         '@agile-sofl/gui': resolve(__dirname, '../gui/src/index.ts'),
-        'monaco-editor-nls-adapter/proxy': resolve(__dirname, 'src/renderer/monaco/nlsProxy.js')
+        'monaco-editor-nls-adapter/proxy': resolve(__dirname, 'src/renderer/monaco/nlsProxy.js'),
+        echarts: resolve(__dirname, '../../node_modules/echarts')
       }
     },
     build: {
@@ -82,7 +83,7 @@ export default defineConfig({
     // Clear node_modules/.vite after changing this if context menu stays English.
     optimizeDeps: {
       exclude: ['monaco-editor'],
-      include: ['vditor']
+      include: ['vditor', 'echarts', 'zrender']
     }
   }
 })

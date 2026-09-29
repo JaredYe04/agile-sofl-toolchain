@@ -14,6 +14,7 @@ import {
 describe('agent tool activity UX helpers', () => {
   it('maps known tools to i18n keys and falls back for unknown names', () => {
     expect(toolLabelKey('propose_hybrid_changes')).toBe('agent.tool.proposeHybrid')
+    expect(toolLabelKey('read_refinement_state')).toBe('agent.tool.readRefine')
     expect(toolLabelKey('read_specification')).toBe('agent.tool.readInformal')
     expect(toolLabelKey('not_a_tool')).toBe('agent.tool.generic')
   })

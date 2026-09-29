@@ -34,10 +34,13 @@ export function resolveDecomTargetId(
   nodes: ModuleGraphNode[]
 ): string | undefined {
   const trimmed = targetName.trim()
-  const proc = nodes.find((n) => n.kind === 'process' && n.name === trimmed)
-  if (proc) return proc.id
-  const fn = nodes.find((n) => n.kind === 'function' && n.name === trimmed)
-  if (fn) return fn.id
+  const key = trimmed.startsWith('SYSTEM_') ? trimmed.slice('SYSTEM_'.length) : trimmed
+  const mod = nodes.find(
+    (n) =>
+      n.kind === 'module' &&
+      (n.id === trimmed || n.id === key || n.name === trimmed || n.name === `SYSTEM_${key}` || n.name === key)
+  )
+  if (mod) return mod.id
   return undefined
 }
 

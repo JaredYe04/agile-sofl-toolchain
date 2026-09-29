@@ -30,7 +30,15 @@ import type {
   LetBindingNode,
   GuiBlockNode,
   GuiScreenNode,
-  GuiWidgetNode
+  GuiWidgetNode,
+  CdfdBlockNode,
+  CdfdPortNode,
+  CdfdStoreNode,
+  CdfdProcessRefNode,
+  CdfdCondNode,
+  CdfdFlowNode,
+  RefineBlockNode,
+  RefineTypeItemNode
 } from '../ast/nodes.js'
 import { mergeSpans, EMPTY_SPAN } from '../ast/span.js'
 import { spanOfToken, spanOfChildren, spanFromLocation, spanOfTokens } from '../ast/spanHelpers.js'
@@ -63,6 +71,26 @@ function firstToken(node: CstNode): IToken | undefined {
     }
   }
   return undefined
+}
+
+const BINDING_NAME_TOKENS = [
+  'Identifier',
+  'Time',
+  'Nat',
+  'Nat0',
+  'Int',
+  'Real',
+  'Char',
+  'String',
+  'Bool',
+  'Given'
+]
+
+/** Parameter, variable, and field names. Basic-type keywords such as `time` are names here. */
+function bindingNameTokens(node: CstNode): IToken[] {
+  const nodes = [node, ...allRuleInstances(node, 'bindingName')]
+  const tokens = nodes.flatMap((n) => tokensOf(n, ...BINDING_NAME_TOKENS))
+  return tokens.sort((a, b) => a.startOffset - b.startOffset)
 }
 
 function tokensOf(node: CstNode, ...names: string[]): IToken[] {
@@ -153,7 +181,9 @@ function cstToTopModule(cst: CstNode): ModuleNode {
     invariants: body ? extractInvs(body) : [],
     processes: body ? extractProcesses(body) : [],
     functions: body ? extractFunctions(body) : [],
-    gui: body ? extractGui(body) : undefined
+    gui: body ? extractGui(body) : undefined,
+    cdfd: body ? extractCdfd(body) : undefined,
+    refine: body ? extractRefine(body) : undefined
   }
 }
 
@@ -182,7 +212,9 @@ function cstToRegularModule(cst: CstNode): ModuleNode {
     invariants: body ? extractInvs(body) : [],
     processes: body ? extractProcesses(body) : [],
     functions: body ? extractFunctions(body) : [],
-    gui: body ? extractGui(body) : undefined
+    gui: body ? extractGui(body) : undefined,
+    cdfd: body ? extractCdfd(body) : undefined,
+    refine: body ? extractRefine(body) : undefined
   }
 }
 
@@ -242,7 +274,7 @@ function extractVars(body: CstNode): VarDeclNode[] {
 function cstToVariable(cst: CstNode): VariableNode {
   const ext = tokensOf(cst, 'Ext')
   const hash = tokensOf(cst, 'Hash')
-  const id = tokensOf(cst, 'Identifier')[0]
+  const id = bindingNameTokens(cst)[0]
   if (ext.length > 0 && hash.length > 0) {
     return { type: 'variable', span: id ? spanOfToken(id) : spanOf(cst), kind: 'ext_hash', name: id?.image ?? '' }
   }
@@ -337,6 +369,103 @@ function extractGui(body: CstNode): GuiBlockNode | undefined {
   }
 }
 
+function extractCdfd(body: CstNode): CdfdBlockNode | undefined {
+  const blocks = allRuleInstances(body, 'cdfdBlock')
+  if (!blocks.length) return undefined
+  const block = blocks[0]!
+  const ports: CdfdPortNode[] = []
+  const stores: CdfdStoreNode[] = []
+  const nodes: CdfdProcessRefNode[] = []
+  const conditions: CdfdCondNode[] = []
+  const flows: CdfdFlowNode[] = []
+
+  for (const portCst of allRuleInstances(block, 'cdfdPort')) {
+    const inTok = tokensOf(portCst, 'In')[0]
+    const ids = tokensOf(portCst, 'Identifier')
+    const names = ids[0]?.image === 'port' ? ids.slice(1) : ids
+    ports.push({
+      type: 'cdfd_port',
+      span: spanOf(portCst),
+      direction: inTok ? 'in' : 'out',
+      name: names.at(-1)?.image ?? ''
+    })
+  }
+  for (const storeCst of allRuleInstances(block, 'cdfdStore')) {
+    const id = tokensOf(storeCst, 'Identifier').at(-1)
+    stores.push({
+      type: 'cdfd_store',
+      span: spanOf(storeCst),
+      name: id?.image ?? ''
+    })
+  }
+  for (const nodeCst of allRuleInstances(block, 'cdfdNode')) {
+    const id = tokensOf(nodeCst, 'Identifier').at(-1)
+    nodes.push({
+      type: 'cdfd_node',
+      span: spanOf(nodeCst),
+      name: id?.image ?? ''
+    })
+  }
+  for (const condCst of allRuleInstances(block, 'cdfdCond')) {
+    const id = tokensOf(condCst, 'Identifier').at(-1)
+    conditions.push({
+      type: 'cdfd_cond',
+      span: spanOf(condCst),
+      name: id?.image ?? ''
+    })
+  }
+  for (const flowCst of allRuleInstances(block, 'cdfdFlow')) {
+    const ids = tokensOf(flowCst, 'Identifier')
+    const others = tokensOf(flowCst, 'Others')[0]
+    const pred = singleChild(flowCst, 'predicate')
+    const names = ids[0]?.image === 'flow' ? ids.slice(1) : ids
+    flows.push({
+      type: 'cdfd_flow',
+      span: spanOf(flowCst),
+      from: names[0]?.image ?? '',
+      to: names[names.length - 1]?.image ?? '',
+      isOthers: Boolean(others),
+      guard: pred ? cstToPredicate(pred) : undefined
+    })
+  }
+
+  return {
+    type: 'cdfd',
+    span: spanOf(block),
+    ports,
+    stores,
+    nodes,
+    conditions,
+    flows,
+    extraBlockCount: blocks.length > 1 ? blocks.length - 1 : undefined
+  }
+}
+
+function extractRefine(body: CstNode): RefineBlockNode | undefined {
+  const blocks = allRuleInstances(body, 'refineBlock')
+  if (!blocks.length) return undefined
+  const block = blocks[0]!
+  const items: RefineTypeItemNode[] = allRuleInstances(block, 'refineItem').map((item) => {
+    const ids = tokensOf(item, 'Identifier')
+    const typeNameCst = singleChild(item, 'refineTypeName')
+    const typeNameTok = typeNameCst
+      ? tokensOf(typeNameCst, 'Identifier', 'Nat', 'Nat0', 'Int', 'Real', 'Char', 'String', 'Bool', 'Given')[0]
+      : undefined
+    return {
+      type: 'refine_type',
+      span: spanOf(item),
+      abstractType: ids[0]?.image ?? '',
+      representationType: typeNameTok?.image ?? ids[1]?.image ?? '',
+      retrieveFunction: ids[ids.length - 1]?.image ?? ''
+    }
+  })
+  return {
+    type: 'refine',
+    span: spanOf(block),
+    items
+  }
+}
+
 function extractProcesses(body: CstNode): ProcessNode[] {
   const direct = allRuleInstances(body, 'processDef').map(cstToProcess)
   const nested = childNodes(body, 'processFunctionSpecs').flatMap((specs) =>
@@ -389,7 +518,7 @@ function cstToProcess(cst: CstNode): ProcessNode {
 
 function cstToParamDecls(cst: CstNode): ParamGroupNode[] {
   return childNodes(cst, 'paramGroup').map((g) => {
-    const ids = tokensOf(g, 'Identifier')
+    const ids = bindingNameTokens(g)
     const typeExpr = singleChild(g, 'typeExpr')
     return {
       type: 'param_group',
@@ -1307,7 +1436,7 @@ function cstToGeneralAtom(cst: CstNode): ExpressionNode {
   const simple = singleChild(cst, 'simpleVariable')
   if (simple) {
     const tilde = tokensOf(simple, 'Tilde')
-    const id = tokensOf(simple, 'Identifier')[0]
+    const id = bindingNameTokens(simple)[0]
     return { type: 'identifier', span: spanOf(cst), name: id?.image ?? '', negated: tilde.length > 0 }
   }
   const seq = singleChild(cst, 'seqExpr')
@@ -1338,7 +1467,7 @@ function cstToGeneralAtom(cst: CstNode): ExpressionNode {
 function cstToGeneralPostfix(cst: CstNode, base: ExpressionNode): ExpressionNode {
   const dot = tokensOf(cst, 'Dot')
   if (dot.length > 0) {
-    const id = tokensOf(cst, 'Identifier')[0]
+    const id = bindingNameTokens(cst)[0]
     return { type: 'field_access', span: spanOf(cst), object: base, field: id?.image ?? '' }
   }
   const list = singleChild(cst, 'expressionList')

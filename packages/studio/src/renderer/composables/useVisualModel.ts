@@ -346,6 +346,7 @@ export function useVisualModel(activeTabId: ComputedRef<string | undefined>) {
     syncing,
     modelGen,
     moduleGraph,
+    cdfdGraphs: computed(() => model.value?.cdfdGraphs ?? []),
     diagnostics,
     applySourcePatch,
     scheduleVisualPatch,

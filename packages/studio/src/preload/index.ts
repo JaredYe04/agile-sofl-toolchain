@@ -387,6 +387,14 @@ const studio = {
       content: string
       error?: string
     }>,
+  refinementStep: (payload: { source: string; projectRoot: string; step: Record<string, unknown> }) =>
+    ipcRenderer.invoke('studio:refinement-step', JSON.parse(JSON.stringify(payload))) as Promise<{
+      source: string
+      error?: string
+      state: unknown
+    }>,
+  refinementState: (payload: { source: string; projectRoot: string }) =>
+    ipcRenderer.invoke('studio:refinement-state', JSON.parse(JSON.stringify(payload))) as Promise<unknown>,
   gitIsRepo: (rootPath: string) => ipcRenderer.invoke('studio:git-is-repo', rootPath) as Promise<boolean>,
   gitStatus: (rootPath: string) =>
     ipcRenderer.invoke('studio:git-status', rootPath) as Promise<{
@@ -584,6 +592,7 @@ export type VisualModelPayload = {
   documentModel: unknown
   diagnostics: DiagnosticSummary[]
   moduleGraph: unknown
+  cdfdGraphs?: unknown[]
   fsfModels: unknown[]
   modules: VisualModuleSummary[]
 }

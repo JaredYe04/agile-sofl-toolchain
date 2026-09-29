@@ -619,7 +619,7 @@ const AGENT_SKILLS = [
   {
     id: "requirement-discovery",
     name: "Requirement Discovery",
-    prompt: "Discover Functions, Data Resources, and Constraints from the user's natural language. Do not dump a full specification. Summarize candidates, then ask clarifying questions, then propose structured propose_changes patches. After each applied write, read_specification and continue until the inventory is complete, then summarize. If CRUD cannot express a fix, read view=source and propose_source_edit."
+    prompt: "Discover Functions, Data Resources, and Constraints from the user's natural language. Do not dump a full specification. Summarize candidates, then ask clarifying questions, then propose structured propose_changes patches. After each applied write, read_specification and continue until the inventory is complete, then summarize. If CRUD cannot express a fix, read view=source and propose_source_edit. The full journey is Informal → Hybrid+GUI → dual-line refinement until the refinement digest is unambiguous. If Hybrid already exists with remaining gaps, after Informal work call read_refinement_state and invite the next refinement slice — do not stop as if the specification were finished."
   },
   {
     id: "requirement-clarification",
@@ -662,9 +662,26 @@ Pipeline — keep going after each applied patch until every enabled stage is do
 5. Per process: replace-process-body or add scenarios. Write structured natural-language pre/post, never FSF :. Enumerations use {<Tag>}.
 6. Add invariants (kind=inv) from Constraints. Do NOT dump GUI widgets into Hybrid CRUD.
 7. For UI, call read_gui_specification then propose_gui_changes. Each screen is its own HTML page (data-screen) with data-nav to sibling screens so the prototype can click-switch. Build a high-fidelity HTML prototype (shell, sidebar, hero, cards, forms, lists, empty states) — not a page of three buttons. Use whitelist tags plus any as-* class. Bind with data-process / data-bind / data-nav. Prefer replace-screen-html with the full inner layout of that one screen. Hybrid gui blocks stay as slim screen→process traces.
-After every applied write, call read_hybrid_specification / read_gui_specification and fix gaps until inventories are correct. Last message = summary of completed stages.
+After every applied write, call read_hybrid_specification / read_gui_specification and fix gaps until inventories are correct.
+8. Dual-line refinement is a later stage, not automatic. After enabled Hybrid/GUI stages finish, call read_refinement_state. If unambiguous=false, ask_clarification with 2–4 next slices (empty module, stub process, FormalizePredicate, data retrieve). Do not refine the entire tree in one go. Do not claim the specification has no ambiguity while empty modules, stubs, processAmbiguity, or dataAmbiguity remain.
+Last message = summary of completed generation stages plus remaining refinement gaps.
 If CRUD fails, the file is empty/out of sync, diagnostics list syntax errors, or leftover unparsed text appears, call read_hybrid_specification with view=source then propose_source_edit (unique replace/append/replace-document). Do not retry the same failing CRUD. Prefer CRUD; source edit is last resort.
 Infer unstated GUI/navigation only when the parameter allows it; otherwise ask. Prefer small patches citing inventory ids.`
+  },
+  {
+    id: "hybrid-refinement",
+    name: "Hybrid Refinement",
+    prompt: `You are refining an existing Hybrid (.asfl) specification along Liu's dual-line SOFL process: process atomicity and data refinement. Do not dump a full file.
+Completeness is not "whatever happens to be written". A module that is only a name (no types/vars/processes/cdfd) is an empty shell — a gap. A process that is only a name (no pre/post/fsf/decom) is a stub — also a gap.
+Guide the user one slice at a time. Do not silently refine every node.
+Pipeline:
+1. read_refinement_state (tree or summary) plus Informal/Hybrid inventories. Identify the named module/process/data item from the user message, or ask_clarification if several slices are open.
+2. Prefer propose_refinement_step: FormalizePredicate, DecomposeProcess, SetCdfd, DeclareAtomic, IntroduceRetrieve, DischargeDataObligation, DefineType.
+3. Use propose_hybrid_changes for new types/vars/processes/scenarios when the shell is empty. Never treat missing members as done.
+4. If CRUD/refinement-step cannot express the fix, read_hybrid_specification view=source then propose_source_edit (replace/append). Informal atoms still need a FormalizePredicate step afterwards or ambiguity will not drop.
+5. CDFD is optional on old files; write one only when the user asks to draft/complete a diagram or a process must appear on the current module graph.
+6. After each applied write, read_refinement_state. Stay on the chosen slice until that local gap shrinks. Then if more gaps remain, ask_clarification for the next slice — do not claim an unambiguous spec while the digest says unambiguous=false.
+Last message = what ambiguity dropped (process vs data) and what remains.`
   }
 ];
 function skillById(id) {
@@ -807,6 +824,23 @@ const AGENT_TOOLS = [
   {
     type: "function",
     function: {
+      name: "read_refinement_state",
+      description: "Return the current dual-line refinement digest (Liu SOFL process atomicity + data discharge): overall harmonic completeness, empty-shell modules, stub processes, informal atoms, open scenarios, data obligations, and a process/data tree. Call this after Hybrid writes. view=summary (default), tree, or log. Missing members are gaps, not completeness.",
+      parameters: {
+        type: "object",
+        properties: {
+          view: {
+            type: "string",
+            enum: ["summary", "tree", "log"],
+            description: "summary (counters + next slices), tree (modules/processes/gates/data), or audit log"
+          }
+        }
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
       name: "propose_hybrid_changes",
       description: "Propose an incremental Hybrid/.asfl CRUD patch against inventory ids (mod:, proc:Module.Name). Prefer this over source edits. SYSTEM_ is the unique top-level system module (named after the whole system) and is inserted first; other modules use parentId=mod:SYSTEM_…. Default process signature is (). Never emit raw SOFL or replace-document here. Use add/update/remove/replace-process-body. Write pre/post, not FSF :. Invariants may use implies or =>.",
       parameters: {
@@ -926,6 +960,46 @@ const AGENT_TOOLS = [
           }
         },
         required: ["operations"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "propose_refinement_step",
+      description: "Submit an auditable Hybrid refinement step. Informal atoms may only become formal via FormalizePredicate. DecomposeProcess creates a child module and an empty CDFD. SetCdfd writes or replaces one module cdfd block (toText). Missing cdfd on an existing module is not an error — do not invent a CDFD unless the user asks to draw or refine the data-flow diagram.",
+      parameters: {
+        type: "object",
+        properties: {
+          explanation: { type: "string" },
+          kind: {
+            type: "string",
+            enum: [
+              "FormalizePredicate",
+              "DecomposeProcess",
+              "BalanceFlows",
+              "DefineType",
+              "BindConstraint",
+              "DeclareAtomic",
+              "Extend",
+              "IntroduceRetrieve",
+              "DischargeDataObligation",
+              "SetCdfd"
+            ]
+          },
+          moduleName: { type: "string" },
+          processName: { type: "string" },
+          typeName: { type: "string" },
+          clause: { type: "string", enum: ["pre", "post", "fsf"] },
+          fromText: { type: "string" },
+          toText: { type: "string" },
+          childModuleName: { type: "string" },
+          representationType: { type: "string" },
+          retrieveFunction: { type: "string" },
+          retrieveBody: { type: "string" },
+          note: { type: "string" }
+        },
+        required: ["kind"]
       }
     }
   },
@@ -1551,6 +1625,21 @@ function numberedSource(text, maxChars = 16e3) {
   return `${body.slice(0, maxChars)}
 …(truncated)`;
 }
+function refinementLogPath(projectRoot) {
+  return node_path.join(projectRoot, ".agile-sofl", "refinement-log.jsonl");
+}
+function readRefinementLog(projectRoot) {
+  const file = refinementLogPath(projectRoot);
+  if (!node_fs.existsSync(file)) return [];
+  try {
+    return editorApi.parseRefinementLog(node_fs.readFileSync(file, "utf-8"));
+  } catch {
+    return [];
+  }
+}
+function projectRefinementState(projectRoot, source) {
+  return editorApi.buildRefinementState(source, readRefinementLog(projectRoot));
+}
 function patchFingerprint(patch) {
   return JSON.stringify({
     target: patch.target ?? "",
@@ -1617,6 +1706,7 @@ function validateAgentPatch(target, patch, options) {
   }
   for (const op of patch.operations) {
     const kind = String(op.op || "");
+    if (kind === "refine-step") continue;
     if (kind === "replace-document" || typeof op.asflText === "string") {
       return {
         ok: false,
@@ -1697,7 +1787,7 @@ function continuationUserText(lastToolContent, failures = 0) {
     if (error) {
       return `The patch was applied, but some operations failed: ${error}. Immediately call read_specification and/or read_hybrid_specification, fix remaining work with CRUD or ${sourceHint}`;
     }
-    return "The patch was applied. Immediately call read_specification and/or read_hybrid_specification, compare with the plan, and either propose the next incremental CRUD patch or write a final summary of what was completed. Do not wait for a new user message.";
+    return "The patch was applied. Immediately call read_specification and/or read_hybrid_specification and read_refinement_state (if Hybrid changed). Compare with the plan, and either propose the next incremental CRUD/refinement step or write a final summary. If the refinement digest is not unambiguous, invite the next slice with ask_clarification. Do not wait for a new user message.";
   }
   if (action === "error" || failures >= 2) {
     return `The write failed: ${error || "unknown error"}. This is a tool result, not a stopped session. Do not retry the same CRUD patch. Call read_specification and/or read_hybrid_specification with view=source, then propose_source_edit to unstick (replace a unique snippet, append, or replace-document). Then verify. Do not stop with an empty message.`;
@@ -1712,7 +1802,7 @@ function appliedToolResult(extra) {
     action: "applied",
     ok: !extra?.error,
     error: extra?.error,
-    next: extra?.error ? `Some operations failed: ${extra.error}. Read the inventory (and view=source if needed). Follow up with CRUD or propose_source_edit. Do not stop.` : "Call read_specification and/or read_hybrid_specification to verify. If more work remains, propose the next CRUD patch (or propose_source_edit if CRUD cannot express it). If the task is complete, write a short summary and stop."
+    next: extra?.error ? `Some operations failed: ${extra.error}. Read the inventory (and view=source if needed). Follow up with CRUD or propose_source_edit. Do not stop.` : "Call read_specification and/or read_hybrid_specification and read_refinement_state (if Hybrid changed) to verify. If more work remains, propose the next CRUD or propose_refinement_step (or propose_source_edit if CRUD cannot express it). If Hybrid still has dual-line gaps, ask_clarification for the next slice. If the task is complete, write a short summary and stop."
   });
 }
 function rejectedToolResult() {
@@ -1743,8 +1833,9 @@ function toolsFor(permissions) {
     if (name === "ask_clarification") return true;
     if (name === "read_specification" || name === "review_specification") return permissions.informal.read;
     if (name === "propose_changes") return permissions.informal.write;
-    if (name === "read_hybrid_specification" || name === "review_hybrid") return permissions.hybrid.read;
-    if (name === "propose_hybrid_changes") return permissions.hybrid.write;
+    if (name === "read_hybrid_specification" || name === "review_hybrid" || name === "read_refinement_state")
+      return permissions.hybrid.read;
+    if (name === "propose_hybrid_changes" || name === "propose_refinement_step") return permissions.hybrid.write;
     if (name === "read_gui_specification") return permissions.hybrid.read || permissions.informal.read;
     if (name === "propose_gui_changes") return permissions.hybrid.write || permissions.informal.write;
     if (name === "propose_source_edit") return permissions.informal.write || permissions.hybrid.write;
@@ -1757,6 +1848,18 @@ function compactSpec(markdown) {
 function compactHybrid(asfl) {
   if (!asfl?.trim()) return "(empty hybrid specification)";
   return editorApi.formatHybridInventory(asfl, 12e3);
+}
+function compactRefinement(ctx) {
+  return compactRefinementView(ctx, "summary");
+}
+function compactRefinementView(ctx, view) {
+  if (!ctx.hybridAsfl?.trim()) return "(no hybrid specification yet — generate Hybrid before dual-line refinement)";
+  try {
+    const state = projectRefinementState(ctx.projectRoot ?? "", ctx.hybridAsfl);
+    return editorApi.formatRefinementDigest(state, view, view === "tree" ? 16e3 : 12e3);
+  } catch {
+    return "(refinement digest unavailable)";
+  }
 }
 function hybridDiagnosticsPayload(asfl) {
   const items = editorApi.collectHybridAgentDiagnostics(asfl ?? "");
@@ -1786,6 +1889,7 @@ function systemPrompt(ctx, permissions) {
   }
   if (permissions.hybrid.read) {
     toolLines.push("- read_hybrid_specification: Hybrid inventory (default; includes per-module syntax/parse diagnostics) or numbered .asfl (view=source)");
+    toolLines.push("- read_refinement_state: dual-line refinement tree/summary/log (empty modules and stub processes are gaps)");
     toolLines.push("- review_hybrid: Hybrid quality review");
   }
   if (permissions.hybrid.read || permissions.informal.read) {
@@ -1793,6 +1897,9 @@ function systemPrompt(ctx, permissions) {
   }
   if (permissions.hybrid.write) {
     toolLines.push("- propose_hybrid_changes: incremental Hybrid CRUD (preferred)");
+    toolLines.push(
+      "- propose_refinement_step: FormalizePredicate / DecomposeProcess / SetCdfd / DeclareAtomic / IntroduceRetrieve / DischargeDataObligation. A module without cdfd is valid; do not treat ASFL_CDFD_001 as a syntax error."
+    );
   }
   if (permissions.hybrid.write || permissions.informal.write) {
     toolLines.push("- propose_gui_changes: GUI HTML structure patches — full-screen prototypes with as-* layout, not a few buttons");
@@ -1816,7 +1923,18 @@ Do not invent YAML frontmatter or document-level metadata.` : "You do not have I
 FORBIDDEN: replace-document, asflText, dumping several modules as one string, "-- comments" as source.
 Add SYSTEM_ first, then one semantic module at a time with parentId pointing at the system module, then its types/vars/invs/processes as separate operations. Prefer updating an existing id over adding a duplicate.
 Never put end_module, a whole module, or a process block inside type/var/inv/pre/post text — that wipes the document.
-After a write is applied, call read_hybrid_specification and keep patching until the inventory matches the plan and Diagnostics is empty. If inventory reports leftover text without a module header, that is NOT empty — repair it with CRUD (or source edit only if CRUD cannot).` : "You do not have Hybrid write permission. Do not call propose_hybrid_changes.";
+After a write is applied, call read_hybrid_specification and keep patching until the inventory matches the plan and Diagnostics lists no syntax errors. A module with processes and no cdfd is backward compatible — do not add a cdfd just to clear a warning.
+Formalize informal pre/post atoms only via propose_refinement_step kind=FormalizePredicate.
+Decompose a process with kind=DecomposeProcess (child module, empty cdfd, matching ports, decom set to that module).
+Write or replace a module CDFD with kind=SetCdfd: moduleName plus toText, either a full "cdfd ... end_cdfd" block or the inner lines. One cdfd per module. Syntax:
+  port in <name> / port out <name>
+  store <var>
+  node <process>
+  cond <name>
+  flow <from> -> <to>
+  flow <cond> | <predicate> -> <target>
+  flow <cond> | others -> <target>
+node names are processes in that module; store names are vars; ports match the parent process inputs and outputs when this module is a decom target. Do not store coordinates. Type keywords (time, nat, string, bool, …) are legal parameter and variable names.` : "You do not have Hybrid write permission. Do not call propose_hybrid_changes.";
   const guiGuide = permissions.hybrid.write || permissions.informal.write ? `For propose_gui_changes, design a high-fidelity product prototype the user can walk through:
 - Each screen should look like a finished app surface: shell/sidebar or navbar, hero or toolbar, cards/lists/tables/forms, badges, empty states, primary+secondary actions.
 - Each screen is a separate HTML page. Clicking data-nav must switch screens; the screen list follows. Do not put the whole app into one un-navigable view.
@@ -1825,16 +1943,26 @@ After a write is applied, call read_hybrid_specification and keep patching until
 - Do not ship a page that is only two or three unlabeled buttons. Navigation must be visible in the layout, not implied.
 - Never emit <script>, style=, href, or src.` : "You do not have GUI write permission. Do not call propose_gui_changes.";
   const sourceGuide = permissions.informal.write || permissions.hybrid.write ? `propose_source_edit is an escape hatch, not the default:
-- Prefer propose_changes / propose_hybrid_changes / propose_gui_changes for almost every write.
+- Prefer propose_changes / propose_hybrid_changes / propose_gui_changes / propose_refinement_step for almost every write.
 - Use source edit after CRUD fails, when leftover unparsed text remains, when inventory is empty/out of sync with the file, when Diagnostics lists syntax/parse errors CRUD cannot fix, or when you must fix text CRUD cannot express.
-- First call read_* with view=source. Then replace a UNIQUE oldText snippet, append, or replace-document.
+- First call read_* with view=source (or read_refinement_state then source). Then replace a UNIQUE oldText snippet, append, or replace-document.
+- Informal atoms that you rewrite via source edit still need propose_refinement_step kind=FormalizePredicate or process ambiguity will not drop.
 - Do not retry the same failing CRUD patch. After two CRUD failures you MUST switch to propose_source_edit.` : "You do not have write permission for source edits.";
+  const refinementGuide = permissions.hybrid.read ? `Dual-line refinement (guide the user; do not auto-refine the whole tree):
+- Journey: Informal → Hybrid+GUI → process atomicity + data discharge until the refinement digest reports unambiguous=true.
+- Empty name-only modules and stub (name-only) processes are gaps. Hybrid generation does not finish the specification.
+- After Hybrid/GUI work for this turn is done, if unambiguous=false, ask_clarification with 2–4 next slices from the digest. Wait for the user unless they already named a slice.
+- Prefer propose_refinement_step, then propose_hybrid_changes. Fallback: propose_source_edit on Hybrid.
+- After Hybrid writes, call read_refinement_state as well as read_hybrid_specification.
+- Do not claim "no ambiguity" while processAmbiguity, dataAmbiguity, empty modules, or stubs remain.` : "Refinement digest: (hybrid read permission off)";
   const informalBlock = permissions.informal.read ? `Current Informal Specification inventory:
 ${compactSpec(ctx.informalMarkdown)}` : "Informal Specification: (read permission off)";
   const hybridBlock = permissions.hybrid.read ? `Current Hybrid Specification inventory:
 ${compactHybrid(ctx.hybridAsfl)}` : "Hybrid Specification: (read permission off)";
   const guiBlock = permissions.hybrid.read || permissions.informal.read ? `Current GUI HTML inventory:
 ${ctx.guiHtml?.trim() ? gui.formatGuiInventory(ctx.guiHtml, 8e3) : "(empty GUI specification)"}` : "GUI Specification: (read permission off)";
+  const refinementBlock = permissions.hybrid.read ? `Current dual-line refinement digest:
+${compactRefinement(ctx)}` : "Refinement tree: (hybrid read permission off)";
   return `You are the Agile-SOFL Specification Agent inside Studio.
 You help users build Informal Specification and/or Hybrid Specification (.asfl).
 Markdown and SOFL text are views. You MUST NOT output a full document to apply.
@@ -1849,8 +1977,8 @@ Agile-SOFL conventions:
 - GUI is a walkable high-fidelity prototype, not a wireframe of a few buttons.
 
 Never claim you already modified the file. Writes go through propose_* tools. User Apply/Reject (or auto-write) is only a tool result — you MUST continue the same task.
-After any applied write, call read_specification and/or read_hybrid_specification, verify inventory and Hybrid Diagnostics, and propose another patch if anything is missing, wrong, or still has syntax errors. Repeat until correct.
-When the whole task is done, your LAST message is a short summary of what was completed. Do not wait for the user to say "continue".
+After any applied write, call read_specification and/or read_hybrid_specification (and read_refinement_state when Hybrid changed), verify inventory, Hybrid Diagnostics, and dual-line gaps, and propose another patch if anything is missing, wrong, or still has syntax errors. Repeat until the current task slice is done.
+When the whole task is done, your LAST message is a short summary of what was completed. Do not wait for the user to say "continue". If Hybrid exists and the digest is not unambiguous, that summary must invite the next refinement slice (ask_clarification) unless the user already declined further refinement.
 Prefer structured CRUD. Do not dump raw Markdown or raw SOFL through propose_changes / propose_hybrid_changes. If those tools fail or cannot express the fix, read view=source and use propose_source_edit.
 
 You are scoped to ONE project. Read/write only this project's Informal, Hybrid, and GUI files. Do not copy modules or text from any other Studio project.
@@ -1860,6 +1988,8 @@ ${informalGuide}
 ${hybridGuide}
 
 ${guiGuide}
+
+${refinementGuide}
 
 ${sourceGuide}
 
@@ -1879,6 +2009,8 @@ ${informalBlock}
 ${hybridBlock}
 
 ${guiBlock}
+
+${refinementBlock}
 `;
 }
 function toApiMessages(session, ctx, permissions, options) {
@@ -2208,10 +2340,11 @@ async function runAgentTurn(session, projectRoot, ctx, userText, sink, signal) {
           emit(sink, { kind: "session", session });
           return session;
         }
-        if (call.function.name === "propose_changes" || call.function.name === "propose_hybrid_changes" || call.function.name === "propose_gui_changes" || call.function.name === "propose_source_edit") {
+        if (call.function.name === "propose_changes" || call.function.name === "propose_hybrid_changes" || call.function.name === "propose_refinement_step" || call.function.name === "propose_gui_changes" || call.function.name === "propose_source_edit") {
           const mode = call.function.name === "propose_source_edit" ? "source" : "crud";
           let target;
-          if (call.function.name === "propose_hybrid_changes") target = "hybrid";
+          if (call.function.name === "propose_hybrid_changes" || call.function.name === "propose_refinement_step")
+            target = "hybrid";
           else if (call.function.name === "propose_changes") target = "informal";
           else if (call.function.name === "propose_gui_changes") target = "gui";
           else {
@@ -2238,7 +2371,28 @@ async function runAgentTurn(session, projectRoot, ctx, userText, sink, signal) {
               continue;
             }
           }
-          const patch = {
+          const patch = call.function.name === "propose_refinement_step" ? {
+            target: "hybrid",
+            mode: "crud",
+            explanation: typeof args.explanation === "string" ? args.explanation : void 0,
+            operations: [
+              {
+                op: "refine-step",
+                kind: args.kind,
+                moduleName: args.moduleName,
+                processName: args.processName,
+                typeName: args.typeName,
+                clause: args.clause,
+                fromText: args.fromText,
+                toText: args.toText,
+                childModuleName: args.childModuleName,
+                representationType: args.representationType,
+                retrieveFunction: args.retrieveFunction,
+                retrieveBody: args.retrieveBody,
+                note: args.note
+              }
+            ]
+          } : {
             target,
             mode,
             explanation: typeof args.explanation === "string" ? args.explanation : void 0,
@@ -2351,6 +2505,24 @@ async function runAgentTurn(session, projectRoot, ctx, userText, sink, signal) {
             timestamp: (/* @__PURE__ */ new Date()).toISOString()
           });
           live.content = live.content || (view === "source" ? diagnostics.errors ? `Read the current Hybrid Specification source (${diagnostics.errors} syntax error(s)).` : "Read the current Hybrid Specification source." : diagnostics.errors ? `Read the current Hybrid Specification inventory (${diagnostics.errors} syntax error(s)).` : "Read the current Hybrid Specification inventory.");
+          markCallStatus(live, call.id, "done", sink);
+          continue;
+        }
+        if (call.function.name === "read_refinement_state") {
+          const view = args.view === "tree" || args.view === "log" ? args.view : "summary";
+          const allowed = permissions.hybrid.read;
+          const digest = !allowed ? "(Hybrid read permission off)" : compactRefinementView(ctx, view);
+          session.messages.push({
+            id: call.id,
+            role: "tool",
+            content: JSON.stringify({
+              ok: allowed,
+              view,
+              digest
+            }),
+            timestamp: (/* @__PURE__ */ new Date()).toISOString()
+          });
+          live.content = live.content || "Read the current dual-line refinement state.";
           markCallStatus(live, call.id, "done", sink);
           continue;
         }

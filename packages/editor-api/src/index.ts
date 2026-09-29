@@ -203,6 +203,36 @@ export { applyHybridPatch } from './hybridPatch.js'
 export type { HybridEntityKind, HybridPatchOp, HybridPatch, HybridScenarioInput } from './hybridPatch.js'
 export type { SerializableSpan } from './span.js'
 
+export { buildCdfdGraph, buildAllCdfdGraphs } from './cdfdGraph.js'
+export type { CdfdGraph, CdfdGraphNode, CdfdGraphEdge, CdfdNodeKind } from './cdfdGraph.js'
+export { layoutCdfdGraph } from './cdfdLayout.js'
+export type { CdfdLayout, CdfdLayoutNode, CdfdLayoutEdge } from './cdfdLayout.js'
+export { patchCdfdBlock, addCdfdFlow } from './cdfdPatch.js'
+export {
+  applyRefinementStep,
+  buildRefinementState,
+  dualLineRates,
+  formatRefinementDigest,
+  parseRefinementLog,
+  serializeRefinementLog,
+  decomposeProcess
+} from './refinement.js'
+export type {
+  RefinementStep,
+  RefinementStepKind,
+  RefinementLogEntry,
+  RefinementState,
+  RefinementProcessRow,
+  RefinementModuleRow,
+  ProcessAmbiguityBreakdown,
+  DataRefinementItemView,
+  DataItemKind,
+  AtomicityStatus,
+  RefinementDigestView,
+  DualLineRates
+} from './refinement.js'
+export type { AuthorTextNote } from '@agile-sofl/parser'
+
 export {
   ProjectIndex,
   createProjectIndex,

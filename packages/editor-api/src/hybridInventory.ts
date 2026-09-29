@@ -37,6 +37,11 @@ function diagnosticsFromModel(model: VisualModelResult): HybridAgentDiagnostic[]
   const rank = (severity: string) =>
     severity === 'error' ? 0 : severity === 'warning' ? 1 : 2
   return model.diagnostics
+    .filter((d) => {
+      if (d.severity === 'error') return true
+      // Incomplete specs without cdfd/retrieve are expected; keep agent inventory clean.
+      return d.code !== 'ASFL_CDFD_001' && d.code !== 'ASFL_DATA_001' && d.code !== 'ASFL_DATA_005'
+    })
     .map((d) => ({
       severity: d.severity,
       code: d.code,

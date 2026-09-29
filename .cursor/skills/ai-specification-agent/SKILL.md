@@ -16,15 +16,19 @@ Reuse this loop for Informal and Hybrid. Do not create a second agent runtime. N
 User NL → skill prompt + spec digest → ChatECNU tools (filtered by session permissions) → UI cards → user confirms **or auto-write** → patch apply via the global undo stack → **the same turn continues** with the tool result.
 
 Informal tools: `ask_clarification`, `read_specification` (`view=inventory|source`), `propose_changes`, `propose_source_edit`, `review_specification`.
-Hybrid tools: `read_hybrid_specification` (`view=inventory|source`), `propose_hybrid_changes`, `propose_source_edit`, `review_hybrid`.
+Hybrid tools: `read_hybrid_specification` (`view=inventory|source`), `read_refinement_state` (`view=summary|tree|log`), `propose_hybrid_changes`, `propose_refinement_step`, `propose_source_edit`, `review_hybrid`.
 
 `propose_changes` is Informal-only. `propose_hybrid_changes` uses inventory ids (`mod:`, `proc:`, `scn:`, `gui:`, `type:`, `var:`, `inv:`). Prefer updating an existing id over adding a duplicate. Write `pre`/`post`, never `FSF :`. Enumerations use `{<Tag>}`. **CRUD is the default.** Do not dump multi-module SOFL through CRUD. After each applied write, call `read_*` and keep patching until the inventory is correct. The last assistant message is a task summary.
 
-`propose_source_edit` is the escape hatch: unique `replace` / `append` / `replace-document` against numbered source (`read_* view=source`). Use it when CRUD fails, inventory is empty/out of sync, or an uncovered parser/id issue would otherwise loop. After two CRUD failures, the loop **blocks** the same/repeated CRUD and requires a source edit. Source edits still go through Apply/auto-write and `useHistoryStore`.
+The product journey is Informal → Hybrid+GUI → three-line refinement (process atomicity + data discharge + operational grain). The system prompt includes a refinement digest. After Hybrid/GUI stages, the agent **guides** the next refinement slice with `ask_clarification`; it does not auto-refine the whole tree. Empty modules and stub processes are gaps.
+
+Operational grain is not a CRUD catalog. `ask_clarification` may only offer variations already extracted in the digest (plus `name-claim`). Close them with `ClassifyGrain` or `ResolveVariation`. Rewriting pre/post does not reduce `grainAmbiguity`. `DeclareAtomic` requires the formal gates and grain closure.
+
+`propose_source_edit` is the escape hatch: unique `replace` / `append` / `replace-document` against numbered source (`read_* view=source`). Use it when CRUD fails, inventory is empty/out of sync, or an uncovered parser/id issue would otherwise loop. After two CRUD failures, the loop **blocks** the same/repeated CRUD and requires a source edit. Source edits still go through Apply/auto-write and `useHistoryStore`. Informal atoms rewritten only via source edit still need `FormalizePredicate` or process ambiguity will not drop.
 
 ## UX
 
-Clarification: option chips + optional custom input. Checking or unchecking an already answered option asks whether to fork a new session from that question or overwrite the current thread. After fork/overwrite, leave the clarification pending until the user confirms — do not auto-resume the LLM turn.
+Clarification: option chips + optional custom input. A typed custom answer is always returned to the model as `custom`, including single-choice and when an option is also selected. Checking or unchecking an already answered option asks whether to fork a new session from that question or overwrite the current thread. After fork/overwrite, leave the clarification pending until the user confirms — do not auto-resume the LLM turn.
 Message bubbles: selectable text, with Copy and Fork actions.
 Changes: `Patch → Preview → Apply | Reject`. Apply/Reject is only a tool result — **resume the agent**. Send-bar: while the agent is running the send button becomes a red **Stop** control that aborts the in-flight turn. Permission: **Ask me each time** (default) vs **Allow auto-write** (persisted `studio-agent-write-mode`).
 Sessions: `<project>/.agile-sofl/agent/sessions/`.

@@ -1,0 +1,53 @@
+module SYSTEM_Banking;
+const
+withdraw_limit = 10000;
+type
+Account = nat;
+var
+accounts: set of Account;
+process A (amount: int) cash: nat
+ext
+rd accounts: set of Account
+wr accounts: set of Account
+pre amount > 0
+post cash = amount
+decom: Banking_Decom
+comment: withdraw and transfer
+end_process
+end_module;
+module Banking_Decom / SYSTEM_Banking;
+var
+accounts: set of Account;
+process Withdraw (amount: int) cash: nat
+ext
+rd accounts
+wr accounts
+pre amount > 0
+post cash = amount
+end_process
+process Reject (amount: int) cash: nat
+pre true
+post cash = 0
+end_process
+cdfd
+  port in amount
+  port out cash
+  store accounts
+  node Withdraw
+  node Reject
+  cond Gate
+  flow amount -> Gate
+  flow Gate | amount > 0 -> Withdraw
+  flow Gate | others -> Reject
+  flow Withdraw -> accounts
+  flow accounts -> Withdraw
+  flow Withdraw -> cash
+  flow Reject -> cash
+end_cdfd
+refine
+  type Account by nat retrieve account_of
+end_refine
+function account_of (rep: nat): Account
+== rep
+end_function
+end_module

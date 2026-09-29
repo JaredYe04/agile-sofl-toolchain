@@ -200,12 +200,6 @@ html {
   height: calc(100% * var(--ui-zoom, 1));
 }
 
-.monaco-editor-surface .monaco-editor,
-.monaco-editor-surface .overflow-guard {
-  width: 100% !important;
-  height: 100% !important;
-}
-
 .visual-panel input,
 .visual-panel textarea {
   color: var(--text-primary);

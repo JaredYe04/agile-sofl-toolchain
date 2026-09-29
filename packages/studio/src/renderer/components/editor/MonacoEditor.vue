@@ -61,12 +61,20 @@ function runCommand(cmd: string): void {
   void ed.getAction(actionId)?.run()
 }
 
+function uiZoom(): number {
+  const raw = getComputedStyle(document.documentElement).getPropertyValue('--ui-zoom')
+  const zoom = Number.parseFloat(raw)
+  return Number.isFinite(zoom) && zoom > 0 ? zoom : 1
+}
+
 function relayout(): void {
-  const el = container.value
+  const surface = container.value
+  const shell = surface?.parentElement
   const ed = editor.value
-  if (!el || !ed) return
-  const width = Math.max(0, Math.floor(el.clientWidth))
-  const height = Math.max(0, Math.floor(el.clientHeight))
+  if (!surface || !shell || !ed) return
+  const zoom = uiZoom()
+  const width = Math.max(0, Math.floor(shell.clientWidth * zoom))
+  const height = Math.max(0, Math.floor(shell.clientHeight * zoom))
   if (width < 2 || height < 2) return
   ed.layout({ width, height })
 }
@@ -309,12 +317,21 @@ onMounted(async () => {
       lineNumbers: editorUi.showLineNumbers ? 'on' : 'off',
       scrollBeyondLastLine: false,
       wordWrap: 'off',
-      tabSize: 4
+      tabSize: 4,
+      padding: { top: 8, bottom: 16 },
+      scrollbar: {
+        vertical: 'auto',
+        horizontal: 'auto',
+        verticalScrollbarSize: 10,
+        horizontalScrollbarSize: 10,
+        alwaysConsumeMouseWheel: true,
+        useShadows: false
+      }
     })
     editor.value.onDidChangeModelContent(onContentChange)
     syncModel()
     resizeObserver = new ResizeObserver(() => relayout())
-    resizeObserver.observe(container.value)
+    resizeObserver.observe(container.value.parentElement ?? container.value)
     void nextTick(relayout)
   }
 

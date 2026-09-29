@@ -25,7 +25,8 @@ const editorUi = useEditorUiStore()
 
 const sideViews = computed(() => [
   { id: 'tree' as VisualSideView, label: t('toolbar.viewTree') },
-  { id: 'graph' as VisualSideView, label: t('toolbar.viewGraph') }
+  { id: 'graph' as VisualSideView, label: t('toolbar.viewGraph') },
+  { id: 'refine' as VisualSideView, label: t('toolbar.viewRefine') }
 ])
 
 function onZoomInput(e: Event): void {

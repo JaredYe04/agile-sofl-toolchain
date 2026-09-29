@@ -7,10 +7,12 @@ import { parse, parseModule, parseStrict } from './parser/parse.js'
 import { typeCheck } from './typecheck/checker.js'
 import { classifyFsf, isFsfFormal } from './fsf/classifier.js'
 import { deriveFsf, deriveAllFsf } from './fsf/deriver.js'
+import { checkCdfd } from './cdfd/checkCdfd.js'
+import { checkDataRefine } from './refine/checkDataRefine.js'
 import { resolveScope, lookupModuleScope } from './scope/resolver.js'
 import { checkReferences } from './scope/referenceChecker.js'
 import { normalizeAST, astEqual, stripSpans } from './transform/normalize.js'
-import { printProgram, printPredicate, printType, printExpr } from './transform/print.js'
+import { printProgram, printPredicate, printType, printExpr, printCdfdBlock, printRefineBlock } from './transform/print.js'
 import { walk, getNodeAtOffset, findNodeAtOffset, collectHybridRegions } from './visitor/walk.js'
 import type { ProgramNode } from './ast/nodes.js'
 import type { Diagnostic } from './diagnostics/codes.js'
@@ -24,6 +26,14 @@ export type {
   GuiBlockNode,
   GuiScreenNode,
   GuiWidgetNode,
+  CdfdBlockNode,
+  CdfdPortNode,
+  CdfdStoreNode,
+  CdfdProcessRefNode,
+  CdfdCondNode,
+  CdfdFlowNode,
+  RefineBlockNode,
+  RefineTypeItemNode,
   ProcessNode,
   FunctionNode,
   ParamGroupNode,
@@ -55,8 +65,12 @@ export interface FormatResult {
   diagnostics: Diagnostic[]
 }
 
+export interface CheckOptions {
+  refinementStrict?: boolean
+}
+
 /** Parse full specification (multiple modules). Uses strict parse — no partial AST on errors. */
-export function parseSpecification(source: string): CheckResult {
+export function parseSpecification(source: string, options?: CheckOptions): CheckResult {
   const result = parseStrict(source)
   if (!result.ast || result.ast.type !== 'program') {
     return { ast: null, diagnostics: result.diagnostics }
@@ -68,6 +82,8 @@ export function parseSpecification(source: string): CheckResult {
   const refResult = checkReferences(result.ast, scopeResult)
   const typeResult = typeCheck(result.ast, scopeResult)
   const fsfResult = classifyFsf(result.ast)
+  const cdfdResult = checkCdfd(result.ast, options)
+  const dataResult = checkDataRefine(result.ast)
   return {
     ast: result.ast,
     diagnostics: [
@@ -75,7 +91,9 @@ export function parseSpecification(source: string): CheckResult {
       ...scopeResult.diagnostics,
       ...refResult.diagnostics,
       ...typeResult.diagnostics,
-      ...fsfResult.diagnostics
+      ...fsfResult.diagnostics,
+      ...cdfdResult.diagnostics,
+      ...dataResult.diagnostics
     ]
   }
 }
@@ -108,8 +126,8 @@ export function parseSingleModule(source: string): CheckResult {
 }
 
 /** Full check pipeline (alias). */
-export function check(source: string): CheckResult {
-  return parseSpecification(source)
+export function check(source: string, options?: CheckOptions): CheckResult {
+  return parseSpecification(source, options)
 }
 
 /** Pretty-print specification. */
@@ -137,6 +155,8 @@ export {
   printPredicate,
   printType,
   printExpr,
+  printCdfdBlock,
+  printRefineBlock,
   walk,
   getNodeAtOffset,
   findNodeAtOffset,
@@ -172,4 +192,25 @@ export type { SymbolSummaryInput } from './inspect/symbolSummary.js'
 export { typeExprToInternal, resolveInternalType, typeToString } from './typecheck/types.js'
 export { parsePredicateSource } from './prepost/parsePredicate.js'
 export { printConditionText, clauseHasInformal } from './prepost/clause.js'
-export type { FunctionalScenarioForm, DerivedFunctionalScenario, FsfDerivationSource } from './fsf/deriver.js'
+export { checkCdfd } from './cdfd/checkCdfd.js'
+export type { CheckCdfdOptions } from './cdfd/checkCdfd.js'
+export { analyzeProcessAtomicity, collectInformalAtoms, canDeclareAtomic } from './refine/atomicity.js'
+export type { InformalAtomRef, ProcessAtomicity, ProcessAmbiguityReport } from './refine/atomicity.js'
+export {
+  analyzeProcessGrain,
+  authorNotesFromInformalMarkdown,
+  extractAuthorVariations,
+  observeEffectPattern
+} from './refine/grain.js'
+export type {
+  AuthorTextNote,
+  EffectPattern,
+  GrainVariation,
+  ProcessGrain,
+  ProcessGrainReport,
+  VariationDisposition,
+  VariationSource
+} from './refine/grain.js'
+export { checkDataRefine } from './refine/checkDataRefine.js'
+export type { DataRefinementReport, DataRefinementItem, DataRefinementItemKind } from './refine/checkDataRefine.js'
+export type { FunctionalScenarioForm, DerivedFunctionalScenario } from './fsf/deriver.js'

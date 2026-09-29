@@ -29,7 +29,7 @@ var
     alert_queue: AlertQueue;
     open_alerts: nat;
 inv
-    forall[s: sensors] | s > 0 and open_alerts >= 0 and max_alerts > 0;
+    forall[: sensors] | s > 0 and open_alerts >= 0 and max_alerts > 0;
 process InitCity ()
     FSF :
     others && open_alerts = 0

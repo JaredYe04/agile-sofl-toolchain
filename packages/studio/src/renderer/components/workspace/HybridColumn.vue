@@ -129,7 +129,7 @@ defineExpose({
         </WorkspacePanel>
       </template>
     </VerticalResizeSplit>
-    <WorkspacePanel v-else panel="hybrid" class="flex flex-col">
+    <WorkspacePanel v-else panel="hybrid" class="flex min-h-0 flex-1 flex-col">
       <header
         class="flex h-[32px] min-w-0 shrink-0 flex-nowrap items-center gap-1 overflow-hidden border-b border-border-subtle px-2"
       >

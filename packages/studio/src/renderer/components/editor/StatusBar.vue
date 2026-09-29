@@ -4,13 +4,25 @@ import { useI18n } from 'vue-i18n'
 import { useDocumentStore } from '../../stores/document'
 import { useLspStore } from '../../stores/lsp'
 import { useDocumentDiagnosticsStore } from '../../stores/documentDiagnostics'
+import { useRefinementState } from '../../composables/useRefinementState'
 
 const { t } = useI18n()
 const doc = useDocumentStore()
 const lsp = useLspStore()
 const documentDiagnostics = useDocumentDiagnosticsStore()
+const { state: refinement } = useRefinementState()
 
 const pathLabel = computed(() => doc.activeTab?.filePath ?? doc.activeTab?.title ?? '—')
+const processAmbiguity = computed(() =>
+  refinement.value && typeof refinement.value.processAmbiguity === 'number'
+    ? refinement.value.processAmbiguity
+    : null
+)
+const dataAmbiguity = computed(() =>
+  refinement.value && typeof refinement.value.dataAmbiguity === 'number'
+    ? refinement.value.dataAmbiguity
+    : null
+)
 
 const issueSummary = computed(() => {
   const { error, warning, info } = documentDiagnostics.counts
@@ -30,6 +42,12 @@ const issueSummary = computed(() => {
   >
     <span class="truncate">{{ pathLabel }}</span>
     <div class="flex items-center gap-3">
+      <span v-if="processAmbiguity != null" :title="t('status.processAmbiguityHint')">
+        {{ t('status.processAmbiguity', { count: processAmbiguity }) }}
+      </span>
+      <span v-if="dataAmbiguity != null" :title="t('status.dataAmbiguityHint')">
+        {{ t('status.dataAmbiguity', { count: dataAmbiguity }) }}
+      </span>
       <span>{{ issueSummary }}</span>
       <span :title="lsp.message">{{ lsp.running ? t('status.lsp.connected') : t('status.lsp.disconnected') }}</span>
       <span>{{ t('status.ready') }}</span>

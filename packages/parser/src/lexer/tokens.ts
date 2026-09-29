@@ -9,10 +9,16 @@ function kw(word: string): RegExp {
 export const NameLike = createToken({ name: 'NameLike', pattern: Lexer.NA })
 export const Others = createToken({ name: 'Others', pattern: kw('others') })
 export const EndModule = createToken({ name: 'EndModule', pattern: kw('end_module') })
+export const EndCdfd = createToken({ name: 'EndCdfd', pattern: kw('end_cdfd') })
+export const EndRefine = createToken({ name: 'EndRefine', pattern: kw('end_refine') })
 export const EndGui = createToken({ name: 'EndGui', pattern: kw('end_gui') })
 export const EndScreen = createToken({ name: 'EndScreen', pattern: kw('end_screen') })
 export const EndProcess = createToken({ name: 'EndProcess', pattern: kw('end_process') })
 export const EndFunction = createToken({ name: 'EndFunction', pattern: kw('end_function') })
+export const Cdfd = createToken({ name: 'Cdfd', pattern: kw('cdfd'), categories: [NameLike] })
+export const Refine = createToken({ name: 'Refine', pattern: kw('refine'), categories: [NameLike] })
+export const Retrieve = createToken({ name: 'Retrieve', pattern: kw('retrieve'), categories: [NameLike] })
+export const By = createToken({ name: 'By', pattern: kw('by'), categories: [NameLike] })
 export const EndCase = createToken({ name: 'EndCase', pattern: kw('end_case') })
 export const Composed = createToken({ name: 'Composed', pattern: kw('composed') })
 export const Universal = createToken({ name: 'Universal', pattern: kw('universal') })
@@ -226,6 +232,8 @@ export const allTokens: TokenType[] = [
   // Keywords (longer first)
   Others,
   EndModule,
+  EndCdfd,
+  EndRefine,
   EndGui,
   EndScreen,
   EndProcess,
@@ -249,6 +257,10 @@ export const allTokens: TokenType[] = [
   Dconc,
   Comment,
   Decom,
+  Retrieve,
+  Refine,
+  Cdfd,
+  By,
   Module,
   SystemKw,
   Process,

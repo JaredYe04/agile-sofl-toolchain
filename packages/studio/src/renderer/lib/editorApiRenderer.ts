@@ -6,6 +6,9 @@ export { namesEqual, canonicalModuleName } from '../../../../editor-api/src/hybr
 export { countBySeverity, mergeDiagnostics, adjustFsfDiagnosticSeverity } from '../../../../editor-api/src/mergeDiagnostics.js'
 export { filterDiagnosticsBySelection } from '../../../../editor-api/src/filterDiagnostics.js'
 export { buildModuleGraphLayout, decorateProcessLabel } from '../../../../editor-api/src/moduleGraphLayout.js'
+export { layoutCdfdGraph } from '../../../../editor-api/src/cdfdLayout.js'
+export type { CdfdGraph } from '../../../../editor-api/src/cdfdGraph.js'
+export type { CdfdLayout } from '../../../../editor-api/src/cdfdLayout.js'
 export {
   SPEC_MAP_KINDS,
   PRIMARY_NODE_LIMIT,

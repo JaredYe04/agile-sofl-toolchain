@@ -1,5 +1,17 @@
-import { parse, textOf, isFsfFormal, classifyFsf, deriveFsf, printConditionText, printType, type ProgramNode } from '@agile-sofl/parser'
+import {
+  parse,
+  textOf,
+  isFsfFormal,
+  classifyFsf,
+  checkCdfd,
+  checkDataRefine,
+  deriveFsf,
+  printConditionText,
+  printType,
+  type ProgramNode
+} from '@agile-sofl/parser'
 import { buildModuleGraph } from './moduleGraph.js'
+import { buildAllCdfdGraphs, type CdfdGraph } from './cdfdGraph.js'
 import { buildAllFsfModels } from './fsfModel.js'
 import { sliceText, toSerializableSpan } from './span.js'
 import { collectVisualDuplicateDiagnostics } from './visualDuplicateDiagnostics.js'
@@ -28,6 +40,7 @@ export type VisualModelResult = {
   ast: ProgramNode | null
   diagnostics: VisualParseDiagnostic[]
   moduleGraph: ReturnType<typeof buildModuleGraph> | null
+  cdfdGraphs: CdfdGraph[]
   fsfModels: ReturnType<typeof buildAllFsfModels>
   modules: Array<{
     name: string
@@ -185,6 +198,28 @@ export function buildVisualModelTolerant(source: string): VisualModelResult {
       )
     )
     allDiagnostics.push(...collectVisualDuplicateDiagnostics(program, source))
+    allDiagnostics.push(
+      ...mapDiagnostics(
+        checkCdfd(program).diagnostics.map((d) => ({
+          code: d.code,
+          message: d.message,
+          severity: d.severity,
+          span: d.span
+        })),
+        'parse'
+      )
+    )
+    allDiagnostics.push(
+      ...mapDiagnostics(
+        checkDataRefine(program).diagnostics.map((d) => ({
+          code: d.code,
+          message: d.message,
+          severity: d.severity,
+          span: d.span
+        })),
+        'parse'
+      )
+    )
   }
 
   const hasDiagnostics = allDiagnostics.some((d) => d.severity === 'error')
@@ -196,6 +231,7 @@ export function buildVisualModelTolerant(source: string): VisualModelResult {
       ast: null,
       diagnostics: allDiagnostics,
       moduleGraph: null,
+      cdfdGraphs: [],
       fsfModels: [],
       modules: []
     }
@@ -207,6 +243,7 @@ export function buildVisualModelTolerant(source: string): VisualModelResult {
     ast: program,
     diagnostics: allDiagnostics,
     moduleGraph: buildModuleGraph(program),
+    cdfdGraphs: buildAllCdfdGraphs(program),
     fsfModels: buildAllFsfModels(program, source),
     modules: program.modules
       .filter((mod) => mod.name.trim().length > 0)

@@ -9,6 +9,7 @@ import { useLinkedInformalHints } from '../../../composables/useLinkedInformalHi
 import { useEditorSelectionStore } from '../../../stores/editorSelection'
 import type { TreeSelection } from '../../../composables/useVisualModel'
 import { VISUAL_MODEL_KEY } from '../../../composables/visualModelContext'
+import { useRefinementState } from '../../../composables/useRefinementState'
 import type { VisualActionType } from '../../../composables/visualActions'
 import type { FsfModelDto } from './FsfScenarioEditor.vue'
 import ParseErrorBanner from './ParseErrorBanner.vue'
@@ -16,6 +17,7 @@ import VisualToolbar from './VisualToolbar.vue'
 import VisualContextMenu from './VisualContextMenu.vue'
 import ModuleTree from './ModuleTree.vue'
 import ModuleGraphView from './ModuleGraphView.vue'
+import AtomicityTree from './AtomicityTree.vue'
 import ModuleOverview from './ModuleOverview.vue'
 import ProcessEditDialog from './ProcessEditDialog.vue'
 import FunctionEditDialog from './FunctionEditDialog.vue'
@@ -73,6 +75,7 @@ const editingFunctionName = ref<string | null>(null)
 
 const visual = inject(VISUAL_MODEL_KEY)
 if (!visual) throw new Error('VisualEditor requires VISUAL_MODEL_KEY provider')
+const { state: refinementState } = useRefinementState()
 
 const modules = computed(() => visual.model.value?.modules ?? [])
 const diagnostics = computed(
@@ -126,6 +129,11 @@ function selectionStillValid(sel: TreeSelection, list: VisualModuleSummary[]): b
 }
 
 watch(modules, (list) => {
+  const forced = props.forcedSelection
+  if (forced && selectionStillValid(forced, list)) {
+    selected.value = forced
+    return
+  }
   if (!list.length) {
     selected.value = null
     return
@@ -138,6 +146,19 @@ watch(modules, (list) => {
 const selectedModule = computed(() =>
   selected.value ? modules.value.find((m) => m.name === selected.value!.moduleName) ?? null : null
 )
+
+const selectedCdfdGraph = computed(() => {
+  const graphs = (visual.cdfdGraphs?.value ?? []) as Array<{ moduleName: string; empty?: boolean; nodes?: unknown[] }>
+  const name = selectedModule.value?.name
+  if (!name) return graphs[0] ?? null
+  return graphs.find((g) => g.moduleName === name) ?? null
+})
+
+function onCdfdDrill(moduleName: string): void {
+  const bare = moduleName.startsWith('SYSTEM_') ? moduleName.slice('SYSTEM_'.length) : moduleName
+  const hit = modules.value.find((m) => m.name === moduleName || m.name === bare || `SYSTEM_${m.name}` === moduleName)
+  if (hit) selected.value = { kind: 'module', moduleName: hit.name }
+}
 
 const selectedFsfModel = computed(() => {
   if (selected.value?.kind !== 'process') return null
@@ -844,6 +865,7 @@ defineExpose({ setSelection })
         v-if="selectedModule"
         :key="detailPanelKey"
         :module="selectedModule"
+        :cdfd-graph="selectedCdfdGraph as never"
         :disabled="parseBlocked"
         :edit-disabled="editBlocked"
         @patch-declaration="onPatchDeclaration"
@@ -859,6 +881,8 @@ defineExpose({ setSelection })
         @edit-function="openFunctionEditor"
         @remove-function="onRemoveFunction"
         @add-process="onAddProcess"
+        @cdfd-drill="onCdfdDrill"
+        @select-cdfd-process="selected = selectedModule ? { kind: 'process', moduleName: selectedModule.name, processName: $event } : selected"
       />
       <div v-else class="flex h-full items-center justify-center p-8 text-sm text-content-secondary">
         {{ t('visual.selectHint') }}
@@ -871,8 +895,13 @@ defineExpose({ setSelection })
       @update:ratio="onNavRatioUpdate"
     >
       <template #left>
+        <AtomicityTree
+          v-if="editorUi.sideView === 'refine'"
+          class="h-full min-h-0"
+          :state="refinementState"
+        />
         <ModuleTree
-          v-if="editorUi.sideView === 'tree'"
+          v-else-if="editorUi.sideView === 'tree'"
           :modules="modules"
           :selected="selected"
           :search-query="searchQuery"
@@ -900,6 +929,7 @@ defineExpose({ setSelection })
             v-if="selectedModule"
             :key="detailPanelKey"
             :module="selectedModule"
+            :cdfd-graph="selectedCdfdGraph as never"
             :disabled="parseBlocked"
             :edit-disabled="editBlocked"
             @patch-declaration="onPatchDeclaration"
@@ -915,6 +945,8 @@ defineExpose({ setSelection })
             @edit-function="openFunctionEditor"
             @remove-function="onRemoveFunction"
             @add-process="onAddProcess"
+            @cdfd-drill="onCdfdDrill"
+            @select-cdfd-process="selected = selectedModule ? { kind: 'process', moduleName: selectedModule.name, processName: $event } : selected"
           />
           <div v-else class="flex h-full items-center justify-center p-8 text-sm text-content-secondary">
             {{ t('visual.selectHint') }}

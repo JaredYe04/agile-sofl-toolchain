@@ -46,6 +46,10 @@ export interface ModuleNode extends WithSpan {
   processes: ProcessNode[]
   functions: FunctionNode[]
   gui?: GuiBlockNode
+  /** Condition Data Flow Diagram for this module (at most one). */
+  cdfd?: CdfdBlockNode
+  /** Data refinement retrieve functions (separate from CDFD). */
+  refine?: RefineBlockNode
 }
 
 export interface GuiWidgetNode extends WithSpan {
@@ -67,6 +71,61 @@ export interface GuiBlockNode extends WithSpan {
   type: 'gui_block'
   name: string
   screens: GuiScreenNode[]
+}
+
+// --- CDFD ---
+
+export interface CdfdPortNode extends WithSpan {
+  type: 'cdfd_port'
+  direction: 'in' | 'out'
+  name: string
+}
+
+export interface CdfdStoreNode extends WithSpan {
+  type: 'cdfd_store'
+  name: string
+}
+
+export interface CdfdProcessRefNode extends WithSpan {
+  type: 'cdfd_node'
+  name: string
+}
+
+export interface CdfdCondNode extends WithSpan {
+  type: 'cdfd_cond'
+  name: string
+}
+
+export interface CdfdFlowNode extends WithSpan {
+  type: 'cdfd_flow'
+  from: string
+  to: string
+  /** Guard on a condition-node outlet; omitted for ordinary data flows. */
+  guard?: PredicateNode
+  isOthers?: boolean
+}
+
+export interface CdfdBlockNode extends WithSpan {
+  type: 'cdfd'
+  ports: CdfdPortNode[]
+  stores: CdfdStoreNode[]
+  nodes: CdfdProcessRefNode[]
+  conditions: CdfdCondNode[]
+  flows: CdfdFlowNode[]
+  /** Additional `cdfd` blocks in the same module (at most one is kept). */
+  extraBlockCount?: number
+}
+
+export interface RefineTypeItemNode extends WithSpan {
+  type: 'refine_type'
+  abstractType: string
+  representationType: string
+  retrieveFunction: string
+}
+
+export interface RefineBlockNode extends WithSpan {
+  type: 'refine'
+  items: RefineTypeItemNode[]
 }
 
 export interface QualifiedNameNode extends WithSpan {

@@ -14,8 +14,10 @@ export const AGENT_TOOL_LABEL_KEYS: Record<string, string> = {
   read_gui_specification: 'agent.tool.readGui',
   propose_changes: 'agent.tool.proposeInformal',
   propose_hybrid_changes: 'agent.tool.proposeHybrid',
+  propose_refinement_step: 'agent.tool.proposeRefine',
   propose_gui_changes: 'agent.tool.proposeGui',
   propose_source_edit: 'agent.tool.proposeSource',
+  read_refinement_state: 'agent.tool.readRefine',
   review_specification: 'agent.tool.reviewInformal',
   review_hybrid: 'agent.tool.reviewHybrid'
 }

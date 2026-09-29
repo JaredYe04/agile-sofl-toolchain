@@ -1,6 +1,7 @@
 import { applySourceEdits, isSourcePatch } from '../../shared/sourceEdit'
 import { HistoryKinds } from '../history/kinds'
 import { useHistoryStore } from '../stores/history'
+import { notifyRefinementChanged } from '../composables/useRefinementState'
 import { useWorkspaceStore } from '../stores/workspace'
 import { fileBelongsToRoot } from '../stores/tabUtils'
 import type { InformalPatchPayload } from '../../preload/index'
@@ -28,6 +29,29 @@ export async function applyHybridDocumentPatch(
     }
     if (result.error) return { ok: false, error: result.error, applied }
     return { ok: true, applied }
+  }
+  const stepOp = patch.operations.find((op) => op.op === 'refine-step')
+  if (stepOp && root && window.studio.refinementStep && patch.operations.length === 1) {
+    try {
+      const result = await window.studio.refinementStep({
+        source: hybridTab.content,
+        projectRoot: root,
+        step: stepOp
+      })
+      if (result.error) return { ok: false, error: result.error }
+      const applied = result.source !== hybridTab.content
+      if (applied) {
+        useHistoryStore().applyDocument(hybridTab.id, result.source, {
+          kind: HistoryKinds.visualPatch,
+          immediate: true
+        })
+        void workspace.resyncModulesFromOpenTabs()
+      }
+      notifyRefinementChanged()
+      return { ok: true, applied }
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) }
+    }
   }
   if (!window.studio?.patchHybridSpec) return { ok: false, error: errors.applyFailed }
   try {

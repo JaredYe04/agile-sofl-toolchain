@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { composeClarificationAnswer, encodeClarificationAnswer } from '../../../../shared/clarificationAnswer'
 
 const props = defineProps<{
   question: string
@@ -14,7 +15,12 @@ const props = defineProps<{
   prefillCustom?: string
 }>()
 
-const emit = defineEmits<{ submit: [value: string]; change: [optionId: string]; toggle: [] }>()
+const emit = defineEmits<{
+  submit: [value: string]
+  change: [optionId: string]
+  toggle: []
+  draft: [draft: { ids: string[]; custom: string }]
+}>()
 const selected = ref<string[]>([])
 const custom = ref('')
 
@@ -48,10 +54,19 @@ function submit(): void {
   const labels = (props.options ?? [])
     .filter((o) => selected.value.includes(o.id))
     .map((o) => o.label)
-  const extra = custom.value.trim()
-  const value = [...labels, extra].filter(Boolean).join('; ')
-  if (!value) return
-  emit('submit', value)
+  const composed = composeClarificationAnswer({
+    selectedLabels: labels,
+    custom: custom.value,
+    multiSelect: props.multiSelect
+  })
+  if (!composed.answer) return
+  emit('submit', encodeClarificationAnswer(composed))
+}
+
+function onCustomKeydown(event: KeyboardEvent): void {
+  if (event.key !== 'Enter' || event.isComposing || event.keyCode === 229) return
+  event.preventDefault()
+  submit()
 }
 
 watch(
@@ -63,6 +78,11 @@ watch(
   },
   { immediate: true }
 )
+
+watch([selected, custom], () => {
+  if (!props.pending) return
+  emit('draft', { ids: [...selected.value], custom: custom.value })
+})
 
 function onOptionClick(opt: { id: string; label: string }): void {
   if (props.disabled) return
@@ -114,7 +134,7 @@ function onOptionClick(opt: { id: string; label: string }): void {
           class="w-full rounded-md border border-field-border bg-field-bg px-2.5 py-1.5 text-[13px] text-content-primary outline-none focus:ring-2 focus:ring-accent/30"
           :placeholder="$t('agent.customAnswer')"
           :disabled="disabled"
-          @keydown.enter.prevent="submit"
+          @keydown="onCustomKeydown"
         />
       </div>
       <p

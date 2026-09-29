@@ -38,6 +38,7 @@ import {
   renameProcess
 } from './processPatch.js'
 import { findModuleRange, hybridLeftoverMessage, insertInvLine } from './moduleSourceRange.js'
+import { applyRefinementStep, type RefinementStep } from './refinement.js'
 import { buildVisualModelTolerant, type VisualModelResult } from './visualParse.js'
 
 export type HybridEntityKind =
@@ -88,6 +89,24 @@ export type HybridPatchOp =
   | { op: 'remove'; id: string }
   | { op: 'replace-process-body'; id: string; pre?: string; post?: string }
   | { op: 'replace-document'; asflText: string }
+  | {
+      op: 'refine-step'
+      kind: import('./refinement.js').RefinementStepKind
+      moduleName?: string
+      processName?: string
+      typeName?: string
+      clause?: 'pre' | 'post' | 'fsf'
+      fromText?: string
+      toText?: string
+      childModuleName?: string
+      representationType?: string
+      retrieveFunction?: string
+      retrieveBody?: string
+      note?: string
+      grainClass?: 'operation' | 'abstract'
+      variationId?: string
+      disposition?: 'scenario' | 'child' | 'waived'
+    }
 
 export interface HybridPatch {
   operations: HybridPatchOp[]
@@ -1080,6 +1099,28 @@ function applyOp(source: string, op: HybridPatchOp): OpResult {
       return applyRemove(source, op)
     case 'replace-process-body':
       return applyReplaceBody(source, op)
+    case 'refine-step': {
+      const step: RefinementStep = {
+        kind: op.kind,
+        moduleName: op.moduleName,
+        processName: op.processName,
+        typeName: op.typeName,
+        clause: op.clause,
+        fromText: op.fromText,
+        toText: op.toText,
+        childModuleName: op.childModuleName,
+        representationType: op.representationType,
+        retrieveFunction: op.retrieveFunction,
+        retrieveBody: op.retrieveBody,
+        note: op.note,
+        grainClass: op.grainClass,
+        variationId: op.variationId,
+        disposition: op.disposition
+      }
+      const applied = applyRefinementStep(source, [], step)
+      if (applied.error) return err(applied.error)
+      return ok(applied.source)
+    }
     case 'replace-document':
       return err('replace-document is not allowed. Use add/update/remove CRUD.')
   }

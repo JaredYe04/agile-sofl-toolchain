@@ -5,6 +5,7 @@ import { useModalStore } from '../../../stores/modal'
 import { isDuplicateInModule } from '../../../lib/visualEntityGuard'
 import type { VisualModuleSummary, DeclarationKind, SerializableSpan } from '../../../preload/index'
 import type { TreeSelection } from '../../../composables/useVisualModel'
+import type { CdfdGraph } from '../../../lib/editorApiRenderer'
 import DeclarationEditor from './DeclarationEditor.vue'
 import HybridGuiPanel from './HybridGuiPanel.vue'
 import ResizeSplit from '../../ui/ResizeSplit.vue'
@@ -13,6 +14,7 @@ import TypeGridPanel from './overview/TypeGridPanel.vue'
 import VarEntityList from './overview/VarEntityList.vue'
 import InvariantEntityList from './overview/InvariantEntityList.vue'
 import ProcessGridPanel from './overview/ProcessGridPanel.vue'
+import CdfdView from './CdfdView.vue'
 import VisualEditDialog from './overview/VisualEditDialog.vue'
 import VisualEntityMenu from './overview/VisualEntityMenu.vue'
 import FormField from './ui/FormField.vue'
@@ -28,6 +30,7 @@ import {
 
 const props = defineProps<{
   module: VisualModuleSummary
+  cdfdGraph?: CdfdGraph | null
   /** Syntax parse failed — disable everything including delete */
   disabled?: boolean
   /** Duplicate / FSF diagnostics — block create and inline edit, allow delete */
@@ -47,6 +50,8 @@ const emit = defineEmits<{
   editFunction: [name: string]
   removeFunction: [name: string]
   addProcess: [payload: { name: string; isInit: boolean }]
+  cdfdDrill: [moduleName: string]
+  selectCdfdProcess: [processName: string]
 }>()
 
 const { t } = useI18n()
@@ -195,6 +200,22 @@ const createTitle = computed(() => {
       @edit="emit('editProcess', $event)"
       @remove="emit('removeProcess', $event)"
     />
+
+    <SectionCard>
+      <template #title>
+        <h3 class="text-sm font-semibold text-content-primary">{{ t('visual.section.cdfd') }}</h3>
+      </template>
+      <div class="h-[min(360px,50vh)] min-h-[240px] overflow-hidden rounded-md border border-border-subtle bg-surface-base">
+        <CdfdView
+          active
+          class="h-full"
+          :graph="(cdfdGraph ?? null) as never"
+          :module-name="module.name"
+          @drill="emit('cdfdDrill', $event)"
+          @select-process="emit('selectCdfdProcess', $event)"
+        />
+      </div>
+    </SectionCard>
 
     <SectionCard v-if="module.functions.length">
       <template #title>

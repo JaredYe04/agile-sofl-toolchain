@@ -1,3 +1,4 @@
+import { clarificationContinuationText } from '../../../shared/clarificationAnswer'
 import type { InformalPatchPayload } from './agentTypes'
 
 export function patchFingerprint(patch: {
@@ -75,6 +76,7 @@ export function validateAgentPatch(
   }
   for (const op of patch.operations) {
     const kind = String(op.op || '')
+    if (kind === 'refine-step') continue
     if (kind === 'replace-document' || typeof op.asflText === 'string') {
       return {
         ok: false,
@@ -164,6 +166,8 @@ export function nextFailedWrite(
 }
 
 export function continuationUserText(lastToolContent?: string, failures = 0): string {
+  const clarification = clarificationContinuationText(lastToolContent || '')
+  if (clarification) return clarification
   let action: string | undefined
   let error: string | undefined
   try {
@@ -179,7 +183,7 @@ export function continuationUserText(lastToolContent?: string, failures = 0): st
     if (error) {
       return `The patch was applied, but some operations failed: ${error}. Immediately call read_specification and/or read_hybrid_specification, fix remaining work with CRUD or ${sourceHint}`
     }
-    return 'The patch was applied. Immediately call read_specification and/or read_hybrid_specification, compare with the plan, and either propose the next incremental CRUD patch or write a final summary of what was completed. Do not wait for a new user message.'
+    return 'The patch was applied. Immediately call read_specification and/or read_hybrid_specification and read_refinement_state (if Hybrid changed). Compare with the plan, and either propose the next incremental CRUD/refinement step or write a final summary. If the refinement digest is not unambiguous, invite the next slice with ask_clarification. Do not wait for a new user message.'
   }
   if (action === 'error' || failures >= 2) {
     return `The write failed: ${error || 'unknown error'}. This is a tool result, not a stopped session. Do not retry the same CRUD patch. Call read_specification and/or read_hybrid_specification with view=source, then propose_source_edit to unstick (replace a unique snippet, append, or replace-document). Then verify. Do not stop with an empty message.`
@@ -197,7 +201,7 @@ export function appliedToolResult(extra?: { error?: string }): string {
     error: extra?.error,
     next: extra?.error
       ? `Some operations failed: ${extra.error}. Read the inventory (and view=source if needed). Follow up with CRUD or propose_source_edit. Do not stop.`
-      : 'Call read_specification and/or read_hybrid_specification to verify. If more work remains, propose the next CRUD patch (or propose_source_edit if CRUD cannot express it). If the task is complete, write a short summary and stop.'
+      : 'Call read_specification and/or read_hybrid_specification and read_refinement_state (if Hybrid changed) to verify. If more work remains, propose the next CRUD or propose_refinement_step (or propose_source_edit if CRUD cannot express it). If Hybrid still has dual-line gaps, ask_clarification for the next slice. If the task is complete, write a short summary and stop.'
   })
 }
 

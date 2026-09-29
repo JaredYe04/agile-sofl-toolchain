@@ -3,6 +3,8 @@ import { computed, inject, nextTick, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import MonacoEditor from '../editor/MonacoEditor.vue'
 import VisualEditor from '../editor/visual/VisualEditor.vue'
+import AtomicityTree from '../editor/visual/AtomicityTree.vue'
+import { useRefinementState } from '../../composables/useRefinementState'
 import GuiViewsPanel from './GuiViewsPanel.vue'
 import DockPanelChrome from './dock/DockPanelChrome.vue'
 import FullscreenPanel from './FullscreenPanel.vue'
@@ -32,13 +34,15 @@ const visualRef = ref<InstanceType<typeof VisualEditor> | null>(null)
 const guiSplitRatio = ref(0.62)
 
 const hybridTabId = computed(() => workspace.hybridTab?.id)
+const { state: refinementState } = useRefinementState()
 const hybridViewOptions = computed(() => [
   { id: 'code', label: t('workspace.codeTab') },
-  { id: 'visual', label: t('workspace.visualTab') }
+  { id: 'visual', label: t('workspace.visualTab') },
+  { id: 'refine', label: t('workspace.refineTab') }
 ])
 
 function onHybridMode(id: string): void {
-  workspace.hybridMode = id === 'code' ? 'code' : 'visual'
+  workspace.hybridMode = id === 'code' || id === 'refine' ? id : 'visual'
   if (id === 'code') {
     void nextTick(() => monacoRef.value?.relayout())
   }
@@ -156,6 +160,9 @@ function onRevealSpan(span: SerializableSpan): void {
                 @select="onVisualSelect"
               />
             </div>
+            <div v-if="workspace.hybridMode === 'refine'" class="absolute inset-0 z-10">
+              <AtomicityTree class="h-full min-h-0" :state="refinementState" />
+            </div>
           </div>
         </WorkspacePanel>
         </FullscreenPanel>
@@ -166,7 +173,7 @@ function onRevealSpan(span: SerializableSpan): void {
         </WorkspacePanel>
       </template>
     </ResizeSplit>
-    <FullscreenPanel v-if="!workspace.isGuiModuleSelected" panel-id="hybrid">
+    <FullscreenPanel v-if="!workspace.isGuiModuleSelected" panel-id="hybrid" class="min-h-0 flex-1">
     <WorkspacePanel panel="hybrid" class="flex h-full min-h-0 flex-col">
       <DockPanelChrome panel="hybrid" :title="title" :dirty="dirty">
         <template #actions>
@@ -203,6 +210,9 @@ function onRevealSpan(span: SerializableSpan): void {
             @reveal-span="onRevealSpan"
             @select="onVisualSelect"
           />
+        </div>
+        <div v-if="workspace.hybridMode === 'refine'" class="absolute inset-0 z-10">
+          <AtomicityTree class="h-full min-h-0" :state="refinementState" />
         </div>
       </div>
     </WorkspacePanel>

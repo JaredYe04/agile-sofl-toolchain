@@ -27,8 +27,14 @@ process Demo (x: nat) ok: nat
 FSF :
 x > 0 && ok = 1 ||
 others && ok = 0
-decom: Demo
+decom: Demo_Decom
 comment: informal note
+end_process
+end_module;
+module Demo_Decom / SYSTEM_Demo;
+process Init ()
+pre true
+post true
 end_process
 end_module`
 
@@ -86,7 +92,7 @@ describe('editor-api contract', () => {
   it('buildAllFsfModels lists all processes with FSF', () => {
     const { ast } = parse(DEMO)
     if (ast?.type === 'program') {
-      expect(buildAllFsfModels(ast, DEMO)).toHaveLength(1)
+      expect(buildAllFsfModels(ast, DEMO)).toHaveLength(2)
     }
   })
 

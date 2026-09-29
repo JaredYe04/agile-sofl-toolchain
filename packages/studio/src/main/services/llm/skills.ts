@@ -6,13 +6,14 @@ export type AgentSkillId =
   | 'constraint-discovery'
   | 'specification-review'
   | 'hybrid-generation'
+  | 'hybrid-refinement'
 
 export const AGENT_SKILLS: Array<{ id: AgentSkillId; name: string; prompt: string }> = [
   {
     id: 'requirement-discovery',
     name: 'Requirement Discovery',
     prompt:
-      'Discover Functions, Data Resources, and Constraints from the user\'s natural language. Do not dump a full specification. Summarize candidates, then ask clarifying questions, then propose structured propose_changes patches. After each applied write, read_specification and continue until the inventory is complete, then summarize. If CRUD cannot express a fix, read view=source and propose_source_edit.'
+      'Discover Functions, Data Resources, and Constraints from the user\'s natural language. Do not dump a full specification. Summarize candidates, then ask clarifying questions, then propose structured propose_changes patches. After each applied write, read_specification and continue until the inventory is complete, then summarize. If CRUD cannot express a fix, read view=source and propose_source_edit. The full journey is Informal → Hybrid+GUI → dual-line refinement until the refinement digest is unambiguous. If Hybrid already exists with remaining gaps, after Informal work call read_refinement_state and invite the next refinement slice — do not stop as if the specification were finished.'
   },
   {
     id: 'requirement-clarification',
@@ -60,9 +61,27 @@ Pipeline — keep going after each applied patch until every enabled stage is do
 5. Per process: replace-process-body or add scenarios. Write structured natural-language pre/post, never FSF :. Enumerations use {<Tag>}.
 6. Add invariants (kind=inv) from Constraints. Do NOT dump GUI widgets into Hybrid CRUD.
 7. For UI, call read_gui_specification then propose_gui_changes. Each screen is its own HTML page (data-screen) with data-nav to sibling screens so the prototype can click-switch. Build a high-fidelity HTML prototype (shell, sidebar, hero, cards, forms, lists, empty states) — not a page of three buttons. Use whitelist tags plus any as-* class. Bind with data-process / data-bind / data-nav. Prefer replace-screen-html with the full inner layout of that one screen. Hybrid gui blocks stay as slim screen→process traces.
-After every applied write, call read_hybrid_specification / read_gui_specification and fix gaps until inventories are correct. Last message = summary of completed stages.
+After every applied write, call read_hybrid_specification / read_gui_specification and fix gaps until inventories are correct.
+8. Three-line refinement is a later stage, not automatic. After enabled Hybrid/GUI stages finish, call read_refinement_state. If unambiguous=false, ask_clarification with 2–4 next slices (empty module, stub process, FormalizePredicate, data retrieve, operational grain). Do not refine the entire tree in one go. Do not claim the specification has no ambiguity while empty modules, stubs, processAmbiguity, dataAmbiguity, or grainAmbiguity remain. Grain questions may only use variations already listed in the digest.
+Last message = summary of completed generation stages plus remaining refinement gaps.
 If CRUD fails, the file is empty/out of sync, diagnostics list syntax errors, or leftover unparsed text appears, call read_hybrid_specification with view=source then propose_source_edit (unique replace/append/replace-document). Do not retry the same failing CRUD. Prefer CRUD; source edit is last resort.
 Infer unstated GUI/navigation only when the parameter allows it; otherwise ask. Prefer small patches citing inventory ids.`
+  },
+  {
+    id: 'hybrid-refinement',
+    name: 'Hybrid Refinement',
+    prompt: `You are refining an existing Hybrid (.asfl) specification along three lines: process atomicity, data refinement, and operational grain. Do not dump a full file. Formal pre/post does not make a process one operation.
+Completeness is not "whatever happens to be written". A module that is only a name (no types/vars/processes/cdfd) is an empty shell — a gap. A process that is only a name (no pre/post/fsf/decom) is a stub — also a gap.
+Guide the user one slice at a time. Do not silently refine every node.
+Pipeline:
+1. read_refinement_state (tree or summary) plus Informal/Hybrid inventories. Identify the named module/process/data item from the user message, or ask_clarification if several slices are open.
+2. Prefer propose_refinement_step: FormalizePredicate, DecomposeProcess, SetCdfd, DeclareAtomic, IntroduceRetrieve, DischargeDataObligation, DefineType, ClassifyGrain, ResolveVariation.
+   Grain: read the digest. ask_clarification only about variations already extracted (and name-claim). Then ClassifyGrain (grainClass=operation|abstract) or ResolveVariation (variationId, disposition=scenario|child|waived, toText=child process name, note required when waived). Do not invent a CRUD catalog. Do not clear grainAmbiguity by rewriting pre/post; that counter drops only after those steps or DecomposeProcess. DeclareAtomic requires operational grain to be closed.
+3. Use propose_hybrid_changes for new types/vars/processes/scenarios when the shell is empty. Never treat missing members as done.
+4. If CRUD/refinement-step cannot express the fix, read_hybrid_specification view=source then propose_source_edit (replace/append). Informal atoms still need a FormalizePredicate step afterwards or ambiguity will not drop.
+5. CDFD is optional on old files; write one only when the user asks to draft/complete a diagram or a process must appear on the current module graph.
+6. After each applied write, read_refinement_state. Stay on the chosen slice until that local gap shrinks. Then if more gaps remain, ask_clarification for the next slice — do not claim an unambiguous spec while the digest says unambiguous=false.
+Last message = what ambiguity dropped (process vs data vs grain) and what remains.`
   }
 ]
 
@@ -76,7 +95,7 @@ export const AGENT_TOOLS = [
     function: {
       name: 'ask_clarification',
       description:
-        'Ask the user a structured clarification question. The UI will render options the user can click, plus optional custom input. Use this instead of listing questions only in prose when a decision is needed.',
+        'Ask the user a structured clarification question. The UI renders options plus a custom text field. The tool result has selected (clicked options) and custom (text the user typed). A non-empty custom answer is required context for both single-choice and multi-choice, even when selected is also set. Never ignore custom. Use this instead of listing questions only in prose when a decision is needed.',
       parameters: {
         type: 'object',
         properties: {
@@ -212,6 +231,24 @@ export const AGENT_TOOLS = [
   {
     type: 'function' as const,
     function: {
+      name: 'read_refinement_state',
+      description:
+        'Return the current dual-line refinement digest (Liu SOFL process atomicity + data discharge): overall harmonic completeness, empty-shell modules, stub processes, informal atoms, open scenarios, data obligations, and a process/data tree. Call this after Hybrid writes. view=summary (default), tree, or log. Missing members are gaps, not completeness.',
+      parameters: {
+        type: 'object',
+        properties: {
+          view: {
+            type: 'string',
+            enum: ['summary', 'tree', 'log'],
+            description: 'summary (counters + next slices), tree (modules/processes/gates/data), or audit log'
+          }
+        }
+      }
+    }
+  },
+  {
+    type: 'function' as const,
+    function: {
       name: 'propose_hybrid_changes',
       description:
         'Propose an incremental Hybrid/.asfl CRUD patch against inventory ids (mod:, proc:Module.Name). Prefer this over source edits. SYSTEM_ is the unique top-level system module (named after the whole system) and is inserted first; other modules use parentId=mod:SYSTEM_…. Default process signature is (). Never emit raw SOFL or replace-document here. Use add/update/remove/replace-process-body. Write pre/post, not FSF :. Invariants may use implies or =>.',
@@ -334,6 +371,52 @@ export const AGENT_TOOLS = [
           }
         },
         required: ['operations']
+      }
+    }
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'propose_refinement_step',
+      description:
+        'Submit an auditable Hybrid refinement step. Informal atoms may only become formal via FormalizePredicate. Operational grain closes only via ClassifyGrain, ResolveVariation, or DecomposeProcess — rewriting pre/post does not reduce grainAmbiguity. DecomposeProcess creates a child module and an empty CDFD. SetCdfd writes or replaces one module cdfd block (toText). Missing cdfd on an existing module is not an error — do not invent a CDFD unless the user asks to draw or refine the data-flow diagram.',
+      parameters: {
+        type: 'object',
+        properties: {
+          explanation: { type: 'string' },
+          kind: {
+            type: 'string',
+            enum: [
+              'FormalizePredicate',
+              'DecomposeProcess',
+              'BalanceFlows',
+              'DefineType',
+              'BindConstraint',
+              'DeclareAtomic',
+              'Extend',
+              'IntroduceRetrieve',
+              'DischargeDataObligation',
+              'SetCdfd',
+              'ClassifyGrain',
+              'ResolveVariation'
+            ]
+          },
+          grainClass: { type: 'string', enum: ['operation', 'abstract'], description: 'ClassifyGrain: operation is one trigger; abstract is still a concern' },
+          variationId: { type: 'string', description: 'ResolveVariation: id from the grain digest, or name-claim' },
+          disposition: { type: 'string', enum: ['scenario', 'child', 'waived'], description: 'ResolveVariation. child requires toText = child process name. waived requires note.' },
+          moduleName: { type: 'string' },
+          processName: { type: 'string' },
+          typeName: { type: 'string' },
+          clause: { type: 'string', enum: ['pre', 'post', 'fsf'] },
+          fromText: { type: 'string' },
+          toText: { type: 'string' },
+          childModuleName: { type: 'string' },
+          representationType: { type: 'string' },
+          retrieveFunction: { type: 'string' },
+          retrieveBody: { type: 'string' },
+          note: { type: 'string' }
+        },
+        required: ['kind']
       }
     }
   },

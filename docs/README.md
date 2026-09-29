@@ -30,6 +30,7 @@
 | [22-GUI可视化设计器handoff.md](./22-GUI可视化设计器handoff.md) | WinForms 风格 GUI 设计器已交付能力与后续缺口 |
 | [23-Hybrid规格IDE接口.md](./23-Hybrid规格IDE接口.md) | Hybrid 自然语言骨架、AssistantProvider、左树右键注册表 |
 | [24-Informal-Markdown与Hybrid生成器.md](./24-Informal-Markdown与Hybrid生成器.md) | Markdown Informal 模型、AI Agent、可插拔 Hybrid Generator |
+| [25-原子需求与精化度量机制.md](./25-原子需求与精化度量机制.md) | 原子需求、双线精化、二义性计数、审计步骤、CDFD/场景分工（科研/论文） |
 
 ## 快速验证
 

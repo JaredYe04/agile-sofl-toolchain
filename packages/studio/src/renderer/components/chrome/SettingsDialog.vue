@@ -64,7 +64,8 @@ const informalOptions = computed(() => [
 
 const hybridOptions = computed(() => [
   { id: 'code', label: t('workspace.codeTab') },
-  { id: 'visual', label: t('workspace.visualTab') }
+  { id: 'visual', label: t('workspace.visualTab') },
+  { id: 'refine', label: t('workspace.refineTab') }
 ])
 
 const accentOptions = computed(() => [
@@ -125,7 +126,7 @@ function onInformal(id: string): void {
 }
 
 function onHybrid(id: string): void {
-  settings.setDefaultHybridView(id === 'code' ? 'code' : 'visual')
+  if (id === 'code' || id === 'visual' || id === 'refine') settings.setDefaultHybridView(id)
 }
 
 function onCustomHex(value: string): void {

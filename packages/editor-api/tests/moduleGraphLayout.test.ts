@@ -330,7 +330,6 @@ describe('buildModuleGraphLayout', () => {
     expect(root!.sections.some((s) => s.key === 'submodules')).toBe(true)
     expect(root!.sections.some((s) => s.key === 'processes')).toBe(true)
     expect(layout.compounds.filter((c) => c.depth === 1).length).toBeGreaterThanOrEqual(5)
-    expect(layout.edges.length).toBeGreaterThan(0)
     const aspect = (root!.width ?? 1) / (root!.height ?? 1)
     expect(aspect).toBeGreaterThan(0.4)
     const subSection = root!.sections.find((s) => s.key === 'submodules')

@@ -14,7 +14,9 @@ import type {
   FunctionNode,
   ParamGroupNode,
   ExtVarNode,
-  ConditionClauseNode
+  ConditionClauseNode,
+  CdfdBlockNode,
+  RefineBlockNode
 } from '../ast/nodes.js'
 import { textOf } from '../ast/nodes.js'
 import { printConditionText } from '../prepost/clause.js'
@@ -318,6 +320,41 @@ function printFunction(writer: IndentWriter, level: number, f: FunctionNode): vo
   writer.line(level, 'end_function')
 }
 
+function printCdfd(writer: IndentWriter, level: number, cdfd: CdfdBlockNode): void {
+  writer.line(level, 'cdfd')
+  const inner = level + 1
+  for (const port of cdfd.ports) {
+    writer.line(inner, `port ${port.direction} ${port.name}`)
+  }
+  for (const store of cdfd.stores) {
+    writer.line(inner, `store ${store.name}`)
+  }
+  for (const node of cdfd.nodes) {
+    writer.line(inner, `node ${node.name}`)
+  }
+  for (const cond of cdfd.conditions) {
+    writer.line(inner, `cond ${cond.name}`)
+  }
+  for (const flow of cdfd.flows) {
+    if (flow.isOthers) {
+      writer.line(inner, `flow ${flow.from} | others -> ${flow.to}`)
+    } else if (flow.guard) {
+      writer.line(inner, `flow ${flow.from} | ${printPredicate(flow.guard)} -> ${flow.to}`)
+    } else {
+      writer.line(inner, `flow ${flow.from} -> ${flow.to}`)
+    }
+  }
+  writer.line(level, 'end_cdfd')
+}
+
+function printRefine(writer: IndentWriter, level: number, refine: RefineBlockNode): void {
+  writer.line(level, 'refine')
+  for (const item of refine.items) {
+    writer.line(level + 1, `type ${item.abstractType} by ${item.representationType} retrieve ${item.retrieveFunction}`)
+  }
+  writer.line(level, 'end_refine')
+}
+
 function printModule(writer: IndentWriter, level: number, mod: ModuleNode): void {
   if (mod.isSystem) {
     writer.line(level, `module SYSTEM_${mod.name};`)
@@ -375,6 +412,9 @@ function printModule(writer: IndentWriter, level: number, mod: ModuleNode): void
     printFunction(writer, level, f)
   }
 
+  if (mod.cdfd) printCdfd(writer, level, mod.cdfd)
+  if (mod.refine) printRefine(writer, level, mod.refine)
+
   writer.line(level, 'end_module')
 }
 
@@ -387,6 +427,18 @@ export function printProgram(ast: ProgramNode): string {
   let text = moduleTexts.join(';\n')
   if (ast.trailingDot) text += '.'
   return text
+}
+
+export function printCdfdBlock(cdfd: CdfdBlockNode): string {
+  const writer = new IndentWriter()
+  printCdfd(writer, 0, cdfd)
+  return writer.toString()
+}
+
+export function printRefineBlock(refine: RefineBlockNode): string {
+  const writer = new IndentWriter()
+  printRefine(writer, 0, refine)
+  return writer.toString()
 }
 
 export function format(source: string, parseFn: (s: string) => { ast: ProgramNode | null }): string {
