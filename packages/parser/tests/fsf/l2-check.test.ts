@@ -216,3 +216,22 @@ describe('freeze gate: reference systems have zero errors on parser + L1 + L2', 
     }, 60000)
   }
 })
+
+describe('L2 all-pairs with budget', () => {
+  const many = (n: number, overlapAt: number) => {
+    const sc = Array.from({ length: n }, (_, k) => `  x = ${k === overlapAt ? 0 : k} && r = ${k}`).join(' ||\n')
+    return `module SYSTEM_M;\nprocess P (x: int) r: int\nFSF :\n${sc} ||\n  others && r = -1\nend_process\nend_module.`
+  }
+  it('checks non-adjacent pairs beyond 20 scenarios (overlap between scenario 1 and 25)', async () => {
+    const r = await checkAsync(many(25, 24))
+    const d = r.diagnostics.filter((x) => x.code === 'ASFL_FSF_201')
+    expect(d).toHaveLength(1)
+    expect(d[0]!.message).toMatch(/scenarios 1 and 25/)
+  }, 60000)
+  it('reports unchecked pairs in one 204 warning when the budget is exhausted', async () => {
+    const r = await checkAsync(many(8, -1), { l2: { fsfBudgetMs: -1 } } as any)
+    const t = r.diagnostics.filter((x) => x.code === 'ASFL_FSF_204')
+    expect(t).toHaveLength(1)
+    expect(t[0]!.message).toMatch(/28 of 28 mutual exclusion pair checks/)
+  }, 60000)
+})

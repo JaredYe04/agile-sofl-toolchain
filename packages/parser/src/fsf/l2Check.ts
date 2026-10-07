@@ -25,7 +25,9 @@
  *  - seq indexing s(i) is 1-based → nth(i-1); `hd(s)` → nth(0) with no side condition;
  *  - `e inset elems(s)` → SeqContains(s, unit(e)); `e inset dom(m)` → membership in m's domain set;
  *  - card(S) → uninterpreted function with card(S) ≥ 0.
- *  - per-check timeout 2000 ms (default), per-FSF budget 10 s; n > 20 scenarios → only adjacent pairs.
+ *  - per-check timeout 2000 ms (default), per-FSF budget 10 s, total budget per checkFsfL2 call 60 s;
+ *    ALL pairs are checked (adjacent pairs first, then by increasing distance); the completeness check runs
+ *    first; pairs left when a budget is exhausted are reported in ONE 204 warning (count + first pairs).
  */
 import type {
   ProgramNode, ModuleNode, ProcessNode, PredicateNode, AtomicPredicateNode, ExpressionNode, TypeExprNode
@@ -59,6 +61,10 @@ export interface L2Options {
   timeoutMs?: number
   /** total budget per FSF (default 10000 ms) */
   fsfBudgetMs?: number
+  /** total budget for all FSFs of one checkFsfL2 call (default 60000 ms) */
+  totalBudgetMs?: number
+  /** internal: absolute deadline shared by all processes of one checkFsfL2 call */
+  deadline?: number
   /** test hook: replace the solver call (e.g. force unknown/timeout) */
   solve?: (kind: 'exclusion' | 'completeness', run: () => Promise<SolveResult>) => Promise<SolveResult>
   /** coverage collector: one entry per process with an FSF is pushed here (see scripts/l2-coverage.mjs) */
@@ -487,10 +493,10 @@ export async function checkProcessFsfL2(
     }
   })
   const timeout = opts.timeoutMs ?? 2000
-  const budgetEnd = Date.now() + (opts.fsfBudgetMs ?? 10000)
+  const budgetEnd = Math.min(Date.now() + (opts.fsfBudgetMs ?? 10000), opts.deadline ?? Infinity)
   const run = async (formula: any): Promise<SolveResult> => {
     const solver = new Z.Solver()
-    solver.set('timeout', timeout)
+    solver.set('timeout', Math.max(1, Math.min(timeout, budgetEnd - Date.now())))
     for (const a of enc.axioms) solver.add(a)
     solver.add(formula)
     const status: SolveStatus = await solver.check()
@@ -506,12 +512,31 @@ export async function checkProcessFsfL2(
     ? createDiagnostic(DiagnosticCodes.FSF_L2_TIMEOUT, `${check} check for '${p}' timed out after ${timeout} ms.`, 'warning', fsf.span)
     : createDiagnostic(DiagnosticCodes.FSF_L2_UNKNOWN, `Could not decide ${check} for '${p}' (solver returned unknown: ${r.reason ?? 'unknown'}).`, 'warning', fsf.span)
 
+  // completeness first (one query), its diagnostic is emitted after the exclusion diagnostics
+  const tail: Diagnostic[] = []
+  if (!fsf.others && !T.every((t) => t)) st.completeness = { outcome: 'skipped', skipReasons: reasonsOf(T.map((_, k) => k)) }
+  if (!fsf.others && T.every((t) => t)) {
+    if (Date.now() > budgetEnd) {
+      st.completeness = { outcome: 'timeout' }
+      tail.push(createDiagnostic(DiagnosticCodes.FSF_L2_TIMEOUT, `completeness check for '${p}' timed out (L2 budget exhausted).`, 'warning', fsf.span))
+    } else {
+      const r = await solve('completeness', Z.Not(T.length === 1 ? T[0] : Z.Or(...T)))
+      st.completeness = { outcome: outcomeOf(r) }
+      if (r.status === 'sat') {
+        tail.push(createDiagnostic(DiagnosticCodes.FSF_L2_INCOMPLETE,
+          `FSF of '${p}' is incomplete: no test condition holds for ${r.model || '(some input)'}. Add a scenario or an 'others' branch.`, 'error', fsf.span))
+      } else if (r.status === 'unknown') tail.push(unknownDiag('completeness', r))
+    }
+  }
+
+  // all pairs, adjacent first, then increasing distance (so a tight budget still covers neighbours)
   const pairs: Array<[number, number]> = []
-  for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) if (n <= 20 || j === i + 1) pairs.push([i, j])
+  for (let dist = 1; dist < n; dist++) for (let i = 0; i + dist < n; i++) pairs.push([i, i + dist])
+  const unchecked: Array<[number, number]> = []
   for (const [i, j] of pairs) {
     if (!T[i] || !T[j]) { st.exclusion.push({ i: i + 1, j: j + 1, outcome: 'skipped', skipReasons: reasonsOf([i, j]) }); continue }
+    if (Date.now() > budgetEnd) { st.exclusion.push({ i: i + 1, j: j + 1, outcome: 'timeout' }); unchecked.push([i, j]); continue }
     const check = `mutual exclusion (scenarios ${i + 1},${j + 1})`
-    if (Date.now() > budgetEnd) { st.exclusion.push({ i: i + 1, j: j + 1, outcome: 'timeout' }); out.push(createDiagnostic(DiagnosticCodes.FSF_L2_TIMEOUT, `${check} check for '${p}' timed out (FSF budget exhausted).`, 'warning', fsf.span)); continue }
     const r = await solve('exclusion', Z.And(T[i], T[j]))
     st.exclusion.push({ i: i + 1, j: j + 1, outcome: outcomeOf(r) })
     if (r.status === 'sat') {
@@ -519,25 +544,19 @@ export async function checkProcessFsfL2(
         `FSF scenarios ${i + 1} and ${j + 1} of '${p}' are not mutually exclusive. Counterexample: ${r.model || '(any)'}`, 'error', fsf.scenarios[j]!.test.span))
     } else if (r.status === 'unknown') out.push(unknownDiag(check, r))
   }
-  if (!fsf.others && !T.every((t) => t)) st.completeness = { outcome: 'skipped', skipReasons: reasonsOf(T.map((_, k) => k)) }
-  if (!fsf.others && T.every((t) => t)) {
-    if (Date.now() > budgetEnd) {
-      st.completeness = { outcome: 'timeout' }
-      out.push(createDiagnostic(DiagnosticCodes.FSF_L2_TIMEOUT, `completeness check for '${p}' timed out (FSF budget exhausted).`, 'warning', fsf.span))
-    } else {
-      const r = await solve('completeness', Z.Not(T.length === 1 ? T[0] : Z.Or(...T)))
-      st.completeness = { outcome: outcomeOf(r) }
-      if (r.status === 'sat') {
-        out.push(createDiagnostic(DiagnosticCodes.FSF_L2_INCOMPLETE,
-          `FSF of '${p}' is incomplete: no test condition holds for ${r.model || '(some input)'}. Add a scenario or an 'others' branch.`, 'error', fsf.span))
-      } else if (r.status === 'unknown') out.push(unknownDiag('completeness', r))
-    }
+  st.exclusion.sort((a, b) => a.i - b.i || a.j - b.j)
+  if (unchecked.length) {
+    const first = unchecked.slice(0, 5).map(([i, j]) => `(${i + 1},${j + 1})`).join(', ')
+    out.push(createDiagnostic(DiagnosticCodes.FSF_L2_TIMEOUT,
+      `${unchecked.length} of ${pairs.length} mutual exclusion pair checks for '${p}' not run (L2 budget exhausted): ${first}${unchecked.length > 5 ? ', …' : ''}.`, 'warning', fsf.span))
   }
+  out.push(...tail)
   return out
 }
 
 export async function checkFsfL2(program: ProgramNode, opts: L2Options = {}): Promise<{ diagnostics: Diagnostic[] }> {
   const diagnostics: Diagnostic[] = []
+  opts = { ...opts, deadline: opts.deadline ?? Date.now() + (opts.totalBudgetMs ?? 60000) }
   for (const m of program.modules) {
     for (const proc of m.processes ?? []) diagnostics.push(...(await checkProcessFsfL2(program, m, proc, opts)))
   }
