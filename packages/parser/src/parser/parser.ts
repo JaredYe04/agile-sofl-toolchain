@@ -4,7 +4,7 @@
  */
 // @ts-nocheck — Chevrotain RULE methods are attached dynamically at runtime
 
-import { CstParser, type CstNode } from 'chevrotain'
+import { CstParser, type CstNode, type TokenType } from 'chevrotain'
 import {
   allTokens,
   Module,
@@ -161,6 +161,9 @@ import {
 import { EOF } from 'chevrotain'
 
 const TYPE_EXPR_STOP = [Semicolon, Comma, End, RParen, RBrace, EndModule, EndProcess, EndFunction, EndCdfd, EndRefine, To, Star]
+
+const SET_EXPR_START: TokenType[] = [Dom, Rng, Elems, Inds, Union, Inter, Diff, Power, Dunion, Dinter, LBrace, Tilde]
+const TEXT_WORD_KEYWORDS: TokenType[] = [Card, Len, Abs, Floor, Hd, Tl, Union, Inter, Diff, Power, Dom, Rng, Elems, Inds, Get, Modify, Override, Bound, Inverse, Conc, Comp, Rd, Wr, Set, Seq, Map, End, Default, Let, Case, Time, Undefined]
 
 export class AgileSoflParser extends CstParser {
   public specification!: () => CstNode
@@ -1214,8 +1217,12 @@ export class AgileSoflParser extends CstParser {
     })
 
     $.RULE('text', () => {
-      $.AT_LEAST_ONE(() => {
-        $.OR([
+      $.AT_LEAST_ONE({
+        GATE: () => {
+          const t = $.LA(1).tokenType
+          return !((t === And || t === Or) && this.formalAtomAhead(2))
+        },
+        DEF: () => $.OR([
           { ALT: () => $.CONSUME(StringLiteral) },
           { ALT: () => $.CONSUME(Identifier) },
           { ALT: () => $.CONSUME(IntegerLiteral) },
@@ -1226,9 +1233,24 @@ export class AgileSoflParser extends CstParser {
           { ALT: () => $.CONSUME(OfKw) },
           { ALT: () => $.CONSUME(SystemKw) },
           { ALT: () => $.CONSUME(To) },
-          { ALT: () => $.CONSUME(And) },
-          { ALT: () => $.CONSUME(Or) },
+          // `and`/`or` stay inside free text unless the next atom is clearly formal
+          // (e.g. `... increased by amount and msg = "OK"`).
+          { GATE: () => !this.formalAtomAhead(2), ALT: () => $.CONSUME(And) },
+          { GATE: () => !this.formalAtomAhead(2), ALT: () => $.CONSUME(Or) },
           { ALT: () => $.CONSUME(Not) },
+          // word-like keywords (`card`, `set`, `map`, `by`, ...) used as plain English words
+          { ALT: () => $.CONSUME(By) },
+          { GATE: () => $.LA(2).tokenType !== LParen, ALT: () => $.CONSUME(Card) },
+          { GATE: () => $.LA(2).tokenType !== LParen, ALT: () => $.CONSUME(Len) },
+          { GATE: () => $.LA(2).tokenType !== LParen, ALT: () => $.CONSUME(Dom) },
+          { GATE: () => $.LA(2).tokenType !== LParen, ALT: () => $.CONSUME(Elems) },
+          { GATE: () => $.LA(2).tokenType !== LParen, ALT: () => $.CONSUME(Set) },
+          { GATE: () => $.LA(2).tokenType !== LParen, ALT: () => $.CONSUME(Seq) },
+          { GATE: () => $.LA(2).tokenType !== LParen, ALT: () => $.CONSUME(Map) },
+          { GATE: () => $.LA(2).tokenType !== LParen, ALT: () => $.CONSUME(Get) },
+          { GATE: () => $.LA(2).tokenType !== LParen, ALT: () => $.CONSUME(Bound) },
+          { GATE: () => $.LA(2).tokenType !== LParen, ALT: () => $.CONSUME(Time) },
+          { GATE: () => $.LA(2).tokenType !== LParen, ALT: () => $.CONSUME(Default) },
           { ALT: () => $.CONSUME(True) },
           { ALT: () => $.CONSUME(False) },
           { ALT: () => $.CONSUME(Forall) },
@@ -1431,6 +1453,7 @@ export class AgileSoflParser extends CstParser {
           GATE: () => {
             if ($.LA(1).tokenType !== Identifier) return true
             const next = $.LA(2).tokenType
+            if (TEXT_WORD_KEYWORDS.includes(next) && $.LA(3).tokenType !== LParen) return false
             return next !== Identifier && next !== StringLiteral
           }
         },
@@ -1466,7 +1489,8 @@ export class AgileSoflParser extends CstParser {
               next === String ||
               next === Bool ||
               next === Given ||
-              next === Nil
+              next === Nil ||
+              (TEXT_WORD_KEYWORDS.includes(next) && $.LA(3).tokenType !== LParen)
             )
           }
         },
@@ -1515,7 +1539,11 @@ export class AgileSoflParser extends CstParser {
         $.SUBRULE2($.bindingName)
       })
       $.CONSUME(Colon)
-      $.SUBRULE($.typeExpr)
+      // Binding_list ::= Identifier_list ":" (Type_expression | Set_type_expression)  (l.453)
+      $.OR([
+        { GATE: () => SET_EXPR_START.includes($.LA(1).tokenType), ALT: () => $.SUBRULE($.setExpr) },
+        { ALT: () => $.SUBRULE($.typeExpr) }
+      ])
     })
 
     $.RULE('booleanApply', () => {
@@ -1625,7 +1653,10 @@ export class AgileSoflParser extends CstParser {
       $.OR([
         { ALT: () => $.SUBRULE($.setConstructor) },
         { ALT: () => $.SUBRULE($.setApply) },
-        { ALT: () => { $.CONSUME(LParen); $.SUBRULE($.setExpr); $.CONSUME(RParen) } }
+        { ALT: () => { $.CONSUME(LParen); $.SUBRULE($.setExpr); $.CONSUME(RParen) } },
+        // Set_type_expression ::= Set_expression | General_expression (final grammar l.467):
+        // allows `dom(~m)`, `card(s)`, `x inset s` with variables / old-state `~x`.
+        { ALT: () => $.SUBRULE($.generalExpr) }
       ])
     })
 
@@ -1682,7 +1713,9 @@ export class AgileSoflParser extends CstParser {
         { ALT: () => $.SUBRULE($.seqConstructor) },
         { ALT: () => $.SUBRULE($.seqApply) },
         { ALT: () => $.SUBRULE($.stringValue) },
-        { ALT: () => { $.CONSUME(LParen); $.SUBRULE($.seqExpr); $.CONSUME(RParen) } }
+        { ALT: () => { $.CONSUME(LParen); $.SUBRULE($.seqExpr); $.CONSUME(RParen) } },
+        // Sequence_type_expression ::= Sequence_expression | General_expression (l.472)
+        { ALT: () => $.SUBRULE($.generalExpr) }
       ])
     })
 
@@ -1731,7 +1764,9 @@ export class AgileSoflParser extends CstParser {
       $.OR([
         { ALT: () => $.SUBRULE($.mapConstructor) },
         { ALT: () => $.SUBRULE($.mapApply) },
-        { ALT: () => { $.CONSUME(LParen); $.SUBRULE($.mapExpr); $.CONSUME(RParen) } }
+        { ALT: () => { $.CONSUME(LParen); $.SUBRULE($.mapExpr); $.CONSUME(RParen) } },
+        // Map_type_expression ::= Map_expression | General_expression (l.475)
+        { ALT: () => $.SUBRULE($.generalExpr) }
       ])
     })
 
@@ -1977,6 +2012,16 @@ export class AgileSoflParser extends CstParser {
     })
 
     this.performSelfAnalysis()
+  }
+
+  /** True when token LA(i) starts an obviously formal atom: `x =`, `x <>`, `~x`, `x inset` ... */
+  formalAtomAhead(i: number): boolean {
+    const a = this.LA(i).tokenType
+    if (a === Tilde) return true
+    if (a !== Identifier) return false
+    const b = this.LA(i + 1).tokenType
+    return b === Equals || b === NotEqual || b === LessThan || b === GreaterThan || b === LessEqual ||
+      b === GreaterEqual || b === Inset || b === Notin || b === Dot || b === LParen
   }
 
   /**

@@ -126,7 +126,7 @@ export function printExpr(expr: ExpressionNode): string {
       return `<${expr.value}>`
     case 'identifier':
       if (expr.qualified?.module) return `${expr.qualified.module}.${expr.qualified.name}`
-      return `${expr.negated ? '~' : ''}${expr.name}`
+      return `${expr.oldState ? '~' : ''}${expr.name}`
     case 'unary_minus':
       return `-${printExpr(expr.operand)}`
     case 'binary_op':

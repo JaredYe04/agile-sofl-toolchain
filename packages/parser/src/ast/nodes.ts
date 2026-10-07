@@ -299,6 +299,8 @@ export interface BindingGroupNode extends WithSpan {
   type: 'binding_group'
   names: string[]
   typeExpr: TypeExprNode
+  /** Set-valued domain when the binding is `x: <set expression>` (e.g. `k: dom(m)`). */
+  domainExpr?: ExpressionNode
 }
 
 // --- Types ---
@@ -427,7 +429,8 @@ export interface IdentifierNode extends WithSpan {
   type: 'identifier'
   name: string
   qualified?: QualifiedNameNode
-  negated?: boolean
+  /** `~x`: the initial (pre-state) value of x (final grammar l.538 `["~"] Identifier`). Not logical negation. */
+  oldState?: boolean
 }
 
 export interface UnaryMinusNode extends WithSpan {

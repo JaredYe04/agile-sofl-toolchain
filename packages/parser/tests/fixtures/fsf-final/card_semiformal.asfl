@@ -1,0 +1,8 @@
+module SYSTEM_Card;
+  type Card = composed of id: string balance: nat0 end;
+  var ext cards: map string to Card;
+  process Charge(cid: string, amount: nat) msg: string
+    ext wr cards
+    FSF: the card is registered and the new balance does not exceed the limit && the balance is increased by amount and msg = "OK" || others && cards = ~cards and msg = "Charge rejected"
+  end_process
+end_module.

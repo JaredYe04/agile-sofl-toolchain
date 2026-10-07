@@ -1,0 +1,16 @@
+module SYSTEM_Stock;
+type
+  StockInformation = composed of
+    name: string
+    price: nat0
+  end;
+var
+  ext stock_list: seq of StockInformation;
+process Register_Stock(stock: StockInformation) res: bool
+ext wr stock_list: seq of StockInformation
+FSF:
+  stock notin elems(~stock_list) && stock_list = conc(~stock_list, [stock]) and res = true
+||
+  stock inset elems(~stock_list) && stock_list = ~stock_list and res = false
+end_process
+end_module.

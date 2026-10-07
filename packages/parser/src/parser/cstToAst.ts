@@ -966,11 +966,13 @@ function cstToBindingList(cst: CstNode): BindingGroupNode[] {
   return childNodes(cst, 'bindingGroup').map((g) => {
     const ids = bindingNameTokens(g)
     const typeExpr = singleChild(g, 'typeExpr')
+    const setDomain = singleChild(g, 'setExpr')
     return {
       type: 'binding_group',
       span: spanOf(g),
       names: ids.map((t) => t.image),
-      typeExpr: typeExpr ? cstToTypeExpr(typeExpr) : { type: 'basic_type', span: EMPTY_SPAN, name: 'given' }
+      typeExpr: typeExpr ? cstToTypeExpr(typeExpr) : { type: 'basic_type', span: EMPTY_SPAN, name: 'given' },
+      ...(setDomain ? { domainExpr: cstToSetExpr(setDomain) } : {})
     }
   })
 }
@@ -1008,7 +1010,9 @@ function cstToTextWithSpan(cst: CstNode): { text: string; span: typeof EMPTY_SPA
     'Given',
     'Nil'
   ] as const
-  const collected = kinds.flatMap((kind) => tokensOf(cst, kind))
+  void kinds
+  // Free text may contain any word-like token (including keywords such as `card`, `by`).
+  const collected = Object.keys(cst.children).flatMap((kind) => tokensOf(cst, kind))
   collected.sort((a, b) => a.startOffset - b.startOffset)
   const parts = collected.map((tok) => {
     if (tok.image.startsWith('"') && tok.image.endsWith('"')) {
@@ -1186,13 +1190,24 @@ function cstToSubNumber3(cst: CstNode): ExpressionNode {
   return { type: 'number_literal', span: spanOf(cst), value: 0, isReal: false }
 }
 
+/** Arguments of set/seq/map applies in source order (e.g. `domrt(s, m)`). */
+function orderedCollectionArgs(apply: CstNode): ExpressionNode[] {
+  const items: { off: number; e: ExpressionNode }[] = []
+  for (const c of childNodes(apply, 'setExpr')) items.push({ off: firstToken(c)?.startOffset ?? 0, e: cstToSetExpr(c) })
+  for (const c of childNodes(apply, 'seqExpr')) items.push({ off: firstToken(c)?.startOffset ?? 0, e: cstToSeqExpr(c) })
+  for (const c of childNodes(apply, 'mapExpr')) items.push({ off: firstToken(c)?.startOffset ?? 0, e: cstToMapExpr(c) })
+  return items.sort((a, b) => a.off - b.off).map((i) => i.e)
+}
+
 function cstToSetExpr(cst: CstNode): ExpressionNode {
+  const gen = singleChild(cst, 'generalExpr')
+  if (gen) return cstToGeneralExpr(gen)
   const ctor = singleChild(cst, 'setConstructor')
   if (ctor) return cstToSetConstructor(ctor)
   const apply = singleChild(cst, 'setApply')
   if (apply) {
     const name = firstToken(apply)?.image ?? 'union'
-    const args = [...childNodes(apply, 'setExpr').map(cstToSetExpr), ...childNodes(apply, 'seqExpr').map(cstToSeqExpr), ...childNodes(apply, 'mapExpr').map(cstToMapExpr)]
+    const args = orderedCollectionArgs(apply)
     return { type: 'call', span: spanOf(cst), callee: name, args }
   }
   const inner = childNodes(cst, 'setExpr')[0]
@@ -1256,6 +1271,8 @@ function cstToSetExprFromConstant(cst: CstNode): ExpressionNode {
 }
 
 function cstToSeqExpr(cst: CstNode): ExpressionNode {
+  const gen = singleChild(cst, 'generalExpr')
+  if (gen) return cstToGeneralExpr(gen)
   const str = singleChild(cst, 'stringValue')
   if (str) {
     const t = tokensOf(str, 'StringLiteral')[0]
@@ -1316,12 +1333,14 @@ function cstToSeqFromConstant(cst: CstNode): ExpressionNode {
 }
 
 function cstToMapExpr(cst: CstNode): ExpressionNode {
+  const gen = singleChild(cst, 'generalExpr')
+  if (gen) return cstToGeneralExpr(gen)
   const ctor = singleChild(cst, 'mapConstructor')
   if (ctor) return cstToMapConstructor(ctor)
   const apply = singleChild(cst, 'mapApply')
   if (apply) {
     const name = firstToken(apply)?.image ?? 'comp'
-    const args = [...childNodes(apply, 'mapExpr').map(cstToMapExpr), ...childNodes(apply, 'setExpr').map(cstToSetExpr)]
+    const args = orderedCollectionArgs(apply)
     return { type: 'call', span: spanOf(cst), callee: name, args }
   }
   const inner = childNodes(cst, 'mapExpr')[0]
@@ -1437,7 +1456,7 @@ function cstToGeneralAtom(cst: CstNode): ExpressionNode {
   if (simple) {
     const tilde = tokensOf(simple, 'Tilde')
     const id = bindingNameTokens(simple)[0]
-    return { type: 'identifier', span: spanOf(cst), name: id?.image ?? '', negated: tilde.length > 0 }
+    return { type: 'identifier', span: spanOf(cst), name: id?.image ?? '', oldState: tilde.length > 0 }
   }
   const seq = singleChild(cst, 'seqExpr')
   if (seq) return cstToSeqExpr(seq)

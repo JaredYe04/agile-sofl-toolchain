@@ -41,13 +41,8 @@ export interface InspectReport {
 }
 
 function summarizePredicate(pred: PredicateNode, maxLen = 48): string {
-  const parts: string[] = []
-  for (const conj of pred.disjuncts) {
-    for (const atom of conj.atoms) {
-      parts.push(summarizeAtom(atom))
-    }
-  }
-  const s = parts.join(' or ')
+  // Display bug fix: atoms of one conjunction are joined by `and`, disjuncts by `or`.
+  const s = pred.disjuncts.map((conj) => conj.atoms.map(summarizeAtom).join(' and ')).join(' or ')
   return s.length > maxLen ? s.slice(0, maxLen - 1) + '…' : s
 }
 

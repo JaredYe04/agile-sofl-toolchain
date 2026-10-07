@@ -1,0 +1,12 @@
+module SYSTEM_Card;
+  const MAXB = 50000;
+  type Card = composed of id: string balance: nat0 end;
+  var ext cards: map string to Card;
+  inv forall[k: dom(cards)] | cards(k).balance <= MAXB;
+  process Charge(cid: string, amount: nat) msg: string
+    ext wr cards
+    FSF: cid inset dom(~cards) and ~cards(cid).balance + amount <= MAXB
+           && cards = override(~cards, {cid -> modify(~cards(cid), balance -> ~cards(cid).balance + amount)}) and msg = "OK"
+      || others && cards = ~cards and msg = "Charge rejected"
+  end_process
+end_module.
