@@ -4,7 +4,7 @@
  */
 
 import { readFileSync } from 'node:fs'
-import { parseSpecification, format, formatDiagnostic } from './index.js'
+import { parseSpecification, format, formatDiagnostic, checkFsfL2 } from './index.js'
 import { inspect } from './cli/report.js'
 import { runRepl } from './cli/repl.js'
 
@@ -29,7 +29,9 @@ function parseFlags(args: string[]) {
     json: flags.has('--json'),
     tree: flags.has('--tree'),
     tokens: flags.has('--tokens'),
-    full: flags.has('--full')
+    full: flags.has('--full'),
+    noL1: flags.has('--no-l1'),
+    noL2: flags.has('--no-l2')
   }
 }
 
@@ -54,6 +56,8 @@ Inspect flags:
   --tokens   Include lexer token table
   --full     Full AST JSON (with inspect)
   --json     Raw JSON output (with parse)
+  --no-l1    Skip the L1 FSF static check (inspect/check)
+  --no-l2    Skip the L2 Z3 FSF check (inspect/check)
 
 Examples:
   asfl inspect tests/fixtures/integration/banking.asfl
@@ -71,7 +75,7 @@ async function main(): Promise<void> {
   }
 
   const command = rawArgs[0]
-  const { positional, json, tree, tokens, full } = parseFlags(rawArgs.slice(1))
+  const { positional, json, tree, tokens, full, noL1, noL2 } = parseFlags(rawArgs.slice(1))
   const file = positional[0]
 
   if (command === 'repl') {
@@ -89,7 +93,13 @@ async function main(): Promise<void> {
   switch (command) {
     case 'inspect':
     case 'check': {
-      const report = inspect(source, { tree, tokens, fullJson: full })
+      // L2 (Z3) is asynchronous; run it on the parsed AST and merge into the report.
+      let extraDiagnostics: import('./diagnostics/codes.js').Diagnostic[] = []
+      if (!noL2) {
+        const parsed = parseSpecification(source, { fsfL1: !noL1 })
+        if (parsed.ast) extraDiagnostics = (await checkFsfL2(parsed.ast)).diagnostics
+      }
+      const report = inspect(source, { tree, tokens, fullJson: full, fsfL1: !noL1, extraDiagnostics })
       console.log(report.text)
       process.exit(report.exitCode)
       break

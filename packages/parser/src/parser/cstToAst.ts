@@ -1467,16 +1467,7 @@ function cstToGeneralAtom(cst: CstNode): ExpressionNode {
     const id = bindingNameTokens(simple)[0]
     return { type: 'identifier', span: spanOf(cst), name: id?.image ?? '', oldState: tilde.length > 0 }
   }
-  const seq = singleChild(cst, 'seqExpr')
-  if (seq) return cstToSeqExpr(seq)
-  const map = singleChild(cst, 'mapExpr')
-  if (map) return cstToMapExpr(map)
-  const product = singleChild(cst, 'productExpr')
-  if (product) return cstToProductExpr(product)
-  const cop = singleChild(cst, 'compositeOrProductExpr')
-  if (cop) return cstToCompositeOrProduct(cop)
-  const compound = singleChild(cst, 'compoundExpr')
-  if (compound) return cstToCompoundExpr(compound)
+  // get(…)/hd(…) must be recognised before the bare seqExpr/setExpr child (hd(s) was read as s)
   const get = tokensOf(cst, 'Get')
   if (get.length > 0) {
     const se = singleChild(cst, 'setExpr')
@@ -1487,6 +1478,16 @@ function cstToGeneralAtom(cst: CstNode): ExpressionNode {
     const sq = singleChild(cst, 'seqExpr')
     return { type: 'call', span: spanOf(cst), callee: 'hd', args: sq ? [cstToSeqExpr(sq)] : [] }
   }
+  const seq = singleChild(cst, 'seqExpr')
+  if (seq) return cstToSeqExpr(seq)
+  const map = singleChild(cst, 'mapExpr')
+  if (map) return cstToMapExpr(map)
+  const product = singleChild(cst, 'productExpr')
+  if (product) return cstToProductExpr(product)
+  const cop = singleChild(cst, 'compositeOrProductExpr')
+  if (cop) return cstToCompositeOrProduct(cop)
+  const compound = singleChild(cst, 'compoundExpr')
+  if (compound) return cstToCompoundExpr(compound)
   const inner = childNodes(cst, 'generalExpr')[0]
   if (inner) return { type: 'paren_expr', span: spanOf(cst), inner: cstToGeneralExpr(inner) }
   return nilExpr()

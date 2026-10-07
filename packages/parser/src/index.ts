@@ -9,6 +9,7 @@ import { classifyFsf, isFsfFormal } from './fsf/classifier.js'
 import { deriveFsf, deriveAllFsf } from './fsf/deriver.js'
 import { checkCdfd } from './cdfd/checkCdfd.js'
 import { checkFsfL1 } from './fsf/l1Check.js'
+import { checkFsfL2, type L2Options } from './fsf/l2Check.js'
 import { checkDataRefine } from './refine/checkDataRefine.js'
 import { resolveScope, lookupModuleScope } from './scope/resolver.js'
 import { checkReferences } from './scope/referenceChecker.js'
@@ -137,6 +138,20 @@ export function check(source: string, options?: CheckOptions): CheckResult {
   return parseSpecification(source, options)
 }
 
+export interface AsyncCheckOptions extends CheckOptions {
+  /** Run the L2 Z3 FSF check (mutual exclusion / completeness). Default true. */
+  fsfL2?: boolean
+  l2?: L2Options
+}
+
+/** check() plus the asynchronous L2 (Z3) FSF check. L2 runs only when parsing succeeded. */
+export async function checkAsync(source: string, options?: AsyncCheckOptions): Promise<CheckResult> {
+  const result = parseSpecification(source, options)
+  if (!result.ast || options?.fsfL2 === false) return result
+  const l2 = await checkFsfL2(result.ast, options?.l2)
+  return { ast: result.ast, diagnostics: [...result.diagnostics, ...l2.diagnostics] }
+}
+
 /** Pretty-print specification. */
 export function format(source: string): FormatResult {
   const { ast, diagnostics } = parseSpecification(source)
@@ -201,6 +216,8 @@ export { parsePredicateSource } from './prepost/parsePredicate.js'
 export { printConditionText, clauseHasInformal } from './prepost/clause.js'
 export { checkCdfd } from './cdfd/checkCdfd.js'
 export { checkFsfL1, checkProcessFsfL1 } from './fsf/l1Check.js'
+export { checkFsfL2, checkProcessFsfL2 } from './fsf/l2Check.js'
+export type { L2Options, SolveResult, SolveStatus } from './fsf/l2Check.js'
 export type { CheckCdfdOptions } from './cdfd/checkCdfd.js'
 export { analyzeProcessAtomicity, collectInformalAtoms, canDeclareAtomic } from './refine/atomicity.js'
 export type { InformalAtomRef, ProcessAtomicity, ProcessAmbiguityReport } from './refine/atomicity.js'
