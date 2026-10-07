@@ -60,6 +60,23 @@ export interface L2Options {
   fsfBudgetMs?: number
   /** test hook: replace the solver call (e.g. force unknown/timeout) */
   solve?: (kind: 'exclusion' | 'completeness', run: () => Promise<SolveResult>) => Promise<SolveResult>
+  /** coverage collector: one entry per process with an FSF is pushed here (see scripts/l2-coverage.mjs) */
+  stats?: L2ProcessStats[]
+}
+
+export type L2Outcome = 'sat' | 'unsat' | 'unknown' | 'timeout' | 'skipped'
+export interface L2ProcessStats {
+  module: string
+  process: string
+  scenarios: number
+  hasOthers: boolean
+  /** 'l1-failed' | 'others-only' | 'no-solver' when L2 did not run at all */
+  skippedWhole?: string
+  /** per non-others test condition: encoded, or why not */
+  tests: Array<{ index: number; status: 'encoded' | 'informal' | 'unsupported' | 'error'; reason?: string }>
+  exclusion: Array<{ i: number; j: number; outcome: L2Outcome; skipReasons?: string[] }>
+  /** 'others' = complete by construction; 'n/a' when not applicable */
+  completeness: { outcome: L2Outcome | 'others'; skipReasons?: string[] }
 }
 
 // ---------- Z3 singleton ----------
@@ -421,8 +438,12 @@ export async function checkProcessFsfL2(
   const out: Diagnostic[] = []
   const p = proc.name
   const n = fsf.scenarios.length
-  if (n === 0) return [] // only `others`: trivially exclusive and complete
+  const st: L2ProcessStats = { module: module.name, process: p, scenarios: n, hasOthers: !!fsf.others, tests: [], exclusion: [],
+    completeness: { outcome: fsf.others ? 'others' : 'skipped' } }
+  opts.stats?.push(st)
+  if (n === 0) { st.skippedWhole = 'others-only'; return [] } // only `others`: trivially exclusive and complete
   if (checkProcessFsfL1(proc).some((d) => d.severity === 'error')) {
+    st.skippedWhole = 'l1-failed'
     return [createDiagnostic(DiagnosticCodes.FSF_L2_SKIPPED, `L2 check for '${p}' skipped: L1 failed`, 'warning', fsf.span)]
   }
   const needsSolver = n >= 2 || !fsf.others
@@ -432,6 +453,7 @@ export async function checkProcessFsfL2(
   if (!needsSolver) return out
   const Z = await getZ3()
   if (!Z) {
+    st.skippedWhole = 'no-solver'
     out.push(createDiagnostic(DiagnosticCodes.FSF_L2_SOLVER_UNAVAILABLE, 'Z3 solver unavailable; L2 checks disabled.', 'warning', fsf.span))
     return out
   }
@@ -441,8 +463,12 @@ export async function checkProcessFsfL2(
   fsf.scenarios.forEach((sc, i) => {
     try {
       T.push(enc.predicate(sc.test))
+      st.tests.push({ index: i + 1, status: 'encoded' })
     } catch (e) {
       T.push(null)
+      st.tests.push(e instanceof Informal ? { index: i + 1, status: 'informal', reason: 'natural-language atom' }
+        : e instanceof Unsupported ? { index: i + 1, status: 'unsupported', reason: e.construct }
+          : { index: i + 1, status: 'error', reason: String((e as Error)?.message ?? e) })
       if (e instanceof Informal) {
         out.push(createDiagnostic(DiagnosticCodes.FSF_L2_INFORMAL,
           `mutual exclusion / completeness checks for '${p}' involving test condition ${i + 1} skipped: test condition ${i + 1} contains informal text.`, 'warning', e.span))
@@ -469,6 +495,8 @@ export async function checkProcessFsfL2(
   }
   const solve = (kind: 'exclusion' | 'completeness', f: any) =>
     opts.solve ? opts.solve(kind, () => run(f)) : run(f)
+  const reasonsOf = (idx: number[]) => idx.filter((k) => !T[k]).map((k) => st.tests[k]!.reason ?? st.tests[k]!.status)
+  const outcomeOf = (r: SolveResult): L2Outcome => r.status === 'unknown' ? (/timeout|canceled/i.test(r.reason ?? '') ? 'timeout' : 'unknown') : r.status
   const unknownDiag = (check: string, r: SolveResult) => /timeout|canceled/i.test(r.reason ?? '')
     ? createDiagnostic(DiagnosticCodes.FSF_L2_TIMEOUT, `${check} check for '${p}' timed out after ${timeout} ms.`, 'warning', fsf.span)
     : createDiagnostic(DiagnosticCodes.FSF_L2_UNKNOWN, `Could not decide ${check} for '${p}' (solver returned unknown: ${r.reason ?? 'unknown'}).`, 'warning', fsf.span)
@@ -476,20 +504,24 @@ export async function checkProcessFsfL2(
   const pairs: Array<[number, number]> = []
   for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) if (n <= 20 || j === i + 1) pairs.push([i, j])
   for (const [i, j] of pairs) {
-    if (!T[i] || !T[j]) continue
+    if (!T[i] || !T[j]) { st.exclusion.push({ i: i + 1, j: j + 1, outcome: 'skipped', skipReasons: reasonsOf([i, j]) }); continue }
     const check = `mutual exclusion (scenarios ${i + 1},${j + 1})`
-    if (Date.now() > budgetEnd) { out.push(createDiagnostic(DiagnosticCodes.FSF_L2_TIMEOUT, `${check} check for '${p}' timed out (FSF budget exhausted).`, 'warning', fsf.span)); continue }
+    if (Date.now() > budgetEnd) { st.exclusion.push({ i: i + 1, j: j + 1, outcome: 'timeout' }); out.push(createDiagnostic(DiagnosticCodes.FSF_L2_TIMEOUT, `${check} check for '${p}' timed out (FSF budget exhausted).`, 'warning', fsf.span)); continue }
     const r = await solve('exclusion', Z.And(T[i], T[j]))
+    st.exclusion.push({ i: i + 1, j: j + 1, outcome: outcomeOf(r) })
     if (r.status === 'sat') {
       out.push(createDiagnostic(DiagnosticCodes.FSF_L2_OVERLAP,
         `FSF scenarios ${i + 1} and ${j + 1} of '${p}' are not mutually exclusive. Counterexample: ${r.model || '(any)'}`, 'error', fsf.scenarios[j]!.test.span))
     } else if (r.status === 'unknown') out.push(unknownDiag(check, r))
   }
+  if (!fsf.others && !T.every((t) => t)) st.completeness = { outcome: 'skipped', skipReasons: reasonsOf(T.map((_, k) => k)) }
   if (!fsf.others && T.every((t) => t)) {
     if (Date.now() > budgetEnd) {
+      st.completeness = { outcome: 'timeout' }
       out.push(createDiagnostic(DiagnosticCodes.FSF_L2_TIMEOUT, `completeness check for '${p}' timed out (FSF budget exhausted).`, 'warning', fsf.span))
     } else {
       const r = await solve('completeness', Z.Not(T.length === 1 ? T[0] : Z.Or(...T)))
+      st.completeness = { outcome: outcomeOf(r) }
       if (r.status === 'sat') {
         out.push(createDiagnostic(DiagnosticCodes.FSF_L2_INCOMPLETE,
           `FSF of '${p}' is incomplete: no test condition holds for ${r.model || '(some input)'}. Add a scenario or an 'others' branch.`, 'error', fsf.span))
