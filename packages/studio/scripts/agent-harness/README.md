@@ -22,12 +22,17 @@ This runs `npm ci`, builds the workspace packages and the harness, and records w
 
 The command prints the output directory and the key file:
 - **Output** (default `.harness/batch-<time>/`):
-  - `blinded/<runId>.asfl`: final hybrid specs to hand to coders.
-  - `runs/<runId>/`: manifest (tool commit, freeze check, harness sha256), final-diagnostics.json and
-    `.agile-sofl/llm-calls.jsonl`. The telemetry names the condition, so don't give `runs/` to coders.
-  - `batch.json` and `retries.log` (429/503 backoff).
+  - `blinded/<runId>/final.asfl` and `blinded/<runId>/steps/<n>.asfl`: final hybrid spec and the spec after
+    each approved step, to hand to coders.
+  - `runs/<runId>/`: manifest (maxApprovals, tool commit, freeze check, harness sha256), final-diagnostics.json,
+    `steps/<n>.asfl` with `steps.jsonl` / `steps.csv` (parser, L1 and L2 error/warning counts of every snapshot,
+    computed by the full checker regardless of condition), and `.agile-sofl/llm-calls.jsonl`. The telemetry
+    names the condition, so don't give `runs/` to coders. B0-auto has a single snapshot (step 1).
+  - `batch.json` (incl. `stepSummary`: per step n, mean counts over the ok runs that reached n, all conditions
+    pooled) and `retries.log` (429/503 backoff).
 - **Key file** (default `../../../agile-sofl-batch-keys/batch-<time>.key.json`, outside the outputs): maps each
-  run id to its system, condition, repeat, order and prompt hash.
+  run id to its system, condition, repeat, order, prompt hash and number of steps, plus `stepSummaryByGroup`
+  (the per-step aggregate per system/condition).
 
 The batch aborts on a prompt-hash mismatch within a system, or after 3 consecutive run errors.
 Condition B0-auto is the rule-based generator (`@agile-sofl/aspec` `refineAspecWithCheck`); it makes no LLM calls.

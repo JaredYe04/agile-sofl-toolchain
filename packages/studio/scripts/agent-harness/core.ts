@@ -34,6 +34,20 @@ export interface RunOptions {
   runId?: string
   /** extra fields written into manifest.json (e.g. commit provenance from the batch runner) */
   manifestExtra?: Record<string, unknown>
+  /** called after every approved step with the spec as it stands after applying it (before the agent resumes) */
+  onStep?: (step: StepInfo) => Promise<void> | void
+}
+
+export interface StepInfo {
+  runId: string
+  runDir: string
+  /** 1-based index of the approved step */
+  step: number
+  hybrid: string
+  /** the tool whose proposal was approved, e.g. propose_hybrid_changes */
+  tool: string
+  applied: boolean
+  applyError?: string
 }
 
 export interface RunResult {
@@ -107,20 +121,25 @@ export async function runOnce(o: RunOptions): Promise<RunResult> {
     }
     const patch = pending.proposedChanges!
     let payload: Record<string, unknown>
+    let applied = false, applyError: string | undefined
     if (patch.target === 'hybrid') {
       const r = applyHybridProposal(ctx.hybridAsfl ?? '', patch, runDir)
       ctx.hybridAsfl = r.content
       writeFileSync(join(runDir, 'hybrid.asfl'), r.content)
       payload = r.error ? { action: r.applied ? 'applied' : 'error', error: r.error } : { action: 'applied' }
+      applied = r.applied; applyError = r.error
     } else {
       payload = { action: 'error', error: `harness only applies hybrid proposals (got ${patch.target})` }
+      applyError = String(payload.error)
     }
     approvals++
+    const tool = pending.toolCalls?.find((t) => t.id === toolId)?.name ?? (patch.target === 'hybrid' ? 'propose_hybrid_changes' : 'unknown')
+    await o.onStep?.({ runId, runDir, step: approvals, hybrid: ctx.hybridAsfl ?? '', tool, applied, applyError })
     session = await resumeWithToolResult(session, runDir, ctx, toolId, JSON.stringify(payload), undefined, approvals < maxApprovals)
     if (approvals >= maxApprovals) { stopReason = 'approval budget reached'; break }
   }
   writeFileSync(join(runDir, 'hybrid.asfl'), ctx.hybridAsfl ?? '')
-  writeFileSync(join(runDir, 'manifest.json'), JSON.stringify({ runId, promptHash: hash, skillId, approvals, stopReason, temperature: PILOT_TEMPERATURE, ...o.manifestExtra }, null, 2))
+  writeFileSync(join(runDir, 'manifest.json'), JSON.stringify({ runId, promptHash: hash, skillId, approvals, maxApprovals, stopReason, temperature: PILOT_TEMPERATURE, ...o.manifestExtra }, null, 2))
   return { runId, runDir, condition: o.condition, promptHash: hash, approvals, stopReason, hybridChars: (ctx.hybridAsfl ?? '').length }
 }
 

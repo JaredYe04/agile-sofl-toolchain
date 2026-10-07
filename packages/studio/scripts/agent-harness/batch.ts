@@ -10,9 +10,13 @@
  * - Refuses to run (exit 2) unless the tool source equals exp-freeze-v1.2 and the workspace dists are
  *   fresh (see freeze.ts); use prepare-v12.mjs to build a v1.2 worktree. --dry-run reports but continues.
  * - Runs are executed in a random interleaved order; run ids are random hex. The id -> (system, condition,
- *   repeat, order) key goes ONLY to --key-file, which must be outside --out. Coders get out/blinded/<id>.asfl.
+ *   repeat, order) key goes ONLY to --key-file, which must be outside --out. Coders get out/blinded/<id>/
+ *   (final.asfl + steps/<n>.asfl).
  *   (out/runs/<id>/ keeps telemetry, which names the condition: do not hand runs/ to coders.)
- * - Every manifest records toolCommit, freeze tag/commit, freeze check result and the harness sha256.
+ * - After every approved step the spec is snapshotted (runs/<id>/steps/<n>.asfl, blinded/<id>/steps/<n>.asfl)
+ *   and checked by the full checker (parser+L1+L2) -> runs/<id>/steps.jsonl + steps.csv; batch.json gets a
+ *   pooled per-step aggregate, the key file a per system/condition one. B0-auto has one snapshot.
+ * - Every manifest records maxApprovals, toolCommit, freeze tag/commit, freeze check result and the harness sha256.
  * - LLM runs of one system must share one prompt hash, otherwise the batch aborts.
  * - --dry-run: no LLM/network calls at all (fetch is replaced by a local fake), no API key needed.
  * - Never prints the API key (stdout/stderr are redacted).
@@ -24,6 +28,7 @@ import { execFileSync } from 'node:child_process'
 import { install429Retry, runOnce } from './core'
 import { runB0Auto } from './b0auto'
 import { freezeStatus, harnessSha, isInside, FREEZE_TAG } from './freeze'
+import { aggregateSteps, recordStep, type StepRecord } from './steps'
 import { getEnvLlmFallback } from '../../src/main/services/llm/env'
 import { diagnosticCounts, getExperimentConfig } from '../../src/main/services/llm/experiment'
 
@@ -50,15 +55,16 @@ function sse(chunks: unknown[]): Response {
   const body = chunks.map((c) => `data: ${JSON.stringify(c)}\n\n`).join('') + 'data: [DONE]\n\n'
   return new Response(body, { status: 200, headers: { 'Content-Type': 'text/event-stream' } })
 }
-/** Local fake for --dry-run: first call of a turn proposes a tiny module, the follow-up stops. No network. */
+/** Local fake for --dry-run: proposes a tiny module per call (up to DRY_RUN_PROPOSALS per run), then stops. No network. */
+export const DRY_RUN_PROPOSALS = 3
 export function installDryRunFetch(): void {
   globalThis.fetch = (async (_url: unknown, init?: { body?: unknown }) => {
     const body = JSON.parse(String(init?.body ?? '{}')) as { messages?: Array<{ role: string }> }
-    const last = body.messages?.at(-1)?.role
+    const toolResults = body.messages?.filter((m) => m.role === 'tool').length ?? 0
     const usage = { model: 'dry-run', choices: [], usage: { prompt_tokens: 0, completion_tokens: 0 } }
-    if (last === 'tool') return sse([{ model: 'dry-run', choices: [{ delta: { content: 'dry-run done' }, finish_reason: 'stop' }] }, usage])
+    if (toolResults >= DRY_RUN_PROPOSALS) return sse([{ model: 'dry-run', choices: [{ delta: { content: 'dry-run done' }, finish_reason: 'stop' }] }, usage])
     return sse([
-      { model: 'dry-run', choices: [{ delta: { tool_calls: [{ index: 0, id: `dry-${randomBytes(3).toString('hex')}`, function: { name: 'propose_hybrid_changes', arguments: JSON.stringify({ explanation: 'dry run', operations: [{ op: 'add', kind: 'module', name: 'SYSTEM_DryRun' }] }) } }] } }] },
+      { model: 'dry-run', choices: [{ delta: { tool_calls: [{ index: 0, id: `dry-${randomBytes(3).toString('hex')}`, function: { name: 'propose_hybrid_changes', arguments: JSON.stringify({ explanation: 'dry run', operations: [{ op: 'add', kind: 'module', name: `SYSTEM_DryRun${toolResults + 1}` }] }) } }] } }] },
       { model: 'dry-run', choices: [{ delta: {}, finish_reason: 'tool_calls' }] }, usage
     ])
   }) as typeof fetch
@@ -80,7 +86,7 @@ export async function runBatch(o: BatchOptions) {
   if (existsSync(keyFile)) throw new Error(`key file already exists: ${keyFile}`)
   const batchId = randomBytes(4).toString('hex')
   const hsha = harnessSha(o.harnessDir)
-  const provenance = { batchId, toolCommit: fz.head, freezeTag: fz.freezeTag, freezeCommit: fz.freezeCommit, freezeCheckOk: fz.ok, harnessSha256: hsha, dryRun: o.dryRun }
+  const provenance = { batchId, toolCommit: fz.head, freezeTag: fz.freezeTag, freezeCommit: fz.freezeCommit, freezeCheckOk: fz.ok, harnessSha256: hsha, dryRun: o.dryRun, maxApprovals: o.maxApprovals }
 
   if (o.dryRun) installDryRunFetch()
   else install429Retry(join(out, 'retries.log'))
@@ -97,6 +103,8 @@ export async function runBatch(o: BatchOptions) {
   writeFileSync(join(out, 'batch.json'), JSON.stringify({ ...provenance, startedAt: key.createdAt, totalRuns: schedule.length, systems: o.systems, conditions: o.conditions, repeats: o.repeats, maxApprovals: o.maxApprovals, keyFile: '(kept outside the outputs)' }, null, 2))
   mkdirSync(join(out, 'blinded'), { recursive: true })
   const evalCfg = getExperimentConfig(undefined, { AGILE_SOFL_CONDITION: 'T', AGILE_SOFL_TELEMETRY: '0' })
+  const counts = (asfl: string) => diagnosticCounts(asfl, evalCfg)
+  const stepsByRun = new Map<string, StepRecord[]>()
   const hashBySystem = new Map<string, string>()
   let consecutiveErrors = 0
   for (const [order, item] of schedule.entries()) {
@@ -104,12 +112,20 @@ export async function runBatch(o: BatchOptions) {
     const informalPath = join(o.repo, SYSTEMS[item.system]!)
     const entry: Record<string, unknown> = { runId, order: order + 1, ...item, startedAt: new Date().toISOString() }
     key.runs.push(entry); saveKey()
+    const blindedDir = join(out, 'blinded', runId)
+    const steps: StepRecord[] = []
+    stepsByRun.set(runId, steps)
     try {
       let runDir: string
       if (item.condition === 'B0-auto') {
         runDir = runB0Auto({ informalPath, outDir: out, runId, manifestExtra: provenance }).runDir
+        // single snapshot: the generator output
+        steps.push(await recordStep({ runDir, blindedDir, counts }, { step: 1, hybrid: readFileSync(join(runDir, 'hybrid.asfl'), 'utf-8'), tool: 'b0-auto-generator', applied: true }))
       } else {
-        const r = await runOnce({ condition: item.condition, informalPath, outDir: out, maxApprovals: o.maxApprovals, runId, manifestExtra: provenance })
+        const r = await runOnce({
+          condition: item.condition, informalPath, outDir: out, maxApprovals: o.maxApprovals, runId, manifestExtra: provenance,
+          onStep: async (s) => { steps.push(await recordStep({ runDir: s.runDir, blindedDir, counts }, s)) }
+        })
         runDir = r.runDir
         entry.promptHash = r.promptHash; entry.approvals = r.approvals; entry.stopReason = r.stopReason
         const prev = hashBySystem.get(item.system)
@@ -118,7 +134,9 @@ export async function runBatch(o: BatchOptions) {
       }
       const hybrid = readFileSync(join(runDir, 'hybrid.asfl'), 'utf-8')
       writeFileSync(join(runDir, 'final-diagnostics.json'), JSON.stringify({ evaluationOnly: 'full checker (parser+L1+L2) on the final hybrid, independent of condition', ...(await diagnosticCounts(hybrid, evalCfg)) }, null, 2))
-      writeFileSync(join(out, 'blinded', `${runId}.asfl`), hybrid)
+      mkdirSync(blindedDir, { recursive: true })
+      writeFileSync(join(blindedDir, 'final.asfl'), hybrid)
+      entry.steps = steps.length
       entry.status = 'ok'; entry.finishedAt = new Date().toISOString()
       consecutiveErrors = 0
       log(`[${order + 1}/${schedule.length}] run ${runId} ok`)
@@ -132,7 +150,15 @@ export async function runBatch(o: BatchOptions) {
     saveKey()
   }
   const done = key.runs.filter((r) => r.status === 'ok').length
-  writeFileSync(join(out, 'batch.json'), JSON.stringify({ ...JSON.parse(readFileSync(join(out, 'batch.json'), 'utf-8')), finishedAt: new Date().toISOString(), okRuns: done }, null, 2))
+  const okRuns = key.runs.filter((r) => r.status === 'ok')
+  // blind-safe per-step aggregate (all ok runs pooled) -> batch.json; per system x condition -> key file only
+  const stepSummary = aggregateSteps(okRuns.map((r) => stepsByRun.get(String(r.runId)) ?? []))
+  const groups = new Map<string, StepRecord[][]>()
+  for (const r of okRuns) { const g = `${r.system}/${r.condition}`; groups.set(g, [...(groups.get(g) ?? []), stepsByRun.get(String(r.runId)) ?? []]) }
+  Object.assign(key, { stepSummaryByGroup: Object.fromEntries([...groups].map(([g, rs]) => [g, aggregateSteps(rs)])) })
+  saveKey()
+  writeFileSync(join(out, 'batch.json'), JSON.stringify({ ...JSON.parse(readFileSync(join(out, 'batch.json'), 'utf-8')), finishedAt: new Date().toISOString(), okRuns: done,
+    stepSummaryNote: 'per approved step n, over ok runs that reached n, all conditions pooled (full checker on runs/<id>/steps/<n>.asfl; per-condition breakdown is in the key file)', stepSummary }, null, 2))
   return { batchId, out, keyFile, total: schedule.length, ok: done, provenance }
 }
 
