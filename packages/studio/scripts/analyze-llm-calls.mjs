@@ -12,7 +12,7 @@ export function analyze(records, by = 'condition') {
   const groups = new Map()
   const g = (key) => {
     if (!groups.has(key)) groups.set(key, {
-      group: key, llmCalls: 0, llmErrors: 0, promptTokens: 0, completionTokens: 0, latencyMs: [],
+      group: key, llmCalls: 0, llmErrors: 0, reasoningOff: 0, reasoningKnown: 0, retries: 0, promptTokens: 0, completionTokens: 0, latencyMs: [],
       proposals: { approved: 0, rejected: 0, error: 0 }, refine: { approved: 0, rejected: 0, error: 0 }, byStep: {},
       writes: [], lastBySession: new Map()
     })
@@ -23,6 +23,8 @@ export function analyze(records, by = 'condition') {
     if (r.event === 'llm_call') {
       x.llmCalls++
       if (!r.ok) x.llmErrors++
+      if (r.reasoning != null) { x.reasoningKnown++; if (r.reasoning === 'off') x.reasoningOff++ }
+      if ((r.attempt ?? 1) > 1) x.retries++
       x.promptTokens += r.promptTokens ?? 0
       x.completionTokens += r.completionTokens ?? 0
       if (typeof r.latencyMs === 'number') x.latencyMs.push(r.latencyMs)
@@ -51,6 +53,11 @@ export function analyze(records, by = 'condition') {
     group: x.group,
     llmCalls: x.llmCalls,
     llmErrors: x.llmErrors,
+    // share of calls sent with thinking disabled (reasoning 'off'); null when no call carries the field
+    reasoningOffShare: x.reasoningKnown ? +(x.reasoningOff / x.reasoningKnown).toFixed(4) : null,
+    // retry calls (attempt > 1) per first attempt
+    retryRate: x.llmCalls - x.retries ? +(x.retries / (x.llmCalls - x.retries)).toFixed(4) : null,
+    retries: x.retries,
     promptTokens: x.promptTokens,
     completionTokens: x.completionTokens,
     meanLatencyMs: mean(x.latencyMs),
@@ -81,10 +88,10 @@ if (isMain) {
   const res = analyze(readJsonl(files), by)
   if (!csv) console.log(JSON.stringify(res, null, 2))
   else {
-    const cols = ['group', 'llmCalls', 'promptTokens', 'completionTokens', 'meanLatencyMs', 'proposalApprovalRate', 'refineApprovalRate', 'writes',
+    const cols = ['group', 'llmCalls', 'promptTokens', 'completionTokens', 'meanLatencyMs', 'reasoningOffShare', 'retryRate', 'proposalApprovalRate', 'refineApprovalRate', 'writes',
       ...['parser', 'l1', 'l2'].flatMap((l) => [`${l}_error`, `${l}_warning`]).map((c) => `last_${c}`)]
     console.log(cols.join(','))
-    for (const r of res) console.log([r.group, r.llmCalls, r.promptTokens, r.completionTokens, r.meanLatencyMs, r.proposals.approvalRate, r.refinementSteps.approvalRate, r.postWrite.writes,
+    for (const r of res) console.log([r.group, r.llmCalls, r.promptTokens, r.completionTokens, r.meanLatencyMs, r.reasoningOffShare, r.retryRate, r.proposals.approvalRate, r.refinementSteps.approvalRate, r.postWrite.writes,
       ...['parser', 'l1', 'l2'].flatMap((l) => [r.postWrite.lastPerSessionMean[`${l}_error`], r.postWrite.lastPerSessionMean[`${l}_warning`]])].join(','))
   }
 }

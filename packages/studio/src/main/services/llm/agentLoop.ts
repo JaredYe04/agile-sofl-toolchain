@@ -1,5 +1,6 @@
 import { chatEcnuStream, isChatAborted, type ChatMessage, type ChatStreamDelta } from './chatEcnu'
 import { getEcnuConfig } from './profiles'
+import { reasoningEffortFor } from './chatEcnu'
 import { AGENT_TOOLS, skillById } from './skills'
 import type {
   AgentMessage,
@@ -517,12 +518,21 @@ function attachStreamDeltas(live: AgentMessage, sink?: AgentStreamSink) {
   }
 }
 
+/** short, key-free reason for the thinking-disabled retry (telemetry only) */
+export function retryReasonOf(e: unknown): string {
+  const msg = e instanceof Error ? e.message : String(e)
+  const status = /\b(4\d\d|5\d\d)\b/.exec(msg)?.[1]
+  return (status ? `HTTP ${status}: ` : '') + msg.replace(/\b(sk-[A-Za-z0-9_-]{8,}|Bearer\s+\S+)/g, '[redacted]').slice(0, 120)
+}
+
 /** chatEcnuStream + per-call telemetry (model, tokens, latency, condition). Never logs API keys. */
 async function loggedStream(
   projectRoot: string,
   sessionId: string,
-  options: Parameters<typeof chatEcnuStream>[0]
+  options: Parameters<typeof chatEcnuStream>[0],
+  meta: { attempt: number; retryReason?: string } = { attempt: 1 }
 ): ReturnType<typeof chatEcnuStream> {
+  const callMeta = { reasoning: reasoningEffortFor(options.thinking), attempt: meta.attempt, ...(meta.retryReason ? { retryReason: meta.retryReason } : {}) }
   const cfg = getExperimentConfig(projectRoot)
   announceCondition(projectRoot, sessionId, cfg)
   const t0 = Date.now()
@@ -536,6 +546,7 @@ async function loggedStream(
       completionTokens: c.usage?.completionTokens ?? null,
       latencyMs: Date.now() - t0,
       ok: true,
+      ...callMeta,
       finishReason: c.finishReason,
       toolCalls: c.toolCalls.map((t) => t.function.name),
       promptChars,
@@ -550,6 +561,7 @@ async function loggedStream(
       completionTokens: null,
       latencyMs: Date.now() - t0,
       ok: false,
+      ...callMeta,
       promptChars,
       error: e instanceof Error ? e.message.slice(0, 200) : String(e).slice(0, 200)
     })
@@ -657,7 +669,7 @@ export async function runAgentTurn(
           thinking: false,
           signal,
           onDelta: streamDeltas.onDelta
-        })
+        }, { attempt: 2, retryReason: retryReasonOf(first) })
       } catch (err) {
         streamDeltas.flush()
         live.streaming = false

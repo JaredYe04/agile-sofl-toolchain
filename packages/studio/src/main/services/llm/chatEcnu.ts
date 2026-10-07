@@ -142,6 +142,11 @@ export async function chatEcnu(options: {
   }
 }
 
+/** reasoning_effort actually sent for a streaming request ('off' = thinking disabled, field omitted). */
+export function reasoningEffortFor(thinking?: boolean): 'low' | 'off' {
+  return thinking === false ? 'off' : 'low'
+}
+
 export async function chatEcnuStream(options: {
   messages: ChatMessage[]
   tools?: ChatTool[]
@@ -156,7 +161,8 @@ export async function chatEcnuStream(options: {
     stream: true,
     thinking: { type: options.thinking === false ? 'disabled' : 'enabled' }
   }
-  if (options.thinking !== false) body.reasoning_effort = 'low'
+  const effort = reasoningEffortFor(options.thinking)
+  if (effort !== 'off') body.reasoning_effort = effort
   if (options.tools?.length) body.tools = options.tools
   // ask OpenAI-compatible providers to send token usage in the final chunk (telemetry)
   body.stream_options = { include_usage: true }
