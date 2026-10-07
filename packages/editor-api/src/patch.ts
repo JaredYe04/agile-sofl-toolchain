@@ -38,9 +38,13 @@ function fsfPatchSpan(source: string, fsf: { span: { start: number; end: number 
   start: number
   end: number
 } {
-  const header = source.lastIndexOf('FSF :', fsf.span.start)
-  if (header >= 0 && fsf.span.start - header <= 8) {
-    return { start: header, end: fsf.span.end }
+  // Include the `FSF :` / `FSF:` header (any whitespace before the first scenario).
+  // Previously only matched `FSF :` within 8 chars, duplicating the header when the
+  // body started on an indented next line.
+  const before = source.slice(Math.max(0, fsf.span.start - 64), fsf.span.start)
+  const m = /FSF\s*:\s*$/.exec(before)
+  if (m) {
+    return { start: fsf.span.start - before.length + m.index, end: fsf.span.end }
   }
   return fsf.span
 }
@@ -243,4 +247,24 @@ export function getInformalSpans(source: string, ast: ProgramNode) {
   }
   void source
   return spans
+}
+
+/**
+ * Replace (or insert) the whole `FSF :` clause of a process with final-grammar FSF text
+ * `T1 && D1 || … || others && Dn`. Existing pre/post clauses are left untouched.
+ */
+export function patchProcessFsfText(source: string, processName: string, fsfText: string): string {
+  const { ast } = parse(source)
+  if (!ast || ast.type !== 'program') return source
+  const proc = findProcess(ast, processName)
+  if (!proc) return source
+  const body = fsfText.trim().replace(/^FSF\s*:\s*/i, '')
+  const block = `FSF :\n    ${body}`
+  const fsf = proc.body?.fsf
+  if (fsf) return replaceSpan(source, fsfPatchSpan(source, fsf), block)
+  const slice = source.slice(proc.span.start, proc.span.end)
+  const m = /\n([ \t]*)(?:decom\s*:|comment\s*:|end_process)/.exec(slice)
+  if (!m) return source
+  const at = proc.span.start + m.index
+  return source.slice(0, at) + `\n${m[1] || '    '}${block}` + source.slice(at)
 }

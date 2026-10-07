@@ -75,8 +75,8 @@ export function buildRefineAgentBootstrap(
       msgEn: processName
         ? `Process "${processName}" in ${moduleName} is a stub. Write real ports, pre/post with others, and place it on the CDFD. A name-only declaration is not complete.`
         : 'Flesh out every stub process (name only, no pre/post/decom). A signature is not a finished specification.',
-      extraZh: '用 replace-process-body 或 propose_refinement_step；pre/post 不要写 FSF :。',
-      extraEn: 'Use replace-process-body or propose_refinement_step; never write FSF :.'
+      extraZh: '用 replace-process-body（fsf 字段）或 propose_refinement_step；按终版语法写 FSF：FSF : T1 && D1 || T2 && D2 || … || others && Dn。',
+      extraEn: 'Use replace-process-body (fsf field) or propose_refinement_step; write FSF in final-grammar form: FSF : T1 && D1 || T2 && D2 || … || others && Dn.'
     },
     'formalize-atoms': {
       titleZh: '形式化 informal 原子',

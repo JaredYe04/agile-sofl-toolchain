@@ -52,13 +52,13 @@ export const AGENT_SKILLS: Array<{ id: AgentSkillId; name: string; prompt: strin
 Agile-SOFL architecture:
 - Exactly one top-level SYSTEM_ module named after the whole system (e.g. SYSTEM_FoodDelivery). It is the system module; other modules are children (module Auth / FoodDelivery;).
 - Add SYSTEM_ first (it is inserted at the file start). Then add semantic modules with parentId=mod:SYSTEM_…. A GUI_ module is a child, not the system module.
-- Process signatures default to () when ports are unknown. Never invent dummy (x: nat) ok: nat. Write real inputs/outputs when they exist. Invariants use implies or =>.
+- Process signatures default to () when ports are unknown. Never invent dummy (x: nat) ok: nat. Write real inputs/outputs when they exist. There is no implication operator; write not A or B.
 Pipeline — keep going after each applied patch until every enabled stage is done, then summarize:
 1. Read Informal and Hybrid inventories. If Hybrid already exists and strategy is ask, call ask_clarification (merge vs rebuild).
 2. Module architecture: add the SYSTEM_ module, then each semantic module (and a GUI module) with propose_hybrid_changes op=add kind=module. Do not paste module source.
 3. Per module: add types/variables from Data Resources (kind=type|var, parentId=mod:…).
-4. Per module: add process signatures from Functions (kind=process, pre/post).
-5. Per process: replace-process-body or add scenarios. Write structured natural-language pre/post, never FSF :. Enumerations use {<Tag>}.
+4. Per module: add process signatures from Functions (kind=process).
+5. Per process: replace-process-body or add scenarios. Write the FSF (FSF : T1 && D1 || T2 && D2 || … || others && Dn); Ti/Di may be structured natural language at this stage. Enumerations use {<Tag>}.
 6. Add invariants (kind=inv) from Constraints. Do NOT dump GUI widgets into Hybrid CRUD.
 7. For UI, call read_gui_specification then propose_gui_changes. Each screen is its own HTML page (data-screen) with data-nav to sibling screens so the prototype can click-switch. Build a high-fidelity HTML prototype (shell, sidebar, hero, cards, forms, lists, empty states) — not a page of three buttons. Use whitelist tags plus any as-* class. Bind with data-process / data-bind / data-nav. Prefer replace-screen-html with the full inner layout of that one screen. Hybrid gui blocks stay as slim screen→process traces.
 After every applied write, call read_hybrid_specification / read_gui_specification and fix gaps until inventories are correct.
@@ -251,7 +251,7 @@ export const AGENT_TOOLS = [
     function: {
       name: 'propose_hybrid_changes',
       description:
-        'Propose an incremental Hybrid/.asfl CRUD patch against inventory ids (mod:, proc:Module.Name). Prefer this over source edits. SYSTEM_ is the unique top-level system module (named after the whole system) and is inserted first; other modules use parentId=mod:SYSTEM_…. Default process signature is (). Never emit raw SOFL or replace-document here. Use add/update/remove/replace-process-body. Write pre/post, not FSF :. Invariants may use implies or =>.',
+        'Propose an incremental Hybrid/.asfl CRUD patch against inventory ids (mod:, proc:Module.Name). Prefer this over source edits. SYSTEM_ is the unique top-level system module (named after the whole system) and is inserted first; other modules use parentId=mod:SYSTEM_…. Default process signature is (). Never emit raw SOFL or replace-document here. Use add/update/remove/replace-process-body. Write process logic as FSF via replace-process-body.fsf: FSF : T1 && D1 || T2 && D2 || … || others && Dn. There is no implication operator; write not A or B.',
       parameters: {
         type: 'object',
         properties: {
@@ -283,6 +283,7 @@ export const AGENT_TOOLS = [
                 parentId: { type: 'string', description: 'add: parent mod: or proc: id' },
                 name: { type: 'string' },
                 text: { type: 'string' },
+                fsf: { type: 'string', description: 'replace-process-body: final-grammar FSF "FSF : T1 && D1 || T2 && D2 || … || others && Dn"' },
                 pre: { type: 'string' },
                 post: { type: 'string' },
                 signature: { type: 'string' },

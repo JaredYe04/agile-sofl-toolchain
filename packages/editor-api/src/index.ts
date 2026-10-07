@@ -97,6 +97,7 @@ export type { ModulePatchAction } from './modulePatch.js'
 
 export {
   patchFsfSpec,
+  patchProcessFsfText,
   patchProcessCondition,
   patchComment,
   patchDecom,

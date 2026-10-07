@@ -25,6 +25,7 @@ import { addModule, removeModule, renameModule, setModuleParent } from './module
 import {
   patchComment,
   patchFsfSpec,
+  patchProcessFsfText,
   patchInvariant,
   patchProcessCondition
 } from './patch.js'
@@ -87,7 +88,7 @@ export type HybridPatchOp =
       scenarios?: HybridScenarioInput[]
     }
   | { op: 'remove'; id: string }
-  | { op: 'replace-process-body'; id: string; pre?: string; post?: string }
+  | { op: 'replace-process-body'; id: string; pre?: string; post?: string; /** Final-grammar FSF text `T1 && D1 || … || others && Dn` */ fsf?: string }
   | { op: 'replace-document'; asflText: string }
   | {
       op: 'refine-step'
@@ -1016,8 +1017,8 @@ function applyReplaceBody(
   source: string,
   op: Extract<HybridPatchOp, { op: 'replace-process-body' }>
 ): OpResult {
-  if (op.pre === undefined && op.post === undefined) {
-    return err('replace-process-body requires pre or post')
+  if (op.pre === undefined && op.post === undefined && op.fsf === undefined) {
+    return err('replace-process-body requires fsf, pre or post')
   }
   let resolved = resolveEntity(source, op.id)
   if (!resolved || resolved.kind !== 'process') {
@@ -1031,6 +1032,11 @@ function applyReplaceBody(
   let next = source
   if (op.pre !== undefined) next = patchProcessCondition(next, resolved.name, 'pre', op.pre)
   if (op.post !== undefined) next = patchProcessCondition(next, resolved.name, 'post', op.post)
+  if (op.fsf !== undefined) {
+    const patched = patchProcessFsfText(next, resolved.name, op.fsf)
+    if (patched === next) return err(`Cannot write FSF for process ${resolved.name}`)
+    next = patched
+  }
   return ok(next)
 }
 

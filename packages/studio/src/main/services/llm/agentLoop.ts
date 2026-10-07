@@ -172,14 +172,14 @@ Do not invent YAML frontmatter or document-level metadata.`
 
   const hybridGuide = permissions.hybrid.write
     ? `For propose_hybrid_changes, operate on Hybrid inventory ids with CRUD only:
-- add: kind (module|type|var|const|inv|process|function|scenario|gui-screen) + parentId (mod:Module or proc:Module.Name) + name. Bare ids like proc:Login or Chinese titles are resolved when possible, but prefer inventory ids. Types/vars/invs use text. Processes use pre/post/signature — NEVER FSF :. If ports are unknown, signature is () — do not invent dummy (x: nat) ok: nat.
+- add: kind (module|type|var|const|inv|process|function|scenario|gui-screen) + parentId (mod:Module or proc:Module.Name) + name. Bare ids like proc:Login or Chinese titles are resolved when possible, but prefer inventory ids. Types/vars/invs use text. Processes use signature + FSF (final grammar): FSF : T1 && D1 || T2 && D2 || … || others && Dn (Ti = test condition over inputs and ~x initial values, never outputs; Di = defining condition that constrains outputs / written ext vars). Inside Ti/Di use and, or, not; && and || only separate scenarios. If ports are unknown, signature is () — do not invent dummy (x: nat) ok: nat.
 - update / remove: id of existing entity (mod:, proc:, type:, var:, inv:, scn:, gui:). Removing a parent module rewrites child headers (drops / Parent).
-- replace-process-body: id of proc:, set pre and/or post (structured NL or predicate; implies and => are valid).
+- replace-process-body: id of proc:, set fsf to the full FSF text "FSF : T1 && D1 || T2 && D2 || … || others && Dn" (structured natural language is allowed inside Ti/Di). Use pre/post only for legacy documents that already use them.
 FORBIDDEN: replace-document, asflText, dumping several modules as one string, "-- comments" as source.
 Add SYSTEM_ first, then one semantic module at a time with parentId pointing at the system module, then its types/vars/invs/processes as separate operations. Prefer updating an existing id over adding a duplicate.
 Never put end_module, a whole module, or a process block inside type/var/inv/pre/post text — that wipes the document.
 After a write is applied, call read_hybrid_specification and keep patching until the inventory matches the plan and Diagnostics lists no syntax errors. A module with processes and no cdfd is backward compatible — do not add a cdfd just to clear a warning.
-Formalize informal pre/post atoms only via propose_refinement_step kind=FormalizePredicate.
+Formalize informal FSF atoms only via propose_refinement_step kind=FormalizePredicate.
 Decompose a process with kind=DecomposeProcess (child module, empty cdfd, matching ports, decom set to that module).
 Write or replace a module CDFD with kind=SetCdfd: moduleName plus toText, either a full "cdfd ... end_cdfd" block or the inner lines. One cdfd per module. Syntax:
   port in <name> / port out <name>
@@ -247,7 +247,7 @@ Agile-SOFL conventions:
 - There is exactly one system module. Name it SYSTEM_<SystemName> after the whole product (e.g. SYSTEM_FoodDelivery). It is the root; every other module is a child: module Auth / FoodDelivery;
 - SYSTEM_ is listed first in the .asfl file. Do not treat GUI_App or a feature module as the system module.
 - Processes without known ports use signature (). Inventing (x: nat) ok: nat is wrong.
-- Invariants and pre/post may use implies or =>.
+- There is no implication operator: write not A or B instead. Process logic is written as FSF: FSF : T1 && D1 || T2 && D2 || … || others && Dn.
 - GUI is a walkable high-fidelity prototype, not a wireframe of a few buttons.
 
 Never claim you already modified the file. Writes go through propose_* tools. User Apply/Reject (or auto-write) is only a tool result — you MUST continue the same task.

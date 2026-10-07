@@ -84,7 +84,7 @@ export function validateAgentPatch(
           'replace-document / asflText is not allowed on CRUD. Use add/update/remove, or call propose_source_edit for a source-level fix.'
       }
     }
-    const blobs = [op.text, op.pre, op.post, op.comment, op.signature]
+    const blobs = [op.text, op.fsf, op.pre, op.post, op.comment, op.signature]
     for (const blob of blobs) {
       if (typeof blob !== 'string') continue
       if (/\b(?:module|system)\b[\s\S]{6,}end_module\b/i.test(blob) || /\bend_module\b/i.test(blob)) {
