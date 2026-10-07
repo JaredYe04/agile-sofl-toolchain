@@ -1,3 +1,4 @@
+import { conditionNotice, getExperimentConfig } from './services/llm/experiment'
 import { app, ipcMain, BrowserWindow } from 'electron'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
@@ -88,6 +89,8 @@ function createWindow(): void {
 
 app.whenReady().then(async () => {
   loadStudioEnv()
+  // experiment condition at startup (project-level experiment.json is re-read per agent session)
+  console.warn(conditionNotice(getExperimentConfig()))
   registerFileHandlers(getWindow)
   registerWindowHandlers(getWindow)
   registerProjectHandlers(getWindow)

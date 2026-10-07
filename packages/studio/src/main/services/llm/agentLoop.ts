@@ -10,7 +10,7 @@ import type {
 import { newId, normalizePermissions, type AgentSpecPermissions } from './agentTypes'
 import { saveSession as writeSession } from './sessionStore'
 import { informalInventoryFromMarkdown } from '@agile-sofl/aspec/dist/informal/inventory.js'
-import { getExperimentConfig, logTelemetry, semanticDiagnostics, diagnosticCounts } from './experiment'
+import { announceCondition, getExperimentConfig, logTelemetry, semanticDiagnostics, diagnosticCounts } from './experiment'
 import { formatHybridInventory, formatHybridDiagnostics, collectHybridAgentDiagnostics, formatRefinementDigest } from '@agile-sofl/editor-api'
 import { formatGuiInventory, numberedGuiSource } from '@agile-sofl/gui'
 import { formatClarificationToolContent } from '../../../shared/clarificationAnswer'
@@ -524,6 +524,7 @@ async function loggedStream(
   options: Parameters<typeof chatEcnuStream>[0]
 ): ReturnType<typeof chatEcnuStream> {
   const cfg = getExperimentConfig(projectRoot)
+  announceCondition(projectRoot, sessionId, cfg)
   const t0 = Date.now()
   const promptChars = JSON.stringify(options.messages).length
   try {

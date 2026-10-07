@@ -2,8 +2,11 @@
  * Experiment switch + per-call LLM telemetry (evaluation of LLM-assisted hybrid spec construction).
  *
  * Configuration (env overrides <projectRoot>/.agile-sofl/experiment.json):
- *   AGILE_SOFL_CONDITION   experiment condition label, e.g. "B1" (agent + checks, default "B1")
- *                          or "B2" (agent on, semantic checks off)
+ *   AGILE_SOFL_CONDITION   paper condition: "T" (full tool: agent + parser + L1 + L2; DEFAULT, so an
+ *                          unset config never runs a control group) or "B2" (agent + parser feedback
+ *                          only, L1/L2 off). "B0"/"B1" are baselines run OUTSIDE this tool (B1 = generic
+ *                          chat LLM); the studio has no B0/B1 mode: if set, behaviour is identical to T
+ *                          and only the label is recorded, with a warning. Unknown labels likewise.
  *   AGILE_SOFL_PARTICIPANT participant id (default "anonymous")
  *   AGILE_SOFL_TELEMETRY   "0" disables the JSONL log (default on)
  *   AGILE_SOFL_LOG_PROMPTS "1" also logs full prompt messages (default off)
@@ -41,7 +44,7 @@ export function getExperimentConfig(projectRoot?: string, env: NodeJS.ProcessEnv
       if (existsSync(p)) file = JSON.parse(readFileSync(p, 'utf-8'))
     } catch { /* ignore malformed file */ }
   }
-  const condition = String(env.AGILE_SOFL_CONDITION || file.condition || 'B1').trim()
+  const condition = String(env.AGILE_SOFL_CONDITION || file.condition || 'T').trim().toUpperCase() || 'T'
   const participantId = String(env.AGILE_SOFL_PARTICIPANT || file.participantId || 'anonymous').trim()
   const telemetry = env.AGILE_SOFL_TELEMETRY !== undefined ? env.AGILE_SOFL_TELEMETRY !== '0' : file.telemetry !== false
   const logPrompts = env.AGILE_SOFL_LOG_PROMPTS !== undefined ? env.AGILE_SOFL_LOG_PROMPTS === '1' : file.logPrompts === true
@@ -86,6 +89,7 @@ export async function diagnosticCounts(asfl: string, cfg: ExperimentConfig): Pro
 export type TelemetryEvent =
   | { event: 'llm_call'; model: string; promptTokens: number | null; completionTokens: number | null; latencyMs: number; ok: boolean; finishReason?: string; toolCalls?: string[]; promptChars?: number; prompt?: unknown; error?: string }
   | { event: 'proposal_decision'; tool: string; stepType?: string; decision: 'approved' | 'rejected' | 'error'; toolCallId: string }
+  | { event: 'session_start'; semanticChecks: boolean; warning?: string }
   | { event: 'post_write_diagnostics'; toolCallId: string; diagnostics: DiagnosticCounts }
 
 export function telemetryPath(projectRoot: string): string {
@@ -123,4 +127,27 @@ export function logTelemetry(
     mkdirSync(join(projectRoot, '.agile-sofl'), { recursive: true })
     appendFileSync(telemetryPath(projectRoot), JSON.stringify(scrub(rec)) + '\n', 'utf-8')
   } catch { /* telemetry must never break the agent */ }
+}
+
+export const KNOWN_CONDITIONS = ['T', 'B2'] as const
+
+/** Human-readable startup notice of the active condition (always a warning so it is visible in logs). */
+export function conditionNotice(cfg: ExperimentConfig): string {
+  const mode = cfg.semanticChecks ? 'full tool: agent + parser + L1 + L2' : 'agent + parser feedback only; L1/L2 disabled'
+  let msg = `[agile-sofl experiment] active condition=${cfg.condition} (${mode}), participant=${cfg.participantId}`
+  if (cfg.condition === 'B0' || cfg.condition === 'B1') msg += ` — WARNING: ${cfg.condition} is an external baseline not implemented in the studio; running as T`
+  else if (!(KNOWN_CONDITIONS as readonly string[]).includes(cfg.condition)) msg += ` — WARNING: unknown condition label; running as T`
+  return msg
+}
+
+const announced = new Set<string>()
+/** console.warn the active condition and log a session_start telemetry event (once per project+session). */
+export function announceCondition(projectRoot: string | undefined, sessionId: string, cfg = getExperimentConfig(projectRoot)): string {
+  const msg = conditionNotice(cfg)
+  const key = `${projectRoot ?? ''}\0${sessionId}`
+  if (announced.has(key)) return msg
+  announced.add(key)
+  console.warn(msg)
+  logTelemetry(projectRoot, cfg, sessionId, { event: 'session_start', semanticChecks: cfg.semanticChecks, warning: msg })
+  return msg
 }

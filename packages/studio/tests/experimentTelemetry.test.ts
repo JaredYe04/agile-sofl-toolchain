@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { mkdtempSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { getExperimentConfig, semanticDiagnostics, diagnosticCounts, logTelemetry, telemetryPath } from '../src/main/services/llm/experiment'
+import { announceCondition, conditionNotice, getExperimentConfig, semanticDiagnostics, diagnosticCounts, logTelemetry, telemetryPath } from '../src/main/services/llm/experiment'
 // @ts-expect-error plain ESM script without types
 import { analyze, readJsonl } from '../scripts/analyze-llm-calls.mjs'
 
@@ -10,8 +10,8 @@ const spec = `module SYSTEM_T;\nprocess P (x: int) r: int\nFSF :\n r > 0 && r = 
 const parseBroken = `module SYSTEM_T;\nprocess P (x: int) r: int\nFSF :\n x > && r = 1\nend_process\nend_module.`
 
 describe('experiment condition switch', () => {
-  it('defaults to B1 with semantic checks on; B2 disables them', () => {
-    expect(getExperimentConfig(undefined, {})).toMatchObject({ condition: 'B1', semanticChecks: true, participantId: 'anonymous', telemetry: true, logPrompts: false })
+  it('defaults to T with semantic checks on; B2 disables them', () => {
+    expect(getExperimentConfig(undefined, {})).toMatchObject({ condition: 'T', semanticChecks: true, participantId: 'anonymous', telemetry: true, logPrompts: false })
     expect(getExperimentConfig(undefined, { AGILE_SOFL_CONDITION: 'B2', AGILE_SOFL_PARTICIPANT: 'P07' })).toMatchObject({ condition: 'B2', semanticChecks: false, participantId: 'P07' })
   })
 
@@ -20,11 +20,11 @@ describe('experiment condition switch', () => {
     mkdirSync(join(root, '.agile-sofl'))
     writeFileSync(join(root, '.agile-sofl', 'experiment.json'), JSON.stringify({ condition: 'B2', participantId: 'P03' }))
     expect(getExperimentConfig(root, {})).toMatchObject({ condition: 'B2', participantId: 'P03', semanticChecks: false })
-    expect(getExperimentConfig(root, { AGILE_SOFL_CONDITION: 'B1' }).semanticChecks).toBe(true)
+    expect(getExperimentConfig(root, { AGILE_SOFL_CONDITION: 'T' }).semanticChecks).toBe(true)
   })
 
   it('B2: L1/L2 not run and not fed back; parser diagnostics still counted', async () => {
-    const b1 = getExperimentConfig(undefined, { AGILE_SOFL_CONDITION: 'B1' })
+    const b1 = getExperimentConfig(undefined, {})
     const b2 = getExperimentConfig(undefined, { AGILE_SOFL_CONDITION: 'B2' })
     const sem = await semanticDiagnostics(spec, b1)
     expect(sem.map((d) => d.code)).toContain('ASFL_FSF_101')
@@ -68,5 +68,27 @@ describe('LLM telemetry JSONL + analysis', () => {
     const cfg = getExperimentConfig(undefined, { AGILE_SOFL_TELEMETRY: '0' })
     logTelemetry(root, cfg, 's', { event: 'proposal_decision', tool: 't', decision: 'approved', toolCallId: 'x' })
     expect(() => readFileSync(telemetryPath(root))).toThrow()
+  })
+})
+
+describe('condition default + startup notice', () => {
+  it('unset config runs full tool T; B0/B1/unknown warn and run as T', () => {
+    expect(getExperimentConfig(undefined, {}).condition).toBe('T')
+    expect(conditionNotice(getExperimentConfig(undefined, {}))).toMatch(/condition=T \(full tool/)
+    for (const c of ['B0', 'b1', 'X9']) {
+      const cfg = getExperimentConfig(undefined, { AGILE_SOFL_CONDITION: c })
+      expect(cfg.semanticChecks).toBe(true)
+      expect(conditionNotice(cfg)).toMatch(/WARNING/)
+    }
+    expect(conditionNotice(getExperimentConfig(undefined, { AGILE_SOFL_CONDITION: 'B2' }))).toMatch(/L1\/L2 disabled/)
+  })
+  it('announceCondition warns once and logs session_start', () => {
+    const root = mkdtempSync(join(tmpdir(), 'ann-'))
+    const cfg = getExperimentConfig(undefined, { AGILE_SOFL_CONDITION: 'B2' })
+    announceCondition(root, 'sx', cfg)
+    announceCondition(root, 'sx', cfg)
+    const recs = readJsonl([telemetryPath(root)])
+    expect(recs).toHaveLength(1)
+    expect(recs[0]).toMatchObject({ event: 'session_start', condition: 'B2', semanticChecks: false })
   })
 })
