@@ -25,6 +25,10 @@ export const BUILTIN_FUNCTIONS: Record<string, BuiltinSignature> = {
   dom: { name: 'dom', argTypes: ['map'], returnType: 'set' },
   rng: { name: 'rng', argTypes: ['map'], returnType: 'set' },
   domrt: { name: 'domrt', argTypes: ['set', 'map'], returnType: 'map' },
+  // Map_type_apply (final grammar G:771-777)
+  domrb: { name: 'domrb', argTypes: ['set', 'map'], returnType: 'map' },
+  rngrt: { name: 'rngrt', argTypes: ['map', 'set'], returnType: 'map' },
+  rngrb: { name: 'rngrb', argTypes: ['map', 'set'], returnType: 'map' },
   comp: { name: 'comp', argTypes: ['map', 'map'], returnType: 'map' },
   conc: { name: 'conc', argTypes: ['seq', 'seq'], returnType: 'seq' }
 }

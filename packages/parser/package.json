@@ -22,7 +22,8 @@
     "bench:parse": "npm run build && node scripts/bench-parse.mjs"
   },
   "dependencies": {
-    "chevrotain": "10.5.0"
+    "chevrotain": "10.5.0",
+    "z3-solver": "^5.2.0"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",

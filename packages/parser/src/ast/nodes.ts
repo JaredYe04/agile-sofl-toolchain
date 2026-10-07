@@ -564,8 +564,10 @@ export interface RelationalExprNode extends WithSpan {
     | 'notin'
   left: ExpressionNode
   right: ExpressionNode
+  /** Chained comparison `left op0 chainMid op1 chainHigh` (right === chainMid). */
   chainMid?: ExpressionNode
   chainHigh?: ExpressionNode
+  chainOps?: ['lt' | 'le' | 'gt' | 'ge', 'lt' | 'le' | 'gt' | 'ge']
 }
 
 export type AST = ProgramNode

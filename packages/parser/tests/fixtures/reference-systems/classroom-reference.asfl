@@ -1,0 +1,338 @@
+/* Reference hybrid specification: 课堂管理系统 (Classroom Management), data-oriented.
+   Version v0.2 (draft, NOT frozen; module-write restructure 2026-10-07). Author: Agile-SOFL domain advisor.
+   Traceability: every element carries [Fn]/[Dn]/[Cn] = informal item id (see experiment-systems.md).
+   Predicates that realise a listed constraint are tagged [Cn] in the comment on the same line. */
+module SYSTEM_Classroom;
+const
+  min_score = 0;                                   /* [C1] */
+  max_score = 100;                                 /* [C1] */
+  min_pwd_len = 6;                                 /* [C6] */
+  max_period = 8                                   /* [D4] 第1-8节 */
+;
+type
+  StudentId = nat;  ClassId = nat;  CourseId = nat;  AssignmentId = nat;
+  UserName = string;  Time = nat0;  Date = nat0;
+  Gender = {<Male>, <Female>};                                   /* [D1] 男/女 */
+  Grade = {<G10>, <G11>, <G12>};                                 /* [D2] 高一/高二/高三 */
+  Weekday = {<Mon>, <Tue>, <Wed>, <Thu>, <Fri>};                 /* [D4] */
+  AttendanceStatus = {<Normal>, <Late>, <LeftEarly>, <Absent>};  /* [D5][C2] 正常/迟到/早退/缺勤 */
+  Role = {<Admin>, <Teacher>};                                   /* [D8] 管理员/普通教师 */
+  Slot = composed of day: Weekday period: nat end;               /* [D4] 星期+节次 */
+  Student = composed of name: string gender: Gender contact: string
+            class_id: ClassId enroll_year: nat end;              /* [D1] */
+  Class = composed of name: string head_teacher: UserName grade: Grade end;   /* [D2] */
+  Course = composed of name: string teacher: UserName slot: Slot place: string end; /* [D3] */
+  TimetableEntry = composed of class_id: ClassId slot: Slot course_id: CourseId end; /* [D4] */
+  AttendanceRecord = composed of course_id: CourseId date: Date
+            student_id: StudentId status: AttendanceStatus end;  /* [D5] */
+  ScoreRecord = composed of student_id: StudentId course_id: CourseId
+            score: nat0 recorded_at: Time end;                   /* [D6] */
+  Submission = composed of student_id: StudentId submit_time: Time attachment: string end; /* [D7] */
+  GradingResult = composed of mark: nat0 remark: string end;     /* [D7] 评分、评语 */
+  Assignment = composed of title: string requirement: string assigned_at: Time
+            deadline: Time course_id: CourseId
+            submissions: map StudentId to Submission
+            results: map StudentId to GradingResult end;         /* [D7] */
+  Teacher = composed of password: string name: string role: Role
+            courses: set of CourseId end;                        /* [D8] */
+  Stats = composed of avg: real max: nat0 min: nat0
+            distribution: map nat0 to nat0 end                   /* [F3] 分布: 分数段(0..10)->人数 */
+;
+/* ---------- non-bottom level: semi-formal FSF ---------- */
+process Attendance(op: UserName, req: string) reply: string                  /* [F1] 学生考勤管理 */
+FSF:
+  the request records an attendance status of a student for a course and date,
+  and op is an admin or teaches that course &&
+  the record is stored and reply reports success
+||
+  the request queries attendance by course, by date or by student &&
+  reply lists the matching attendance records
+||
+  others && attendance is unchanged and reply reports the error
+decom: Records_Decom
+end_process;
+process CourseTimetable(op: UserName, req: string) reply: string             /* [F2] 课程与课表管理 */
+FSF:
+  the request maintains course information and op is an admin &&
+  the course or timetable store is updated and reply reports success
+||
+  the request asks for the weekly timetable of a class or of a teacher &&
+  reply shows the timetable entries of that class or teacher
+||
+  others && the course store and the timetable store are unchanged and reply reports the error
+decom: MasterData_Decom
+end_process;
+process ScoreManagement(op: UserName, req: string) reply: string             /* [F3] 成绩录入与统计 */
+FSF:
+  the request enters a 0-100 score of a student for a course taught by op &&
+  the score record is stored and reply reports success
+||
+  the request asks for statistics of a course &&
+  reply gives average, highest, lowest score and distribution of the course
+||
+  others && scores is unchanged and reply reports the error
+decom: Records_Decom
+end_process;
+process Homework(op: UserName, req: string) reply: string                    /* [F4] 作业布置与提交 */
+FSF:
+  the request is a teacher assigning homework with a deadline later than now &&
+  the assignment is stored and reply reports success
+||
+  the request is a student submitting homework of an existing assignment &&
+  the submission is stored and reply reports success
+||
+  the request is a teacher grading a submitted homework &&
+  the grading result is stored and reply reports success
+||
+  the request is a teacher viewing submissions of an assignment &&
+  reply lists the submissions and results
+||
+  others && assignments is unchanged and reply reports the error
+decom: Records_Decom
+end_process;
+process StudentClassInfo(op: UserName, req: string) reply: string            /* [F5] 学生与班级信息管理 */
+FSF:
+  the request adds, modifies, deletes or queries a student or a class
+  and op is an admin &&
+  the corresponding store is updated or queried and reply reports the result
+||
+  others && the student store and the class store are unchanged and reply reports the error
+decom: MasterData_Decom
+end_process;
+process TeacherAccount(op: UserName, req: string) reply: string              /* [F6] 教师账号与权限管理 */
+FSF:
+  the request maintains a teacher account and op is an admin &&
+  teachers is updated and reply reports success
+||
+  the request asks whether op may use a system feature on a course &&
+  reply tells whether access is allowed according to role and taught courses
+||
+  others && teachers is unchanged and reply reports the error
+decom: MasterData_Decom
+end_process;
+function Authorized(ts: map UserName to Teacher, op: UserName, c: CourseId): bool   /* [C3] */
+  op inset dom(ts) and ts(op).role = <Admin> && Authorized = true
+||
+  op inset dom(ts) and ts(op).role = <Teacher> and c inset ts(op).courses && Authorized = true
+||
+  others && Authorized = false
+end_function
+end_module;
+
+/* ---------- bottom level: formal FSF ----------
+   Write rule (final grammar): each store is declared in the module whose processes write it;
+   sub-modules only read ancestor stores. Master data lives in MasterData_Decom; transactional
+   records live in its sub-module Records_Decom. (Awaiting Prof. Liu's confirmation.) */
+module MasterData_Decom / SYSTEM_Classroom;
+var
+  students: map StudentId to Student;         /* [D1]; map key gives 学号唯一 [C4] */
+  classes: map ClassId to Class;              /* [D2] */
+  courses: map CourseId to Course;            /* [D3]; [C4] */
+  timetable: set of TimetableEntry;           /* [D4] */
+  teachers: map UserName to Teacher           /* [D8]; [C4] */
+;
+inv
+  forall[t: rng(teachers)] | len(t.password) >= min_pwd_len;  /* [C6] */
+  forall[e1, e2: timetable] | e1 = e2 or e1.slot <> e2.slot
+        or e1.class_id <> e2.class_id
+           and courses(e1.course_id).teacher <> courses(e2.course_id).teacher;  /* [C7] */
+  forall[s: rng(students)] | s.class_id inset dom(classes);  /* [C8] */
+  forall[c: rng(courses)] | c.teacher inset dom(teachers);  /* [C8] */
+  forall[e: timetable] | e.class_id inset dom(classes) and e.course_id inset dom(courses);  /* [C8] */
+  forall[c: rng(classes)] | c.head_teacher inset dom(teachers)  /* [C8] */
+;
+process AddTeacher(op: UserName, u: UserName, t: Teacher) ok: bool          /* [F6][D8] */
+ext rd courses wr teachers
+FSF:
+  op inset dom(~teachers) and ~teachers(op).role = <Admin>                    /* [C3] */
+  and u notin dom(~teachers)                                                  /* [C4] */
+  and len(t.password) >= min_pwd_len                                          /* [C6] */
+  and subset(t.courses, dom(courses))                                         /* [C8] */
+  && teachers = override(~teachers, {u -> t}) and ok = true
+||
+  others && teachers = ~teachers and ok = false
+end_process;
+process CheckAccess(op: UserName, c: CourseId) allowed: bool                /* [F6][C3] */
+ext rd teachers
+FSF:
+  op inset dom(teachers) and Authorized(teachers, op, c)
+  && allowed = true
+||
+  others && allowed = false
+end_process;
+process AddStudent(op: UserName, sid: StudentId, s: Student) ok: bool       /* [F5][D1] */
+ext rd teachers rd classes wr students
+FSF:
+  op inset dom(teachers) and teachers(op).role = <Admin>                      /* [C3] */
+  and sid notin dom(~students)                                                /* [C4] */
+  and s.class_id inset dom(classes)                                           /* [C8] */
+  && students = override(~students, {sid -> s}) and ok = true
+||
+  others && students = ~students and ok = false
+end_process;
+process UpdateStudent(op: UserName, sid: StudentId, s: Student) ok: bool    /* [F5] 改 */
+ext rd teachers rd classes wr students
+FSF:
+  op inset dom(teachers) and teachers(op).role = <Admin>
+  and sid inset dom(~students) and s.class_id inset dom(classes)
+  && students = override(~students, {sid -> s}) and ok = true
+||
+  others && students = ~students and ok = false
+end_process;
+process DeleteStudent(op: UserName, sid: StudentId) ok: bool                /* [F5] 删 */
+ext rd teachers wr students
+FSF:
+  op inset dom(teachers) and teachers(op).role = <Admin> and sid inset dom(~students)
+  && students = domrb({sid}, ~students) and ok = true
+||
+  others && students = ~students and ok = false
+end_process;
+process QueryStudent(sid: StudentId) found: bool, s: Student                /* [F5] 查 */
+ext rd students
+FSF:
+  sid inset dom(students) && found = true and s = students(sid)
+||
+  others && found = false
+end_process;
+process AddClass(op: UserName, cid: ClassId, c: Class) ok: bool             /* [F5][D2] */
+ext rd teachers wr classes
+FSF:
+  op inset dom(teachers) and teachers(op).role = <Admin>
+  and cid notin dom(~classes) and c.head_teacher inset dom(teachers)          /* [C8] */
+  && classes = override(~classes, {cid -> c}) and ok = true
+||
+  others && classes = ~classes and ok = false
+end_process;
+process AddCourse(op: UserName, cid: CourseId, c: Course, cls: ClassId) ok: bool /* [F2][D3][D4] */
+ext rd teachers rd classes wr courses wr timetable
+FSF:
+  op inset dom(teachers) and teachers(op).role = <Admin>                      /* [C3] */
+  and cid notin dom(~courses)                                                 /* [C4] */
+  and c.teacher inset dom(teachers) and cls inset dom(classes)                /* [C8] */
+  and 1 <= c.slot.period <= max_period
+  and not (exists[e: ~timetable] | e.slot = c.slot and e.class_id = cls
+           or e.slot = c.slot and ~courses(e.course_id).teacher = c.teacher)  /* [C7] */
+  && courses = override(~courses, {cid -> c})
+     and timetable = union(~timetable, {mk_TimetableEntry(cls, c.slot, cid)}) and ok = true
+||
+  others && courses = ~courses and timetable = ~timetable and ok = false
+end_process;
+process ClassTimetable(cls: ClassId) tt: set of TimetableEntry              /* [F2] 按班级 */
+ext rd timetable
+FSF:
+  true && tt = {e | e: timetable & e.class_id = cls}
+end_process;
+process TeacherTimetable(u: UserName) tt: set of TimetableEntry             /* [F2] 按教师 */
+ext rd timetable rd courses
+FSF:
+  true && tt = {e | e: timetable & courses(e.course_id).teacher = u}
+end_process
+end_module;
+
+module Records_Decom / MasterData_Decom;
+var
+  attendance: set of AttendanceRecord;        /* [D5] */
+  scores: set of ScoreRecord;                 /* [D6] */
+  assignments: map AssignmentId to Assignment /* [D7]; [C4] */
+;
+inv
+  forall[r: scores] | min_score <= r.score <= max_score;  /* [C1] */
+  forall[a: rng(assignments)] | a.deadline > a.assigned_at;  /* [C5] */
+  forall[r: attendance] | r.course_id inset dom(courses) and r.student_id inset dom(students);  /* [C8] */
+  forall[r: scores] | r.course_id inset dom(courses) and r.student_id inset dom(students);  /* [C8] */
+  forall[a: rng(assignments)] | a.course_id inset dom(courses);  /* [C8] */
+  forall[a: rng(assignments)] | subset(dom(a.submissions), dom(students)) and subset(dom(a.results), dom(a.submissions))  /* [C8][D7] */
+;
+process RecordAttendance(op: UserName, r: AttendanceRecord) ok: bool        /* [F1][D5] */
+ext rd teachers rd courses rd students wr attendance
+FSF:
+  op inset dom(teachers)
+  and Authorized(teachers, op, r.course_id) /* [C3] */
+  and r.course_id inset dom(courses) and r.student_id inset dom(students)     /* [C8] */
+  and not (exists[x: ~attendance] | x.course_id = r.course_id and x.date = r.date
+           and x.student_id = r.student_id)
+  && attendance = union(~attendance, {r}) and ok = true
+||
+  others && attendance = ~attendance and ok = false
+end_process;
+process QueryAttendance(kind: {<ByCourse>, <ByDate>, <ByStudent>}, c: CourseId, d: Date, sid: StudentId) rs: set of AttendanceRecord /* [F1] */
+ext rd attendance
+FSF:
+  kind = <ByCourse> && rs = {x | x: attendance & x.course_id = c}
+||
+  kind = <ByDate> && rs = {x | x: attendance & x.date = d}
+||
+  kind = <ByStudent> && rs = {x | x: attendance & x.student_id = sid}
+end_process;
+process RecordScore(op: UserName, sid: StudentId, c: CourseId, sc: int, now: Time) ok: bool /* [F3][D6] */
+ext rd teachers rd students rd courses wr scores
+FSF:
+  op inset dom(teachers)
+  and Authorized(teachers, op, c)           /* [C3] */
+  and sid inset dom(students) and c inset dom(courses)                        /* [C8] */
+  and min_score <= sc <= max_score                                            /* [C1] */
+  and not (exists[x: ~scores] | x.student_id = sid and x.course_id = c)
+  && scores = union(~scores, {mk_ScoreRecord(sid, c, sc, now)}) and ok = true
+||
+  others && scores = ~scores and ok = false
+end_process;
+process CourseStatistics(c: CourseId) has: bool, st: Stats                 /* [F3] */
+ext rd scores
+FSF:
+  card({x | x: scores & x.course_id = c}) > 0
+  && has = true
+     and st.max inset {x.score | x: scores & x.course_id = c}
+     and (forall[x: scores] | x.course_id <> c or x.score <= st.max)
+     and st.min inset {x.score | x: scores & x.course_id = c}
+     and (forall[x: scores] | x.course_id <> c or x.score >= st.min)
+     and st.avg = Sum([x.score | x: scores & x.course_id = c]) / card({x | x: scores & x.course_id = c})
+     and (forall[k: {0,...,10}] | st.distribution(k) = card({x | x: scores & x.course_id = c and x.score div 10 = k}))
+||
+  others && has = false
+end_process;
+process AssignHomework(op: UserName, aid: AssignmentId, a: Assignment) ok: bool /* [F4][D7] */
+ext rd teachers rd courses wr assignments
+FSF:
+  op inset dom(teachers)
+  and Authorized(teachers, op, a.course_id) /* [C3] */
+  and aid notin dom(~assignments)                                             /* [C4] */
+  and a.course_id inset dom(courses)                                          /* [C8] */
+  and a.deadline > a.assigned_at                                              /* [C5] */
+  and a.submissions = {->} and a.results = {->}
+  && assignments = override(~assignments, {aid -> a}) and ok = true
+||
+  others && assignments = ~assignments and ok = false
+end_process;
+process SubmitHomework(aid: AssignmentId, sub: Submission) ok: bool         /* [F4] */
+ext rd students wr assignments
+FSF:
+  aid inset dom(~assignments) and sub.student_id inset dom(students)          /* [C8] */
+  && assignments = override(~assignments, {aid -> modify(~assignments(aid),
+       submissions -> override(~assignments(aid).submissions, {sub.student_id -> sub}))})
+     and ok = true
+||
+  others && assignments = ~assignments and ok = false
+end_process;
+process GradeHomework(op: UserName, aid: AssignmentId, sid: StudentId, g: GradingResult) ok: bool /* [F4] */
+ext rd teachers wr assignments
+FSF:
+  aid inset dom(~assignments) and sid inset dom(~assignments(aid).submissions)
+  and op inset dom(teachers)
+  and Authorized(teachers, op, ~assignments(aid).course_id) /* [C3] */
+  && assignments = override(~assignments, {aid -> modify(~assignments(aid),
+       results -> override(~assignments(aid).results, {sid -> g}))})
+     and ok = true
+||
+  others && assignments = ~assignments and ok = false
+end_process;
+process ViewSubmissions(aid: AssignmentId) found: bool, subs: map StudentId to Submission, res: map StudentId to GradingResult /* [F4] */
+ext rd assignments
+FSF:
+  aid inset dom(assignments) && found = true and subs = assignments(aid).submissions and res = assignments(aid).results
+||
+  others && found = false
+end_process;
+function Sum(s: seq of nat0): nat0
+  == if s = [] then 0 else hd(s) + Sum(tl(s))
+end_function
+end_module.

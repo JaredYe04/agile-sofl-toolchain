@@ -68,6 +68,11 @@ function linkParentChild(scopes: Map<string, ModuleScope>): void {
     const parentName = scope.module.parent?.name
     if (!parentName) continue
     let parent = scopes.get(parentName)
+    if (!parent && parentName.startsWith('SYSTEM_')) {
+      // `module B / SYSTEM_A;` (grammar example G:891ff): the system module's AST name is `A`.
+      const bare = parentName.slice('SYSTEM_'.length)
+      parent = [...scopes.values()].find((s) => s.module.isSystem && s.module.name === bare)
+    }
     if (!parent) {
       parent = [...scopes.values()].find((s) => s.module.name.endsWith(`_${parentName}`))
     }

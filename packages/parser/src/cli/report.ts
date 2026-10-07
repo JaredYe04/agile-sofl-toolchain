@@ -16,6 +16,10 @@ import { parse } from '../parser/parse.js'
 import { resolveScope } from '../scope/resolver.js'
 import { typeCheck } from '../typecheck/checker.js'
 import { classifyFsf } from '../fsf/classifier.js'
+import { checkFsfL1 } from '../fsf/l1Check.js'
+import { checkReferences } from '../scope/referenceChecker.js'
+import { checkCdfd } from '../cdfd/checkCdfd.js'
+import { checkDataRefine } from '../refine/checkDataRefine.js'
 import { tokenize } from '../lexer/lexer.js'
 import { ansi, color } from './ansi.js'
 
@@ -24,6 +28,10 @@ export interface InspectOptions {
   tokens?: boolean
   /** Show indented AST summary tree */
   tree?: boolean
+  /** Run L1 FSF check (default true) */
+  fsfL1?: boolean
+  /** Additional diagnostics (e.g. async L2 results) to include in the report */
+  extraDiagnostics?: Diagnostic[]
   /** Emit full AST as JSON instead of summary */
   fullJson?: boolean
   /** Max tree depth (default 4) */
@@ -235,12 +243,19 @@ export function inspect(source: string, options: InspectOptions = {}): InspectRe
     parseResult.ast && parseResult.ast.type === 'program' ? parseResult.ast : null
 
   if (ast && !diagnostics.some((d) => d.severity === 'error')) {
+    // Same pipeline as the API check() (previously CLI showed no reference/L1/CDFD/data diagnostics).
+    const scope = resolveScope(ast)
     diagnostics.push(
-      ...resolveScope(ast).diagnostics,
-      ...typeCheck(ast).diagnostics,
-      ...classifyFsf(ast).diagnostics
+      ...scope.diagnostics,
+      ...checkReferences(ast, scope).diagnostics,
+      ...typeCheck(ast, scope).diagnostics,
+      ...classifyFsf(ast).diagnostics,
+      ...(options.fsfL1 === false ? [] : checkFsfL1(ast).diagnostics),
+      ...checkCdfd(ast).diagnostics,
+      ...checkDataRefine(ast).diagnostics
     )
   }
+  if (options.extraDiagnostics) diagnostics.push(...options.extraDiagnostics)
   const maxDepth = options.treeDepth ?? 4
   const lines: string[] = []
 

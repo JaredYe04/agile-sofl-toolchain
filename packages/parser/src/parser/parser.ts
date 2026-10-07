@@ -981,6 +981,8 @@ export class AgileSoflParser extends CstParser {
     $.RULE('typePrimary', () => {
       $.OR([
         { ALT: () => $.SUBRULE($.typeAtomic) },
+        // named types inside union / product types: `Circle | Square`, `Id * Name` (G:291, G:306)
+        { ALT: () => $.SUBRULE($.moduleOrFieldAccess) },
         {
           ALT: () => {
             $.CONSUME(LParen)
@@ -1238,6 +1240,14 @@ export class AgileSoflParser extends CstParser {
           { GATE: () => !this.formalAtomAhead(2), ALT: () => $.CONSUME(And) },
           { GATE: () => !this.formalAtomAhead(2), ALT: () => $.CONSUME(Or) },
           { ALT: () => $.CONSUME(Not) },
+          // punctuation inside natural-language atoms: `paid, shipped and ...`
+          {
+            GATE: () => {
+              const n = $.LA(2).tokenType
+              return (n === Identifier || n === TextWord || n === And || n === Or || n === Not || n === By || n === In || n === OfKw || n === To || TEXT_WORD_KEYWORDS.includes(n)) && !this.formalAtomAhead(2)
+            },
+            ALT: () => $.CONSUME(Comma)
+          },
           // word-like keywords (`card`, `set`, `map`, `by`, ...) used as plain English words
           { ALT: () => $.CONSUME(By) },
           { GATE: () => $.LA(2).tokenType !== LParen, ALT: () => $.CONSUME(Card) },
@@ -1561,10 +1571,11 @@ export class AgileSoflParser extends CstParser {
         $.OR([
           { ALT: () => { $.CONSUME(Equals); $.SUBRULE1($.expression) } },
           { ALT: () => { $.CONSUME(NotEqual); $.SUBRULE2($.expression) } },
-          { ALT: () => { $.CONSUME(LessThan); $.SUBRULE3($.expression) } },
-          { ALT: () => { $.CONSUME(LessEqual); $.SUBRULE4($.expression) } },
-          { ALT: () => { $.CONSUME(GreaterThan); $.SUBRULE5($.expression) } },
-          { ALT: () => { $.CONSUME(GreaterEqual); $.SUBRULE6($.expression) } },
+          // Chained comparisons `a < b <= c` / `a > b >= c` (final grammar G:431-440)
+          { ALT: () => { $.CONSUME(LessThan); $.SUBRULE3($.expression); $.option(11, () => { $.or(11, [{ ALT: () => $.consume(11, LessThan) }, { ALT: () => $.consume(11, LessEqual) }]); $.subrule(21, $.expression) }) } },
+          { ALT: () => { $.CONSUME(LessEqual); $.SUBRULE4($.expression); $.option(12, () => { $.or(12, [{ ALT: () => $.consume(12, LessThan) }, { ALT: () => $.consume(12, LessEqual) }]); $.subrule(22, $.expression) }) } },
+          { ALT: () => { $.CONSUME(GreaterThan); $.SUBRULE5($.expression); $.option(13, () => { $.or(13, [{ ALT: () => $.consume(13, GreaterThan) }, { ALT: () => $.consume(13, GreaterEqual) }]); $.subrule(23, $.expression) }) } },
+          { ALT: () => { $.CONSUME(GreaterEqual); $.SUBRULE6($.expression); $.option(14, () => { $.or(14, [{ ALT: () => $.consume(14, GreaterThan) }, { ALT: () => $.consume(14, GreaterEqual) }]); $.subrule(24, $.expression) }) } },
           { ALT: () => { $.CONSUME(Inset); $.SUBRULE($.setExpr) } },
           { ALT: () => { $.CONSUME(Notin); $.SUBRULE7($.setExpr) } }
         ])

@@ -193,6 +193,12 @@ function inferExprType(expr: ExpressionNode, typeEnv: Map<string, InternalType>)
             ? expr.callee.name
             : undefined
       if (name && isBuiltin(name)) {
+        // map restrictions keep the type of their map argument
+        const mapArg = name === 'domrt' || name === 'domrb' ? expr.args[1] : name === 'rngrt' || name === 'rngrb' || name === 'override' ? expr.args[0] : undefined
+        if (mapArg) {
+          const t = inferExprType(mapArg, typeEnv)
+          if (t.kind === 'map') return t
+        }
         return builtinReturnType(BUILTIN_FUNCTIONS[name].returnType)
       }
       if (name) {

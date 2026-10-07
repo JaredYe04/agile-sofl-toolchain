@@ -138,6 +138,10 @@ export function printExpr(expr: ExpressionNode): string {
     case 'index_access':
       return `${printExpr(expr.object)}(${printExpr(expr.index)})`
     case 'relational_expr':
+      if (expr.chainOps && expr.chainHigh) {
+        const sym = { lt: '<', le: '<=', gt: '>', ge: '>=' } as const
+        return `${printExpr(expr.left)} ${sym[expr.chainOps[0]]} ${printExpr(expr.right)} ${sym[expr.chainOps[1]]} ${printExpr(expr.chainHigh)}`
+      }
       return `${printExpr(expr.left)} ${relKindToSymbol(expr.kind)} ${printExpr(expr.right)}`
     case 'set_expr':
       if (expr.kind === 'empty') return '{}'

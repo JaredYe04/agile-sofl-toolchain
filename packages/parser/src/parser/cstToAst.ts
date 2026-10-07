@@ -797,6 +797,8 @@ function cstToTypePrimary(cst: CstNode): TypeExprNode {
   if (inner) return cstToTypeExpr(inner)
   const atomic = singleChild(cst, 'typeAtomic')
   if (atomic) return cstToTypeAtomic(atomic)
+  const access = singleChild(cst, 'moduleOrFieldAccess')
+  if (access) return { type: 'named_type', span: spanOf(cst), qualified: cstToQualifiedName(access) }
   return { type: 'basic_type', span: spanOf(cst), name: 'given' }
 }
 
@@ -1021,13 +1023,14 @@ function cstToTextWithSpan(cst: CstNode): { text: string; span: typeof EMPTY_SPA
   const collected = Object.keys(cst.children).flatMap((kind) => tokensOf(cst, kind))
   collected.sort((a, b) => a.startOffset - b.startOffset)
   const parts = collected.map((tok) => {
+    if (tok.image === ',') return ','
     if (tok.image.startsWith('"') && tok.image.endsWith('"')) {
       return tok.image.slice(1, -1)
     }
     return tok.image
   })
   return {
-    text: parts.join(' '),
+    text: parts.join(' ').replace(/ ,/g, ','),
     span: collected.length > 0 ? spanOfTokens(collected) : spanOfChildren(cst)
   }
 }
@@ -1594,6 +1597,18 @@ function cstToRelationalExpr(cst: CstNode): ExpressionNode {
   }
   if (tokensOf(cst, 'NotEqual').length) {
     return { type: 'relational_expr', span: spanOf(cst), kind: 'neq', left, right }
+  }
+  {
+    const cmp = tokensOf(cst, 'LessThan', 'LessEqual', 'GreaterThan', 'GreaterEqual').sort((a, b) => a.startOffset - b.startOffset)
+    if (cmp.length === 2 && exprs[2]) {
+      const op = (t: IToken) => ({ LessThan: 'lt', LessEqual: 'le', GreaterThan: 'gt', GreaterEqual: 'ge' } as const)[t.tokenType.name as 'LessThan']
+      const ascending = cmp[0]!.tokenType.name.startsWith('Less')
+      return {
+        type: 'relational_expr', span: spanOf(cst), kind: ascending ? 'chain_lt' : 'chain_gt',
+        left, right, chainMid: right, chainHigh: cstToExpression(exprs[2]),
+        chainOps: [op(cmp[0]!), op(cmp[1]!)]
+      }
+    }
   }
   if (tokensOf(cst, 'LessThan').length) {
     return { type: 'relational_expr', span: spanOf(cst), kind: 'lt', left, right }
