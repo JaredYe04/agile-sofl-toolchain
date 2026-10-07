@@ -1,2 +1,5 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# shebang scripts are imported by vitest; CRLF after the shebang breaks parsing on Windows
+*.mjs text eol=lf

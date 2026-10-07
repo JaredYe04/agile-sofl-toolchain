@@ -57,8 +57,9 @@ export const isL2Code = (code: string) => /^ASFL_FSF_2\d\d$/.test(code)
 export interface SeverityCount { error: number; warning: number }
 export interface DiagnosticCounts {
   parser: SeverityCount
-  l1: SeverityCount & { enabled: boolean }
-  l2: SeverityCount & { enabled: boolean }
+  /** enabled = condition turns the layer on; ran = it actually ran (false when disabled or the spec has no AST) */
+  l1: SeverityCount & { enabled: boolean; ran: boolean }
+  l2: SeverityCount & { enabled: boolean; ran: boolean }
 }
 
 const count = (ds: Diagnostic[]): SeverityCount => ({
@@ -79,11 +80,11 @@ export async function diagnosticCounts(asfl: string, cfg: ExperimentConfig): Pro
   const r = check(asfl, { fsfL1: false })
   const parser = count(r.diagnostics.filter((d) => !isL1Code(d.code) && !isL2Code(d.code)))
   if (!cfg.semanticChecks || !r.ast) {
-    return { parser, l1: { error: 0, warning: 0, enabled: cfg.semanticChecks }, l2: { error: 0, warning: 0, enabled: cfg.semanticChecks } }
+    return { parser, l1: { error: 0, warning: 0, enabled: cfg.semanticChecks, ran: false }, l2: { error: 0, warning: 0, enabled: cfg.semanticChecks, ran: false } }
   }
   const l1 = count(checkFsfL1(r.ast).diagnostics)
   const l2 = count((await checkFsfL2(r.ast)).diagnostics)
-  return { parser, l1: { ...l1, enabled: true }, l2: { ...l2, enabled: true } }
+  return { parser, l1: { ...l1, enabled: true, ran: true }, l2: { ...l2, enabled: true, ran: true } }
 }
 
 export type TelemetryEvent =
