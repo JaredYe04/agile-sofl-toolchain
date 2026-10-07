@@ -1,6 +1,6 @@
 import type { CstNode } from 'chevrotain'
 import { AgileSoflLexer } from '../lexer/tokens.js'
-import { parserInstance } from '../parser/parser.js'
+import { getParser } from '../parser/parser.js'
 import { cstToPredicate } from '../parser/cstToAst.js'
 import type { PredicateNode } from '../ast/nodes.js'
 
@@ -10,7 +10,7 @@ export function parsePredicateSource(source: string): PredicateNode | null {
   if (!trimmed) return null
   const lex = AgileSoflLexer.tokenize(trimmed)
   if (lex.errors.length) return null
-  const parser = parserInstance as unknown as {
+  const parser = getParser(true) as unknown as {
     input: unknown
     errors: unknown[]
     predicate: () => CstNode

@@ -3,7 +3,7 @@
  */
 
 import { AgileSoflLexer } from '../lexer/tokens.js'
-import { parserInstance, strictParserInstance, type AgileSoflParser } from './parser.js'
+import { getParser, type AgileSoflParser } from './parser.js'
 import { cstToProgram, cstToModuleAst } from './cstToAst.js'
 import type { ProgramNode, ModuleNode, ConditionClauseNode } from '../ast/nodes.js'
 import type { Diagnostic } from '../diagnostics/codes.js'
@@ -86,7 +86,7 @@ function attachFormalPredicates(ast: ProgramNode): void {
 
 function runProgramParse(source: string, options: ParseOptions = {}): ParseResult {
   const tolerant = options.tolerant !== false
-  const parser = tolerant ? parserInstance : strictParserInstance
+  const parser = getParser(tolerant)
   const diagnostics: Diagnostic[] = []
   const lexResult = AgileSoflLexer.tokenize(source)
   if (lexResult.errors.length > 0) {
@@ -135,7 +135,7 @@ export function parseStrict(source: string): ParseResult {
 
 export function parseModule(source: string, options?: ParseOptions): ParseResult {
   const tolerant = options?.tolerant !== false
-  const parser = tolerant ? parserInstance : strictParserInstance
+  const parser = getParser(tolerant)
   const diagnostics: Diagnostic[] = []
   const lexResult = AgileSoflLexer.tokenize(source)
   if (lexResult.errors.length > 0) {

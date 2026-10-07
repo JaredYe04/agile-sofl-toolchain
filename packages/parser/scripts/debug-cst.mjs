@@ -1,5 +1,6 @@
 import { AgileSoflLexer } from '../dist/lexer/tokens.js'
-import { parserInstance } from '../dist/parser/parser.js'
+import { getParser } from '../dist/parser/parser.js'
+const parserInstance = getParser(true)
 
 function tryParse(rule, src) {
   parserInstance.reset()

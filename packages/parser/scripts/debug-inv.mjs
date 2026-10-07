@@ -1,5 +1,6 @@
 import { AgileSoflLexer } from '../dist/lexer/tokens.js'
-import { parserInstance } from '../dist/parser/parser.js'
+import { getParser } from '../dist/parser/parser.js'
+const parserInstance = getParser(true)
 
 const src = 'module SYSTEM_E;\nvar x: nat;\ninv x > 0 and x <> 10;\nend_module'
 parserInstance.reset()

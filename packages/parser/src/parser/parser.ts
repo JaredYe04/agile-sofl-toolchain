@@ -2066,5 +2066,13 @@ export class AgileSoflParser extends CstParser {
 
 }
 
-export const parserInstance = new AgileSoflParser(true)
-export const strictParserInstance = new AgileSoflParser(false)
+// Parser instances are built lazily: Chevrotain's performSelfAnalysis costs ~2 s per instance for this
+// grammar, and building both eagerly at import made every importer (CLI, LSP initialize, each vitest
+// worker) pay ~4 s of CPU before doing anything — the cause of the LSP spawn test timing out under load.
+let tolerantInstance: AgileSoflParser | null = null
+let strictInstance: AgileSoflParser | null = null
+/** Error-recovering parser (built on first use). */
+export function getParser(tolerant = true): AgileSoflParser {
+  if (tolerant) return (tolerantInstance ??= new AgileSoflParser(true))
+  return (strictInstance ??= new AgileSoflParser(false))
+}
