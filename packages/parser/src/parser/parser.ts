@@ -1631,11 +1631,10 @@ export class AgileSoflParser extends CstParser {
 
     $.RULE('setConstructor', () => {
       $.CONSUME(LBrace)
-      $.OR([
-        { ALT: () => { $.CONSUME(RBrace) } },
-        { ALT: () => { $.SUBRULE($.expressionList); $.CONSUME1(RBrace) } },
-        {
-          ALT: () => {
+      $.OR({ MAX_LOOKAHEAD: 1, DEF: [
+        { GATE: () => true, ALT: () => { $.CONSUME(RBrace) } },
+        { GATE: () => this.scanBracket().kind === 'list', ALT: () => { $.SUBRULE($.expressionList); $.CONSUME1(RBrace) } },
+        { GATE: () => this.scanBracket().kind === 'range', ALT: () => {
             $.SUBRULE($.numberExpr)
             $.CONSUME(Comma)
             $.CONSUME(Ellipsis)
@@ -1644,8 +1643,7 @@ export class AgileSoflParser extends CstParser {
             $.CONSUME2(RBrace)
           }
         },
-        {
-          ALT: () => {
+        { GATE: () => this.scanBracket().kind === 'compBind', ALT: () => {
             $.SUBRULE1($.expression)
             $.CONSUME1(Pipe)
             $.SUBRULE($.bindingList)
@@ -1654,15 +1652,14 @@ export class AgileSoflParser extends CstParser {
             $.CONSUME4(RBrace)
           }
         },
-        {
-          ALT: () => {
+        { GATE: () => this.scanBracket().kind === 'compPred', ALT: () => {
             $.SUBRULE($.expression)
             $.CONSUME(Pipe)
             $.SUBRULE($.predicate)
             $.CONSUME3(RBrace)
           }
         }
-      ])
+      ] })
     })
 
     $.RULE('setApply', () => {
@@ -1691,11 +1688,10 @@ export class AgileSoflParser extends CstParser {
 
     $.RULE('seqConstructor', () => {
       $.CONSUME(LBracket)
-      $.OR([
-        { ALT: () => { $.CONSUME(RBracket) } },
-        { ALT: () => { $.SUBRULE($.expressionList); $.CONSUME1(RBracket) } },
-        {
-          ALT: () => {
+      $.OR({ MAX_LOOKAHEAD: 1, DEF: [
+        { GATE: () => true, ALT: () => { $.CONSUME(RBracket) } },
+        { GATE: () => this.scanBracket().kind === 'list', ALT: () => { $.SUBRULE($.expressionList); $.CONSUME1(RBracket) } },
+        { GATE: () => this.scanBracket().kind === 'range', ALT: () => {
             $.SUBRULE($.numberExpr)
             $.CONSUME(Comma)
             $.CONSUME(Ellipsis)
@@ -1704,8 +1700,7 @@ export class AgileSoflParser extends CstParser {
             $.CONSUME2(RBracket)
           }
         },
-        {
-          ALT: () => {
+        { GATE: () => this.scanBracket().kind === 'compBind', ALT: () => {
             $.SUBRULE1($.expression)
             $.CONSUME1(Pipe)
             $.SUBRULE($.bindingList)
@@ -1714,15 +1709,14 @@ export class AgileSoflParser extends CstParser {
             $.CONSUME4(RBracket)
           }
         },
-        {
-          ALT: () => {
+        { GATE: () => this.scanBracket().kind === 'compPred', ALT: () => {
             $.SUBRULE($.expression)
             $.CONSUME(Pipe)
             $.SUBRULE($.predicate)
             $.CONSUME3(RBracket)
           }
         }
-      ])
+      ] })
     })
 
     $.RULE('seqApply', () => {
@@ -1743,10 +1737,9 @@ export class AgileSoflParser extends CstParser {
 
     $.RULE('mapConstructor', () => {
       $.CONSUME(LBrace)
-      $.OR([
-        { ALT: () => { $.CONSUME(Arrow); $.CONSUME(RBrace) } },
-        {
-          ALT: () => {
+      $.OR({ MAX_LOOKAHEAD: 1, DEF: [
+        { GATE: () => true, ALT: () => { $.CONSUME(Arrow); $.CONSUME(RBrace) } },
+        { GATE: () => this.scanBracket().kind === 'compBind', ALT: () => {
             $.SUBRULE6($.expression)
             $.CONSUME4(Arrow)
             $.SUBRULE7($.expression)
@@ -1757,8 +1750,7 @@ export class AgileSoflParser extends CstParser {
             $.CONSUME3(RBrace)
           }
         },
-        {
-          ALT: () => {
+        { GATE: () => this.scanBracket().kind === 'compPred', ALT: () => {
             $.SUBRULE4($.expression)
             $.CONSUME3(Arrow)
             $.SUBRULE5($.expression)
@@ -1767,8 +1759,7 @@ export class AgileSoflParser extends CstParser {
             $.CONSUME2(RBrace)
           }
         },
-        {
-          ALT: () => {
+        { GATE: () => this.scanBracket().kind === 'list', ALT: () => {
             $.SUBRULE($.expression)
             $.CONSUME1(Arrow)
             $.SUBRULE1($.expression)
@@ -1781,7 +1772,7 @@ export class AgileSoflParser extends CstParser {
             $.CONSUME1(RBrace)
           }
         }
-      ])
+      ] })
     })
 
     $.RULE('mapApply', () => {
@@ -1987,6 +1978,36 @@ export class AgileSoflParser extends CstParser {
 
     this.performSelfAnalysis()
   }
+
+  /**
+   * Classify the contents of a set/seq/map constructor by scanning ahead to the
+   * matching closing bracket. Replaces Chevrotain's LL(3) lookahead analysis for
+   * these rules, whose cost was exponential (≈5 s per rule per parser instance,
+   * which made `asfl check` appear to hang on startup).
+   */
+  scanBracket(): { kind: 'list' | 'range' | 'compBind' | 'compPred' } {
+    let depth = 0
+    let pipe = false
+    let amp = false
+    let ellipsis = false
+    for (let i = 1; ; i++) {
+      const t = this.LA(i).tokenType
+      if (t === EOF) break
+      if (t === LParen || t === LBracket || t === LBrace) depth++
+      else if (t === RParen || t === RBracket || t === RBrace) {
+        if (depth === 0) break
+        depth--
+      } else if (depth === 0) {
+        if (t === Pipe && !pipe) pipe = true
+        else if (t === Amp && pipe) amp = true
+        else if (t === Ellipsis && !pipe) ellipsis = true
+      }
+    }
+    if (pipe) return { kind: amp ? 'compBind' : 'compPred' }
+    if (ellipsis) return { kind: 'range' }
+    return { kind: 'list' }
+  }
+
 }
 
 export const parserInstance = new AgileSoflParser(true)
