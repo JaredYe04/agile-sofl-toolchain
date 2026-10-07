@@ -18,3 +18,16 @@ describe('L2 coverage stats collector', () => {
     expect(stats.find((s) => s.process === 'AutoComplete')!.completeness.outcome).toBe('unsat')
   }, 60000)
 })
+
+describe('L2 stats leaf flag', () => {
+  it('marks processes with decom: as non-leaf', async () => {
+    const stats: L2ProcessStats[] = []
+    await checkFsfL2(check(load('classroom-reference.asfl')).ast!, { stats })
+    const att = stats.find((s) => s.process === 'Attendance')!
+    expect(att.leaf).toBe(false)
+    expect(att.decomposition).toBe('Records_Decom')
+    expect(att.tests[0]!.status).toBe('informal')
+    expect(att.tests[0]!.span).toBeDefined()
+    expect(stats.filter((s) => s.leaf).length).toBe(18)
+  }, 60000)
+})

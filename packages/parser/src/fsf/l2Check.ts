@@ -30,6 +30,7 @@
 import type {
   ProgramNode, ModuleNode, ProcessNode, PredicateNode, AtomicPredicateNode, ExpressionNode, TypeExprNode
 } from '../ast/nodes.js'
+import { textOf } from '../ast/nodes.js'
 import type { Span } from '../ast/span.js'
 import { createDiagnostic, DiagnosticCodes, type Diagnostic } from '../diagnostics/codes.js'
 import { checkProcessFsfL1 } from './l1Check.js'
@@ -70,10 +71,13 @@ export interface L2ProcessStats {
   process: string
   scenarios: number
   hasOthers: boolean
+  /** bottom-level process: no `decom:` clause */
+  leaf: boolean
+  decomposition?: string
   /** 'l1-failed' | 'others-only' | 'no-solver' when L2 did not run at all */
   skippedWhole?: string
   /** per non-others test condition: encoded, or why not */
-  tests: Array<{ index: number; status: 'encoded' | 'informal' | 'unsupported' | 'error'; reason?: string }>
+  tests: Array<{ index: number; status: 'encoded' | 'informal' | 'unsupported' | 'error'; reason?: string; span?: Span; testSpan?: Span }>
   exclusion: Array<{ i: number; j: number; outcome: L2Outcome; skipReasons?: string[] }>
   /** 'others' = complete by construction; 'n/a' when not applicable */
   completeness: { outcome: L2Outcome | 'others'; skipReasons?: string[] }
@@ -438,7 +442,8 @@ export async function checkProcessFsfL2(
   const out: Diagnostic[] = []
   const p = proc.name
   const n = fsf.scenarios.length
-  const st: L2ProcessStats = { module: module.name, process: p, scenarios: n, hasOthers: !!fsf.others, tests: [], exclusion: [],
+  const decom = textOf(proc.body?.decomposition)?.trim() || undefined
+  const st: L2ProcessStats = { module: module.name, process: p, scenarios: n, hasOthers: !!fsf.others, leaf: !decom, decomposition: decom, tests: [], exclusion: [],
     completeness: { outcome: fsf.others ? 'others' : 'skipped' } }
   opts.stats?.push(st)
   if (n === 0) { st.skippedWhole = 'others-only'; return [] } // only `others`: trivially exclusive and complete
@@ -463,10 +468,10 @@ export async function checkProcessFsfL2(
   fsf.scenarios.forEach((sc, i) => {
     try {
       T.push(enc.predicate(sc.test))
-      st.tests.push({ index: i + 1, status: 'encoded' })
+      st.tests.push({ index: i + 1, status: 'encoded', testSpan: sc.test.span })
     } catch (e) {
       T.push(null)
-      st.tests.push(e instanceof Informal ? { index: i + 1, status: 'informal', reason: 'natural-language atom' }
+      st.tests.push(e instanceof Informal ? { index: i + 1, status: 'informal', reason: 'natural-language atom', span: e.span, testSpan: sc.test.span }
         : e instanceof Unsupported ? { index: i + 1, status: 'unsupported', reason: e.construct }
           : { index: i + 1, status: 'error', reason: String((e as Error)?.message ?? e) })
       if (e instanceof Informal) {
