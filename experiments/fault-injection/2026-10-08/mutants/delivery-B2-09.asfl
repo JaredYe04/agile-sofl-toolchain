@@ -1,0 +1,598 @@
+/* Reference hybrid specification: 模拟外卖系统 (trimmed, 21 items), control/state-oriented.
+   Version v0.2 (draft, NOT frozen; module-write restructure 2026-10-07). Source: delivery-trimmed.aspec.
+   Traceability tags [Fn]/[Dn]/[Cn] refer to experiment-systems.md §2.2.
+   [A] marks an assumption not fixed by the informal text (see delivery-variants.md). */
+module SYSTEM_FoodDelivery;
+type
+  CustomerId = nat;  RiderId = nat;  MerchantId = nat;  DishId = nat;
+  OrderId = nat;  PaymentId = nat;  Time = nat0;  Money = real;
+  Duration = nat;   /* [F8][C6] 超时阈值 confirm_timeout 的类型：具名参数，原文无数值，由部署配置给出 */
+  Absent = {<None>};                                                       /* [A] 表示"无" */
+  OptOrder = OrderId | Absent;  OptTime = Time | Absent;                  /* [A] */
+  AccountStatus = {<Enabled>, <Disabled>};                                 /* [D1] 状态 */
+  OnlineStatus = {<Online>, <Offline>};                                    /* [D2] */
+  BusinessStatus = {<Open>, <Closed>};                                     /* [D3] */
+  OrderStatus = {<PendingPay>, <Paid>, <Preparing>, <ReadyForDelivery>,
+                 <Delivering>, <Delivered>, <Completed>, <Cancelled>, <Rejected>}; /* [D5] */
+  PayMethod = {<Simulated>};                                               /* [D6][A] */
+  PayStatus = {<Success>, <Refunded>};                                     /* [D6][A] 退款记录并入支付记录 */
+  DeliveryStage = {<PickedUp>, <OnTheWay>, <Arriving>, <Done>};            /* [D7] */
+  Customer = composed of phone: string nickname: string default_address: string
+             status: AccountStatus end;                                    /* [D1] */
+  Rider = composed of name: string phone: string online: OnlineStatus
+          current_order: OptOrder end;  /* [D2]; <None> = 无当前配送订单 [A] */
+  Merchant = composed of name: string address: string business: BusinessStatus
+             rating: real end;                                             /* [D3] */
+  Dish = composed of merchant_id: MerchantId name: string price: Money
+         stock: nat0 on_shelf: bool end;                                   /* [D4] */
+  Order = composed of customer_id: CustomerId merchant_id: MerchantId
+          items: map DishId to nat amount: Money address: string
+          status: OrderStatus created_at: Time end;                        /* [D5] */
+  Payment = composed of order_id: OrderId amount: Money method: PayMethod
+            status: PayStatus paid_at: Time end;                           /* [D6] */
+  DeliveryRecord = composed of rider_id: RiderId stage: DeliveryStage
+                   accepted_at: Time delivered_at: OptTime end          /* [D7]; key = 订单号 */
+;
+var
+  customers: map CustomerId to Customer;     /* [D1] 主数据；本裁剪版中无写入 process（管理用户已裁掉） */
+  merchants: map MerchantId to Merchant;     /* [D3] 同上 */
+  dishes: map DishId to Dish                 /* [D4] 同上；菜品归属商家 via merchant_id */
+;
+inv
+  forall[d: rng(dishes)] | d.price >= 0      /* [C4] */
+;
+/* ---------- non-bottom level: semi-formal FSF ---------- */
+process CustomerOrdering(cid: CustomerId, req: string, now: Time) reply: string  /* [F1][F2][F7][F8] */
+FSF:
+  the request submits a cart and a delivery address &&
+  a new unique order in pending payment status is created and reply returns its number
+||
+  the request pays a pending payment order of cid &&
+  the order becomes paid and a payment record is created and reply reports success
+||
+  the request cancels an order of cid that the merchant has not accepted yet &&
+  the order is cancelled and if it was paid a refund record is created
+||
+  the request confirms receipt of a delivered order of cid &&
+  the order becomes completed
+||
+  others && no store is changed and reply reports the error
+decom: OrderFlow_Decom
+end_process;
+process MerchantHandling(mid: MerchantId, req: string) reply: string     /* [F3][F4] */
+FSF:
+  the request accepts a paid order of mid && the order goes to preparing
+||
+  the request rejects a paid order of mid && the order is rejected and its payment is refunded
+||
+  the request marks a preparing order of mid as ready && the order waits for a rider
+||
+  others && no store is changed and reply reports the error
+decom: OrderFlow_Decom
+end_process;
+process RiderDelivery(rid: RiderId, req: string, now: Time) reply: string /* [F5][F6] */
+FSF:
+  the request grabs an order waiting for a rider and the order has no rider yet &&
+  the order is bound to rid and goes to delivering
+||
+  the request confirms that rid has delivered its current order &&
+  the order becomes delivered and the delivery time is recorded
+||
+  others && no store is changed and reply reports the error
+decom: OrderFlow_Decom
+end_process;
+process SystemTimer(now: Time, confirm_timeout: Duration) done: set of OrderId                      /* [F8] 系统超时自动完成 */
+FSF:
+  some delivered orders have not been confirmed within confirm_timeout &&
+  those orders become completed and done lists them
+||
+  others && the order store is unchanged and done is empty
+decom: OrderFlow_Decom
+end_process
+end_module;
+
+/* ---------- bottom level: formal FSF ----------
+   Write rule: every store is declared in the module whose processes write it. All writers of
+   orders/payments/deliveries/riders are in OrderFlow_Decom; master data is read-only here.
+   (Awaiting Prof. Liu's confirmation.) */
+module OrderFlow_Decom / SYSTEM_FoodDelivery;
+var
+  riders: map RiderId to Rider;              /* [D2] current_order 由本模块 GrabOrder/ConfirmDelivered 写 */
+  orders: map OrderId to Order;              /* [D5]; map key => 订单号唯一 [C1] */
+  payments: map PaymentId to Payment;        /* [D6] 含退款记录 (<Refunded>) */
+  deliveries: map OrderId to DeliveryRecord  /* [D7]; at most one record per order [C3] */
+;
+inv
+  forall[o: rng(orders)] | o.amount >= 0;                                  /* [C4] */
+  forall[p: rng(payments)] | p.amount >= 0;                                /* [C4] */
+  forall[p1, p2: dom(payments)] | p1 = p2 or payments(p1).order_id <> payments(p2).order_id; /* [C5] 每单至多一条成功支付记录 */
+  forall[o: dom(orders)] | orders(o).status inset {<PendingPay>, <Cancelled>}
+        or exists[p: rng(payments)] | p.order_id = o;                      /* [C2] 进入已支付及之后状态须有支付记录 */
+  forall[r1, r2: dom(riders)] | r1 = r2 or riders(r1).current_order = <None>
+        or riders(r1).current_order <> riders(r2).current_order;           /* [C3] 一单一骑手 */
+  forall[o: dom(deliveries)] | o inset dom(orders) and deliveries(o).rider_id inset dom(riders) /* referential */
+;
+process PlaceOrder(cid: CustomerId, mid: MerchantId, items: map DishId to nat, addr: string, now: Time, oid: OrderId) ok: bool /* [F1] */
+ext rd customers rd merchants rd dishes wr orders
+FSF:
+  cid inset dom(customers) and customers(cid).status = <Enabled>
+  and mid inset dom(merchants) and merchants(mid).business = <Open>
+  and items <> {->} and addr <> ""
+  and (forall[d: dom(items)] | d inset dom(dishes) and dishes(d).merchant_id = mid and dishes(d).on_shelf = true and items(d) <= dishes(d).stock)
+  and oid notin dom(~orders)                                                  /* [C1] */
+  && orders = override(~orders, {oid -> mk_Order(cid, mid, items, Total(items, dishes), addr, <PendingPay>, now)})
+     and ok = true
+||
+  others && orders = ~orders and ok = false
+end_process;
+process PlaceOrder_d2(cid: CustomerId, mid: MerchantId, items: map DishId to nat, addr: string, now: Time, oid: OrderId) ok: bool 
+ext rd customers rd merchants rd dishes wr orders
+FSF:
+  cid <= 10 && orders = override(~orders, {oid -> mk_Order(cid, mid, items, Total(items, dishes), addr, <PendingPay>, now)})
+     and ok = true
+||
+  cid > 10 && orders = ~orders and ok = false
+end_process;
+process PlaceOrder_d3(cid: CustomerId, mid: MerchantId, items: map DishId to nat, addr: string, now: Time, oid: OrderId) ok: bool 
+ext rd customers rd merchants rd dishes wr orders
+FSF:
+  cid < 10 && orders = override(~orders, {oid -> mk_Order(cid, mid, items, Total(items, dishes), addr, <PendingPay>, now)})
+     and ok = true
+||
+  cid >= 10 and cid <= 20 && orders = ~orders and ok = false
+||
+  cid > 20 && orders = ~orders and ok = false
+end_process;
+process PlaceOrder_dg(cid: CustomerId, mid: MerchantId, items: map DishId to nat, addr: string, now: Time, oid: OrderId) ok: bool 
+ext rd customers rd merchants rd dishes wr orders
+FSF:
+  cid < 10 && orders = override(~orders, {oid -> mk_Order(cid, mid, items, Total(items, dishes), addr, <PendingPay>, now)})
+     and ok = true
+||
+  cid > 10 && orders = ~orders and ok = false
+||
+  others && orders = ~orders and ok = false
+end_process;
+process PlaceOrder_dc(cid: CustomerId, mid: MerchantId, items: map DishId to nat, addr: string, now: Time, oid: OrderId) ok: bool 
+ext rd customers rd merchants rd dishes wr orders
+FSF:
+  cid <= 10 && orders = override(~orders, {oid -> mk_Order(cid, mid, items, Total(items, dishes), addr, <PendingPay>, now)})
+     and ok = true
+||
+  cid > 10 && orders = ~orders and ok = false
+||
+  others && orders = ~orders and ok = false
+end_process;
+process PayOrder(cid: CustomerId, oid: OrderId, pid: PaymentId, now: Time) ok: bool /* [F2] */
+ext wr orders wr payments
+FSF:
+  oid inset dom(~orders) and ~orders(oid).customer_id = cid
+  and ~orders(oid).status = <PendingPay>                                      /* [C5] */
+  and not (exists[p: rng(~payments)] | p.order_id = oid)                      /* [C5] */
+  and pid notin dom(~payments)
+  && orders = override(~orders, {oid -> modify(~orders(oid), status -> <Paid>)})
+     and payments = override(~payments, {pid -> mk_Payment(oid, ~orders(oid).amount, <Simulated>, <Success>, now)})
+     and ok = true
+||
+  others && orders = ~orders and payments = ~payments and ok = false
+end_process;
+process PayOrder_d2(cid: CustomerId, oid: OrderId, pid: PaymentId, now: Time) ok: bool 
+ext wr orders wr payments
+FSF:
+  cid <= 10 && orders = override(~orders, {oid -> modify(~orders(oid), status -> <Paid>)})
+     and payments = override(~payments, {pid -> mk_Payment(oid, ~orders(oid).amount, <Simulated>, <Success>, now)})
+     and ok = true
+||
+  cid > 10 && orders = ~orders and payments = ~payments and ok = false
+end_process;
+process PayOrder_d3(cid: CustomerId, oid: OrderId, pid: PaymentId, now: Time) ok: bool 
+ext wr orders wr payments
+FSF:
+  cid < 10 && orders = override(~orders, {oid -> modify(~orders(oid), status -> <Paid>)})
+     and payments = override(~payments, {pid -> mk_Payment(oid, ~orders(oid).amount, <Simulated>, <Success>, now)})
+     and ok = true
+||
+  cid >= 10 and cid <= 20 && orders = ~orders and payments = ~payments and ok = false
+||
+  cid > 20 && orders = ~orders and payments = ~payments and ok = false
+end_process;
+process PayOrder_dg(cid: CustomerId, oid: OrderId, pid: PaymentId, now: Time) ok: bool 
+ext wr orders wr payments
+FSF:
+  cid < 10 && orders = override(~orders, {oid -> modify(~orders(oid), status -> <Paid>)})
+     and payments = override(~payments, {pid -> mk_Payment(oid, ~orders(oid).amount, <Simulated>, <Success>, now)})
+     and ok = true
+||
+  cid > 10 && orders = ~orders and payments = ~payments and ok = false
+||
+  others && orders = ~orders and payments = ~payments and ok = false
+end_process;
+process PayOrder_dc(cid: CustomerId, oid: OrderId, pid: PaymentId, now: Time) ok: bool 
+ext wr orders wr payments
+FSF:
+  cid <= 10 && orders = override(~orders, {oid -> modify(~orders(oid), status -> <Paid>)})
+     and payments = override(~payments, {pid -> mk_Payment(oid, ~orders(oid).amount, <Simulated>, <Success>, now)})
+     and ok = true
+||
+  cid > 10 && orders = ~orders and payments = ~payments and ok = false
+||
+  others && orders = ~orders and payments = ~payments and ok = false
+end_process;
+process CancelOrder(cid: CustomerId, oid: OrderId) ok: bool                /* [F7] */
+ext wr orders wr payments
+FSF:
+  oid inset dom(~orders) and ~orders(oid).customer_id = cid and ~orders(oid).status = <PendingPay>
+  && orders = override(~orders, {oid -> modify(~orders(oid), status -> <Cancelled>)})
+     and payments = ~payments and ok = true
+||
+  oid inset dom(~orders) and ~orders(oid).customer_id = cid and ~orders(oid).status = <Paid>
+  && orders = override(~orders, {oid -> modify(~orders(oid), status -> <Cancelled>)})
+     and payments = override(~payments, {p -> modify(~payments(p), status -> <Refunded>) | p: dom(~payments) & ~payments(p).order_id = oid})
+     and ok = true
+||
+  others && orders = ~orders and payments = ~payments and ok = false
+end_process;
+process ConfirmReceipt(cid: CustomerId, oid: OrderId) ok: bool             /* [F8] 客户确认收货 */
+ext wr orders
+FSF:
+  oid inset dom(~orders) and ~orders(oid).customer_id = cid
+  and ~orders(oid).status = <Delivered>                                       /* [C6] */
+  && orders = override(~orders, {oid -> modify(~orders(oid), status -> <Completed>)}) and ok = true
+||
+  others && orders = ~orders and ok = false
+end_process;
+process ConfirmReceipt_d2(cid: CustomerId, oid: OrderId) ok: bool             
+ext wr orders
+FSF:
+  cid <= 10 && orders = override(~orders, {oid -> modify(~orders(oid), status -> <Completed>)}) and ok = true
+||
+  cid > 10 && orders = ~orders and ok = false
+end_process;
+process ConfirmReceipt_d3(cid: CustomerId, oid: OrderId) ok: bool             
+ext wr orders
+FSF:
+  cid < 10 && orders = override(~orders, {oid -> modify(~orders(oid), status -> <Completed>)}) and ok = true
+||
+  cid >= 10 and cid <= 20 && orders = ~orders and ok = false
+||
+  cid > 20 && orders = ~orders and ok = false
+end_process;
+process ConfirmReceipt_dg(cid: CustomerId, oid: OrderId) ok: bool             
+ext wr orders
+FSF:
+  cid < 10 && orders = override(~orders, {oid -> modify(~orders(oid), status -> <Completed>)}) and ok = true
+||
+  cid > 10 && orders = ~orders and ok = false
+||
+  others && orders = ~orders and ok = false
+end_process;
+process ConfirmReceipt_dc(cid: CustomerId, oid: OrderId) ok: bool             
+ext wr orders
+FSF:
+  cid <= 10 && orders = override(~orders, {oid -> modify(~orders(oid), status -> <Completed>)}) and ok = true
+||
+  cid > 10 && orders = ~orders and ok = false
+||
+  others && orders = ~orders and ok = false
+end_process;
+process AutoComplete(now: Time, confirm_timeout: Duration) done: set of OrderId                      /* [F8] 超时自动完成 */
+ext wr orders rd deliveries
+FSF:
+  true
+  && done = {o | o: dom(~orders) & ~orders(o).status = <Delivered> and o inset dom(deliveries)
+                 and now - deliveries(o).delivered_at >= confirm_timeout}     /* [C6] */
+     and orders = override(~orders, {o -> modify(~orders(o), status -> <Completed>) | o: done & true})
+end_process;
+process AutoComplete_d2(now: Time, confirm_timeout: Duration) done: set of OrderId                      
+ext wr orders rd deliveries
+FSF:
+  now <= 10 && done = {o | o: dom(~orders) & ~orders(o).status = <Delivered> and o inset dom(deliveries)
+                 and now - deliveries(o).delivered_at >= confirm_timeout}     /* [C6] */
+     and orders = override(~orders, {o -> modify(~orders(o), status -> <Completed>) | o: done & true})
+||
+  now > 10 && done = {o | o: dom(~orders) & ~orders(o).status = <Delivered> and o inset dom(deliveries)
+                 and now - deliveries(o).delivered_at >= confirm_timeout}     /* [C6] */
+     and orders = override(~orders, {o -> modify(~orders(o), status -> <Completed>) | o: done & true})
+end_process;
+process AutoComplete_d3(now: Time, confirm_timeout: Duration) done: set of OrderId                      
+ext wr orders rd deliveries
+FSF:
+  now < 10 && done = {o | o: dom(~orders) & ~orders(o).status = <Delivered> and o inset dom(deliveries)
+                 and now - deliveries(o).delivered_at >= confirm_timeout}     /* [C6] */
+     and orders = override(~orders, {o -> modify(~orders(o), status -> <Completed>) | o: done & true})
+||
+  now >= 10 and now <= 20 && done = {o | o: dom(~orders) & ~orders(o).status = <Delivered> and o inset dom(deliveries)
+                 and now - deliveries(o).delivered_at >= confirm_timeout}     /* [C6] */
+     and orders = override(~orders, {o -> modify(~orders(o), status -> <Completed>) | o: done & true})
+||
+  now > 20 && done = {o | o: dom(~orders) & ~orders(o).status = <Delivered> and o inset dom(deliveries)
+                 and now - deliveries(o).delivered_at >= confirm_timeout}     /* [C6] */
+     and orders = override(~orders, {o -> modify(~orders(o), status -> <Completed>) | o: done & true})
+end_process;
+process AutoComplete_dg(now: Time, confirm_timeout: Duration) done: set of OrderId                      
+ext wr orders rd deliveries
+FSF:
+  now < 10 && done = {o | o: dom(~orders) & ~orders(o).status = <Delivered> and o inset dom(deliveries)
+                 and now - deliveries(o).delivered_at >= confirm_timeout}     /* [C6] */
+     and orders = override(~orders, {o -> modify(~orders(o), status -> <Completed>) | o: done & true})
+||
+  now > 10 && done = {o | o: dom(~orders) & ~orders(o).status = <Delivered> and o inset dom(deliveries)
+                 and now - deliveries(o).delivered_at >= confirm_timeout}     /* [C6] */
+     and orders = override(~orders, {o -> modify(~orders(o), status -> <Completed>) | o: done & true})
+||
+  others && done = {o | o: dom(~orders) & ~orders(o).status = <Delivered> and o inset dom(deliveries)
+                 and now - deliveries(o).delivered_at >= confirm_timeout}     /* [C6] */
+     and orders = override(~orders, {o -> modify(~orders(o), status -> <Completed>) | o: done & true})
+end_process;
+process AutoComplete_dc(now: Time, confirm_timeout: Duration) done: set of OrderId                      
+ext wr orders rd deliveries
+FSF:
+  now <= 10 && done = {o | o: dom(~orders) & ~orders(o).status = <Delivered> and o inset dom(deliveries)
+                 and now - deliveries(o).delivered_at >= confirm_timeout}     /* [C6] */
+     and orders = override(~orders, {o -> modify(~orders(o), status -> <Completed>) | o: done & true})
+||
+  now > 10 && done = {o | o: dom(~orders) & ~orders(o).status = <Delivered> and o inset dom(deliveries)
+                 and now - deliveries(o).delivered_at >= confirm_timeout}     /* [C6] */
+     and orders = override(~orders, {o -> modify(~orders(o), status -> <Completed>) | o: done & true})
+||
+  others && done = {o | o: dom(~orders) & ~orders(o).status = <Delivered> and o inset dom(deliveries)
+                 and now - deliveries(o).delivered_at >= confirm_timeout}     /* [C6] */
+     and orders = override(~orders, {o -> modify(~orders(o), status -> <Completed>) | o: done & true})
+end_process;
+process AcceptOrder(mid: MerchantId, oid: OrderId) ok: bool                /* [F3] 接单 */
+ext wr orders
+FSF:
+  oid inset dom(~orders) and ~orders(oid).merchant_id = mid
+  and ~orders(oid).status = <Paid>                                            /* [C2] */
+  && orders = override(~orders, {oid -> modify(~orders(oid), status -> <Preparing>)}) and ok = true
+||
+  others && orders = ~orders and ok = false
+end_process;
+process AcceptOrder_d2(mid: MerchantId, oid: OrderId) ok: bool                
+ext wr orders
+FSF:
+  mid <= 10 && orders = override(~orders, {oid -> modify(~orders(oid), status -> <Preparing>)}) and ok = true
+||
+  mid > 10 && orders = ~orders and ok = false
+end_process;
+process AcceptOrder_d3(mid: MerchantId, oid: OrderId) ok: bool                
+ext wr orders
+FSF:
+  mid < 10 && orders = override(~orders, {oid -> modify(~orders(oid), status -> <Preparing>)}) and ok = true
+||
+  mid >= 10 and mid <= 20 && orders = ~orders and ok = false
+||
+  mid > 20 && orders = ~orders and ok = false
+end_process;
+process AcceptOrder_dg(mid: MerchantId, oid: OrderId) ok: bool                
+ext wr orders
+FSF:
+  mid < 10 && orders = override(~orders, {oid -> modify(~orders(oid), status -> <Preparing>)}) and ok = true
+||
+  mid > 10 && orders = ~orders and ok = false
+||
+  others && orders = ~orders and ok = false
+end_process;
+process AcceptOrder_dc(mid: MerchantId, oid: OrderId) ok: bool                
+ext wr orders
+FSF:
+  mid <= 10 && orders = override(~orders, {oid -> modify(~orders(oid), status -> <Preparing>)}) and ok = true
+||
+  mid > 10 && orders = ~orders and ok = false
+||
+  others && orders = ~orders and ok = false
+end_process;
+process RejectOrder(mid: MerchantId, oid: OrderId) ok: bool                /* [F3] 拒单 → 退款 */
+ext wr orders wr payments
+FSF:
+  oid inset dom(~orders) and ~orders(oid).merchant_id = mid and ~orders(oid).status = <Paid>
+  && orders = override(~orders, {oid -> modify(~orders(oid), status -> <Rejected>)})
+     and payments = override(~payments, {p -> modify(~payments(p), status -> <Refunded>) | p: dom(~payments) & ~payments(p).order_id = oid})
+     and ok = true
+||
+  others && orders = ~orders and payments = ~payments and ok = false
+end_process;
+process RejectOrder_d2(mid: MerchantId, oid: OrderId) ok: bool                
+ext wr orders wr payments
+FSF:
+  mid <= 10 && orders = override(~orders, {oid -> modify(~orders(oid), status -> <Rejected>)})
+     and payments = override(~payments, {p -> modify(~payments(p), status -> <Refunded>) | p: dom(~payments) & ~payments(p).order_id = oid})
+     and ok = true
+||
+  mid > 10 && orders = ~orders and payments = ~payments and ok = false
+end_process;
+process RejectOrder_d3(mid: MerchantId, oid: OrderId) ok: bool                
+ext wr orders wr payments
+FSF:
+  mid < 10 && orders = override(~orders, {oid -> modify(~orders(oid), status -> <Rejected>)})
+     and payments = override(~payments, {p -> modify(~payments(p), status -> <Refunded>) | p: dom(~payments) & ~payments(p).order_id = oid})
+     and ok = true
+||
+  mid >= 10 and mid <= 20 && orders = ~orders and payments = ~payments and ok = false
+||
+  mid > 20 && orders = ~orders and payments = ~payments and ok = false
+end_process;
+process RejectOrder_dg(mid: MerchantId, oid: OrderId) ok: bool                
+ext wr orders wr payments
+FSF:
+  mid < 10 && orders = override(~orders, {oid -> modify(~orders(oid), status -> <Rejected>)})
+     and payments = override(~payments, {p -> modify(~payments(p), status -> <Refunded>) | p: dom(~payments) & ~payments(p).order_id = oid})
+     and ok = true
+||
+  mid > 10 && orders = ~orders and payments = ~payments and ok = false
+||
+  others && orders = ~orders and payments = ~payments and ok = false
+end_process;
+process RejectOrder_dc(mid: MerchantId, oid: OrderId) ok: bool                
+ext wr orders wr payments
+FSF:
+  mid <= 10 && orders = override(~orders, {oid -> modify(~orders(oid), status -> <Rejected>)})
+     and payments = override(~payments, {p -> modify(~payments(p), status -> <Refunded>) | p: dom(~payments) & ~payments(p).order_id = oid})
+     and ok = true
+||
+  mid > 10 && orders = ~orders and payments = ~payments and ok = false
+||
+  others && orders = ~orders and payments = ~payments and ok = false
+end_process;
+process MarkReady(mid: MerchantId, oid: OrderId) ok: bool                  /* [F4] 出餐 */
+ext wr orders
+FSF:
+  oid inset dom(~orders) and ~orders(oid).merchant_id = mid and ~orders(oid).status = <Preparing>
+  && orders = override(~orders, {oid -> modify(~orders(oid), status -> <ReadyForDelivery>)}) and ok = true
+||
+  others && orders = ~orders and ok = false
+end_process;
+process MarkReady_d2(mid: MerchantId, oid: OrderId) ok: bool                  
+ext wr orders
+FSF:
+  mid <= 10 && orders = override(~orders, {oid -> modify(~orders(oid), status -> <ReadyForDelivery>)}) and ok = true
+||
+  mid > 10 && orders = ~orders and ok = false
+end_process;
+process MarkReady_d3(mid: MerchantId, oid: OrderId) ok: bool                  
+ext wr orders
+FSF:
+  mid < 10 && orders = override(~orders, {oid -> modify(~orders(oid), status -> <ReadyForDelivery>)}) and ok = true
+||
+  mid >= 10 and mid <= 20 && orders = ~orders and ok = false
+||
+  mid > 20 && orders = ~orders and ok = false
+end_process;
+process MarkReady_dg(mid: MerchantId, oid: OrderId) ok: bool                  
+ext wr orders
+FSF:
+  mid < 10 && orders = override(~orders, {oid -> modify(~orders(oid), status -> <ReadyForDelivery>)}) and ok = true
+||
+  mid > 10 && orders = ~orders and ok = false
+||
+  others && orders = ~orders and ok = false
+end_process;
+process MarkReady_dc(mid: MerchantId, oid: OrderId) ok: bool                  
+ext wr orders
+FSF:
+  mid <= 10 && orders = override(~orders, {oid -> modify(~orders(oid), status -> <ReadyForDelivery>)}) and ok = true
+||
+  mid > 10 && orders = ~orders and ok = false
+||
+  others && orders = ~orders and ok = false
+end_process;
+process GrabOrder(rid: RiderId, oid: OrderId, now: Time) ok: bool          /* [F5] */
+ext wr riders wr orders wr deliveries
+FSF:
+  rid inset dom(~riders) and ~riders(rid).online = <Online> and ~riders(rid).current_order = <None>
+  and oid inset dom(~orders) and ~orders(oid).status = <ReadyForDelivery>
+  and oid notin dom(~deliveries)                                              /* [C3] */
+  && deliveries = override(~deliveries, {oid -> mk_DeliveryRecord(rid, <PickedUp>, now, <None>)})
+     and riders = override(~riders, {rid -> modify(~riders(rid), current_order -> oid)})
+     and orders = override(~orders, {oid -> modify(~orders(oid), status -> <Delivering>)})
+     and ok = true
+||
+  others && deliveries = ~deliveries and riders = ~riders and orders = ~orders and ok = false
+end_process;
+process GrabOrder_d2(rid: RiderId, oid: OrderId, now: Time) ok: bool          
+ext wr riders wr orders wr deliveries
+FSF:
+  rid <= 10 && deliveries = override(~deliveries, {oid -> mk_DeliveryRecord(rid, <PickedUp>, now, <None>)})
+     and riders = override(~riders, {rid -> modify(~riders(rid), current_order -> oid)})
+     and orders = override(~orders, {oid -> modify(~orders(oid), status -> <Delivering>)})
+     and ok = true
+||
+  rid > 10 && deliveries = ~deliveries and riders = ~riders and orders = ~orders and ok = false
+end_process;
+process GrabOrder_d3(rid: RiderId, oid: OrderId, now: Time) ok: bool          
+ext wr riders wr orders wr deliveries
+FSF:
+  rid < 10 && deliveries = override(~deliveries, {oid -> mk_DeliveryRecord(rid, <PickedUp>, now, <None>)})
+     and riders = override(~riders, {rid -> modify(~riders(rid), current_order -> oid)})
+     and orders = override(~orders, {oid -> modify(~orders(oid), status -> <Delivering>)})
+     and ok = true
+||
+  rid >= 10 and rid <= 20 && deliveries = ~deliveries and riders = ~riders and orders = ~orders and ok = false
+||
+  rid > 20 && deliveries = ~deliveries and riders = ~riders and orders = ~orders and ok = false
+end_process;
+process GrabOrder_dg(rid: RiderId, oid: OrderId, now: Time) ok: bool          
+ext wr riders wr orders wr deliveries
+FSF:
+  rid < 10 && deliveries = override(~deliveries, {oid -> mk_DeliveryRecord(rid, <PickedUp>, now, <None>)})
+     and riders = override(~riders, {rid -> modify(~riders(rid), current_order -> oid)})
+     and orders = override(~orders, {oid -> modify(~orders(oid), status -> <Delivering>)})
+     and ok = true
+||
+  rid > 10 && deliveries = ~deliveries and riders = ~riders and orders = ~orders and ok = false
+||
+  others && deliveries = ~deliveries and riders = ~riders and orders = ~orders and ok = false
+end_process;
+process GrabOrder_dc(rid: RiderId, oid: OrderId, now: Time) ok: bool          
+ext wr riders wr orders wr deliveries
+FSF:
+  rid <= 10 && deliveries = override(~deliveries, {oid -> mk_DeliveryRecord(rid, <PickedUp>, now, <None>)})
+     and riders = override(~riders, {rid -> modify(~riders(rid), current_order -> oid)})
+     and orders = override(~orders, {oid -> modify(~orders(oid), status -> <Delivering>)})
+     and ok = true
+||
+  rid > 10 && deliveries = ~deliveries and riders = ~riders and orders = ~orders and ok = false
+||
+  others && deliveries = ~deliveries and riders = ~riders and orders = ~orders and ok = false
+end_process;
+process ConfirmDelivered(rid: RiderId, oid: OrderId, now: Time) ok: bool   /* [F6] */
+ext wr riders wr orders wr deliveries
+FSF:
+  oid inset dom(~deliveries) and ~deliveries(oid).rider_id = rid
+  and ~orders(oid).status = <Delivering>
+  && deliveries = override(~deliveries, {oid -> modify(~deliveries(oid), stage -> <Done>, delivered_at -> now)})
+     and riders = override(~riders, {rid -> modify(~riders(rid), current_order -> <None>)})
+     and orders = override(~orders, {oid -> modify(~orders(oid), status -> <Delivered>)})
+     and ok = true
+||
+  others && deliveries = ~deliveries and riders = ~riders and orders = ~orders and ok = false
+end_process;
+process ConfirmDelivered_d2(rid: RiderId, oid: OrderId, now: Time) ok: bool   
+ext wr riders wr orders wr deliveries
+FSF:
+  rid <= 10 && deliveries = override(~deliveries, {oid -> modify(~deliveries(oid), stage -> <Done>, delivered_at -> now)})
+     and riders = override(~riders, {rid -> modify(~riders(rid), current_order -> <None>)})
+     and orders = override(~orders, {oid -> modify(~orders(oid), status -> <Delivered>)})
+     and ok = true
+||
+  rid > 10 && deliveries = ~deliveries and riders = ~riders and orders = ~orders and ok = false
+end_process;
+process ConfirmDelivered_d3(rid: RiderId, oid: OrderId, now: Time) ok: bool   
+ext wr riders wr orders wr deliveries
+FSF:
+  rid < 10 && deliveries = override(~deliveries, {oid -> modify(~deliveries(oid), stage -> <Done>, delivered_at -> now)})
+     and riders = override(~riders, {rid -> modify(~riders(rid), current_order -> <None>)})
+     and orders = override(~orders, {oid -> modify(~orders(oid), status -> <Delivered>)})
+     and ok = true
+||
+  rid > 20 && deliveries = ~deliveries and riders = ~riders and orders = ~orders and ok = false
+end_process
+process ConfirmDelivered_dg(rid: RiderId, oid: OrderId, now: Time) ok: bool   
+ext wr riders wr orders wr deliveries
+FSF:
+  rid < 10 && deliveries = override(~deliveries, {oid -> modify(~deliveries(oid), stage -> <Done>, delivered_at -> now)})
+     and riders = override(~riders, {rid -> modify(~riders(rid), current_order -> <None>)})
+     and orders = override(~orders, {oid -> modify(~orders(oid), status -> <Delivered>)})
+     and ok = true
+||
+  rid > 10 && deliveries = ~deliveries and riders = ~riders and orders = ~orders and ok = false
+||
+  others && deliveries = ~deliveries and riders = ~riders and orders = ~orders and ok = false
+end_process;
+process ConfirmDelivered_dc(rid: RiderId, oid: OrderId, now: Time) ok: bool   
+ext wr riders wr orders wr deliveries
+FSF:
+  rid <= 10 && deliveries = override(~deliveries, {oid -> modify(~deliveries(oid), stage -> <Done>, delivered_at -> now)})
+     and riders = override(~riders, {rid -> modify(~riders(rid), current_order -> <None>)})
+     and orders = override(~orders, {oid -> modify(~orders(oid), status -> <Delivered>)})
+     and ok = true
+||
+  rid > 10 && deliveries = ~deliveries and riders = ~riders and orders = ~orders and ok = false
+||
+  others && deliveries = ~deliveries and riders = ~riders and orders = ~orders and ok = false
+end_process;
+function Total(items: map DishId to nat, ds: map DishId to Dish): Money
+  == if items = {->} then 0
+     else let d = get(dom(items)) in ds(d).price * items(d) + Total(domrb({d}, items), ds)
+end_function
+end_module.
