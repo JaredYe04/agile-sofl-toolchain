@@ -1,6 +1,6 @@
-# Fault-injection results (RQ2, no LLM)
+# Fault-injection results (RQ3, no LLM)
 
-- Date: 2026-10-08; seed 20261008; max 15 mutants per operator (split over both specs)
+- Date: 2026-10-08; seed 20261008; up to 8 mutants per operator per spec (--max 15 split over 2 specs, rounded up), i.e. 16 per operator
 - Tool commit: c9c67f7081a2261749fe4735d6ca050a320e1e45
 - `git diff --stat exp-freeze-v1.1 -- packages/parser/src`: packages/parser/src/fsf/l2Check.ts | 13 +++++++++----
  1 file changed, 9 insertions(+), 4 deletions(-) (L2 stats collector / leaf flag only; no diagnostic change)
@@ -124,3 +124,15 @@ C4 (undeclared variable): 16/16 caught, 15 by the scope resolver (ASFL_SCOPE_001
 False positives: 0 mutants with new errors at other processes; negative controls 0/120 processes with errors (both specs plus all 92 derived processes).
 
 Post-fix rerun: see ../2026-10-08-postfix/summary.md.
+
+## Tool version used (provenance)
+
+Run at commit `c9c67f7` (not a tag). An earlier identical run at `35fe4d8` (the same change before rebase onto `bd8ea6c`) produced a byte-identical `results.csv`.
+Diff `exp-freeze-v1.1`..`c9c67f7` restricted to tool source (`packages/parser/src`, `packages/studio/src`): 2 files, +14/−8.
+
+- `packages/parser/src/fsf/l2Check.ts`: adds `leaf`, `decomposition` and span fields to the coverage-statistics structure only; decision logic and emitted diagnostics unchanged.
+- `packages/studio/src/main/services/llm/experiment.ts`: adds the `ran` flag to `post_write_diagnostics` telemetry; logging only.
+- `l1Check.ts` unchanged. All other changed files are scripts (coverage stats, headless harness), tests, `.gitattributes`/`.gitignore` and the trimmed reference aspec, none of which affect diagnostics.
+
+Full diffs: `diff-v1.1-to-c9c67f7-src.patch` (tool source) and `diff-v1.1-to-c9c67f7.patch` (everything).
+The post-fix rerun (`../2026-10-08-postfix/`) was run at `468e301`, which adds the L1 fixes F1/F2 on top.

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * RQ2 fault-injection experiment for the FSF checks (no LLM).
+ * RQ3 fault-injection experiment for the FSF checks (no LLM).
  * Rules: sofl/kb/paper-input/fault-injection-rules.md (v0.1).
  *
  *   npm run build && node scripts/fault-injection.mjs [--seed 20261008] [--max 15] [--out <dir>]
@@ -290,9 +290,9 @@ const tbl = (group) => {
   return s
 }
 const ctlErr = controls.filter((c) => c.errors)
-const summary = `# Fault-injection results (RQ2, no LLM)
+const summary = `# Fault-injection results (RQ3, no LLM)
 
-- Date: ${day}; seed ${SEED}; max ${MAX} mutants per operator (split over both specs)
+- Date: ${day}; seed ${SEED}; up to ${Math.ceil(MAX / SPECS.length)} mutants per operator per spec (--max ${MAX} split over ${SPECS.length} specs, rounded up), i.e. up to ${Math.ceil(MAX / SPECS.length) * SPECS.length} per operator
 - Tool commit: ${commit}
 - \`git diff --stat exp-freeze-v1.1 -- packages/parser/src\`: ${srcDiff || '(empty)'} (L2 stats collector / leaf flag only; no diagnostic change)
 - Rules: sofl/kb/paper-input/fault-injection-rules.md v0.1

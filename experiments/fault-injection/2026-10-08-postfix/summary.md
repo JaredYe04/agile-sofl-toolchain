@@ -1,6 +1,6 @@
-# Fault-injection results (RQ2, no LLM)
+# Fault-injection results (RQ3, no LLM)
 
-- Date: 2026-10-08; seed 20261008; max 15 mutants per operator (split over both specs)
+- Date: 2026-10-08; seed 20261008; up to 8 mutants per operator per spec (--max 15 split over 2 specs, rounded up), i.e. 16 per operator
 - Tool commit: 468e3016c6257f9ffa5789bd381b211f1b09cd44
 - `git diff --stat exp-freeze-v1.1 -- packages/parser/src`: packages/parser/src/diagnostics/codes.ts |  2 ++
  packages/parser/src/fsf/l1Check.ts       | 13 ++++++++++++-
@@ -80,4 +80,4 @@
 ## Note
 Post-fix rerun (commit 468e301: L1 F1 fix + ASFL_FSF_105), same seed and therefore the same mutants as ../2026-10-08/.
 This is NOT the frozen-tool result. The fixes were designed after seeing those mutants, so C2/C3 here are not an independent
-estimate. A fresh mutant set (new seed or new operators) would be needed for that. Primary RQ2 numbers: ../2026-10-08/summary.md.
+estimate. A fresh mutant set (new seed or new operators) would be needed for that. Primary RQ3 numbers: ../2026-10-08/summary.md.

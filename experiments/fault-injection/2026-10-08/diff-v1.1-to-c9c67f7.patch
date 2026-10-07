@@ -1,0 +1,647 @@
+diff --git a/.gitattributes b/.gitattributes
+index dfe0770..4affeec 100644
+--- a/.gitattributes
++++ b/.gitattributes
+@@ -1,2 +1,5 @@
+ # Auto detect text files and perform LF normalization
+ * text=auto
++
++# shebang scripts are imported by vitest; CRLF after the shebang breaks parsing on Windows
++*.mjs text eol=lf
+diff --git a/.gitignore b/.gitignore
+index 496a66b..0623572 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -12,3 +12,4 @@ coverage/
+ /.playwright-mcp
+ docs/Aigle-SOFL.pdf
+ packages/studio/.env
++packages/studio/.harness/
+diff --git a/packages/parser/scripts/l2-coverage.mjs b/packages/parser/scripts/l2-coverage.mjs
+index d8fb412..23059d3 100644
+--- a/packages/parser/scripts/l2-coverage.mjs
++++ b/packages/parser/scripts/l2-coverage.mjs
+@@ -13,16 +13,13 @@ import { checkFsfL2 } from '../dist/fsf/l2Check.js'
+ 
+ const COMPOSITE = /field access|composite|composed|product|record/i
+ 
+-export async function coverage(source, { timeoutMs = 2000 } = {}) {
+-  const r = check(source)
+-  if (!r.ast) throw new Error('parse failed: ' + r.diagnostics.filter((d) => d.severity === 'error').map((d) => d.message).join('; '))
+-  const stats = []
+-  await checkFsfL2(r.ast, { timeoutMs, stats })
++export function summarize(stats) {
+   const blank = () => ({ total: 0, sat: 0, unsat: 0, unknown: 0, timeout: 0, unsupported: 0, informal: 0 })
+   const res = { fsfProcesses: stats.length, othersOnly: 0, l1Skipped: 0, exclusion: blank(), completeness: { ...blank(), byOthers: 0 },
+-    testConditions: { total: 0, encoded: 0, informal: 0, unsupported: 0, error: 0 }, unsupportedByTest: {}, unsupportedByCheck: {}, processes: stats }
++    testConditions: { total: 0, encoded: 0, informal: 0, unsupported: 0, error: 0 }, unsupportedByTest: {}, unsupportedByCheck: {} }
+   const bump = (o, k) => { o[k] = (o[k] ?? 0) + 1 }
+   const skipKind = (reasons) => reasons.every((x) => x === 'natural-language atom') ? 'informal' : 'unsupported'
++  let fullyDecided = 0
+   for (const s of stats) {
+     if (s.skippedWhole === 'others-only') res.othersOnly++
+     if (s.skippedWhole === 'l1-failed') res.l1Skipped++
+@@ -34,7 +31,8 @@ export async function coverage(source, { timeoutMs = 2000 } = {}) {
+         if (k === 'unsupported') for (const x of new Set(e.skipReasons.filter((y) => y !== 'natural-language atom'))) bump(res.unsupportedByCheck, x)
+       } else res.exclusion[e.outcome]++
+     }
+-    if (s.skippedWhole === 'others-only' || s.completeness.outcome === 'others') { res.completeness.byOthers++; continue }
++    const exclOk = s.exclusion.every((e) => e.outcome === 'sat' || e.outcome === 'unsat')
++    if (s.skippedWhole === 'others-only' || s.completeness.outcome === 'others') { res.completeness.byOthers++; if (exclOk && s.skippedWhole !== 'l1-failed') fullyDecided++; continue }
+     if (s.skippedWhole) continue
+     res.completeness.total++
+     const c = s.completeness
+@@ -42,19 +40,50 @@ export async function coverage(source, { timeoutMs = 2000 } = {}) {
+       const k = skipKind(c.skipReasons ?? []); res.completeness[k]++
+       if (k === 'unsupported') for (const x of new Set((c.skipReasons ?? []).filter((y) => y !== 'natural-language atom'))) bump(res.unsupportedByCheck, x)
+     } else res.completeness[c.outcome]++
++    if (exclOk && (c.outcome === 'sat' || c.outcome === 'unsat')) fullyDecided++
+   }
+-  // estimate: checks whose ONLY blocker is composite field access / composite types
+-  const onlyComposite = (reasons) => reasons.length > 0 && reasons.every((x) => COMPOSITE.test(x))
+-  const touchComposite = (reasons) => reasons.some((x) => COMPOSITE.test(x))
+-  res.compositeEstimate = {
+-    exclusionOnlyBlocker: stats.flatMap((s) => s.exclusion).filter((e) => e.outcome === 'skipped' && onlyComposite(e.skipReasons)).length,
+-    exclusionInvolved: stats.flatMap((s) => s.exclusion).filter((e) => e.outcome === 'skipped' && touchComposite(e.skipReasons)).length,
+-    completenessOnlyBlocker: stats.filter((s) => s.completeness.outcome === 'skipped' && !s.skippedWhole && onlyComposite(s.completeness.skipReasons ?? [])).length,
+-    testsOnlyComposite: stats.flatMap((s) => s.tests).filter((t) => t.status === 'unsupported' && COMPOSITE.test(t.reason)).length
++  const pct = (x, n) => (n ? `${((100 * x) / n).toFixed(1)}%` : 'n/a')
++  const decE = res.exclusion.sat + res.exclusion.unsat, decC = res.completeness.sat + res.completeness.unsat
++  res.rates = {
++    exclusionDecided: `${decE}/${res.exclusion.total} (${pct(decE, res.exclusion.total)})`,
++    completenessDecidedOrOthers: `${decC + res.completeness.byOthers}/${stats.length} (${pct(decC + res.completeness.byOthers, stats.length)})`,
++    processesFullyDecided: `${fullyDecided}/${stats.length} (${pct(fullyDecided, stats.length)})`
+   }
+   return res
+ }
+ 
++const COMPOSITE_RE = COMPOSITE
++export async function coverage(source, { timeoutMs = 2000 } = {}) {
++  const r = check(source)
++  if (!r.ast) throw new Error('parse failed: ' + r.diagnostics.filter((d) => d.severity === 'error').map((d) => d.message).join('; '))
++  const stats = []
++  await checkFsfL2(r.ast, { timeoutMs, stats })
++  const text = (sp) => (sp ? source.slice(sp.start, sp.end).replace(/\s+/g, ' ').trim() : undefined)
++  const leaf = stats.filter((s) => s.leaf), nonLeaf = stats.filter((s) => !s.leaf)
++  // leaf processes whose pair checks were skipped (only) for natural-language atoms
++  const informalList = (subset) => { const out = []; for (const s of subset) {
++    const skipped = s.exclusion.filter((e) => e.outcome === 'skipped' && e.skipReasons.every((x) => x === 'natural-language atom'))
++    const informalTests = s.tests.filter((t) => t.status === 'informal')
++    if (!skipped.length && !informalTests.length) continue
++    out.push({ module: s.module, process: s.process, scenarios: s.scenarios, hasOthers: s.hasOthers,
++      informalPairChecksSkipped: skipped.length,
++      informalTests: informalTests.map((t) => ({ index: t.index, atom: text(t.span), line: t.span?.line, test: text(t.testSpan) })) })
++  } return out }
++  const leafInformal = informalList(leaf), nonLeafInformal = informalList(nonLeaf)
++  const onlyComposite = (reasons) => reasons.length > 0 && reasons.every((x) => COMPOSITE_RE.test(x))
++  const touchComposite = (reasons) => reasons.some((x) => COMPOSITE_RE.test(x))
++  return {
++    all: summarize(stats), leaf: summarize(leaf), nonLeaf: summarize(nonLeaf), leafInformal, nonLeafInformal,
++    compositeEstimate: {
++      exclusionOnlyBlocker: stats.flatMap((s) => s.exclusion).filter((e) => e.outcome === 'skipped' && onlyComposite(e.skipReasons)).length,
++      exclusionInvolved: stats.flatMap((s) => s.exclusion).filter((e) => e.outcome === 'skipped' && touchComposite(e.skipReasons)).length,
++      completenessOnlyBlocker: stats.filter((s) => s.completeness.outcome === 'skipped' && !s.skippedWhole && onlyComposite(s.completeness.skipReasons ?? [])).length,
++      testsOnlyComposite: stats.flatMap((s) => s.tests).filter((t) => t.status === 'unsupported' && COMPOSITE_RE.test(t.reason)).length
++    },
++    processes: stats.map((s) => ({ ...s, tests: s.tests.map(({ span, testSpan, ...t }) => t) }))
++  }
++}
++
+ const isMain = process.argv[1] && import.meta.url.endsWith(basename(process.argv[1]))
+ if (isMain) {
+   const args = process.argv.slice(2)
+@@ -64,9 +93,19 @@ if (isMain) {
+   const all = {}
+   for (const f of files) all[basename(f)] = await coverage(readFileSync(f, 'utf-8'), { timeoutMs })
+   if (args.includes('--json')) { console.log(JSON.stringify(all, null, 2)); process.exit(0) }
++  const row = (r) => [r.fsfProcesses, `${r.exclusion.total}`, `${r.exclusion.sat}/${r.exclusion.unsat}`, r.exclusion.unknown + r.exclusion.timeout, r.exclusion.informal, r.exclusion.unsupported,
++    `${r.completeness.total}`, `${r.completeness.sat}/${r.completeness.unsat}`, r.completeness.byOthers, r.completeness.informal + r.completeness.unsupported,
++    r.rates.exclusionDecided, r.rates.processesFullyDecided]
++  console.log('| spec | subset | FSF procs | pair checks | SAT/UNSAT | unknown+timeout | skip informal | skip unsupported | compl. via solver | SAT/UNSAT | by others | compl. skipped | pairs decided | procs fully decided |')
++  console.log('|' + '---|'.repeat(14))
++  for (const [f, r] of Object.entries(all)) for (const k of ['all', 'leaf', 'nonLeaf']) console.log(`| ${f} | ${k} | ${row(r[k]).join(' | ')} |`)
+   for (const [f, r] of Object.entries(all)) {
+-    const { processes, ...summary } = r
+-    console.log(`\n== ${f}`)
+-    console.log(JSON.stringify(summary, null, 2))
++    console.log(`\n== ${f}: unsupported ${JSON.stringify(r.all.unsupportedByCheck)}; composite estimate ${JSON.stringify(r.compositeEstimate)}`)
++    for (const [title, list] of [['LEAF', r.leafInformal], ['non-leaf (decomposed)', r.nonLeafInformal]]) {
++    console.log(`${title} processes with natural-language test atoms (checked scenarios only): ${list.length ? '' : 'none'}`)
++    for (const p of list) {
++      console.log(`- ${p.module}.${p.process} (${p.scenarios} scenarios${p.hasOthers ? ' + others' : ''}; ${p.informalPairChecksSkipped} pair checks skipped)`)
++      for (const t of p.informalTests) console.log(`    T${t.index} (line ${t.line}): atom "${t.atom}"${t.test !== t.atom ? `  | T: ${t.test}` : ''}`)
++    }}
+   }
+ }
+diff --git a/packages/parser/src/fsf/l2Check.ts b/packages/parser/src/fsf/l2Check.ts
+index 15ecb5e..3396444 100644
+--- a/packages/parser/src/fsf/l2Check.ts
++++ b/packages/parser/src/fsf/l2Check.ts
+@@ -30,6 +30,7 @@
+ import type {
+   ProgramNode, ModuleNode, ProcessNode, PredicateNode, AtomicPredicateNode, ExpressionNode, TypeExprNode
+ } from '../ast/nodes.js'
++import { textOf } from '../ast/nodes.js'
+ import type { Span } from '../ast/span.js'
+ import { createDiagnostic, DiagnosticCodes, type Diagnostic } from '../diagnostics/codes.js'
+ import { checkProcessFsfL1 } from './l1Check.js'
+@@ -70,10 +71,13 @@ export interface L2ProcessStats {
+   process: string
+   scenarios: number
+   hasOthers: boolean
++  /** bottom-level process: no `decom:` clause */
++  leaf: boolean
++  decomposition?: string
+   /** 'l1-failed' | 'others-only' | 'no-solver' when L2 did not run at all */
+   skippedWhole?: string
+   /** per non-others test condition: encoded, or why not */
+-  tests: Array<{ index: number; status: 'encoded' | 'informal' | 'unsupported' | 'error'; reason?: string }>
++  tests: Array<{ index: number; status: 'encoded' | 'informal' | 'unsupported' | 'error'; reason?: string; span?: Span; testSpan?: Span }>
+   exclusion: Array<{ i: number; j: number; outcome: L2Outcome; skipReasons?: string[] }>
+   /** 'others' = complete by construction; 'n/a' when not applicable */
+   completeness: { outcome: L2Outcome | 'others'; skipReasons?: string[] }
+@@ -438,7 +442,8 @@ export async function checkProcessFsfL2(
+   const out: Diagnostic[] = []
+   const p = proc.name
+   const n = fsf.scenarios.length
+-  const st: L2ProcessStats = { module: module.name, process: p, scenarios: n, hasOthers: !!fsf.others, tests: [], exclusion: [],
++  const decom = textOf(proc.body?.decomposition)?.trim() || undefined
++  const st: L2ProcessStats = { module: module.name, process: p, scenarios: n, hasOthers: !!fsf.others, leaf: !decom, decomposition: decom, tests: [], exclusion: [],
+     completeness: { outcome: fsf.others ? 'others' : 'skipped' } }
+   opts.stats?.push(st)
+   if (n === 0) { st.skippedWhole = 'others-only'; return [] } // only `others`: trivially exclusive and complete
+@@ -463,10 +468,10 @@ export async function checkProcessFsfL2(
+   fsf.scenarios.forEach((sc, i) => {
+     try {
+       T.push(enc.predicate(sc.test))
+-      st.tests.push({ index: i + 1, status: 'encoded' })
++      st.tests.push({ index: i + 1, status: 'encoded', testSpan: sc.test.span })
+     } catch (e) {
+       T.push(null)
+-      st.tests.push(e instanceof Informal ? { index: i + 1, status: 'informal', reason: 'natural-language atom' }
++      st.tests.push(e instanceof Informal ? { index: i + 1, status: 'informal', reason: 'natural-language atom', span: e.span, testSpan: sc.test.span }
+         : e instanceof Unsupported ? { index: i + 1, status: 'unsupported', reason: e.construct }
+           : { index: i + 1, status: 'error', reason: String((e as Error)?.message ?? e) })
+       if (e instanceof Informal) {
+diff --git a/packages/parser/tests/fixtures/reference-systems/delivery-trimmed.aspec b/packages/parser/tests/fixtures/reference-systems/delivery-trimmed.aspec
+new file mode 100644
+index 0000000..9ffb947
+--- /dev/null
++++ b/packages/parser/tests/fixtures/reference-systems/delivery-trimmed.aspec
+@@ -0,0 +1,89 @@
++# Functions
++
++## 下单
++
++操作者：客户。客户选择菜品加入购物车，填写收货地址并提交订单，系统生成待支付订单。
++
++## 支付订单
++
++操作者：客户。客户对待支付订单发起模拟支付，支付成功后订单状态变为已支付，并生成支付记录。
++
++## 接单/拒单
++
++操作者：商家。商家对已支付订单选择接单或拒单；接单后订单进入备餐状态，拒单则触发退款。
++
++## 出餐
++
++操作者：商家。商家备餐完成后标记出餐，订单进入待配送状态，可供骑手接单。
++
++## 抢单/接配送任务
++
++操作者：骑手。骑手查看待配送订单并接单，接单后订单绑定该骑手并进入配送中。
++
++## 确认送达
++
++操作者：骑手。骑手送达后确认完成，订单状态变为已送达，客户可进行评价。
++
++## 取消订单/退款
++
++操作者：客户。客户对尚未被商家接单的订单可主动取消；已支付订单取消时触发退款并生成退款记录。
++
++## 订单完成
++
++操作者：客户/系统。订单送达后，客户确认收货则订单变为已完成；超时未确认时系统自动完成订单。
++
++# Data Resources
++
++## 客户
++
++客户账号：客户ID、手机号、昵称、默认收货地址、状态。
++
++## 骑手
++
++骑手账号：骑手ID、姓名、手机号、在线状态、当前配送订单。
++
++## 商家
++
++商家账号：商家ID、名称、地址、营业状态、评分。
++
++## 菜品
++
++菜品：菜品ID、所属商家、名称、价格、库存、上架状态。
++
++## 订单
++
++订单：订单号、客户ID、商家ID、菜品明细、金额、收货地址、状态、下单时间。
++
++## 支付记录
++
++支付记录：支付ID、订单号、金额、支付方式、支付状态、支付时间。
++
++## 配送记录
++
++配送记录：配送ID、订单号、骑手ID、配送阶段、接单时间、送达时间。
++
++# Constraints
++
++## 订单号唯一
++
++每个订单号在全系统内唯一。
++
++## 未支付不能接单
++
++只有已支付订单才可被商家接单，待支付订单不能接单。
++
++## 一单一骑手
++
++同一订单同一时间只能被一个骑手配送。
++
++## 金额非负
++
++订单金额、菜品价格与支付金额均不得为负。
++
++## 支付幂等
++
++同一订单只能成功支付一次，不可重复支付。
++
++## 送达后才能完成
++
++订单只有在送达后才能被完成（客户确认收货或超时自动完成）。
+diff --git a/packages/parser/tests/fsf/l2-coverage.test.ts b/packages/parser/tests/fsf/l2-coverage.test.ts
+index d513d59..ed307a8 100644
+--- a/packages/parser/tests/fsf/l2-coverage.test.ts
++++ b/packages/parser/tests/fsf/l2-coverage.test.ts
+@@ -18,3 +18,16 @@ describe('L2 coverage stats collector', () => {
+     expect(stats.find((s) => s.process === 'AutoComplete')!.completeness.outcome).toBe('unsat')
+   }, 60000)
+ })
++
++describe('L2 stats leaf flag', () => {
++  it('marks processes with decom: as non-leaf', async () => {
++    const stats: L2ProcessStats[] = []
++    await checkFsfL2(check(load('classroom-reference.asfl')).ast!, { stats })
++    const att = stats.find((s) => s.process === 'Attendance')!
++    expect(att.leaf).toBe(false)
++    expect(att.decomposition).toBe('Records_Decom')
++    expect(att.tests[0]!.status).toBe('informal')
++    expect(att.tests[0]!.span).toBeDefined()
++    expect(stats.filter((s) => s.leaf).length).toBe(18)
++  }, 60000)
++})
+diff --git a/packages/studio/scripts/agent-harness/build.mjs b/packages/studio/scripts/agent-harness/build.mjs
+new file mode 100644
+index 0000000..e1dfcf1
+--- /dev/null
++++ b/packages/studio/scripts/agent-harness/build.mjs
+@@ -0,0 +1,11 @@
++// Bundles the headless agent harness with `electron` replaced by a stub. Output: packages/studio/.harness/run.mjs
++import { build } from 'esbuild'
++import { dirname, join } from 'node:path'
++import { fileURLToPath } from 'node:url'
++const here = dirname(fileURLToPath(import.meta.url))
++await build({
++  entryPoints: [join(here, 'run.ts')],
++  outfile: join(here, '../../.harness/run.mjs'),
++  bundle: true, platform: 'node', format: 'esm', target: 'node18', packages: 'external', logLevel: 'warning',
++  plugins: [{ name: 'electron-stub', setup(b) { b.onResolve({ filter: /^electron$/ }, () => ({ path: join(here, 'electron-stub.ts') })) } }]
++})
+diff --git a/packages/studio/scripts/agent-harness/core.ts b/packages/studio/scripts/agent-harness/core.ts
+new file mode 100644
+index 0000000..8930eb9
+--- /dev/null
++++ b/packages/studio/scripts/agent-harness/core.ts
+@@ -0,0 +1,142 @@
++/**
++ * Headless driver for the studio agent loop (runAgentTurn / resumeWithToolResult) with the real LLM.
++ * Mirrors what AgentPanel.vue does in auto-write mode: every proposal is auto-approved and applied
++ * exactly as applyHybridDocumentPatch would (source edit / refinement step / CRUD patch), then the loop
++ * is resumed with {action:'applied'} so post_write_diagnostics are logged by the production code.
++ *
++ * Seed of the automated-pilot batch runner: one call = one run in one condition, written to a run
++ * directory named by a random id; the condition<->id key is returned to the caller (kept out of the
++ * run directory, for blind coding). Runs are strictly serial (no concurrency).
++ */
++import { createHash, randomBytes } from 'node:crypto'
++import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
++import { join } from 'node:path'
++import { applyHybridPatch } from '@agile-sofl/editor-api'
++import { runAgentTurn, resumeWithToolResult, type AgentTurnContext } from '../../src/main/services/llm/agentLoop'
++import { generationAgentPermissions, newId, type AgentSession, type InformalPatchPayload } from '../../src/main/services/llm/agentTypes'
++import { skillById } from '../../src/main/services/llm/skills'
++import { applySourceEdits, isSourcePatch } from '../../src/shared/sourceEdit'
++import { applyProjectRefinementStep } from '../../src/main/services/refinementLog'
++
++export const PILOT_TEMPERATURE = 0.35 // fixed inside agentLoop.ts; recorded here for the manifest
++
++export interface RunOptions {
++  condition: 'T' | 'B2'
++  informalPath: string
++  outDir: string
++  skillId?: string
++  userText?: string
++  /** max auto-approved proposals before the turn is stopped (bounds LLM calls) */
++  maxApprovals?: number
++  clarificationAnswer?: string
++  participantId?: string
++}
++
++export interface RunResult {
++  runId: string
++  runDir: string
++  condition: string
++  promptHash: string
++  approvals: number
++  stopReason: string
++  hybridChars: number
++}
++
++export const DEFAULT_USER_TEXT =
++  'Generate the Hybrid Specification from the Informal Specification. Strategy: rebuild (no existing Hybrid). Work incrementally with the tools.'
++export const DEFAULT_CLARIFICATION = 'Rebuild from scratch. Use your best judgement and continue without further questions.'
++
++/** Hash of everything that must be identical across conditions (input, skill prompt, user text, answers, temperature). */
++export function promptHash(o: { informal: string; skillPrompt: string; userText: string; clarification: string }): string {
++  return createHash('sha256')
++    .update(JSON.stringify({ ...o, temperature: PILOT_TEMPERATURE }))
++    .digest('hex')
++}
++
++export function applyHybridProposal(source: string, patch: InformalPatchPayload, projectRoot: string): { content: string; error?: string; applied: boolean } {
++  if (isSourcePatch(patch)) {
++    const r = applySourceEdits(source, patch.operations as never)
++    return { content: r.content, error: r.error, applied: r.content !== source }
++  }
++  const stepOp = patch.operations.find((op) => op.op === 'refine-step')
++  if (stepOp && patch.operations.length === 1) {
++    const r = applyProjectRefinementStep(projectRoot, source, stepOp as never) as { source: string; error?: string }
++    if (r.error) return { content: source, error: r.error, applied: false }
++    return { content: r.source, applied: r.source !== source }
++  }
++  const r = applyHybridPatch(source, patch as never)
++  return { content: r.content, error: r.error, applied: r.content !== source }
++}
++
++export async function runOnce(o: RunOptions): Promise<RunResult> {
++  const runId = randomBytes(4).toString('hex')
++  const runDir = join(o.outDir, 'runs', runId)
++  mkdirSync(join(runDir, '.agile-sofl'), { recursive: true })
++  writeFileSync(join(runDir, '.agile-sofl', 'experiment.json'),
++    JSON.stringify({ condition: o.condition, participantId: o.participantId ?? `auto-${runId}`, telemetry: true, logPrompts: false }, null, 2))
++  const informal = readFileSync(o.informalPath, 'utf-8')
++  const skillId = o.skillId ?? 'hybrid-generation'
++  const userText = o.userText ?? DEFAULT_USER_TEXT
++  const clarification = o.clarificationAnswer ?? DEFAULT_CLARIFICATION
++  const hash = promptHash({ informal, skillPrompt: skillById(skillId).prompt, userText, clarification })
++  const maxApprovals = o.maxApprovals ?? 3
++
++  const ctx: AgentTurnContext = {
++    projectName: 'pilot', projectRoot: runDir, moduleId: 'project',
++    informalMarkdown: informal, hybridAsfl: '', skillId, permissions: generationAgentPermissions()
++  }
++  const now = new Date().toISOString()
++  let session: AgentSession = { id: newId('sess'), moduleId: 'project', title: 'Requirement Analysis', createdAt: now, updatedAt: now, messages: [], context: {} }
++  session = await runAgentTurn(session, runDir, ctx, userText)
++
++  let approvals = 0
++  let stopReason = 'agent finished'
++  for (let guard = 0; guard < 20; guard++) {
++    const pending = session.messages.find((m) => m.pending)
++    const toolId = session.context.pendingToolCallId
++    if (!pending || !toolId) break
++    const last = approvals + 1 >= maxApprovals
++    if (pending.clarification) {
++      session = await resumeWithToolResult(session, runDir, ctx, toolId, clarification, undefined, !last)
++      if (last) { stopReason = 'call budget reached'; break }
++      continue
++    }
++    const patch = pending.proposedChanges!
++    let payload: Record<string, unknown>
++    if (patch.target === 'hybrid') {
++      const r = applyHybridProposal(ctx.hybridAsfl ?? '', patch, runDir)
++      ctx.hybridAsfl = r.content
++      writeFileSync(join(runDir, 'hybrid.asfl'), r.content)
++      payload = r.error ? { action: r.applied ? 'applied' : 'error', error: r.error } : { action: 'applied' }
++    } else {
++      payload = { action: 'error', error: `harness only applies hybrid proposals (got ${patch.target})` }
++    }
++    approvals++
++    session = await resumeWithToolResult(session, runDir, ctx, toolId, JSON.stringify(payload), undefined, approvals < maxApprovals)
++    if (approvals >= maxApprovals) { stopReason = 'approval budget reached'; break }
++  }
++  writeFileSync(join(runDir, 'hybrid.asfl'), ctx.hybridAsfl ?? '')
++  writeFileSync(join(runDir, 'manifest.json'), JSON.stringify({ runId, promptHash: hash, skillId, approvals, stopReason, temperature: PILOT_TEMPERATURE }, null, 2))
++  return { runId, runDir, condition: o.condition, promptHash: hash, approvals, stopReason, hybridChars: (ctx.hybridAsfl ?? '').length }
++}
++
++/** Serial 429-aware fetch: retries HTTP 429/503 with exponential backoff; every retry is appended to retries.log. */
++export function install429Retry(logFile: string, maxRetries = 5): void {
++  const orig = globalThis.fetch
++  globalThis.fetch = (async (input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
++    for (let attempt = 0; ; attempt++) {
++      const res = await orig(input, init)
++      if ((res.status !== 429 && res.status !== 503) || attempt >= maxRetries) return res
++      const wait = Math.min(60_000, 2000 * 2 ** attempt) + Math.floor(Math.random() * 500)
++      try { writeFileSync(logFile, `${new Date().toISOString()} status=${res.status} attempt=${attempt + 1} wait=${wait}ms\n`, { flag: 'a' }) } catch { /* ignore */ }
++      await new Promise((r) => setTimeout(r, wait))
++    }
++  }) as typeof fetch
++}
++
++export function appendKey(outDir: string, r: RunResult & { system: string }): void {
++  const f = join(outDir, 'blinding-key.json')
++  const all = existsSync(f) ? JSON.parse(readFileSync(f, 'utf-8')) : []
++  all.push({ runId: r.runId, condition: r.condition, system: r.system, promptHash: r.promptHash })
++  writeFileSync(f, JSON.stringify(all, null, 2))
++}
+diff --git a/packages/studio/scripts/agent-harness/electron-stub.ts b/packages/studio/scripts/agent-harness/electron-stub.ts
+new file mode 100644
+index 0000000..586b4df
+--- /dev/null
++++ b/packages/studio/scripts/agent-harness/electron-stub.ts
+@@ -0,0 +1,19 @@
++/** Minimal `electron` stand-in for headless runs of main-process services (no UI, no IPC). */
++import { join, resolve } from 'node:path'
++
++const studioDir = resolve(process.env.AGILE_SOFL_STUDIO_DIR || process.cwd())
++const userData = process.env.AGILE_SOFL_HARNESS_USERDATA || join(studioDir, '.harness-userdata')
++
++export const app = {
++  getPath: (_name: string) => userData,
++  getAppPath: () => studioDir,
++  isPackaged: false,
++  getVersion: () => '0.0.0-harness'
++}
++const noop = () => undefined
++export const ipcMain = { handle: noop, on: noop, removeHandler: noop }
++export const dialog = {}
++export const shell = {}
++export const BrowserWindow = class {}
++export const utilityProcess = {}
++export default { app, ipcMain, dialog, shell, BrowserWindow, utilityProcess }
+diff --git a/packages/studio/scripts/agent-harness/run.ts b/packages/studio/scripts/agent-harness/run.ts
+new file mode 100644
+index 0000000..ba31546
+--- /dev/null
++++ b/packages/studio/scripts/agent-harness/run.ts
+@@ -0,0 +1,43 @@
++/**
++ * Usage (from packages/studio):  node scripts/agent-harness/build.mjs && node .harness/run.mjs \
++ *   --informal <file.aspec> --conditions T,B2 --out <dir> [--max-approvals 3] [--system delivery]
++ * Runs conditions serially, refuses to continue if prompt hashes differ, never prints the API key.
++ */
++import { mkdirSync, writeFileSync } from 'node:fs'
++import { join, resolve } from 'node:path'
++import { appendKey, install429Retry, runOnce } from './core'
++import { getEnvLlmFallback } from '../../src/main/services/llm/env'
++
++function arg(name: string, def?: string): string | undefined {
++  const i = process.argv.indexOf(`--${name}`)
++  return i >= 0 ? process.argv[i + 1] : def
++}
++
++async function main() {
++  const userData = process.env.AGILE_SOFL_HARNESS_USERDATA!
++  mkdirSync(userData, { recursive: true })
++  // empty profile store -> the studio falls back to packages/studio/.env and never persists the key
++  writeFileSync(join(userData, 'llm-profiles.json'), JSON.stringify({ activeId: null, profiles: [] }))
++  const key = getEnvLlmFallback().apiKey
++  if (!key) throw new Error('ECNU_API_KEY missing in packages/studio/.env')
++  for (const stream of [process.stdout, process.stderr]) {
++    const w = stream.write.bind(stream)
++    stream.write = ((chunk: unknown, ...rest: unknown[]) => w(typeof chunk === 'string' ? chunk.split(key).join('[redacted]') : chunk, ...(rest as []))) as typeof stream.write
++  }
++  const out = resolve(arg('out', '.harness/out')!)
++  mkdirSync(out, { recursive: true })
++  install429Retry(join(out, 'retries.log'))
++  const informal = resolve(arg('informal')!)
++  const system = arg('system', 'system')!
++  const conditions = arg('conditions', 'T')!.split(',') as Array<'T' | 'B2'>
++  const maxApprovals = Number(arg('max-approvals', '3'))
++  let hash: string | undefined
++  for (const condition of conditions) {
++    const r = await runOnce({ condition, informalPath: informal, outDir: out, maxApprovals })
++    if (hash && r.promptHash !== hash) throw new Error(`prompt hash mismatch across conditions (${hash} vs ${r.promptHash})`)
++    hash = r.promptHash
++    appendKey(out, { ...r, system })
++    console.log(JSON.stringify({ runId: r.runId, approvals: r.approvals, stopReason: r.stopReason, hybridChars: r.hybridChars, promptHash: r.promptHash.slice(0, 12) }))
++  }
++}
++main().catch((e) => { console.error(e instanceof Error ? e.message : String(e)); process.exit(1) })
+diff --git a/packages/studio/src/main/services/llm/experiment.ts b/packages/studio/src/main/services/llm/experiment.ts
+index 946f5ef..78a8375 100644
+--- a/packages/studio/src/main/services/llm/experiment.ts
++++ b/packages/studio/src/main/services/llm/experiment.ts
+@@ -57,8 +57,9 @@ export const isL2Code = (code: string) => /^ASFL_FSF_2\d\d$/.test(code)
+ export interface SeverityCount { error: number; warning: number }
+ export interface DiagnosticCounts {
+   parser: SeverityCount
+-  l1: SeverityCount & { enabled: boolean }
+-  l2: SeverityCount & { enabled: boolean }
++  /** enabled = condition turns the layer on; ran = it actually ran (false when disabled or the spec has no AST) */
++  l1: SeverityCount & { enabled: boolean; ran: boolean }
++  l2: SeverityCount & { enabled: boolean; ran: boolean }
+ }
+ 
+ const count = (ds: Diagnostic[]): SeverityCount => ({
+@@ -79,11 +80,11 @@ export async function diagnosticCounts(asfl: string, cfg: ExperimentConfig): Pro
+   const r = check(asfl, { fsfL1: false })
+   const parser = count(r.diagnostics.filter((d) => !isL1Code(d.code) && !isL2Code(d.code)))
+   if (!cfg.semanticChecks || !r.ast) {
+-    return { parser, l1: { error: 0, warning: 0, enabled: cfg.semanticChecks }, l2: { error: 0, warning: 0, enabled: cfg.semanticChecks } }
++    return { parser, l1: { error: 0, warning: 0, enabled: cfg.semanticChecks, ran: false }, l2: { error: 0, warning: 0, enabled: cfg.semanticChecks, ran: false } }
+   }
+   const l1 = count(checkFsfL1(r.ast).diagnostics)
+   const l2 = count((await checkFsfL2(r.ast)).diagnostics)
+-  return { parser, l1: { ...l1, enabled: true }, l2: { ...l2, enabled: true } }
++  return { parser, l1: { ...l1, enabled: true, ran: true }, l2: { ...l2, enabled: true, ran: true } }
+ }
+ 
+ export type TelemetryEvent =
+diff --git a/packages/studio/tests/agentHarness.test.ts b/packages/studio/tests/agentHarness.test.ts
+new file mode 100644
+index 0000000..af12349
+--- /dev/null
++++ b/packages/studio/tests/agentHarness.test.ts
+@@ -0,0 +1,53 @@
++﻿import { describe, it, expect, vi, afterEach } from 'vitest'
++import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
++import { tmpdir } from 'node:os'
++import { join } from 'node:path'
++
++const userData = mkdtempSync(join(tmpdir(), 'harness-ud-'))
++writeFileSync(join(userData, 'llm-profiles.json'), JSON.stringify({ activeId: null, profiles: [] }))
++vi.mock('electron', () => ({ app: { getPath: () => userData, getAppPath: () => userData }, ipcMain: { handle: () => undefined } }))
++
++import { promptHash, runOnce } from '../scripts/agent-harness/core'
++
++function sse(chunks: unknown[]): Response {
++  const body = chunks.map((c) => `data: ${JSON.stringify(c)}\n\n`).join('') + 'data: [DONE]\n\n'
++  return new Response(body, { status: 200, headers: { 'Content-Type': 'text/event-stream' } })
++}
++const toolCall = (name: string, args: unknown) => sse([
++  { model: 'mock-model', choices: [{ delta: { tool_calls: [{ index: 0, id: `c-${name}-${Math.random()}`, function: { name, arguments: JSON.stringify(args) } }] } }] },
++  { model: 'mock-model', choices: [{ delta: {}, finish_reason: 'tool_calls' }] },
++  { model: 'mock-model', choices: [], usage: { prompt_tokens: 11, completion_tokens: 3 } }
++])
++
++afterEach(() => vi.unstubAllGlobals())
++
++describe('headless agent harness', () => {
++  it('promptHash is identical for identical inputs and changes with the prompt', () => {
++    const base = { informal: 'x', skillPrompt: 'p', userText: 'u', clarification: 'c' }
++    expect(promptHash(base)).toBe(promptHash({ ...base }))
++    expect(promptHash(base)).not.toBe(promptHash({ ...base, userText: 'v' }))
++  })
++
++  it.each(['T', 'B2'] as const)('auto-approves a proposal and logs llm_call / proposal_decision / post_write_diagnostics (%s)', async (condition) => {
++    process.env.ECNU_API_KEY = 'sk-testtesttesttest'
++    const replies = [
++      toolCall('propose_hybrid_changes', { explanation: 'add system module', operations: [{ op: 'add', kind: 'module', name: 'SYSTEM_X' }] }),
++      sse([{ model: 'mock-model', choices: [{ delta: { content: 'done' }, finish_reason: 'stop' }] }, { model: 'mock-model', choices: [], usage: { prompt_tokens: 5, completion_tokens: 1 } }])
++    ]
++    vi.stubGlobal('fetch', vi.fn(async () => replies.shift() ?? replies[0]))
++    const inf = join(mkdtempSync(join(tmpdir(), 'inf-')), 'x.aspec')
++    writeFileSync(inf, '# Functions\n\n## A\n\nDo A.\n')
++    const out = mkdtempSync(join(tmpdir(), 'harness-out-'))
++    const r = await runOnce({ condition, informalPath: inf, outDir: out, maxApprovals: 1 })
++    expect(r.approvals).toBe(1)
++    const lines = readFileSync(join(r.runDir, '.agile-sofl', 'llm-calls.jsonl'), 'utf-8').trim().split('\n').map((l) => JSON.parse(l))
++    const call = lines.find((l) => l.event === 'llm_call')
++    expect(call).toMatchObject({ model: 'mock-model', promptTokens: 11, completionTokens: 3, ok: true, condition })
++    expect(lines.find((l) => l.event === 'proposal_decision')).toMatchObject({ decision: 'approved', tool: 'propose_hybrid_changes' })
++    const pw = lines.find((l) => l.event === 'post_write_diagnostics')
++    expect(pw.diagnostics.l1.enabled).toBe(condition === 'T')
++    expect(pw.diagnostics.l2.enabled).toBe(condition === 'T')
++    expect(readFileSync(join(r.runDir, 'hybrid.asfl'), 'utf-8')).toContain('SYSTEM_X')
++    expect(JSON.stringify(lines)).not.toContain('sk-testtesttesttest')
++  }, 60000)
++})
+diff --git a/packages/studio/tests/experimentTelemetry.test.ts b/packages/studio/tests/experimentTelemetry.test.ts
+index 32c7104..09b419d 100644
+--- a/packages/studio/tests/experimentTelemetry.test.ts
++++ b/packages/studio/tests/experimentTelemetry.test.ts
+@@ -32,9 +32,11 @@ describe('experiment condition switch', () => {
+     const c1 = await diagnosticCounts(spec, b1)
+     expect(c1.l1.error).toBeGreaterThan(0)
+     expect(c1.l1.enabled).toBe(true)
++    expect(c1.l1.ran).toBe(true)
++    expect(c1.l2.ran).toBe(true)
+     const c2 = await diagnosticCounts(spec, b2)
+-    expect(c2.l1).toEqual({ error: 0, warning: 0, enabled: false })
+-    expect(c2.l2).toEqual({ error: 0, warning: 0, enabled: false })
++    expect(c2.l1).toEqual({ error: 0, warning: 0, enabled: false, ran: false })
++    expect(c2.l2).toEqual({ error: 0, warning: 0, enabled: false, ran: false })
+     const broken = await diagnosticCounts(parseBroken, b2)
+     expect(broken.parser.error).toBeGreaterThan(0)
+   }, 60000)
