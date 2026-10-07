@@ -12,3 +12,4 @@ coverage/
 /.playwright-mcp
 docs/Aigle-SOFL.pdf
 packages/studio/.env
+packages/studio/.harness/
