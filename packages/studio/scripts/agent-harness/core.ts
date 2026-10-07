@@ -30,6 +30,10 @@ export interface RunOptions {
   maxApprovals?: number
   clarificationAnswer?: string
   participantId?: string
+  /** externally assigned (blinded) run id; random when omitted */
+  runId?: string
+  /** extra fields written into manifest.json (e.g. commit provenance from the batch runner) */
+  manifestExtra?: Record<string, unknown>
 }
 
 export interface RunResult {
@@ -69,7 +73,7 @@ export function applyHybridProposal(source: string, patch: InformalPatchPayload,
 }
 
 export async function runOnce(o: RunOptions): Promise<RunResult> {
-  const runId = randomBytes(4).toString('hex')
+  const runId = o.runId ?? randomBytes(4).toString('hex')
   const runDir = join(o.outDir, 'runs', runId)
   mkdirSync(join(runDir, '.agile-sofl'), { recursive: true })
   writeFileSync(join(runDir, '.agile-sofl', 'experiment.json'),
@@ -116,7 +120,7 @@ export async function runOnce(o: RunOptions): Promise<RunResult> {
     if (approvals >= maxApprovals) { stopReason = 'approval budget reached'; break }
   }
   writeFileSync(join(runDir, 'hybrid.asfl'), ctx.hybridAsfl ?? '')
-  writeFileSync(join(runDir, 'manifest.json'), JSON.stringify({ runId, promptHash: hash, skillId, approvals, stopReason, temperature: PILOT_TEMPERATURE }, null, 2))
+  writeFileSync(join(runDir, 'manifest.json'), JSON.stringify({ runId, promptHash: hash, skillId, approvals, stopReason, temperature: PILOT_TEMPERATURE, ...o.manifestExtra }, null, 2))
   return { runId, runDir, condition: o.condition, promptHash: hash, approvals, stopReason, hybridChars: (ctx.hybridAsfl ?? '').length }
 }
 

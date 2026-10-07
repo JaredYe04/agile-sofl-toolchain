@@ -2,7 +2,7 @@
 import { join, resolve } from 'node:path'
 
 const studioDir = resolve(process.env.AGILE_SOFL_STUDIO_DIR || process.cwd())
-const userData = process.env.AGILE_SOFL_HARNESS_USERDATA || join(studioDir, '.harness-userdata')
+const userData = process.env.AGILE_SOFL_HARNESS_USERDATA || join(studioDir, '.harness', 'userdata')
 
 export const app = {
   getPath: (_name: string) => userData,
