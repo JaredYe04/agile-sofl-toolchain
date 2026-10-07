@@ -16,7 +16,8 @@ export const TOOL_PATHS = [
 export const DIST_PACKAGES = ['parser', 'aspec', 'editor-api', 'gui']
 
 export type Git = (args: string[]) => string
-export const gitIn = (repo: string): Git => (args) => execFileSync('git', ['-c', `safe.directory=${repo.replace(/\\/g, '/')}`, ...args], { cwd: repo, encoding: 'utf-8' }).trim()
+// stderr is captured (not inherited) so Windows autocrlf notices ("LF will be replaced by CRLF") don't clutter the batch log
+export const gitIn = (repo: string): Git => (args) => execFileSync('git', ['-c', `safe.directory=${repo.replace(/\\/g, '/')}`, ...args], { cwd: repo, encoding: 'utf-8', stdio: ['ignore', 'pipe', 'pipe'] }).trim()
 
 export interface FreezeStatus {
   ok: boolean
@@ -61,10 +62,11 @@ export function freezeStatus(repo: string, git: Git = gitIn(repo)): FreezeStatus
   return { ok: reasons.length === 0, head, freezeTag: FREEZE_TAG, freezeCommit, changedToolFiles: changed, staleDist, reasons }
 }
 
-/** sha256 over the harness scripts actually used (recorded in every manifest). */
+/** sha256 over the harness scripts actually used (recorded in every manifest); CRLF is normalised so a
+ *  Windows (autocrlf) copy hashes the same as the committed files. */
 export function harnessSha(harnessDir: string): string {
   const h = createHash('sha256')
-  for (const f of readdirSync(harnessDir).filter((x) => /\.(ts|mjs)$/.test(x)).sort()) h.update(f).update(readFileSync(join(harnessDir, f)))
+  for (const f of readdirSync(harnessDir).filter((x) => /\.(ts|mjs)$/.test(x)).sort()) h.update(f).update(readFileSync(join(harnessDir, f), 'utf-8').replace(/\r\n/g, '\n'))
   return h.digest('hex')
 }
 

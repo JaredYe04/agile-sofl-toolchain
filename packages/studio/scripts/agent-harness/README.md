@@ -36,3 +36,10 @@ The command prints the output directory and the key file:
 
 The batch aborts on a prompt-hash mismatch within a system, or after 3 consecutive run errors.
 Condition B0-auto is the rule-based generator (`@agile-sofl/aspec` `refineAspecWithCheck`); it makes no LLM calls.
+
+## Windows notes
+- Informal inputs are read with BOM stripped and CRLF normalised to LF (`informal.ts`), so a Windows checkout
+  with `core.autocrlf=true` gives the same prompt, prompt hash (manifest `promptHash`, `informalSha256`) and
+  B0-auto output as Linux/macOS. The harness sha256 is computed over LF-normalised files for the same reason.
+- git is always called with `-c safe.directory=<repo>`; run the commands from PowerShell or cmd as shown
+  (no shell-specific quoting needed).

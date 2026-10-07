@@ -10,7 +10,8 @@ vi.mock('electron', () => ({ app: { getPath: () => userData, getAppPath: () => u
 
 import { runBatch, SYSTEMS } from '../scripts/agent-harness/batch'
 import { runB0Auto } from '../scripts/agent-harness/b0auto'
-import { freezeStatus, isInside, TOOL_PATHS } from '../scripts/agent-harness/freeze'
+import { readInformal } from '../scripts/agent-harness/informal'
+import { freezeStatus, harnessSha, isInside, TOOL_PATHS } from '../scripts/agent-harness/freeze'
 import { aggregateSteps, recordStep, STEP_CSV_COLUMNS, type StepRecord } from '../scripts/agent-harness/steps'
 
 const repo = execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf-8' }).trim()
@@ -27,6 +28,14 @@ describe('freeze guard', () => {
     expect(bad.reasons.join(' ')).toMatch(/tool source differs/)
     expect(TOOL_PATHS).toContain('packages/studio/src')
   })
+  it('harness sha is the same for a CRLF copy of the harness', () => {
+    const lf = mkdtempSync(join(tmpdir(), 'hs-lf-')), crlf = mkdtempSync(join(tmpdir(), 'hs-crlf-'))
+    for (const f of ['a.ts', 'b.mjs']) {
+      const t = `export const x = '${f}'\nexport const y = 1\n`
+      writeFileSync(join(lf, f), t); writeFileSync(join(crlf, f), t.replace(/\n/g, '\r\n'))
+    }
+    expect(harnessSha(crlf)).toBe(harnessSha(lf))
+  })
   it('isInside', () => {
     expect(isInside(resolve('/a/b/k.json'), resolve('/a/b'))).toBe(true)
     expect(isInside(resolve('/a/k.json'), resolve('/a/b'))).toBe(false)
@@ -41,6 +50,18 @@ describe('B0-auto', () => {
     const b = runB0Auto({ informalPath: inf, outDir: out, runId: 'bbbb' })
     expect(readFileSync(join(a.runDir, 'hybrid.asfl'), 'utf-8')).toBe(readFileSync(join(b.runDir, 'hybrid.asfl'), 'utf-8'))
     expect(JSON.parse(readFileSync(join(a.runDir, 'manifest.json'), 'utf-8'))).toMatchObject({ llmCalls: 0, runId: 'aaaa' })
+  })
+  it('gives the same output for a CRLF (Windows autocrlf) checkout of the fixture', () => {
+    const out = mkdtempSync(join(tmpdir(), 'b0crlf-'))
+    const inf = join(repo, SYSTEMS.classroom!)
+    const crlf = join(out, 'classroom-crlf.aspec')
+    writeFileSync(crlf, '\uFEFF' + readFileSync(inf, 'utf-8').replace(/\r?\n/g, '\r\n'))
+    expect(readInformal(crlf)).toEqual(readInformal(inf))
+    expect(readInformal(crlf).text).not.toMatch(/\r/)
+    const a = runB0Auto({ informalPath: inf, outDir: out, runId: 'lf' })
+    const b = runB0Auto({ informalPath: crlf, outDir: out, runId: 'crlf' })
+    expect(readFileSync(join(b.runDir, 'hybrid.asfl'), 'utf-8')).toBe(readFileSync(join(a.runDir, 'hybrid.asfl'), 'utf-8'))
+    expect(JSON.parse(readFileSync(join(b.runDir, 'manifest.json'), 'utf-8')).informalSha256).toBe(readInformal(inf).sha256)
   })
 })
 

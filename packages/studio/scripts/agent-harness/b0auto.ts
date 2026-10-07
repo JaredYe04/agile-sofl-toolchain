@@ -4,8 +4,8 @@
  * Deterministic: same informal input -> same hybrid output. Writes the same run layout as the LLM
  * conditions (hybrid.asfl + manifest.json); there are no llm-calls (none are made).
  */
-import { createHash } from 'node:crypto'
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, writeFileSync } from 'node:fs'
+import { readInformal } from './informal'
 import { join } from 'node:path'
 import { refineAspecWithCheck } from '@agile-sofl/aspec'
 
@@ -14,10 +14,9 @@ export const B0_GENERATOR = '@agile-sofl/aspec refineAspecWithCheck (refineToAsf
 export function runB0Auto(o: { informalPath: string; outDir: string; runId: string; manifestExtra?: Record<string, unknown> }) {
   const runDir = join(o.outDir, 'runs', o.runId)
   mkdirSync(runDir, { recursive: true })
-  const informal = readFileSync(o.informalPath, 'utf-8')
+  const { text: informal, sha256: informalSha } = readInformal(o.informalPath)
   const r = refineAspecWithCheck(informal)
   writeFileSync(join(runDir, 'hybrid.asfl'), r.asflText)
-  const informalSha = createHash('sha256').update(informal).digest('hex')
   writeFileSync(join(runDir, 'manifest.json'), JSON.stringify({
     runId: o.runId, generator: B0_GENERATOR, informalSha256: informalSha, generatorCheckOk: r.checkOk,
     approvals: 0, stopReason: 'generator finished', llmCalls: 0, ...o.manifestExtra

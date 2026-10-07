@@ -17,6 +17,7 @@ import { generationAgentPermissions, newId, type AgentSession, type InformalPatc
 import { skillById } from '../../src/main/services/llm/skills'
 import { applySourceEdits, isSourcePatch } from '../../src/shared/sourceEdit'
 import { applyProjectRefinementStep } from '../../src/main/services/refinementLog'
+import { readInformal } from './informal'
 
 export const PILOT_TEMPERATURE = 0.35 // fixed inside agentLoop.ts; recorded here for the manifest
 
@@ -92,7 +93,7 @@ export async function runOnce(o: RunOptions): Promise<RunResult> {
   mkdirSync(join(runDir, '.agile-sofl'), { recursive: true })
   writeFileSync(join(runDir, '.agile-sofl', 'experiment.json'),
     JSON.stringify({ condition: o.condition, participantId: o.participantId ?? `auto-${runId}`, telemetry: true, logPrompts: false }, null, 2))
-  const informal = readFileSync(o.informalPath, 'utf-8')
+  const { text: informal, sha256: informalSha256 } = readInformal(o.informalPath)
   const skillId = o.skillId ?? 'hybrid-generation'
   const userText = o.userText ?? DEFAULT_USER_TEXT
   const clarification = o.clarificationAnswer ?? DEFAULT_CLARIFICATION
@@ -139,7 +140,7 @@ export async function runOnce(o: RunOptions): Promise<RunResult> {
     if (approvals >= maxApprovals) { stopReason = 'approval budget reached'; break }
   }
   writeFileSync(join(runDir, 'hybrid.asfl'), ctx.hybridAsfl ?? '')
-  writeFileSync(join(runDir, 'manifest.json'), JSON.stringify({ runId, promptHash: hash, skillId, approvals, maxApprovals, stopReason, temperature: PILOT_TEMPERATURE, ...o.manifestExtra }, null, 2))
+  writeFileSync(join(runDir, 'manifest.json'), JSON.stringify({ runId, promptHash: hash, informalSha256, skillId, approvals, maxApprovals, stopReason, temperature: PILOT_TEMPERATURE, ...o.manifestExtra }, null, 2))
   return { runId, runDir, condition: o.condition, promptHash: hash, approvals, stopReason, hybridChars: (ctx.hybridAsfl ?? '').length }
 }
 
