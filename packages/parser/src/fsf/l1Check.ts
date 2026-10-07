@@ -61,9 +61,19 @@ export function checkProcessFsfL1(process: ProcessNode): Diagnostic[] {
   const extAll = new Set(ext.map((e) => e.name))
   const p = process.name
 
+  const checkOldState = (s: Scan, where: string) => {
+    for (const r of s.refs) {
+      if (r.old && !extAll.has(r.name)) {
+        out.push(createDiagnostic(DiagnosticCodes.FSF_L1_OLD_STATE_NON_EXT,
+          `${where} of '${p}' applies '~' to '${r.name}', which is not an external (ext) variable; only ext/state variables have an initial value`, 'error', r.span))
+      }
+    }
+  }
   const checkDef = (def: PredicateNode, label: string) => {
     const s = scanPredicate(def)
-    const has = s.refs.some((r) => (outputs.has(r.name) && !r.old) || (wr.has(r.name) && !r.old) || (extAll.has(r.name) && r.old))
+    checkOldState(s, `Defining condition ${label}`)
+    // only the final value of an output / wr external variable is constrained by D; `~x` (initial value) is not
+    const has = s.refs.some((r) => !r.old && (outputs.has(r.name) || wr.has(r.name)))
     if (has) return
     if (s.informal) {
       out.push(createDiagnostic(DiagnosticCodes.FSF_L1_INFORMAL_SKIPPED,
@@ -79,6 +89,7 @@ export function checkProcessFsfL1(process: ProcessNode): Diagnostic[] {
   fsf.scenarios.forEach((sc, idx) => {
     const label = `D${idx + 1}`
     const t = scanPredicate(sc.test)
+    checkOldState(t, `Test condition T${idx + 1}`)
     for (const r of t.refs) {
       if (r.old) continue
       if (outputs.has(r.name)) {

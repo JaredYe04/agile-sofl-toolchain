@@ -36,7 +36,7 @@ FSF :
 end_process ;`))).toEqual(['ASFL_FSF_102:error', 'ASFL_FSF_102:error'])
   })
 
-  it('allows ~x in T; wr var and ~ext var in D count as output', () => {
+  it('allows ~x in T; wr var in D counts as output; ~ext alone does not (fault-injection F1)', () => {
     expect(codes(wrap(`process Register_Stock(stock: nat) res: bool
 ext wr stock_list: seq of nat
 FSF:
@@ -44,13 +44,14 @@ FSF:
 ||
   stock inset elems(~stock_list) && stock_list = ~stock_list and res = false
 end_process`, 'var ext stock_list: seq of nat;'))).toEqual([])
-    // D mentions only ~rd external variable -> counts as output (team rule)
+    // D mentions only the initial value ~a of an ext variable -> constrains no output (paper: D must
+    // constrain outputs or final values of written ext variables). Was accepted before the F1 fix.
     expect(codes(wrap(`process Q (x: int) r: int
 ext rd a: int
 FSF :
  x > 0 && ~a > 0 ||
  others && r = 0
-end_process ;`, 'var a: int;'))).toEqual([])
+end_process ;`, 'var a: int;'))).toEqual(['ASFL_FSF_102:error'])
   })
 
   it('warns on plain wr variable in T (final value)', () => {

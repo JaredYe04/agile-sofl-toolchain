@@ -33,6 +33,8 @@ export const DiagnosticCodes = {
   FSF_L1_INFORMAL_SKIPPED: 'ASFL_FSF_103',
   /** L1: T refers to a wr external variable without `~` (final value) — use `~x`. */
   FSF_L1_WR_IN_TEST: 'ASFL_FSF_104',
+  /** L1: `~x` applied to a variable that is not an ext/state variable (e.g. an input). */
+  FSF_L1_OLD_STATE_NON_EXT: 'ASFL_FSF_105',
   FSF_L2_OVERLAP: 'ASFL_FSF_201',
   FSF_L2_INCOMPLETE: 'ASFL_FSF_202',
   FSF_L2_UNKNOWN: 'ASFL_FSF_203',
