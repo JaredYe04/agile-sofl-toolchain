@@ -89,15 +89,31 @@ export interface L2ProcessStats {
   completeness: { outcome: L2Outcome | 'others'; skipReasons?: string[] }
 }
 
-// ---------- Z3 singleton ----------
+// ---------- Z3 singleton (lazy) ----------
+// z3-solver (WASM) is loaded only when the first FSF actually needs a solver query: importing the parser,
+// parsing, L1, and FSFs that are complete by `others` with a single scenario never touch Z3.
 let z3Promise: Promise<any> | null = null
+const z3Timing: { importMs: number | null; initMs: number | null } = { importMs: null, initMs: null }
+/** Z3 load timings of this process (null until Z3 has been loaded). */
+export function getZ3Timing(): { loaded: boolean; importMs: number | null; initMs: number | null } {
+  return { loaded: z3Timing.initMs !== null, ...z3Timing }
+}
+/** Optional warm-up (e.g. in an LSP idle callback); still lazy, never called at import. */
+export function preloadZ3(): Promise<boolean> {
+  return getZ3().then((z) => !!z)
+}
 async function getZ3(): Promise<any | null> {
   if (!z3Promise) {
     z3Promise = (async () => {
       try {
+        const t0 = Date.now()
         const mod: any = await import('z3-solver')
+        z3Timing.importMs = Date.now() - t0
+        const t1 = Date.now()
         const { Context } = await (mod.init ?? mod.default?.init)()
-        return Context('agile-sofl-l2')
+        const ctx = Context('agile-sofl-l2')
+        z3Timing.initMs = Date.now() - t1
+        return ctx
       } catch {
         return null
       }

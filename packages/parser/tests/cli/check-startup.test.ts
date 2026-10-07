@@ -20,8 +20,19 @@ describe('CLI check startup (regression: `asfl check` appeared to hang)', () => 
 
   it('constructs both parser instances quickly (no exponential LL(k) analysis)', async () => {
     const t0 = Date.now()
-    const r = spawnSync('node', ['-e', `require(${JSON.stringify(join(root, 'dist', 'parser', 'parser.js'))})`], { timeout: 15000 })
+    const r = spawnSync('node', ['-e', `const m = require(${JSON.stringify(join(root, 'dist', 'parser', 'parser.js'))}); m.getParser(true); m.getParser(false)`], { timeout: 15000 })
     expect(r.status).toBe(0)
     expect(Date.now() - t0).toBeLessThan(10000)
   }, 20000)
+
+  it('--timings reports phases; Z3 is loaded only by L2', () => {
+    const fx = join(root, 'tests', 'fixtures', 'reference-systems', 'classroom-reference.asfl')
+    const withL2 = spawnSync('node', [cli, 'check', '--timings', fx], { encoding: 'utf-8', timeout: 30000 })
+    const ph = JSON.parse(/\[timings\] (\{.*\})/.exec(withL2.stderr)![1]!)
+    expect(ph).toHaveProperty('parseMs')
+    expect(ph.z3InitMs).toBeGreaterThan(0)
+    const noL2 = spawnSync('node', [cli, 'check', '--timings', '--no-l2', fx], { encoding: 'utf-8', timeout: 30000 })
+    const ph2 = JSON.parse(/\[timings\] (\{.*\})/.exec(noL2.stderr)![1]!)
+    expect(ph2.z3InitMs).toBeUndefined()
+  }, 60000)
 })
