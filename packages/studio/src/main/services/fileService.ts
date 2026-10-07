@@ -2,6 +2,7 @@ import { dialog, ipcMain, shell, type BrowserWindow } from 'electron'
 import { readFile, writeFile } from 'node:fs/promises'
 import { basename, join } from 'node:path'
 import { getLastDialogDir, rememberDialogPath } from './dialogState.js'
+import { writeModuleArtifacts } from './dualSave.js'
 
 export function registerFileHandlers(getWindow: () => BrowserWindow | null): void {
   ipcMain.handle('studio:file-read', async (_event, filePath: string) => {
@@ -11,7 +12,14 @@ export function registerFileHandlers(getWindow: () => BrowserWindow | null): voi
 
   ipcMain.handle('studio:file-write', async (_event, filePath: string, content: string) => {
     await writeFile(filePath, content, 'utf-8')
-    return { filePath, title: basename(filePath) }
+    // final grammar G:36-38: each module is also saved as text + XML (never fails the save)
+    let dualSave: ReturnType<typeof writeModuleArtifacts> | undefined
+    try {
+      dualSave = writeModuleArtifacts(filePath, content)
+    } catch (e) {
+      dualSave = { written: [], skipped: String(e) }
+    }
+    return { filePath, title: basename(filePath), dualSave }
   })
 
   ipcMain.handle('studio:file-open-dialog', async (_event, kind?: 'asfl' | 'aspec' | 'any') => {
