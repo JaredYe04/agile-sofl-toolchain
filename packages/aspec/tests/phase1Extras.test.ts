@@ -126,7 +126,7 @@ end_screen;
 end_gui;
 process P () ok: nat
     FSF :
-    others && true
+    others && ok = 1
 end_process
 end_module`
     const result = checkSpec(source)
