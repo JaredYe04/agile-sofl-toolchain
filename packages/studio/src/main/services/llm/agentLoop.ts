@@ -1,4 +1,5 @@
 import { chatEcnuStream, isChatAborted, type ChatMessage, type ChatStreamDelta } from './chatEcnu'
+import { getEcnuConfig } from './profiles'
 import { AGENT_TOOLS, skillById } from './skills'
 import type {
   AgentMessage,
@@ -9,6 +10,7 @@ import type {
 import { newId, normalizePermissions, type AgentSpecPermissions } from './agentTypes'
 import { saveSession as writeSession } from './sessionStore'
 import { informalInventoryFromMarkdown } from '@agile-sofl/aspec/dist/informal/inventory.js'
+import { getExperimentConfig, logTelemetry, semanticDiagnostics, diagnosticCounts } from './experiment'
 import { formatHybridInventory, formatHybridDiagnostics, collectHybridAgentDiagnostics, formatRefinementDigest } from '@agile-sofl/editor-api'
 import { formatGuiInventory, numberedGuiSource } from '@agile-sofl/gui'
 import { formatClarificationToolContent } from '../../../shared/clarificationAnswer'
@@ -115,6 +117,31 @@ function hybridDiagnosticsPayload(asfl: string | undefined) {
     count: items.length,
     errors: items.filter((d) => d.severity === 'error').length,
     items
+  }
+}
+
+async function hybridDiagnosticsWithSemantic(asfl: string | undefined, cfg: ReturnType<typeof getExperimentConfig>) {
+  const base = hybridDiagnosticsPayload(asfl)
+  let semantic: Awaited<ReturnType<typeof semanticDiagnostics>> = []
+  try {
+    semantic = await semanticDiagnostics(asfl ?? '', cfg)
+  } catch { /* semantic checks are best-effort */ }
+  const items: Array<Record<string, unknown>> = [
+    ...base.items,
+    ...semantic.map((d) => ({
+      severity: d.severity,
+      code: d.code,
+      source: /^ASFL_FSF_1/.test(d.code) ? 'L1' : 'L2',
+      line: d.span.line,
+      column: d.span.column,
+      message: d.message
+    }))
+  ]
+  return {
+    count: items.length,
+    errors: items.filter((d) => d.severity === 'error').length,
+    items,
+    semanticChecks: cfg.semanticChecks
   }
 }
 
@@ -490,6 +517,45 @@ function attachStreamDeltas(live: AgentMessage, sink?: AgentStreamSink) {
   }
 }
 
+/** chatEcnuStream + per-call telemetry (model, tokens, latency, condition). Never logs API keys. */
+async function loggedStream(
+  projectRoot: string,
+  sessionId: string,
+  options: Parameters<typeof chatEcnuStream>[0]
+): ReturnType<typeof chatEcnuStream> {
+  const cfg = getExperimentConfig(projectRoot)
+  const t0 = Date.now()
+  const promptChars = JSON.stringify(options.messages).length
+  try {
+    const c = await chatEcnuStream(options)
+    logTelemetry(projectRoot, cfg, sessionId, {
+      event: 'llm_call',
+      model: c.model ?? getEcnuConfig().model,
+      promptTokens: c.usage?.promptTokens ?? null,
+      completionTokens: c.usage?.completionTokens ?? null,
+      latencyMs: Date.now() - t0,
+      ok: true,
+      finishReason: c.finishReason,
+      toolCalls: c.toolCalls.map((t) => t.function.name),
+      promptChars,
+      prompt: cfg.logPrompts ? options.messages : undefined
+    })
+    return c
+  } catch (e) {
+    logTelemetry(projectRoot, cfg, sessionId, {
+      event: 'llm_call',
+      model: getEcnuConfig().model,
+      promptTokens: null,
+      completionTokens: null,
+      latencyMs: Date.now() - t0,
+      ok: false,
+      promptChars,
+      error: e instanceof Error ? e.message.slice(0, 200) : String(e).slice(0, 200)
+    })
+    throw e
+  }
+}
+
 export async function runAgentTurn(
   session: AgentSession,
   projectRoot: string,
@@ -568,7 +634,7 @@ export async function runAgentTurn(
     const streamDeltas = attachStreamDeltas(live, sink)
     let completion
     try {
-      completion = await chatEcnuStream({
+      completion = await loggedStream(projectRoot, session.id, {
         ...request,
         thinking: true,
         signal,
@@ -585,7 +651,7 @@ export async function runAgentTurn(
         return session
       }
       try {
-        completion = await chatEcnuStream({
+        completion = await loggedStream(projectRoot, session.id, {
           ...request,
           thinking: false,
           signal,
@@ -856,8 +922,10 @@ export async function runAgentTurn(
             : view === 'source'
               ? numberedHybridSource(ctx.hybridAsfl)
               : compactHybrid(ctx.hybridAsfl)
+          // Parser diagnostics are always fed back (also in condition B2). L1/L2 semantic FSF
+          // diagnostics are added only when the experiment condition enables them (not in B2).
           const diagnostics = permissions.hybrid.read
-            ? hybridDiagnosticsPayload(ctx.hybridAsfl)
+            ? await hybridDiagnosticsWithSemantic(ctx.hybridAsfl, getExperimentConfig(projectRoot))
             : { count: 0, errors: 0, items: [] }
           session.messages.push({
             id: call.id,
@@ -1019,6 +1087,25 @@ export async function resumeWithToolResult(
   )
   const patch = pending?.proposedChanges
   if (patch) {
+    const cfg = getExperimentConfig(projectRoot)
+    const op0 = patch.operations?.[0] as { op?: string; kind?: string } | undefined
+    const isRefine = op0?.op === 'refine-step'
+    logTelemetry(projectRoot, cfg, session.id, {
+      event: 'proposal_decision',
+      tool: isRefine ? 'propose_refinement_step' : patch.mode === 'source' ? 'propose_source_edit' : `propose_${patch.target ?? 'informal'}_changes`,
+      stepType: isRefine ? String(op0?.kind ?? '') : undefined,
+      decision: payload.action === 'applied' && !payload.error ? 'approved' : payload.action === 'rejected' ? 'rejected' : 'error',
+      toolCallId
+    })
+    if (payload.action === 'applied' && !payload.error && patch.target === 'hybrid' && ctx.hybridAsfl !== undefined) {
+      try {
+        logTelemetry(projectRoot, cfg, session.id, {
+          event: 'post_write_diagnostics',
+          toolCallId,
+          diagnostics: await diagnosticCounts(ctx.hybridAsfl, cfg)
+        })
+      } catch { /* best-effort */ }
+    }
     if (payload.action === 'applied' && !payload.error) {
       session.context.lastFailedWrite = undefined
     } else if (payload.action === 'error' || (payload.action === 'applied' && payload.error)) {

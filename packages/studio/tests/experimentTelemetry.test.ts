@@ -1,0 +1,72 @@
+import { describe, it, expect } from 'vitest'
+import { mkdtempSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { getExperimentConfig, semanticDiagnostics, diagnosticCounts, logTelemetry, telemetryPath } from '../src/main/services/llm/experiment'
+// @ts-expect-error plain ESM script without types
+import { analyze, readJsonl } from '../scripts/analyze-llm-calls.mjs'
+
+const spec = `module SYSTEM_T;\nprocess P (x: int) r: int\nFSF :\n r > 0 && r = 1 ||\n x > 0 && x = 1\nend_process\nend_module.`
+const parseBroken = `module SYSTEM_T;\nprocess P (x: int) r: int\nFSF :\n x > && r = 1\nend_process\nend_module.`
+
+describe('experiment condition switch', () => {
+  it('defaults to B1 with semantic checks on; B2 disables them', () => {
+    expect(getExperimentConfig(undefined, {})).toMatchObject({ condition: 'B1', semanticChecks: true, participantId: 'anonymous', telemetry: true, logPrompts: false })
+    expect(getExperimentConfig(undefined, { AGILE_SOFL_CONDITION: 'B2', AGILE_SOFL_PARTICIPANT: 'P07' })).toMatchObject({ condition: 'B2', semanticChecks: false, participantId: 'P07' })
+  })
+
+  it('reads .agile-sofl/experiment.json, env overrides it', () => {
+    const root = mkdtempSync(join(tmpdir(), 'exp-'))
+    mkdirSync(join(root, '.agile-sofl'))
+    writeFileSync(join(root, '.agile-sofl', 'experiment.json'), JSON.stringify({ condition: 'B2', participantId: 'P03' }))
+    expect(getExperimentConfig(root, {})).toMatchObject({ condition: 'B2', participantId: 'P03', semanticChecks: false })
+    expect(getExperimentConfig(root, { AGILE_SOFL_CONDITION: 'B1' }).semanticChecks).toBe(true)
+  })
+
+  it('B2: L1/L2 not run and not fed back; parser diagnostics still counted', async () => {
+    const b1 = getExperimentConfig(undefined, { AGILE_SOFL_CONDITION: 'B1' })
+    const b2 = getExperimentConfig(undefined, { AGILE_SOFL_CONDITION: 'B2' })
+    const sem = await semanticDiagnostics(spec, b1)
+    expect(sem.map((d) => d.code)).toContain('ASFL_FSF_101')
+    expect(await semanticDiagnostics(spec, b2)).toEqual([])
+    const c1 = await diagnosticCounts(spec, b1)
+    expect(c1.l1.error).toBeGreaterThan(0)
+    expect(c1.l1.enabled).toBe(true)
+    const c2 = await diagnosticCounts(spec, b2)
+    expect(c2.l1).toEqual({ error: 0, warning: 0, enabled: false })
+    expect(c2.l2).toEqual({ error: 0, warning: 0, enabled: false })
+    const broken = await diagnosticCounts(parseBroken, b2)
+    expect(broken.parser.error).toBeGreaterThan(0)
+  }, 60000)
+})
+
+describe('LLM telemetry JSONL + analysis', () => {
+  it('logs events without API keys or prompts by default and the script computes rates', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'tel-'))
+    const cfg = getExperimentConfig(undefined, { AGILE_SOFL_CONDITION: 'B2', AGILE_SOFL_PARTICIPANT: 'P01' })
+    logTelemetry(root, cfg, 's1', { event: 'llm_call', model: 'm-1', promptTokens: 100, completionTokens: 20, latencyMs: 1500, ok: true, promptChars: 900, prompt: [{ role: 'user', content: 'secret prompt sk-abcdefghijkl' }], error: 'Bearer sk-zzzzzzzzzzzz' } as any)
+    logTelemetry(root, cfg, 's1', { event: 'proposal_decision', tool: 'propose_refinement_step', stepType: 'FormalizePredicate', decision: 'approved', toolCallId: 'a' })
+    logTelemetry(root, cfg, 's1', { event: 'proposal_decision', tool: 'propose_refinement_step', stepType: 'DecomposeProcess', decision: 'rejected', toolCallId: 'b' })
+    logTelemetry(root, cfg, 's1', { event: 'post_write_diagnostics', toolCallId: 'a', diagnostics: await diagnosticCounts(spec, cfg) })
+    const raw = readFileSync(telemetryPath(root), 'utf-8')
+    expect(raw).not.toContain('secret prompt')
+    expect(raw).not.toMatch(/sk-[a-z]{8}/)
+    const recs = readJsonl([telemetryPath(root)])
+    expect(recs).toHaveLength(4)
+    expect(recs[0]).toMatchObject({ sessionId: 's1', participantId: 'P01', condition: 'B2', model: 'm-1', promptTokens: 100, completionTokens: 20, latencyMs: 1500 })
+    const [res] = analyze(recs, 'condition')
+    expect(res.group).toBe('B2')
+    expect(res.llmCalls).toBe(1)
+    expect(res.refinementSteps.approvalRate).toBe(0.5)
+    expect(res.refinementByStepType.FormalizePredicate.approvalRate).toBe(1)
+    expect(res.postWrite.writes).toBe(1)
+    expect(res.postWrite.mean.l1_error).toBe(0)
+  }, 60000)
+
+  it('telemetry can be disabled', () => {
+    const root = mkdtempSync(join(tmpdir(), 'tel-'))
+    const cfg = getExperimentConfig(undefined, { AGILE_SOFL_TELEMETRY: '0' })
+    logTelemetry(root, cfg, 's', { event: 'proposal_decision', tool: 't', decision: 'approved', toolCallId: 'x' })
+    expect(() => readFileSync(telemetryPath(root))).toThrow()
+  })
+})

@@ -28,6 +28,10 @@ export type ChatCompletion = {
   reasoning: string
   toolCalls: ToolCall[]
   finishReason: string
+  /** token usage reported by the provider (null fields when not reported) */
+  usage?: { promptTokens: number | null; completionTokens: number | null }
+  /** model name actually used for the call */
+  model?: string
 }
 
 export type ChatStreamToolCall = {
@@ -116,6 +120,8 @@ export async function chatEcnu(options: {
 
   const res = await postChat(body)
   const json = (await res.json()) as {
+    usage?: { prompt_tokens?: number; completion_tokens?: number }
+    model?: string
     choices?: Array<{
       finish_reason?: string
       message?: {
@@ -130,7 +136,9 @@ export async function chatEcnu(options: {
     content: choice?.message?.content ?? '',
     reasoning: choice?.message?.reasoning_content ?? '',
     toolCalls: choice?.message?.tool_calls ?? [],
-    finishReason: choice?.finish_reason ?? 'stop'
+    finishReason: choice?.finish_reason ?? 'stop',
+    usage: { promptTokens: json.usage?.prompt_tokens ?? null, completionTokens: json.usage?.completion_tokens ?? null },
+    model: json.model ?? getEcnuConfig().model
   }
 }
 
@@ -150,6 +158,8 @@ export async function chatEcnuStream(options: {
   }
   if (options.thinking !== false) body.reasoning_effort = 'low'
   if (options.tools?.length) body.tools = options.tools
+  // ask OpenAI-compatible providers to send token usage in the final chunk (telemetry)
+  body.stream_options = { include_usage: true }
 
   const res = await postChat(body, options.signal)
   if (!res.body) throw new Error('ChatECNU stream has no body.')
@@ -161,6 +171,8 @@ export async function chatEcnuStream(options: {
   let reasoning = ''
   const tools: Array<{ id: string; name: string; arguments: string }> = []
   let finishReason = 'stop'
+  let usage: { promptTokens: number | null; completionTokens: number | null } = { promptTokens: null, completionTokens: null }
+  let model: string | undefined
 
   const flushLine = (line: string) => {
     const trimmed = line.trim()
@@ -168,6 +180,8 @@ export async function chatEcnuStream(options: {
     const data = trimmed.slice(5).trim()
     if (!data || data === '[DONE]') return
     let parsed: {
+      usage?: { prompt_tokens?: number; completion_tokens?: number } | null
+      model?: string
       choices?: Array<{
         finish_reason?: string | null
         delta?: {
@@ -187,6 +201,8 @@ export async function chatEcnuStream(options: {
     } catch {
       return
     }
+    if (parsed.usage) usage = { promptTokens: parsed.usage.prompt_tokens ?? null, completionTokens: parsed.usage.completion_tokens ?? null }
+    if (parsed.model) model = parsed.model
     const choice = parsed.choices?.[0]
     if (!choice) return
     if (choice.finish_reason) finishReason = choice.finish_reason
@@ -263,7 +279,9 @@ export async function chatEcnuStream(options: {
         type: 'function' as const,
         function: { name: t.name, arguments: t.arguments || '{}' }
       })),
-    finishReason
+    finishReason,
+    usage,
+    model: model ?? getEcnuConfig().model
   }
 }
 
