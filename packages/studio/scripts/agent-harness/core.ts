@@ -145,17 +145,58 @@ export async function runOnce(o: RunOptions): Promise<RunResult> {
 }
 
 /** Serial 429-aware fetch: retries HTTP 429/503 with exponential backoff; every retry is appended to retries.log. */
-export function install429Retry(logFile: string, maxRetries = 5): void {
-  const orig = globalThis.fetch
-  globalThis.fetch = (async (input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
-    for (let attempt = 0; ; attempt++) {
-      const res = await orig(input, init)
-      if ((res.status !== 429 && res.status !== 503) || attempt >= maxRetries) return res
-      const wait = Math.min(60_000, 2000 * 2 ** attempt) + Math.floor(Math.random() * 500)
-      try { writeFileSync(logFile, `${new Date().toISOString()} status=${res.status} attempt=${attempt + 1} wait=${wait}ms\n`, { flag: 'a' }) } catch { /* ignore */ }
+/** Context written into every retries.log line (run id + schedule order; never the condition). */
+let retryCtx: () => Record<string, string | number | undefined> = () => ({})
+export function setRetryContext(f: () => Record<string, string | number | undefined>): void { retryCtx = f }
+
+/** Local time with UTC offset, e.g. 2026-10-08T01:23:45.678+08:00 */
+export function localIso(d = new Date()): string {
+  const p = (n: number, w = 2) => String(Math.trunc(Math.abs(n))).padStart(w, '0')
+  const off = -d.getTimezoneOffset()
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}.${p(d.getMilliseconds(), 3)}` +
+    `${off >= 0 ? '+' : '-'}${p(off / 60)}:${p(off % 60)}`
+}
+
+const RETRY_STATE = Symbol.for('agile-sofl.harness.retry')
+type RetryState = { logFile: string; maxRetries: number; baseMs: number; orig: typeof fetch }
+/**
+ * Retry HTTP 429/503 with exponential backoff (base 2 s, max 60 s, + jitter). Every retry and every give-up is
+ * appended to `logFile` with local timestamp, run id, run order, attempt, status and wait (no condition).
+ * Idempotent: a second call only updates the log file / limits.
+ */
+export function install429Retry(logFile: string, maxRetries = 5, baseMs = 2000): void {
+  const g = globalThis as unknown as { [RETRY_STATE]?: RetryState; fetch: typeof fetch }
+  const cur = g.fetch as typeof fetch & { [RETRY_STATE]?: RetryState }
+  if (cur[RETRY_STATE]) { Object.assign(cur[RETRY_STATE]!, { logFile, maxRetries, baseMs }); return }
+  const st: RetryState = { logFile, maxRetries, baseMs, orig: cur }
+  const log = (line: string) => {
+    const c = retryCtx()
+    const ctx = Object.entries(c).filter(([, v]) => v !== undefined).map(([k, v]) => `${k}=${v}`).join(' ')
+    try { writeFileSync(st.logFile, `${localIso()} ${ctx} ${line}\n`, { flag: 'a' }) } catch { /* ignore */ }
+  }
+  const wrapped = (async (input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+    for (let attempt = 1; ; attempt++) {
+      const res = await st.orig(input, init)
+      if (res.status !== 429 && res.status !== 503) {
+        if (attempt > 1) log(`attempt=${attempt} status=${res.status} recovered`)
+        return res
+      }
+      if (attempt > st.maxRetries) { log(`attempt=${attempt} status=${res.status} giving-up after ${st.maxRetries} retries`); return res }
+      const wait = Math.min(60_000, st.baseMs * 2 ** (attempt - 1)) + Math.floor(Math.random() * Math.min(500, st.baseMs))
+      log(`attempt=${attempt} status=${res.status} retry=${attempt}/${st.maxRetries} wait=${wait}ms`)
       await new Promise((r) => setTimeout(r, wait))
     }
-  }) as typeof fetch
+  }) as typeof fetch & { [RETRY_STATE]?: RetryState }
+  wrapped[RETRY_STATE] = st
+  g.fetch = wrapped
+}
+
+/** The prompt hash runOnce will compute for this informal input (default skill/user text/clarification). */
+export function expectedPromptHash(informalPath: string, o: { skillId?: string; userText?: string; clarificationAnswer?: string } = {}): string {
+  return promptHash({
+    informal: readInformal(informalPath).text, skillPrompt: skillById(o.skillId ?? 'hybrid-generation').prompt,
+    userText: o.userText ?? DEFAULT_USER_TEXT, clarification: o.clarificationAnswer ?? DEFAULT_CLARIFICATION
+  })
 }
 
 export function appendKey(outDir: string, r: RunResult & { system: string }): void {
