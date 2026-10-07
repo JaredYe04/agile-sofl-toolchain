@@ -147,14 +147,8 @@ export function reasoningEffortFor(thinking?: boolean): 'low' | 'off' {
   return thinking === false ? 'off' : 'low'
 }
 
-export async function chatEcnuStream(options: {
-  messages: ChatMessage[]
-  tools?: ChatTool[]
-  temperature?: number
-  thinking?: boolean
-  signal?: AbortSignal
-  onDelta?: (delta: ChatStreamDelta) => void
-}): Promise<ChatCompletion> {
+/** Request body of a streaming chat call (pure; exported for tests). */
+export function buildStreamBody(options: { messages: ChatMessage[]; tools?: ChatTool[]; temperature?: number; thinking?: boolean }): Record<string, unknown> {
   const body: Record<string, unknown> = {
     messages: options.messages,
     temperature: options.temperature ?? 0.35,
@@ -167,6 +161,18 @@ export async function chatEcnuStream(options: {
   // ask OpenAI-compatible providers to send token usage in the final chunk (telemetry)
   body.stream_options = { include_usage: true }
 
+  return body
+}
+
+export async function chatEcnuStream(options: {
+  messages: ChatMessage[]
+  tools?: ChatTool[]
+  temperature?: number
+  thinking?: boolean
+  signal?: AbortSignal
+  onDelta?: (delta: ChatStreamDelta) => void
+}): Promise<ChatCompletion> {
+  const body = buildStreamBody(options)
   const res = await postChat(body, options.signal)
   if (!res.body) throw new Error('ChatECNU stream has no body.')
 

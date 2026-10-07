@@ -117,3 +117,20 @@ describe('reasoning / retry telemetry', () => {
     expect(res.retryRate).toBeCloseTo(1 / 3, 3)
   })
 })
+
+describe('freeze v1.2: reasoning off', () => {
+  it('agent first attempt sends thinking disabled (reasoning off)', async () => {
+    const { AGENT_THINKING } = await import('../src/main/services/llm/agentLoop')
+    const { reasoningEffortFor } = await import('../src/main/services/llm/chatEcnu')
+    expect(AGENT_THINKING).toBe(false)
+    expect(reasoningEffortFor(AGENT_THINKING)).toBe('off')
+  })
+  it('stream request body omits reasoning_effort and disables thinking', async () => {
+    const { buildStreamBody } = await import('../src/main/services/llm/chatEcnu')
+    const off = buildStreamBody({ messages: [{ role: 'user', content: 'x' }], thinking: false })
+    expect(off.thinking).toEqual({ type: 'disabled' })
+    expect(off.reasoning_effort).toBeUndefined()
+    const on = buildStreamBody({ messages: [{ role: 'user', content: 'x' }], thinking: true })
+    expect(on).toMatchObject({ thinking: { type: 'enabled' }, reasoning_effort: 'low', stream: true, temperature: 0.35 })
+  })
+})

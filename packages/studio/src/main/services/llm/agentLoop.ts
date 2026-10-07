@@ -518,6 +518,13 @@ function attachStreamDeltas(live: AgentMessage, sink?: AgentStreamSink) {
   }
 }
 
+/**
+ * Experiment freeze v1.2 (decision 2026-10-08): reasoning/thinking is OFF for every agent LLM call in all
+ * conditions, including the first attempt (request sends thinking: disabled and no reasoning_effort).
+ * The retry path is unchanged (it also sends thinking: false). Telemetry records reasoning='off'.
+ */
+export const AGENT_THINKING = false
+
 /** short, key-free reason for the thinking-disabled retry (telemetry only) */
 export function retryReasonOf(e: unknown): string {
   const msg = e instanceof Error ? e.message : String(e)
@@ -649,7 +656,7 @@ export async function runAgentTurn(
     try {
       completion = await loggedStream(projectRoot, session.id, {
         ...request,
-        thinking: true,
+        thinking: AGENT_THINKING,
         signal,
         onDelta: streamDeltas.onDelta
       })
