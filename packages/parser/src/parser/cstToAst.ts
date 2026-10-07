@@ -964,7 +964,7 @@ function cstToQuantifiedFromList(cst: CstNode): QuantifiedNode {
 
 function cstToBindingList(cst: CstNode): BindingGroupNode[] {
   return childNodes(cst, 'bindingGroup').map((g) => {
-    const ids = tokensOf(g, 'Identifier')
+    const ids = bindingNameTokens(g)
     const typeExpr = singleChild(g, 'typeExpr')
     return {
       type: 'binding_group',
