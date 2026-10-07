@@ -25,6 +25,23 @@ export const DiagnosticCodes = {
   FSF_INFORMAL_BOTTOM: 'ASFL_FSF_001',
   FSF_FORMAL_NON_BOTTOM: 'ASFL_FSF_002',
   FSF_MISSING_OTHERS: 'ASFL_FSF_003',
+  /** L1: test condition T refers to an output variable. */
+  FSF_L1_OUTPUT_IN_TEST: 'ASFL_FSF_101',
+  /** L1: defining condition D constrains no output variable. */
+  FSF_L1_NO_OUTPUT_IN_DEF: 'ASFL_FSF_102',
+  /** L1: check skipped because T/D contains natural-language atoms. */
+  FSF_L1_INFORMAL_SKIPPED: 'ASFL_FSF_103',
+  /** L1: T refers to a wr external variable without `~` (final value) — use `~x`. */
+  FSF_L1_WR_IN_TEST: 'ASFL_FSF_104',
+  FSF_L2_OVERLAP: 'ASFL_FSF_201',
+  FSF_L2_INCOMPLETE: 'ASFL_FSF_202',
+  FSF_L2_UNKNOWN: 'ASFL_FSF_203',
+  FSF_L2_TIMEOUT: 'ASFL_FSF_204',
+  FSF_L2_UNSUPPORTED: 'ASFL_FSF_205',
+  FSF_L2_INFORMAL: 'ASFL_FSF_206',
+  FSF_L2_SKIPPED: 'ASFL_FSF_207',
+  FSF_L2_SOLVER_UNAVAILABLE: 'ASFL_FSF_208',
+  FSF_L2_COMPLETE_BY_OTHERS: 'ASFL_FSF_209',
   GUI_UNCLOSED_BLOCK: 'GUI_ASFL_001',
   GUI_UNCLOSED_SCREEN: 'GUI_ASFL_002',
   GUI_UNKNOWN_WIDGET: 'GUI_ASFL_003',

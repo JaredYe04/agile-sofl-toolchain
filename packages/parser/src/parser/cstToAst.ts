@@ -501,6 +501,10 @@ function cstToProcess(cst: CstNode): ProcessNode {
   const init = tokensOf(cst, 'Init')
   const ids = tokensOf(cst, 'Identifier')
   const paramDecls = childNodes(cst, 'paramDecls')
+  const rparen = tokensOf(cst, 'RParen')[0]
+  const isAfterRParen = (n: CstNode) => !!rparen && (firstToken(n)?.startOffset ?? 0) > rparen.startOffset
+  const inputDecls = paramDecls.find((n) => !isAfterRParen(n))
+  const outputDecls = paramDecls.find((n) => isAfterRParen(n))
   const body = singleChild(cst, 'processBody')
   const nameTok = init[0] ?? ids[0]
 
@@ -510,8 +514,10 @@ function cstToProcess(cst: CstNode): ProcessNode {
     name: init.length > 0 ? 'Init' : (ids[0]?.image ?? ''),
     nameSpan: nameTok ? spanOfToken(nameTok) : undefined,
     isInit: init.length > 0,
-    inputs: paramDecls[0] ? cstToParamDecls(paramDecls[0]) : [],
-    outputs: paramDecls[1] ? cstToParamDecls(paramDecls[1]) : [],
+    // Inputs are inside `( … )`, outputs follow `)`. With empty inputs `P () r: T`
+    // the only paramDecls child is the output list (previously mis-read as inputs).
+    inputs: inputDecls ? cstToParamDecls(inputDecls) : [],
+    outputs: outputDecls ? cstToParamDecls(outputDecls) : [],
     body: body ? cstToProcessBody(body) : undefined
   }
 }

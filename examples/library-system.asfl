@@ -108,7 +108,7 @@ process ResetFeatured ()
     ext
     wr featured: Catalog
     FSF :
-    true && sync_count = 0
+    true && featured = ~featured
 end_process
 end_module;
 module Reports / Library;

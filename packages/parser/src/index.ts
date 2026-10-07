@@ -8,6 +8,7 @@ import { typeCheck } from './typecheck/checker.js'
 import { classifyFsf, isFsfFormal } from './fsf/classifier.js'
 import { deriveFsf, deriveAllFsf } from './fsf/deriver.js'
 import { checkCdfd } from './cdfd/checkCdfd.js'
+import { checkFsfL1 } from './fsf/l1Check.js'
 import { checkDataRefine } from './refine/checkDataRefine.js'
 import { resolveScope, lookupModuleScope } from './scope/resolver.js'
 import { checkReferences } from './scope/referenceChecker.js'
@@ -67,6 +68,8 @@ export interface FormatResult {
 
 export interface CheckOptions {
   refinementStrict?: boolean
+  /** Run the L1 FSF static check (T has no outputs, D has an output). Default true. */
+  fsfL1?: boolean
 }
 
 /** Parse full specification (multiple modules). Uses strict parse — no partial AST on errors. */
@@ -82,6 +85,7 @@ export function parseSpecification(source: string, options?: CheckOptions): Chec
   const refResult = checkReferences(result.ast, scopeResult)
   const typeResult = typeCheck(result.ast, scopeResult)
   const fsfResult = classifyFsf(result.ast)
+  const l1Result = options?.fsfL1 === false ? { diagnostics: [] } : checkFsfL1(result.ast)
   const cdfdResult = checkCdfd(result.ast, options)
   const dataResult = checkDataRefine(result.ast)
   return {
@@ -92,6 +96,7 @@ export function parseSpecification(source: string, options?: CheckOptions): Chec
       ...refResult.diagnostics,
       ...typeResult.diagnostics,
       ...fsfResult.diagnostics,
+      ...l1Result.diagnostics,
       ...cdfdResult.diagnostics,
       ...dataResult.diagnostics
     ]
@@ -99,7 +104,7 @@ export function parseSpecification(source: string, options?: CheckOptions): Chec
 }
 
 /** Parse single module (Module Parser mode). Uses strict parse. */
-export function parseSingleModule(source: string): CheckResult {
+export function parseSingleModule(source: string, options?: CheckOptions): CheckResult {
   const result = parseModule(source, { tolerant: false })
   if (!result.ast || result.ast.type !== 'module') {
     return { ast: null, diagnostics: result.diagnostics }
@@ -113,6 +118,7 @@ export function parseSingleModule(source: string): CheckResult {
   const refResult = checkReferences(program, scopeResult)
   const typeResult = typeCheck(program, scopeResult)
   const fsfResult = classifyFsf(program)
+  const l1Result = options?.fsfL1 === false ? { diagnostics: [] } : checkFsfL1(program)
   return {
     ast: program,
     diagnostics: [
@@ -120,7 +126,8 @@ export function parseSingleModule(source: string): CheckResult {
       ...scopeResult.diagnostics,
       ...refResult.diagnostics,
       ...typeResult.diagnostics,
-      ...fsfResult.diagnostics
+      ...fsfResult.diagnostics,
+      ...l1Result.diagnostics
     ]
   }
 }
@@ -193,6 +200,7 @@ export { typeExprToInternal, resolveInternalType, typeToString } from './typeche
 export { parsePredicateSource } from './prepost/parsePredicate.js'
 export { printConditionText, clauseHasInformal } from './prepost/clause.js'
 export { checkCdfd } from './cdfd/checkCdfd.js'
+export { checkFsfL1, checkProcessFsfL1 } from './fsf/l1Check.js'
 export type { CheckCdfdOptions } from './cdfd/checkCdfd.js'
 export { analyzeProcessAtomicity, collectInformalAtoms, canDeclareAtomic } from './refine/atomicity.js'
 export type { InformalAtomRef, ProcessAtomicity, ProcessAmbiguityReport } from './refine/atomicity.js'
