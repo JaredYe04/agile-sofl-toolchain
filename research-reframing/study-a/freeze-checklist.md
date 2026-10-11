@@ -2,6 +2,8 @@
 
 This checklist is the gate in front of a confirmatory Study A run. The files in `held-out/scenarios/` do **not** pass it. They are `status: draft-gold`: a scaffold for human dual annotation. No confirmatory result exists, and this document does not record one.
 
+**Hard gate.** Dual annotation is a hard gate before freeze. Follow `dual-annotation-protocol.md`. The blank sheets in `annotation-sheets/` (`annotator-a.blank.csv`, `annotator-b.blank.csv`) carry scenario id and slot id keys only. Their judgment cells are empty. They are not labels, agreement, or SCR. Do not cut `study-a-freeze-v0.1` until that protocol allows status `gold`. Author-solo gold does not open this gate.
+
 Do not start a real model batch, and do not pass `--confirmatory`, until every item below is done. A dry `--list` of the scaffold is allowed. It does not call a model and does not freeze anything.
 
 ## 1. Dual annotation before any real run
@@ -9,7 +11,7 @@ Do not start a real model batch, and do not pass `--confirmatory`, until every i
 - [ ] Two annotators have labeled every held-out scenario independently, using `annotation-guide.md`.
 - [ ] Slots, alternatives, clarification targets, must-not-confirm elements, and maintenance impact sets were adjudicated.
 - [ ] Agreement is reported (Cohen's kappa or Krippendorff's alpha where they apply).
-- [ ] `status` is still `draft-gold` until that adjudication is written into the files. Do not rename the status to a freeze, and do not set `confirmatory` to `true` (the loader rejects it).
+- [ ] `status` stays `draft-gold` until `dual-annotation-protocol.md` allows `gold`. Do not set `confirmatory` to `true` (the loader rejects it). Author-solo gold is forbidden.
 - [ ] Annotators did not tune prompts, tools, or the agent on these scenarios, and did not see model outputs from them.
 - [ ] The source text of each scenario does not contain that scenario's stakeholder sentence or commitment phrases.
 
@@ -29,6 +31,7 @@ That tag must point at the commit that will actually be executed. `HEAD` must eq
 
 Cut the new tag only after:
 
+- [ ] The dual-annotation hard gate has passed under `dual-annotation-protocol.md`: two locked independent sheets, focus checks, disagreement resolution, and status `gold` only by that protocol. Author-solo gold does not count.
 - [ ] The DASR decision records, impact links, and decision-aware gate are on the merged commit the tag names.
 - [ ] The adjudicated held-out gold is in that same commit.
 - [ ] `analysis-plan.md` on that commit still treats the scenario as the sampling unit and still leaves C0 unrun.

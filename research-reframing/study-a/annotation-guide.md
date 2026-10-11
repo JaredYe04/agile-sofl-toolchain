@@ -96,6 +96,8 @@ A miss is not a successful clarification. Do not add a fallback answer after see
 
 ## Dual annotation, before any confirmatory run
 
+The procedure, focus checks, blank sheets, the rule for status `gold`, and the ban on author-solo gold are in `dual-annotation-protocol.md`. The committed sheets are empty.
+
 For every held-out scenario, two annotators who know the labeling rules work independently. They do not tune the agent on these scenarios, and they do not see model outputs from these files.
 
 Each annotator labels:
@@ -106,7 +108,7 @@ Each annotator labels:
 - the must-not-confirm element ids
 - for maintenance, the affected and unaffected ids
 
-They then compare labels. Disagreements are adjudicated and written into the file. Report Cohen's kappa or Krippendorff's alpha where they apply. Until that statistic exists, `status` stays `draft-gold`.
+They then compare labels. Disagreements are adjudicated and written into the file. Report Cohen's kappa or Krippendorff's alpha where they apply. Until the protocol's conditions for `gold` are met, `status` stays `draft-gold`. Author-solo gold is not a substitute.
 
 After adjudication:
 
