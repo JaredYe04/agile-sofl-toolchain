@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { readdirSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { loadGold, validateGold } from '../scripts/agent-harness/studyAGold'
+import { listGoldFiles, loadGold, validateGold } from '../scripts/agent-harness/studyAGold'
+import { formatGoldList } from '../scripts/agent-harness/studyAList'
 import { answerFromGold, createStakeholderOracle, UNMATCHED_ORACLE_REPLY } from '../scripts/agent-harness/studyAOracle'
 import { scoreStudyA, slotDetected, slotSilentlyCommitted } from '../scripts/agent-harness/studyAMetrics'
 import { assertConfirmatoryFreeze, buildStudyAConfig, studyASchemaHashes } from '../scripts/agent-harness/studyAConfig'
@@ -11,7 +12,7 @@ import type { StudyEvent } from '../scripts/agent-harness/studyATypes'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const scenarioDir = join(here, '../../../research-reframing/study-a/dev/scenarios')
-const heldOutDir = join(here, '../../../research-reframing/study-a/held-out')
+const heldOutDir = join(here, '../../../research-reframing/study-a/held-out/scenarios')
 
 function proposal(seq: number, text: string, extra: Partial<Extract<StudyEvent, { type: 'proposal' }>> = {}): StudyEvent {
   return {
@@ -41,13 +42,38 @@ describe('Study A gold packages', () => {
     expect(golds.filter((gold) => gold.kind === 'underspecified')).toHaveLength(3)
     const bad = validateGold({ ...golds[0], confirmatory: true })
     expect(bad.ok).toBe(false)
-    const heldOut = readdirSync(heldOutDir).filter((name) => name.endsWith('.json'))
-    expect(heldOut).toEqual([])
+    const frozen = validateGold({ ...golds[0], status: 'frozen' })
+    expect(frozen.ok).toBe(false)
+  })
+
+  it('loads the held-out draft scaffold and refuses to treat it as frozen', () => {
+    const rows = listGoldFiles(heldOutDir)
+    expect(rows.length).toBeGreaterThanOrEqual(12)
+    expect(rows.length).toBeLessThanOrEqual(15)
+    expect(rows.every((row) => row.set === 'held-out' && row.status === 'draft-gold' && row.confirmatory === false && row.devExample === false)).toBe(true)
+    expect(new Set(rows.map((row) => row.domain)).size).toBeGreaterThanOrEqual(3)
+    const domains = rows.map((row) => row.domain).join(' ')
+    expect(domains).not.toMatch(/classroom|delivery|library/)
+    expect(rows.filter((row) => row.kind === 'underspecified').length).toBeGreaterThanOrEqual(6)
+    expect(rows.filter((row) => row.kind === 'clear-control').length).toBeGreaterThanOrEqual(2)
+    const maintenance = rows.filter((row) => row.kind === 'maintenance')
+    expect(maintenance.length).toBeGreaterThanOrEqual(2)
+    expect(maintenance.length).toBeLessThanOrEqual(3)
+    const golds = rows.map((row) => loadGold(row.file))
+    expect(golds.every((gold) => gold.partition === 'held-out' && gold.status === 'draft-gold')).toBe(true)
+    const promoted = validateGold({ ...golds[0], confirmatory: true })
+    expect(promoted.ok).toBe(false)
+    const lines = formatGoldList(rows)
+    expect(lines.at(-1)).toContain('"modelRun":false')
+    expect(lines.filter((line) => line.includes('draft-gold')).length).toBe(rows.length)
+    expect(lines.join('\n')).not.toMatch(/SCR|silent commitment rate/i)
   })
 
   it('keeps commitment phrases out of the source text', () => {
-    for (const name of files) {
-      const gold = loadGold(join(scenarioDir, name))
+    const devFiles = files.map((name) => join(scenarioDir, name))
+    const heldOutFiles = readdirSync(heldOutDir).filter((name) => name.endsWith('.json')).map((name) => join(heldOutDir, name))
+    for (const path of [...devFiles, ...heldOutFiles]) {
+      const gold = loadGold(path)
       const source = `${gold.naturalLanguageRequirements}\n${gold.informalMarkdown}`.toLowerCase()
       for (const slot of gold.unresolvedSlots) {
         const authorized = slot.alternatives.find((alt) => alt.id === slot.authorizedAlternativeId)

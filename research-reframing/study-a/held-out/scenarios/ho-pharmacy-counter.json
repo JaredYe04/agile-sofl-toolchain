@@ -1,0 +1,102 @@
+{
+  "schemaVersion": "study-a-gold-1",
+  "scenarioId": "ho-pharmacy-counter",
+  "partition": "held-out",
+  "set": "held-out",
+  "status": "draft-gold",
+  "devExample": false,
+  "confirmatory": false,
+  "title": "Pharmacy counter release",
+  "domain": "pharmacy-pickup",
+  "kind": "underspecified",
+  "clearControl": false,
+  "naturalLanguageRequirements": "A filled prescription waits at the pharmacy counter. The source text does not say who is allowed to take it away, and it does not say which proof the counter accepts.",
+  "informalMarkdown": "# Functions\n\n## Release a prescription\n\nThe counter releases a filled prescription. Who may take it away is not stated.\n\n## Check identity\n\nThe counter checks identity before the release. Which proof is accepted is not stated.\n\n# Data Resources\n\n## Prescription\n\nThe prescription records the patient name, the medicine, and the ready time.\n\n# Constraints\n\n## Ready status\n\nOnly a prescription marked ready may leave the counter.\n",
+  "unresolvedSlots": [
+    {
+      "id": "who-collects",
+      "question": "Who is allowed to take a filled prescription away from the counter?",
+      "alternatives": [
+        {
+          "id": "patient",
+          "label": "Only the patient named on the prescription may take it away."
+        },
+        {
+          "id": "proxy",
+          "label": "A person the patient named on the pharmacy record may take the prescription away."
+        }
+      ],
+      "authorizedAlternativeId": "proxy",
+      "clarificationTarget": "Whether pickup is limited to the named patient or also allows a person named on the pharmacy record.",
+      "mustNotConfirmBeforeAnswer": [
+        "proc:Pharmacy.ReleasePrescription",
+        "inv:Pharmacy.Collector"
+      ],
+      "stakeholderAnswer": "A person the patient named on the pharmacy record may take the prescription away.",
+      "matchTerms": [
+        "take it away",
+        "pharmacy record"
+      ],
+      "commitmentSignals": [
+        {
+          "alternativeId": "patient",
+          "phrases": [
+            "only the patient named",
+            "named patient may take"
+          ]
+        },
+        {
+          "alternativeId": "proxy",
+          "phrases": [
+            "person the patient named on the pharmacy record",
+            "named on the pharmacy record may take"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "id-proof",
+      "question": "Which proof does the counter require before it releases the medicine?",
+      "alternatives": [
+        {
+          "id": "photo",
+          "label": "A photo of the label on the patient's phone is enough proof."
+        },
+        {
+          "id": "card",
+          "label": "The collector shows a government photo identity card, and a phone photo of the label is refused."
+        }
+      ],
+      "authorizedAlternativeId": "card",
+      "clarificationTarget": "Whether a phone photo of the label is enough proof or a government photo identity card is required.",
+      "mustNotConfirmBeforeAnswer": [
+        "proc:Pharmacy.CheckIdentity",
+        "inv:Pharmacy.IdentityProof"
+      ],
+      "stakeholderAnswer": "The collector shows a government photo identity card, and a phone photo of the label is refused.",
+      "matchTerms": [
+        "proof",
+        "government photo",
+        "enough proof"
+      ],
+      "commitmentSignals": [
+        {
+          "alternativeId": "photo",
+          "phrases": [
+            "phone is enough proof",
+            "photo of the label on the patient's phone"
+          ]
+        },
+        {
+          "alternativeId": "card",
+          "phrases": [
+            "government photo identity card",
+            "phone photo of the label is refused"
+          ]
+        }
+      ]
+    }
+  ],
+  "maintenance": null,
+  "qualityNotes": "Underspecified: two open slots, collector identity and the proof the counter accepts. The slots use disjoint match terms. Draft gold for later dual annotation. status is draft-gold. confirmatory is false. The authorized alternative is a provisional oracle key, not an adjudicated decision. Agreement has not been measured. Not a confirmatory freeze."
+}

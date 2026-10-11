@@ -1,0 +1,70 @@
+{
+  "schemaVersion": "study-a-gold-1",
+  "scenarioId": "ho-court-window-change",
+  "partition": "held-out",
+  "set": "held-out",
+  "status": "draft-gold",
+  "devExample": false,
+  "confirmatory": false,
+  "title": "Court booking window change",
+  "domain": "sports-court",
+  "kind": "maintenance",
+  "clearControl": false,
+  "naturalLanguageRequirements": "Members book a tennis court up to 7 days ahead today. Change new bookings so they can be made up to 14 days ahead. The source text does not say what happens to a booking that was placed under the old limit.",
+  "informalMarkdown": "# Functions\n\n## Place a booking\n\nA member places a court booking. New bookings may be made up to 14 days ahead. Today the limit is 7 days.\n\n## Charge a no-show\n\nA member who misses a booked court is charged a no-show fee. This change does not alter that fee.\n\n# Data Resources\n\n## Member\n\nThe member records the membership number and the name.\n\n# Constraints\n\n## New advance window\n\nA new booking may be placed up to 14 days ahead. The source text does not say what happens to a booking that was placed under the old limit.\n",
+  "unresolvedSlots": [
+    {
+      "id": "placed-booking",
+      "question": "What happens to a booking that was placed under the 7-day limit?",
+      "alternatives": [
+        {
+          "id": "keep",
+          "label": "A booking placed under the 7-day limit stays on the calendar."
+        },
+        {
+          "id": "drop",
+          "label": "A booking placed under the 7-day limit is removed, and the member books again."
+        }
+      ],
+      "authorizedAlternativeId": "keep",
+      "clarificationTarget": "Whether bookings already placed under the 7-day limit stay on the calendar.",
+      "mustNotConfirmBeforeAnswer": [
+        "proc:Court.PlaceBooking",
+        "inv:Court.AdvanceWindow"
+      ],
+      "stakeholderAnswer": "A booking placed under the 7-day limit stays on the calendar.",
+      "matchTerms": [
+        "7-day limit",
+        "old limit"
+      ],
+      "commitmentSignals": [
+        {
+          "alternativeId": "keep",
+          "phrases": [
+            "stays on the calendar",
+            "old booking stays"
+          ]
+        },
+        {
+          "alternativeId": "drop",
+          "phrases": [
+            "is removed, and the member books again",
+            "old booking is removed"
+          ]
+        }
+      ]
+    }
+  ],
+  "maintenance": {
+    "changeRequest": "Change the advance booking window for new court bookings from 7 days to 14 days.",
+    "affectedElementIds": [
+      "proc:Court.PlaceBooking",
+      "inv:Court.AdvanceWindow"
+    ],
+    "unaffectedElementIds": [
+      "proc:Court.ChargeNoShow",
+      "type:Court.Member"
+    ]
+  },
+  "qualityNotes": "Maintenance: the advance window for new bookings is the change. No-show charges and the member record should stay. Bookings already placed under the old limit are an open slot. Draft gold for later dual annotation. status is draft-gold. confirmatory is false. The authorized alternative is a provisional oracle key, not an adjudicated decision. Agreement has not been measured. Not a confirmatory freeze."
+}

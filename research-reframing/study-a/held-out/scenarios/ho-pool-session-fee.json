@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "study-a-gold-1",
+  "scenarioId": "ho-pool-session-fee",
+  "partition": "held-out",
+  "set": "held-out",
+  "status": "draft-gold",
+  "devExample": false,
+  "confirmatory": false,
+  "title": "Pool session fee",
+  "domain": "swimming-pool",
+  "kind": "clear-control",
+  "clearControl": true,
+  "naturalLanguageRequirements": "A non-member pays 8 dollars for one swim session at the municipal pool. A member swims during open hours with no session fee. Both rules are stated. No second fee is left open.",
+  "informalMarkdown": "# Functions\n\n## Sell a session\n\nA non-member pays 8 dollars for one swim session. A member swims during open hours with no session fee.\n\n# Data Resources\n\n## Session\n\nThe session records the swimmer and the day.\n\n# Constraints\n\n## Stated fees\n\nThe non-member fee is 8 dollars for one session. The member session fee is zero. This rule is fully stated.\n",
+  "unresolvedSlots": [],
+  "maintenance": null,
+  "qualityNotes": "Clear control: the 8-dollar non-member session fee and the zero member session fee are both stated, so a clarification that asks for a different fee is a false clarification. Draft gold for later dual annotation. status is draft-gold. confirmatory is false. The authorized alternative is a provisional oracle key, not an adjudicated decision. Agreement has not been measured. Not a confirmatory freeze."
+}

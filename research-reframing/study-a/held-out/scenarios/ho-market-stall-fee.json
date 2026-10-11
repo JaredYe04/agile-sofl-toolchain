@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "study-a-gold-1",
+  "scenarioId": "ho-market-stall-fee",
+  "partition": "held-out",
+  "set": "held-out",
+  "status": "draft-gold",
+  "devExample": false,
+  "confirmatory": false,
+  "title": "Farmers market stall fee",
+  "domain": "farmers-market",
+  "kind": "clear-control",
+  "clearControl": true,
+  "naturalLanguageRequirements": "A vendor pays 40 dollars for one stall on a market Saturday, and the fee is due before the stall is set up. The amount and the due time are stated. No second stall fee is left open.",
+  "informalMarkdown": "# Functions\n\n## Assign a stall\n\nA vendor pays 40 dollars for one stall on a market Saturday. The fee is due before the stall is set up.\n\n# Data Resources\n\n## Stall\n\nThe stall records the vendor and the Saturday.\n\n# Constraints\n\n## Stated fee\n\nThe stall fee is 40 dollars, due before setup. This rule is fully stated.\n",
+  "unresolvedSlots": [],
+  "maintenance": null,
+  "qualityNotes": "Clear control: the 40-dollar stall fee and the due time (before setup) are stated. Asking the vendor to pick a different fee is a false clarification. Draft gold for later dual annotation. status is draft-gold. confirmatory is false. The authorized alternative is a provisional oracle key, not an adjudicated decision. Agreement has not been measured. Not a confirmatory freeze."
+}

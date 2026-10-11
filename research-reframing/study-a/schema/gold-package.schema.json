@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://agile-sofl.local/study-a/gold-package.schema.json",
   "title": "Study A gold package",
-  "description": "Per-scenario gold labels for the decision-integrity benchmark. DEV examples are not the confirmatory freeze set.",
+  "description": "Per-scenario gold labels for the decision-integrity benchmark. DEV examples and held-out draft-gold files are not the confirmatory freeze set. Held-out files set status to draft-gold until dual annotation.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -25,6 +25,14 @@
     "schemaVersion": { "const": "study-a-gold-1" },
     "scenarioId": { "type": "string", "minLength": 1 },
     "partition": { "enum": ["dev", "held-out"] },
+    "set": {
+      "enum": ["dev", "held-out"],
+      "description": "Same value as partition. Required on held-out files."
+    },
+    "status": {
+      "enum": ["dev-example", "draft-gold"],
+      "description": "draft-gold means dual annotation has not happened. There is no frozen or confirmatory status in this schema."
+    },
     "devExample": { "type": "boolean" },
     "confirmatory": { "const": false },
     "title": { "type": "string", "minLength": 1 },
@@ -45,6 +53,23 @@
     },
     "qualityNotes": { "type": "string" }
   },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "partition": { "const": "held-out" } },
+        "required": ["partition"]
+      },
+      "then": {
+        "required": ["set", "status"],
+        "properties": {
+          "set": { "const": "held-out" },
+          "status": { "const": "draft-gold" },
+          "devExample": { "const": false },
+          "confirmatory": { "const": false }
+        }
+      }
+    }
+  ],
   "$defs": {
     "slot": {
       "type": "object",

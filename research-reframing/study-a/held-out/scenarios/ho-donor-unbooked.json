@@ -1,0 +1,60 @@
+{
+  "schemaVersion": "study-a-gold-1",
+  "scenarioId": "ho-donor-unbooked",
+  "partition": "held-out",
+  "set": "held-out",
+  "status": "draft-gold",
+  "devExample": false,
+  "confirmatory": false,
+  "title": "Unbooked blood donor",
+  "domain": "blood-donation",
+  "kind": "underspecified",
+  "clearControl": false,
+  "naturalLanguageRequirements": "A donor gives blood at a donation center that also takes appointments. The source text does not say whether a donor who did not book is seen.",
+  "informalMarkdown": "# Functions\n\n## Receive a donor\n\nThe center receives a donor. Whether a donor who did not book is seen is not stated.\n\n# Data Resources\n\n## Donor visit\n\nThe visit records the donor and the appointment time when one was booked.\n\n# Constraints\n\n## Appointment book\n\nThe center keeps a book of appointments.\n",
+  "unresolvedSlots": [
+    {
+      "id": "unbooked-donor",
+      "question": "Is a donor who did not book an appointment seen at the center?",
+      "alternatives": [
+        {
+          "id": "seen",
+          "label": "A donor who did not book is seen when a chair is free."
+        },
+        {
+          "id": "turned-away",
+          "label": "A donor who did not book is turned away and told to book a chair."
+        }
+      ],
+      "authorizedAlternativeId": "seen",
+      "clarificationTarget": "Whether an unbooked donor is seen when a chair is free or is turned away.",
+      "mustNotConfirmBeforeAnswer": [
+        "proc:Donation.ReceiveDonor",
+        "inv:Donation.WalkIn"
+      ],
+      "stakeholderAnswer": "A donor who did not book is seen when a chair is free.",
+      "matchTerms": [
+        "did not book",
+        "chair"
+      ],
+      "commitmentSignals": [
+        {
+          "alternativeId": "seen",
+          "phrases": [
+            "seen when a chair is free",
+            "unbooked donor is seen"
+          ]
+        },
+        {
+          "alternativeId": "turned-away",
+          "phrases": [
+            "turned away and told to book",
+            "is turned away"
+          ]
+        }
+      ]
+    }
+  ],
+  "maintenance": null,
+  "qualityNotes": "Underspecified: appointments exist, and the fate of a donor who did not book is open. Draft gold for later dual annotation. status is draft-gold. confirmatory is false. The authorized alternative is a provisional oracle key, not an adjudicated decision. Agreement has not been measured. Not a confirmatory freeze."
+}

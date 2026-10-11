@@ -1,0 +1,60 @@
+{
+  "schemaVersion": "study-a-gold-1",
+  "scenarioId": "ho-garden-plot-transfer",
+  "partition": "held-out",
+  "set": "held-out",
+  "status": "draft-gold",
+  "devExample": false,
+  "confirmatory": false,
+  "title": "Community garden plot pass",
+  "domain": "community-garden",
+  "kind": "underspecified",
+  "clearControl": false,
+  "naturalLanguageRequirements": "A member of a community garden may pass a plot to another member. The source text does not say whether the garden association has to agree before the plot changes hands.",
+  "informalMarkdown": "# Functions\n\n## Pass a plot\n\nA member passes a plot to another member. Whether the garden association has to agree is not stated.\n\n# Data Resources\n\n## Plot\n\nThe plot records the bed number and the current member.\n\n# Constraints\n\n## One holder\n\nA plot has one current member.\n",
+  "unresolvedSlots": [
+    {
+      "id": "transfer-consent",
+      "question": "Does a plot change hands only after the garden association agrees?",
+      "alternatives": [
+        {
+          "id": "consent",
+          "label": "A plot changes hands only after the garden association agrees in writing."
+        },
+        {
+          "id": "direct",
+          "label": "A plot changes hands when the two members record the pass, and the association does not have to agree."
+        }
+      ],
+      "authorizedAlternativeId": "consent",
+      "clarificationTarget": "Whether the association must agree before a plot passes to another member.",
+      "mustNotConfirmBeforeAnswer": [
+        "proc:Garden.PassPlot",
+        "inv:Garden.TransferConsent"
+      ],
+      "stakeholderAnswer": "A plot changes hands only after the garden association agrees in writing.",
+      "matchTerms": [
+        "association agrees",
+        "changes hands"
+      ],
+      "commitmentSignals": [
+        {
+          "alternativeId": "consent",
+          "phrases": [
+            "only after the garden association agrees",
+            "agrees in writing"
+          ]
+        },
+        {
+          "alternativeId": "direct",
+          "phrases": [
+            "does not have to agree",
+            "two members record the pass"
+          ]
+        }
+      ]
+    }
+  ],
+  "maintenance": null,
+  "qualityNotes": "Underspecified: passing a plot is allowed, but association consent versus a direct member-to-member pass is open. Draft gold for later dual annotation. status is draft-gold. confirmatory is false. The authorized alternative is a provisional oracle key, not an adjudicated decision. Agreement has not been measured. Not a confirmatory freeze."
+}

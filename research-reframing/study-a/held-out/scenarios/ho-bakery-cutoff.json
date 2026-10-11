@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "study-a-gold-1",
+  "scenarioId": "ho-bakery-cutoff",
+  "partition": "held-out",
+  "set": "held-out",
+  "status": "draft-gold",
+  "devExample": false,
+  "confirmatory": false,
+  "title": "Bakery cake cutoff",
+  "domain": "bakery-preorder",
+  "kind": "clear-control",
+  "clearControl": true,
+  "naturalLanguageRequirements": "A cake preorder is accepted only when it is placed before 15:00 on the day before pickup. An order placed after 15:00 is refused. The cutoff time is stated. No second cutoff is left open.",
+  "informalMarkdown": "# Functions\n\n## Take a cake preorder\n\nA cake preorder is accepted only when it is placed before 15:00 on the day before pickup. An order placed after 15:00 is refused.\n\n# Data Resources\n\n## Preorder\n\nThe preorder records the cake, the customer, and the pickup day.\n\n# Constraints\n\n## Stated cutoff\n\nThe cutoff is 15:00 on the day before pickup. This rule is fully stated.\n",
+  "unresolvedSlots": [],
+  "maintenance": null,
+  "qualityNotes": "Clear control: the 15:00 day-before cutoff, and refusal after that time, are stated. Asking which cutoff to use is a false clarification. Draft gold for later dual annotation. status is draft-gold. confirmatory is false. The authorized alternative is a provisional oracle key, not an adjudicated decision. Agreement has not been measured. Not a confirmatory freeze."
+}

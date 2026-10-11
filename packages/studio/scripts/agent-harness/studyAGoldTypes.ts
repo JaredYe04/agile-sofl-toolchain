@@ -31,10 +31,18 @@ export interface GoldMaintenance {
   unaffectedElementIds: string[]
 }
 
+export type GoldSet = 'dev' | 'held-out'
+/** draft-gold awaits dual annotation. dev-example is a harness fixture. Neither is a confirmatory freeze. */
+export type GoldAnnotationStatus = 'draft-gold' | 'dev-example'
+
 export interface GoldPackage {
   schemaVersion: typeof GOLD_SCHEMA_VERSION
   scenarioId: string
-  partition: 'dev' | 'held-out'
+  partition: GoldSet
+  /** Same value as partition when present. Held-out files require set "held-out". */
+  set?: GoldSet
+  /** Held-out files require "draft-gold". This scaffold has no frozen status. */
+  status?: GoldAnnotationStatus
   devExample: boolean
   confirmatory: false
   title: string
