@@ -6,7 +6,7 @@ The draft packages under `held-out/scenarios/` stay `status: draft-gold`. Labeli
 
 ## Two annotators
 
-Annotator A and Annotator B label every held-out scenario. Each person has one sheet:
+Two independent annotators, A and B, label every held-out scenario. Each person has one sheet:
 
 - `annotation-sheets/annotator-a.blank.csv`
 - `annotation-sheets/annotator-b.blank.csv`
