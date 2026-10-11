@@ -17,6 +17,7 @@ import { consumeAgentLaunchPending, emitAgentLaunch } from '../lib/agentLaunchBu
 import { useModalStore } from './modal'
 import { i18n } from '../i18n'
 import type { SpecMapKind } from '@agile-sofl/editor-api'
+import { refreshDasrRuntime } from '../lib/dasrStatus'
 
 const DEFAULT_COLUMN_WIDTHS = [0.18, 0.6, 0.22]
 
@@ -323,6 +324,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
         const nextModule =
           payload.modules.find((m) => m.name === preferred)?.name ?? payload.modules[0]?.name ?? null
         selectModule(nextModule)
+        await refreshDasrRuntime(project.rootPath)
       } finally {
         loading.value = false
         void refreshGitFor(project.rootPath)
@@ -369,6 +371,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       const nextModule =
         payload.modules.find((m) => m.name === preferred)?.name ?? payload.modules[0]?.name ?? null
       selectModule(nextModule)
+      await refreshDasrRuntime(project.rootPath)
       return true
     } finally {
       loading.value = false

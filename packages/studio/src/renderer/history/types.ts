@@ -42,4 +42,14 @@ export type HistoryKindDefinition = {
 
 export type ApplyDocumentOptions = Omit<HistoryCommitInput, 'mutations'> & {
   kind?: string
+  /** When set, applyDocument does not run the decision gate again. */
+  decisionAlreadyScreened?: boolean
+  writePathId?: string
+  decisionImpact?:
+    | { kind: 'elements'; ids: string[]; asserted?: boolean }
+    | { kind: 'unknown' }
+    | { kind: 'missing' }
+    | { kind: 'malformed' }
+  commitment?: 'confirmed' | 'provisional' | 'override'
+  decisionOverride?: { role: string; reason: string }
 }

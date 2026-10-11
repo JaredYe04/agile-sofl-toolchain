@@ -16,6 +16,8 @@ import { runAgentTurn, resumeWithToolResult, type AgentTurnContext } from '../..
 import { generationAgentPermissions, newId, type AgentSession, type InformalPatchPayload } from '../../src/main/services/llm/agentTypes'
 import { skillById } from '../../src/main/services/llm/skills'
 import { applySourceEdits, isSourcePatch } from '../../src/shared/sourceEdit'
+import { guardProjectWrite } from '../../src/shared/dasr/projectGate'
+import { impactForStoredPatch, writePathForPatch } from '../../src/shared/dasr/extract'
 import { applyProjectRefinementStep } from '../../src/main/services/refinementLog'
 import { readInformal } from './informal'
 
@@ -73,6 +75,15 @@ export function promptHash(o: { informal: string; skillPrompt: string; userText:
 }
 
 export function applyHybridProposal(source: string, patch: InformalPatchPayload, projectRoot: string): { content: string; error?: string; applied: boolean } {
+  // dasr-gate:harness-auto-accept — auto-approve skips the human Apply click, not the decision gate.
+  const decision = impactForStoredPatch(patch)
+  const gated = guardProjectWrite(projectRoot, {
+    writePath: writePathForPatch(patch.target === 'gui' ? 'propose_gui_changes' : 'propose_hybrid_changes', patch),
+    impact: decision.impact,
+    commitment: decision.commitment,
+    automaticMode: true
+  })
+  if (!gated.allow) return { content: source, error: gated.error, applied: false }
   if (isSourcePatch(patch)) {
     const r = applySourceEdits(source, patch.operations as never)
     return { content: r.content, error: r.error, applied: r.content !== source }

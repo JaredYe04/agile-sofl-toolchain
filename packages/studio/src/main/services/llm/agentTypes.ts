@@ -23,6 +23,12 @@ export type InformalPatchPayload = {
   mode?: 'crud' | 'source'
   explanation?: string
   operations: Array<Record<string, unknown>>
+  /** Set by the decision gate when DASR is on. Ignored when the flag is off. */
+  decision?: {
+    commitment?: 'confirmed' | 'provisional'
+    impactElementIds?: string[]
+    impactUnknown?: boolean
+  }
 }
 
 export type AgentFailedWrite = {

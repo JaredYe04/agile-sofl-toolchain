@@ -1,4 +1,6 @@
 import { beforeEach } from 'vitest'
+import { resetDasrRuntime } from '../src/shared/dasr/runtime'
+import { setDasrLogger } from '../src/shared/dasr/log'
 
 const localStore = new Map<string, string>()
 const sessionStore = new Map<string, string>()
@@ -31,4 +33,6 @@ Object.defineProperty(globalThis, 'sessionStorage', {
 beforeEach(() => {
   localStore.clear()
   sessionStore.clear()
+  resetDasrRuntime()
+  setDasrLogger(null)
 })

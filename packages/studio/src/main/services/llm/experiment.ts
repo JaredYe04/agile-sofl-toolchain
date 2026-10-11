@@ -26,6 +26,7 @@
 import { appendFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { check, checkFsfL1, checkFsfL2, type Diagnostic } from '@agile-sofl/parser'
+import { resolveDasrMode, type DasrMode } from '../../../shared/dasr/flag'
 
 export interface ExperimentConfig {
   condition: string
@@ -34,10 +35,13 @@ export interface ExperimentConfig {
   semanticChecks: boolean
   telemetry: boolean
   logPrompts: boolean
+  /** C1 = decision gate off. C2 = DASR on. Independent of condition T/B2. */
+  dasrMode: DasrMode
+  dasrEnabled: boolean
 }
 
 export function getExperimentConfig(projectRoot?: string, env: NodeJS.ProcessEnv = process.env): ExperimentConfig {
-  let file: Partial<{ condition: string; participantId: string; telemetry: boolean; logPrompts: boolean }> = {}
+  let file: Partial<{ condition: string; participantId: string; telemetry: boolean; logPrompts: boolean; dasr?: boolean; dasrMode?: string }> = {}
   if (projectRoot) {
     const p = join(projectRoot, '.agile-sofl', 'experiment.json')
     try {
@@ -48,7 +52,16 @@ export function getExperimentConfig(projectRoot?: string, env: NodeJS.ProcessEnv
   const participantId = String(env.AGILE_SOFL_PARTICIPANT || file.participantId || 'anonymous').trim()
   const telemetry = env.AGILE_SOFL_TELEMETRY !== undefined ? env.AGILE_SOFL_TELEMETRY !== '0' : file.telemetry !== false
   const logPrompts = env.AGILE_SOFL_LOG_PROMPTS !== undefined ? env.AGILE_SOFL_LOG_PROMPTS === '1' : file.logPrompts === true
-  return { condition, participantId, semanticChecks: condition.toUpperCase() !== 'B2', telemetry, logPrompts }
+  const dasr = resolveDasrMode({ env, file })
+  return {
+    condition,
+    participantId,
+    semanticChecks: condition.toUpperCase() !== 'B2',
+    telemetry,
+    logPrompts,
+    dasrMode: dasr.mode,
+    dasrEnabled: dasr.enabled
+  }
 }
 
 export const isL1Code = (code: string) => /^ASFL_FSF_1\d\d$/.test(code)
@@ -90,7 +103,8 @@ export async function diagnosticCounts(asfl: string, cfg: ExperimentConfig): Pro
 export type TelemetryEvent =
   | { event: 'llm_call'; model: string; promptTokens: number | null; completionTokens: number | null; latencyMs: number; ok: boolean; reasoning?: 'low' | 'off' | string; attempt?: number; retryReason?: string; finishReason?: string; toolCalls?: string[]; promptChars?: number; prompt?: unknown; error?: string }
   | { event: 'proposal_decision'; tool: string; stepType?: string; decision: 'approved' | 'rejected' | 'error'; toolCallId: string }
-  | { event: 'session_start'; semanticChecks: boolean; warning?: string }
+  | { event: 'session_start'; semanticChecks: boolean; warning?: string; dasrMode?: 'C1' | 'C2' }
+  | { event: 'decision_gate'; writePath: string; disposition: string; allow: boolean; decisionIds: string[]; elementIds: string[] }
   | { event: 'post_write_diagnostics'; toolCallId: string; diagnostics: DiagnosticCounts }
 
 export function telemetryPath(projectRoot: string): string {
@@ -138,6 +152,7 @@ export function conditionNotice(cfg: ExperimentConfig): string {
   let msg = `[agile-sofl experiment] active condition=${cfg.condition} (${mode}), participant=${cfg.participantId}`
   if (cfg.condition === 'B0' || cfg.condition === 'B1') msg += ` — WARNING: ${cfg.condition} is an external baseline not implemented in the studio; running as T`
   else if (!(KNOWN_CONDITIONS as readonly string[]).includes(cfg.condition)) msg += ` — WARNING: unknown condition label; running as T`
+  msg += ` dasr=${cfg.dasrMode}`
   return msg
 }
 
@@ -149,6 +164,11 @@ export function announceCondition(projectRoot: string | undefined, sessionId: st
   if (announced.has(key)) return msg
   announced.add(key)
   console.warn(msg)
-  logTelemetry(projectRoot, cfg, sessionId, { event: 'session_start', semanticChecks: cfg.semanticChecks, warning: msg })
+  logTelemetry(projectRoot, cfg, sessionId, {
+    event: 'session_start',
+    semanticChecks: cfg.semanticChecks,
+    warning: msg,
+    dasrMode: cfg.dasrMode
+  })
   return msg
 }
