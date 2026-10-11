@@ -1,0 +1,38 @@
+{
+  "schemaVersion": "study-a-gold-1",
+  "scenarioId": "dev-library-loan-period",
+  "partition": "dev",
+  "devExample": true,
+  "confirmatory": false,
+  "title": "Library loan-period change",
+  "domain": "public-library",
+  "kind": "maintenance",
+  "clearControl": false,
+  "naturalLanguageRequirements": "The loan period is 21 days today. Change the loan period for new loans to 14 days. The source text does not say whether loans already checked out keep 21 days.",
+  "informalMarkdown": "# Functions\n\n## Check out an item\n\nA patron checks out an item. New loans use a 14-day period. Today the period is 21 days.\n\n## Pay a fine\n\nA patron pays an outstanding fine. This task does not change fines.\n\n# Data Resources\n\n## Loan\n\nThe loan records the patron, the item, and the due date.\n\n## Patron\n\nThe patron records the card number and the name.\n\n# Constraints\n\n## New loan period\n\nA loan checked out after the change is due in 14 days. The source text does not say what happens to a loan that is already checked out.\n",
+  "unresolvedSlots": [
+    {
+      "id": "existing-loan-period",
+      "question": "Do loans that are already checked out keep 21 days or move to 14 days?",
+      "alternatives": [
+        { "id": "keep", "label": "Loans already checked out keep the 21-day period." },
+        { "id": "switch", "label": "Loans already checked out switch to the 14-day period." }
+      ],
+      "authorizedAlternativeId": "keep",
+      "clarificationTarget": "Whether a loan that is already checked out keeps 21 days after the period change.",
+      "mustNotConfirmBeforeAnswer": ["proc:Library.Checkout", "inv:Library.LoanPeriod"],
+      "stakeholderAnswer": "Loans already checked out keep the 21-day period.",
+      "matchTerms": ["already checked out", "existing loan"],
+      "commitmentSignals": [
+        { "alternativeId": "keep", "phrases": ["keep the 21-day period", "existing loans keep 21 days"] },
+        { "alternativeId": "switch", "phrases": ["switch to the 14-day period", "existing loans move to 14 days"] }
+      ]
+    }
+  ],
+  "maintenance": {
+    "changeRequest": "Change the loan period for new loans from 21 days to 14 days.",
+    "affectedElementIds": ["proc:Library.Checkout", "inv:Library.LoanPeriod"],
+    "unaffectedElementIds": ["proc:Library.PayFine", "type:Library.Patron"]
+  },
+  "qualityNotes": "DEV maintenance example. Impact sets are author-written labels for the harness schema. Not part of the confirmatory freeze set."
+}

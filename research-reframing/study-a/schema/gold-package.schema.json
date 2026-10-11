@@ -1,0 +1,130 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agile-sofl.local/study-a/gold-package.schema.json",
+  "title": "Study A gold package",
+  "description": "Per-scenario gold labels for the decision-integrity benchmark. DEV examples are not the confirmatory freeze set.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "scenarioId",
+    "partition",
+    "devExample",
+    "confirmatory",
+    "title",
+    "domain",
+    "kind",
+    "clearControl",
+    "naturalLanguageRequirements",
+    "informalMarkdown",
+    "unresolvedSlots",
+    "maintenance",
+    "qualityNotes"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "study-a-gold-1" },
+    "scenarioId": { "type": "string", "minLength": 1 },
+    "partition": { "enum": ["dev", "held-out"] },
+    "devExample": { "type": "boolean" },
+    "confirmatory": { "const": false },
+    "title": { "type": "string", "minLength": 1 },
+    "domain": { "type": "string", "minLength": 1 },
+    "kind": { "enum": ["underspecified", "clear-control", "maintenance"] },
+    "clearControl": { "type": "boolean" },
+    "naturalLanguageRequirements": { "type": "string", "minLength": 1 },
+    "informalMarkdown": { "type": "string", "minLength": 1 },
+    "unresolvedSlots": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/slot" }
+    },
+    "maintenance": {
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "#/$defs/maintenance" }
+      ]
+    },
+    "qualityNotes": { "type": "string" }
+  },
+  "$defs": {
+    "slot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "question",
+        "alternatives",
+        "authorizedAlternativeId",
+        "clarificationTarget",
+        "mustNotConfirmBeforeAnswer",
+        "stakeholderAnswer",
+        "matchTerms",
+        "commitmentSignals"
+      ],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "question": { "type": "string", "minLength": 1 },
+        "alternatives": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "label"],
+            "properties": {
+              "id": { "type": "string", "minLength": 1 },
+              "label": { "type": "string", "minLength": 1 }
+            }
+          }
+        },
+        "authorizedAlternativeId": { "type": "string", "minLength": 1 },
+        "clarificationTarget": { "type": "string", "minLength": 1 },
+        "mustNotConfirmBeforeAnswer": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "stakeholderAnswer": { "type": "string", "minLength": 1 },
+        "matchTerms": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 4 }
+        },
+        "commitmentSignals": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["alternativeId", "phrases"],
+            "properties": {
+              "alternativeId": { "type": "string" },
+              "phrases": {
+                "type": "array",
+                "minItems": 1,
+                "items": { "type": "string", "minLength": 4 }
+              }
+            }
+          }
+        }
+      }
+    },
+    "maintenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["changeRequest", "affectedElementIds", "unaffectedElementIds"],
+      "properties": {
+        "changeRequest": { "type": "string", "minLength": 1 },
+        "affectedElementIds": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "unaffectedElementIds": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  }
+}

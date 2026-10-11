@@ -63,6 +63,26 @@ The command prints the output directory and the key file:
 The batch aborts on a prompt-hash mismatch within a system, or after 3 consecutive run errors (resume it with `--resume`).
 Condition B0-auto is the rule-based generator (`@agile-sofl/aspec` `refineAspecWithCheck`); it makes no LLM calls.
 
+## 5. Study A (C1 vs C2)
+
+Study A uses this same agent loop (`runOnce`) and the same block schedule. It does not start a second runner.
+C1 is the existing agent with `AGILE_SOFL_DASR` off. C2 turns that flag on. Both keep agent condition T
+(parser, L1, and L2). The scripted stakeholder reads only the scenario gold file.
+
+`exp-freeze-v1.2` is the pre-DASR pilot freeze. It is not the Study A confirmatory freeze. A confirmatory
+run has to pass `--confirmatory --freeze-tag <new-tag>` after a new tag is cut on the DASR commit, and it
+refuses DEV scenarios.
+
+Dry sample (no API key), from `packages/studio`:
+
+    node scripts/agent-harness/build.mjs
+    node .harness/study-a.mjs --scenario ../../research-reframing/study-a/dev/scenarios/dev-library-renewal.json --conditions C1,C2 --repeats 1 --dry-run --score
+
+The command writes `runs/<id>/study-events.jsonl`, `manifest.json`, `final-diagnostics.json`, and `metrics.json`.
+`metrics.json` aggregates replications inside each scenario and reports SCR for C2 versus C1.
+Re-score a finished key with `node .harness/study-a.mjs --score-only --key <keyFile>`.
+See `research-reframing/study-a/README.md`.
+
 ## Windows notes
 - Informal inputs are read with BOM stripped and CRLF normalised to LF (`informal.ts`), so a Windows checkout
   with `core.autocrlf=true` gives the same prompt, prompt hash (manifest `promptHash`, `informalSha256`) and

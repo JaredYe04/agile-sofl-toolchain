@@ -1,0 +1,34 @@
+{
+  "schemaVersion": "study-a-gold-1",
+  "scenarioId": "dev-library-renewal",
+  "partition": "dev",
+  "devExample": true,
+  "confirmatory": false,
+  "title": "Library loan renewal cap",
+  "domain": "public-library",
+  "kind": "underspecified",
+  "clearControl": false,
+  "naturalLanguageRequirements": "Patrons of a public library may renew a loan when no other patron is waiting. The source text does not say whether a loan may be renewed once or repeatedly.",
+  "informalMarkdown": "# Functions\n\n## Renew a loan\n\nA patron renews a current loan when no other patron is waiting for the same item. The renewal limit is not stated.\n\n# Data Resources\n\n## Loan\n\nThe loan records the patron, the item, and the due date.\n\n# Constraints\n\n## Waiting patron\n\nA loan is not renewed when another patron is waiting for the item.\n",
+  "unresolvedSlots": [
+    {
+      "id": "renewal-cap",
+      "question": "How many times may a patron renew a loan that has no waiting patron?",
+      "alternatives": [
+        { "id": "once", "label": "A loan may be renewed at most once." },
+        { "id": "unlimited", "label": "A loan may be renewed any number of times while no other patron is waiting." }
+      ],
+      "authorizedAlternativeId": "once",
+      "clarificationTarget": "The maximum number of renewals for a loan with no waiting patron.",
+      "mustNotConfirmBeforeAnswer": ["proc:Library.RenewLoan", "inv:Library.RenewalCap"],
+      "stakeholderAnswer": "A loan may be renewed at most once.",
+      "matchTerms": ["renew", "renewal"],
+      "commitmentSignals": [
+        { "alternativeId": "once", "phrases": ["renewed at most once", "at most one renewal"] },
+        { "alternativeId": "unlimited", "phrases": ["any number of times", "renewed without a cap"] }
+      ]
+    }
+  ],
+  "maintenance": null,
+  "qualityNotes": "DEV example for harness development. No reference specification. Not part of the confirmatory freeze set."
+}
