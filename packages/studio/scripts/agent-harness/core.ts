@@ -20,6 +20,7 @@ import { guardProjectWrite } from '../../src/shared/dasr/projectGate'
 import { impactForStoredPatch, writePathForPatch } from '../../src/shared/dasr/extract'
 import { applyProjectRefinementStep } from '../../src/main/services/refinementLog'
 import { readInformal } from './informal'
+import type { OracleReply, StudyEventBody } from './studyATypes'
 
 export const PILOT_TEMPERATURE = 0.35 // fixed inside agentLoop.ts; recorded here for the manifest
 
@@ -39,6 +40,18 @@ export interface RunOptions {
   manifestExtra?: Record<string, unknown>
   /** called after every approved step with the spec as it stands after applying it (before the agent resumes) */
   onStep?: (step: StepInfo) => Promise<void> | void
+  /**
+   * Study A condition. Sets AGILE_SOFL_DASR for this run only and writes dasrMode into experiment.json.
+   * C1 is the existing agent with the decision gate off. C2 turns DASR on.
+   */
+  dasrMode?: 'C1' | 'C2'
+  /**
+   * Study A stakeholder. Called with the question only. Do not close over the condition.
+   * When set, the frozen prompt hash uses the marker `oracle:study-a-gold` instead of a canned answer.
+   */
+  resolveClarification?: (ask: { question: string; options?: Array<{ id: string; label: string }> }) => OracleReply
+  /** Study A event sink. Events must not include the condition. */
+  onStudyEvent?: (event: StudyEventBody) => void
 }
 
 export interface StepInfo {
@@ -74,40 +87,105 @@ export function promptHash(o: { informal: string; skillPrompt: string; userText:
     .digest('hex')
 }
 
-export function applyHybridProposal(source: string, patch: InformalPatchPayload, projectRoot: string): { content: string; error?: string; applied: boolean } {
+export function applyHybridProposal(source: string, patch: InformalPatchPayload, projectRoot: string): {
+  content: string
+  error?: string
+  applied: boolean
+  gateBlocked: boolean
+  commitment: 'confirmed' | 'provisional'
+  impactElementIds: string[]
+} {
   // dasr-gate:harness-auto-accept — auto-approve skips the human Apply click, not the decision gate.
   const decision = impactForStoredPatch(patch)
+  const impactElementIds = decision.impact.kind === 'elements' ? decision.impact.ids : []
   const gated = guardProjectWrite(projectRoot, {
     writePath: writePathForPatch(patch.target === 'gui' ? 'propose_gui_changes' : 'propose_hybrid_changes', patch),
     impact: decision.impact,
     commitment: decision.commitment
   })
-  if (!gated.allow) return { content: source, error: gated.error, applied: false }
+  if (!gated.allow) {
+    return { content: source, error: gated.error, applied: false, gateBlocked: true, commitment: decision.commitment, impactElementIds }
+  }
+  const base = { gateBlocked: false, commitment: decision.commitment, impactElementIds }
   if (isSourcePatch(patch)) {
     const r = applySourceEdits(source, patch.operations as never)
-    return { content: r.content, error: r.error, applied: r.content !== source }
+    return { content: r.content, error: r.error, applied: r.content !== source, ...base }
   }
   const stepOp = patch.operations.find((op) => op.op === 'refine-step')
   if (stepOp && patch.operations.length === 1) {
     const r = applyProjectRefinementStep(projectRoot, source, stepOp as never) as { source: string; error?: string }
-    if (r.error) return { content: source, error: r.error, applied: false }
-    return { content: r.source, applied: r.source !== source }
+    if (r.error) return { content: source, error: r.error, applied: false, ...base }
+    return { content: r.source, applied: r.source !== source, ...base }
   }
   const r = applyHybridPatch(source, patch as never)
-  return { content: r.content, error: r.error, applied: r.content !== source }
+  return { content: r.content, error: r.error, applied: r.content !== source, ...base }
+}
+
+function drainRegisteredDecisions(session: AgentSession, seen: Set<string>, emit: (event: StudyEventBody) => void): void {
+  for (const message of session.messages) {
+    for (const call of message.toolCalls ?? []) {
+      if (!call.id || seen.has(call.id)) continue
+      seen.add(call.id)
+      if (call.name !== 'register_decision') continue
+      let question = ''
+      let alternatives: Array<{ id: string; label: string }> = []
+      try {
+        const args = JSON.parse(call.arguments || '{}') as { question?: unknown; alternatives?: unknown }
+        question = typeof args.question === 'string' ? args.question : ''
+        if (Array.isArray(args.alternatives)) {
+          alternatives = args.alternatives.flatMap((alt) => {
+            if (!alt || typeof alt !== 'object') return []
+            const row = alt as { id?: unknown; label?: unknown }
+            if (typeof row.id !== 'string' || typeof row.label !== 'string') return []
+            return [{ id: row.id, label: row.label }]
+          })
+        }
+      } catch { /* a malformed tool call still occupies the id */ }
+      emit({ type: 'register_decision', question, alternatives })
+    }
+  }
 }
 
 export async function runOnce(o: RunOptions): Promise<RunResult> {
+  const previousDasr = process.env.AGILE_SOFL_DASR
+  if (o.dasrMode) process.env.AGILE_SOFL_DASR = o.dasrMode === 'C2' ? '1' : '0'
+  try {
+    return await runOnceBody(o)
+  } finally {
+    if (o.dasrMode) {
+      if (previousDasr === undefined) delete process.env.AGILE_SOFL_DASR
+      else process.env.AGILE_SOFL_DASR = previousDasr
+    }
+  }
+}
+
+async function runOnceBody(o: RunOptions): Promise<RunResult> {
   const runId = o.runId ?? randomBytes(4).toString('hex')
   const runDir = join(o.outDir, 'runs', runId)
   mkdirSync(join(runDir, '.agile-sofl'), { recursive: true })
-  writeFileSync(join(runDir, '.agile-sofl', 'experiment.json'),
-    JSON.stringify({ condition: o.condition, participantId: o.participantId ?? `auto-${runId}`, telemetry: true, logPrompts: false }, null, 2))
+  const experiment: Record<string, unknown> = {
+    condition: o.condition,
+    participantId: o.participantId ?? `auto-${runId}`,
+    telemetry: true,
+    logPrompts: false
+  }
+  if (o.dasrMode) {
+    experiment.dasrMode = o.dasrMode
+    experiment.dasr = o.dasrMode === 'C2'
+  }
+  writeFileSync(join(runDir, '.agile-sofl', 'experiment.json'), JSON.stringify(experiment, null, 2))
   const { text: informal, sha256: informalSha256 } = readInformal(o.informalPath)
   const skillId = o.skillId ?? 'hybrid-generation'
   const userText = o.userText ?? DEFAULT_USER_TEXT
   const clarification = o.clarificationAnswer ?? DEFAULT_CLARIFICATION
-  const hash = promptHash({ informal, skillPrompt: skillById(skillId).prompt, userText, clarification })
+  const hash = promptHash({
+    informal,
+    skillPrompt: skillById(skillId).prompt,
+    userText,
+    clarification: o.resolveClarification ? 'oracle:study-a-gold' : clarification
+  })
+  const emit = (event: StudyEventBody) => o.onStudyEvent?.(event)
+  const seenToolIds = new Set<string>()
   const maxApprovals = o.maxApprovals ?? 3
 
   const ctx: AgentTurnContext = {
@@ -126,29 +204,57 @@ export async function runOnce(o: RunOptions): Promise<RunResult> {
     if (!pending || !toolId) break
     const last = approvals + 1 >= maxApprovals
     if (pending.clarification) {
-      session = await resumeWithToolResult(session, runDir, ctx, toolId, clarification, undefined, !last)
+      drainRegisteredDecisions(session, seenToolIds, emit)
+      const ask = { question: pending.clarification.question, options: pending.clarification.options }
+      emit({ type: 'clarification_asked', question: ask.question, options: ask.options ?? [] })
+      const resolved = o.resolveClarification?.(ask)
+      const replyText = resolved?.text ?? clarification
+      emit({
+        type: 'oracle_reply',
+        matchedSlotIds: resolved?.matchedSlotIds ?? [],
+        unmatched: resolved?.unmatched ?? false,
+        replyChars: replyText.length
+      })
+      session = await resumeWithToolResult(session, runDir, ctx, toolId, replyText, undefined, !last)
       if (last) { stopReason = 'call budget reached'; break }
       continue
     }
     const patch = pending.proposedChanges!
+    drainRegisteredDecisions(session, seenToolIds, emit)
     let payload: Record<string, unknown>
     let applied = false, applyError: string | undefined
+    let gateBlocked = false
+    let commitment: 'confirmed' | 'provisional' = patch.decision?.commitment === 'provisional' ? 'provisional' : 'confirmed'
+    let impactElementIds: string[] = patch.decision?.impactElementIds ?? []
     if (patch.target === 'hybrid') {
       const r = applyHybridProposal(ctx.hybridAsfl ?? '', patch, runDir)
       ctx.hybridAsfl = r.content
       writeFileSync(join(runDir, 'hybrid.asfl'), r.content)
       payload = r.error ? { action: r.applied ? 'applied' : 'error', error: r.error } : { action: 'applied' }
       applied = r.applied; applyError = r.error
+      gateBlocked = r.gateBlocked
+      commitment = r.commitment
+      impactElementIds = r.impactElementIds
     } else {
       payload = { action: 'error', error: `harness only applies hybrid proposals (got ${patch.target})` }
       applyError = String(payload.error)
     }
+    emit({
+      type: 'proposal',
+      tool: pending.toolCalls?.find((call) => call.id === toolId)?.name ?? (patch.target === 'hybrid' ? 'propose_hybrid_changes' : 'unknown'),
+      applied,
+      gateBlocked,
+      commitment,
+      impactElementIds,
+      text: JSON.stringify({ explanation: patch.explanation ?? '', operations: patch.operations })
+    })
     approvals++
     const tool = pending.toolCalls?.find((t) => t.id === toolId)?.name ?? (patch.target === 'hybrid' ? 'propose_hybrid_changes' : 'unknown')
     await o.onStep?.({ runId, runDir, step: approvals, hybrid: ctx.hybridAsfl ?? '', tool, applied, applyError })
     session = await resumeWithToolResult(session, runDir, ctx, toolId, JSON.stringify(payload), undefined, approvals < maxApprovals)
     if (approvals >= maxApprovals) { stopReason = 'approval budget reached'; break }
   }
+  drainRegisteredDecisions(session, seenToolIds, emit)
   writeFileSync(join(runDir, 'hybrid.asfl'), ctx.hybridAsfl ?? '')
   writeFileSync(join(runDir, 'manifest.json'), JSON.stringify({ runId, promptHash: hash, informalSha256, skillId, approvals, maxApprovals, stopReason, temperature: PILOT_TEMPERATURE, ...o.manifestExtra }, null, 2))
   return { runId, runDir, condition: o.condition, promptHash: hash, approvals, stopReason, hybridChars: (ctx.hybridAsfl ?? '').length }

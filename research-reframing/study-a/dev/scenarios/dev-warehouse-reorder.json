@@ -1,0 +1,16 @@
+{
+  "schemaVersion": "study-a-gold-1",
+  "scenarioId": "dev-warehouse-reorder",
+  "partition": "dev",
+  "devExample": true,
+  "confirmatory": false,
+  "title": "Warehouse reorder point",
+  "domain": "warehouse",
+  "kind": "clear-control",
+  "clearControl": true,
+  "naturalLanguageRequirements": "When the on-hand quantity of a stocked item falls below 20, the warehouse orders 100 units of that item from its supplier. Both numbers are stated. No second reorder rule is left open.",
+  "informalMarkdown": "# Functions\n\n## Reorder stock\n\nWhen the on-hand quantity of a stocked item falls below 20, the warehouse orders 100 units of that item from its supplier.\n\n# Data Resources\n\n## Stock item\n\nThe item records the sku, the on-hand quantity, and the supplier.\n\n# Constraints\n\n## Reorder rule\n\nThe reorder point is 20 units and the order quantity is 100 units. This rule is fully stated.\n",
+  "unresolvedSlots": [],
+  "maintenance": null,
+  "qualityNotes": "DEV clear control. The reorder point and quantity are stated. A clarification that asks the analyst to pick a different point or quantity is a false clarification. Not part of the confirmatory freeze set."
+}
