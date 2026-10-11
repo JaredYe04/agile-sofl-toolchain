@@ -10,6 +10,7 @@ import {
   type RefinementStep
 } from '@agile-sofl/editor-api'
 import { acceptHybridWrite } from '../../shared/asflRepair'
+import { guardProjectWrite } from '../../shared/dasr/projectGate'
 
 function informalGrainNotes(projectRoot: string): AuthorTextNote[] {
   if (!projectRoot) return []
@@ -58,6 +59,21 @@ export function applyProjectRefinementStep(
   const log = readRefinementLog(projectRoot)
   const result = applyRefinementStep(source, log, step, informalGrainNotes(projectRoot))
   if (result.error) return result
+  const moduleName = typeof step.moduleName === 'string' ? step.moduleName : ''
+  const processName = typeof step.processName === 'string' ? step.processName : ''
+  const typeName = typeof step.typeName === 'string' ? step.typeName : ''
+  const impact = moduleName && processName
+    ? { kind: 'elements' as const, ids: [`proc:${moduleName}.${processName}`] }
+    : moduleName && typeName
+      ? { kind: 'elements' as const, ids: [`type:${moduleName}.${typeName}`] }
+      : { kind: 'unknown' as const }
+  // dasr-gate:propose_refinement_step
+  const decision = guardProjectWrite(projectRoot, {
+    writePath: 'propose_refinement_step',
+    impact,
+    commitment: 'confirmed'
+  })
+  if (!decision.allow) return { ...result, source, log, error: decision.error }
   const gated = acceptHybridWrite(source, result.source)
   if (!gated.ok) return { ...result, source, log, error: gated.error }
   writeRefinementLog(projectRoot, result.log)

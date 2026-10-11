@@ -1,4 +1,9 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
+
+vi.mock('electron', () => ({
+  app: { getPath: () => '/tmp/dasr-electron', getAppPath: () => '/tmp/dasr-electron', isPackaged: false, getVersion: () => '0.0.0' },
+  ipcMain: { handle: () => undefined, on: () => undefined, removeHandler: () => undefined }
+}))
 import { mkdtempSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'

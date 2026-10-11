@@ -3,6 +3,8 @@ import { useHistoryStore } from '../stores/history'
 import { useWorkspaceStore } from '../stores/workspace'
 import { fileBelongsToRoot } from '../stores/tabUtils'
 import { applySourceEdits, isSourcePatch } from '../../shared/sourceEdit'
+import { impactForStoredPatch, writePathForPatch } from '../../shared/dasr/extract'
+import { screenRuntimeWrite } from '../../shared/dasr/runtime'
 import type { InformalPatchPayload, PatchGuiActionOnly } from '../../preload/index'
 
 function toPatchAction(op: Record<string, unknown>): PatchGuiActionOnly | null {
@@ -78,11 +80,21 @@ export async function applyGuiDocumentPatch(
     return { ok: false, error: errors.noTab }
   }
   if (isSourcePatch(patch)) {
+    // dasr-gate:propose_source_edit
     const result = applySourceEdits(guiTab.content, patch.operations)
-    if (!result.applied) return { ok: false, error: result.error || errors.applyFailed }
+    if (!result.applied && result.error) return { ok: false, error: result.error || errors.applyFailed }
+    const decision = impactForStoredPatch(patch)
+    const screened = screenRuntimeWrite({
+      writePath: 'propose_source_edit',
+      impact: decision.impact,
+      commitment: decision.commitment
+    })
+    if (!screened.allow) return { ok: false, error: screened.error, applied: false }
+    if (result.content === guiTab.content) return { ok: !result.error, error: result.error, applied: false }
     useHistoryStore().applyDocument(guiTab.id, result.content, {
       kind: HistoryKinds.guiEdit,
-      immediate: true
+      immediate: true,
+      decisionAlreadyScreened: true
     })
     return { ok: true, applied: true, repairNotes: result.error ? [result.error] : undefined }
   }
@@ -96,9 +108,18 @@ export async function applyGuiDocumentPatch(
     }
     const applied = next !== guiTab.content
     if (applied) {
+      // dasr-gate:propose_gui_changes
+      const decision = impactForStoredPatch(patch)
+      const screened = screenRuntimeWrite({
+        writePath: writePathForPatch('propose_gui_changes', patch),
+        impact: decision.impact,
+        commitment: decision.commitment
+      })
+      if (!screened.allow) return { ok: false, error: screened.error, applied: false }
       useHistoryStore().applyDocument(guiTab.id, next, {
         kind: HistoryKinds.guiEdit,
-        immediate: true
+        immediate: true,
+        decisionAlreadyScreened: true
       })
     }
     return { ok: true, applied }

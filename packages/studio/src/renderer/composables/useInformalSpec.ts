@@ -4,6 +4,8 @@ import { useHistoryStore } from '../stores/history'
 import { HistoryKinds } from '../history/kinds'
 import { useWorkspaceStore } from '../stores/workspace'
 import { applySourceEdits, isSourcePatch } from '../../shared/sourceEdit'
+import { impactForStoredPatch, writePathForPatch } from '../../shared/dasr/extract'
+import { screenRuntimeWrite } from '../../shared/dasr/runtime'
 import type { InformalPatchPayload, InformalSpecPayload } from '../../preload/index'
 
 export function nestedNodes(node: InformalSpecPayload['sections'][0]['children'][0]) {
@@ -51,6 +53,7 @@ export function useInformalSpec(tabId: Ref<string | undefined>) {
       spec.value = parsed.specification
       last = current.content
       if (parsed.displaySource && parsed.displaySource !== current.content) {
+        // dasr exception: informal-display-normalize
         last = parsed.displaySource
         doc.setContent(current.id, parsed.displaySource, true)
       }
@@ -90,13 +93,22 @@ export function useInformalSpec(tabId: Ref<string | undefined>) {
   ): Promise<{ ok: boolean; error?: string; applied?: boolean }> {
     const current = tab.value
     if (!current) return { ok: false, error: 'Patch service unavailable.' }
+    const decision = impactForStoredPatch(patch)
+    const screened = screenRuntimeWrite({
+      writePath: writePathForPatch('propose_changes', patch),
+      impact: decision.impact,
+      commitment: decision.commitment
+    })
+    if (!screened.allow) return { ok: false, error: screened.error, applied: false }
     if (isSourcePatch(patch)) {
+      // dasr-gate:propose_changes
       const result = applySourceEdits(current.content, patch.operations)
       const applied = result.content !== current.content
       if (applied) {
         history.applyDocument(current.id, result.content, {
           kind: HistoryKinds.informalEdit,
-          immediate: true
+          immediate: true,
+          decisionAlreadyScreened: true
         })
         last = result.content
         await rebuild()
@@ -114,7 +126,8 @@ export function useInformalSpec(tabId: Ref<string | undefined>) {
     if (applied) {
       history.applyDocument(current.id, result.content, {
         kind: HistoryKinds.informalEdit,
-        immediate: true
+        immediate: true,
+        decisionAlreadyScreened: true
       })
       last = result.content
       await rebuild()

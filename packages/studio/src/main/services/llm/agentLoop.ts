@@ -12,6 +12,10 @@ import { newId, normalizePermissions, type AgentSpecPermissions } from './agentT
 import { saveSession as writeSession } from './sessionStore'
 import { informalInventoryFromMarkdown } from '@agile-sofl/aspec/dist/informal/inventory.js'
 import { announceCondition, getExperimentConfig, logTelemetry, semanticDiagnostics, diagnosticCounts } from './experiment'
+import { gateAgentProposal, handleDasrTool } from '../../../shared/dasr/projectGate'
+import { applyDasrToolSurface, DASR_PROMPT_APPENDIX } from '../../../shared/dasr/tools'
+import { resolveDasrMode } from '../../../shared/dasr/flag'
+import { readDasrFileConfig } from '../../../shared/dasr/store'
 import { formatHybridInventory, formatHybridDiagnostics, collectHybridAgentDiagnostics, formatRefinementDigest } from '@agile-sofl/editor-api'
 import { formatGuiInventory, numberedGuiSource } from '@agile-sofl/gui'
 import { formatClarificationToolContent } from '../../../shared/clarificationAnswer'
@@ -76,8 +80,9 @@ function permissionsOf(session: AgentSession, ctx: AgentTurnContext): AgentSpecP
   return normalizePermissions(ctx.permissions ?? session.context.permissions)
 }
 
-function toolsFor(permissions: AgentSpecPermissions) {
-  return AGENT_TOOLS.filter((tool) => {
+function toolsFor(permissions: AgentSpecPermissions, dasrEnabled = false) {
+  // dasr-gate:propose_changes dasr-gate:propose_hybrid_changes dasr-gate:propose_refinement_step dasr-gate:propose_gui_changes dasr-gate:propose_source_edit
+  const filtered = AGENT_TOOLS.filter((tool) => {
     const name = tool.function.name
     if (name === 'ask_clarification') return true
     if (name === 'read_specification' || name === 'review_specification') return permissions.informal.read
@@ -90,6 +95,7 @@ function toolsFor(permissions: AgentSpecPermissions) {
     if (name === 'propose_source_edit') return permissions.informal.write || permissions.hybrid.write
     return true
   })
+  return applyDasrToolSurface(filtered, dasrEnabled)
 }
 
 function compactSpec(markdown: string): string {
@@ -156,7 +162,7 @@ function numberedHybridSource(asfl: string | undefined): string {
   return `${source}\n\n${report}`
 }
 
-function systemPrompt(ctx: AgentTurnContext, permissions: AgentSpecPermissions): string {
+function systemPrompt(ctx: AgentTurnContext, permissions: AgentSpecPermissions, dasrEnabled = false): string {
   const skill = skillById(ctx.skillId)
   const toolLines: string[] = [
     '- ask_clarification: when you need a decision (options the user can click, plus their own typed answer)'
@@ -242,7 +248,7 @@ node names are processes in that module; store names are vars; ports match the p
     permissions.informal.write || permissions.hybrid.write
       ? `propose_source_edit is an escape hatch, not the default:
 - Prefer propose_changes / propose_hybrid_changes / propose_gui_changes / propose_refinement_step for almost every write.
-- Use source edit after CRUD fails, when leftover unparsed text remains, when inventory is empty/out of sync with the file, when Diagnostics lists syntax/parse errors CRUD cannot fix, or when you must fix text CRUD cannot express. For GUI pass target "gui". Do not replace the whole GUI document in one call; patch one screen.`
+- Use source edit after CRUD fails, when leftover unparsed text remains, when inventory is empty/out of sync with the file, when Diagnostics lists syntax/parse errors CRUD cannot fix, or when you must fix text CRUD cannot express. For GUI pass target "gui". Do not replace the whole GUI document in one call; patch one screen.
 - First call read_* with view=source (or read_refinement_state then source). Then replace a UNIQUE oldText snippet, append, or replace-document.
 - Informal atoms that you rewrite via source edit still need propose_refinement_step kind=FormalizePredicate or process ambiguity will not drop.
 - Do not retry the same failing CRUD patch. After two CRUD failures you MUST switch to propose_source_edit.`
@@ -322,16 +328,16 @@ ${hybridBlock}
 ${guiBlock}
 
 ${refinementBlock}
-`
+${dasrEnabled ? `\n${DASR_PROMPT_APPENDIX}\n` : ''}`
 }
 
 function toApiMessages(
   session: AgentSession,
   ctx: AgentTurnContext,
   permissions: AgentSpecPermissions,
-  options?: { continuation?: boolean }
+  options?: { continuation?: boolean; dasrEnabled?: boolean }
 ): ChatMessage[] {
-  const msgs: ChatMessage[] = [{ role: 'system', content: systemPrompt(ctx, permissions) }]
+  const msgs: ChatMessage[] = [{ role: 'system', content: systemPrompt(ctx, permissions, options?.dasrEnabled === true) }]
   const toolResults = new Map<string, AgentMessage>()
   for (const m of session.messages) {
     if (m.role === 'tool') toolResults.set(m.id, m)
@@ -652,6 +658,7 @@ export async function runAgentTurn(
   ctx.permissions = permissions
   const continuation = !userText?.trim()
   let needsContinuationNudge = continuation
+  const dasr = resolveDasrMode({ env: process.env, file: readDasrFileConfig(projectRoot) })
 
   const stopIfAborted = (): boolean => {
     if (!signal?.aborted) return false
@@ -691,8 +698,8 @@ export async function runAgentTurn(
 
     const history = { ...session, messages: session.messages.filter((m) => m.id !== assistantId) }
     const request = {
-      messages: toApiMessages(history, ctx, permissions, { continuation: needsContinuationNudge }),
-      tools: toolsFor(permissions),
+      messages: toApiMessages(history, ctx, permissions, { continuation: needsContinuationNudge, dasrEnabled: dasr.enabled }),
+      tools: toolsFor(permissions, dasr.enabled),
       temperature: 0.35
     }
 
@@ -790,6 +797,18 @@ export async function runAgentTurn(
           continue
         }
         const args = parsedArgs.value
+        const dasrTool = handleDasrTool(projectRoot, call.function.name, args as Record<string, unknown>)
+        if (dasrTool.handled) {
+          session.messages.push({
+            id: call.id,
+            role: 'tool',
+            content: JSON.stringify({ ok: dasrTool.ok, ...dasrTool.body }),
+            timestamp: new Date().toISOString()
+          })
+          live.content = live.content || (dasrTool.ok ? 'Updated the decision ledger.' : String(dasrTool.body.error || 'Decision tool failed.'))
+          markCallStatus(live, call.id, dasrTool.ok ? 'done' : 'error', sink)
+          continue
+        }
         if (parsedArgs.droppedPartialOperation) {
           const note =
             'Recovered a truncated tool call. The incomplete last operation was dropped. Continue the remaining work in a new, smaller call.'
@@ -991,6 +1010,53 @@ export async function runAgentTurn(
             live.content = live.content || `Patch rejected: ${validity.message}`
             markCallStatus(live, call.id, 'error', sink)
             continue
+          }
+          const gated = gateAgentProposal(projectRoot, {
+            tool: call.function.name,
+            args: args as Record<string, unknown>,
+            operations: patch.operations,
+            proposalId: call.id
+          })
+          if (!gated.allow) {
+            const cfg = getExperimentConfig(projectRoot)
+            logTelemetry(projectRoot, cfg, session.id, {
+              event: 'decision_gate',
+              writePath: call.function.name,
+              disposition: gated.disposition,
+              allow: false,
+              decisionIds: gated.decisionIds,
+              elementIds: gated.elementIds
+            })
+            session.messages.push({
+              id: call.id,
+              role: 'tool',
+              content: JSON.stringify({
+                ok: false,
+                error: gated.error,
+                decisionIds: gated.decisionIds,
+                next: 'The decision gate refused a confirmed write. Do not switch to propose_source_edit or propose_gui_changes to bypass it. Register or ask the user to confirm the decision, or resubmit with commitment "provisional" and real element ids.'
+              }),
+              timestamp: new Date().toISOString()
+            })
+            live.content = live.content || gated.error || 'Decision gate blocked that write.'
+            markCallStatus(live, call.id, 'error', sink)
+            continue
+          }
+          if (gated.disposition !== 'skipped-dasr-off') {
+            patch.decision = {
+              commitment: args.commitment === 'provisional' ? 'provisional' : 'confirmed',
+              impactElementIds: gated.elementIds,
+              impactUnknown: gated.elementIds.length === 0
+            }
+            const cfg = getExperimentConfig(projectRoot)
+            logTelemetry(projectRoot, cfg, session.id, {
+              event: 'decision_gate',
+              writePath: call.function.name,
+              disposition: gated.disposition,
+              allow: true,
+              decisionIds: gated.decisionIds,
+              elementIds: gated.elementIds
+            })
           }
           live.content =
             patch.explanation ||

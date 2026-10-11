@@ -11,6 +11,7 @@ import type {
 import { useDocumentStore } from './document'
 import { filePathsEqual } from './tabUtils'
 import { useWorkspaceStore } from './workspace'
+import { screenRuntimeWrite } from '../../shared/dasr/runtime'
 
 const MAX_STACK = 100
 const DEBOUNCE_MS = 300
@@ -219,12 +220,22 @@ export const useHistoryStore = defineStore('studioHistory', () => {
   }
 
   function applyDocument(tabId: string, after: string, options?: ApplyDocumentOptions): boolean {
+    // dasr-gate:direct-editor — Monaco, visual editor, GUI designer, format, generator Apply, and other buffer saves.
     if (applying.value) return false
     const doc = useDocumentStore()
     const tab = doc.tabs.find((t) => t.id === tabId && t.kind === 'document')
     if (!tab) return false
     const before = tab.content
     if (before === after) return false
+    if (!options?.decisionAlreadyScreened) {
+      const screened = screenRuntimeWrite({
+        writePath: options?.writePathId ?? 'direct-editor',
+        impact: options?.decisionImpact ?? { kind: 'missing' },
+        commitment: options?.commitment,
+        override: options?.decisionOverride
+      })
+      if (!screened.allow) return false
+    }
     doc.setContent(tab.id, after)
     commit({
       kind: options?.kind ?? 'document-edit',
@@ -247,6 +258,7 @@ export const useHistoryStore = defineStore('studioHistory', () => {
   }
 
   async function undo(): Promise<boolean> {
+    // dasr exception: undo-redo restores an already gated snapshot.
     await flushRegistered()
     const cmd = undoStack.value[undoStack.value.length - 1]
     if (!cmd) return false

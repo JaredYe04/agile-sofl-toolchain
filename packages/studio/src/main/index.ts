@@ -14,6 +14,7 @@ import { registerAgentHandlers } from './services/llm/register'
 import { loadStudioEnv } from './services/llm/env'
 import { initProjectIndex, registerProjectHandlers } from './services/projectService'
 import { registerGitHandlers } from './services/gitService'
+import { registerDecisionHandlers } from './services/decisionService'
 import { attachDevToolsShortcuts, attachRendererDiagnostics, openDevTools } from './services/devToolsService'
 import {
   isLspRunning,
@@ -108,6 +109,7 @@ app.whenReady().then(async () => {
   registerProjectHandlers(getWindow)
   registerAgentHandlers()
   registerGitHandlers()
+  registerDecisionHandlers()
   ipcMain.handle('studio:backend-ready', () => backendReady)
 
   ipcMain.on('studio:lsp-send', (_event, jsonBody: string) => {

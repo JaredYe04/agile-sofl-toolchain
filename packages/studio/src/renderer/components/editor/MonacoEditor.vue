@@ -289,10 +289,16 @@ function onContentChange(): void {
   if (!tab || !ed || suppressHistory || history.applying) return
   const value = ed.getValue()
   if (value !== tab.content) {
-    history.applyDocument(tab.id, value, {
+    const kept = history.applyDocument(tab.id, value, {
       kind: historyKindForDocument(tab.documentKind),
       immediate: false
     })
+    if (!kept) {
+      suppressHistory = true
+      ed.setValue(tab.content)
+      suppressHistory = false
+      return
+    }
     scheduleHybridDecorations()
   }
 }

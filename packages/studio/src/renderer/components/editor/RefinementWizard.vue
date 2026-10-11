@@ -4,6 +4,7 @@ import type * as Monaco from 'monaco-editor'
 import { useI18n } from 'vue-i18n'
 import { useDocumentStore } from '../../stores/document'
 import { useHistoryStore } from '../../stores/history'
+import { screenRuntimeWrite } from '../../../shared/dasr/runtime'
 import { HistoryKinds } from '../../history/kinds'
 import { monaco, initMonacoBase } from '../../monaco/setup'
 import type { CoverageReportPayload } from '../../preload/index'
@@ -187,13 +188,24 @@ async function runRefine(): Promise<void> {
       emitGuiBlock: Boolean(guiSource)
     })
     let target = targetMode.value === 'linked' ? hybrid : undefined
+    // dasr-gate:refinement-wizard — generated text has no named element ids, so the target set is unknown.
+    const screened = screenRuntimeWrite({
+      writePath: 'refinement-wizard',
+      impact: { kind: 'unknown' },
+      commitment: 'confirmed'
+    })
+    if (!screened.allow) {
+      error.value = screened.error || 'Decision gate refused the generated specification.'
+      return
+    }
     if (!target) {
       const title = tab.filePath?.replace(/\.aspec$/i, '.asfl').split(/[/\\]/).pop() ?? 'Refined.asfl'
       target = doc.newTab({ content: result.asflText, title, documentKind: 'asfl' })
     } else {
       useHistoryStore().applyDocument(target.id, result.asflText, {
         kind: HistoryKinds.hybridEdit,
-        immediate: true
+        immediate: true,
+        decisionAlreadyScreened: true
       })
     }
     doc.linkTabs(tab.id, target.id)

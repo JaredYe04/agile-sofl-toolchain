@@ -28,6 +28,7 @@ import {
   mergeClarificationCustom
 } from '../../../../shared/clarificationAnswer'
 import { contextMenuPoint } from '../../../lib/contextMenuPoint'
+import { decisionLedgerLabel, decisionLedgerMode, refreshDasrRuntime } from '../../../lib/dasrStatus'
 import {
   composerAction,
   enqueueMessage,
@@ -63,6 +64,13 @@ const props = defineProps<{
 
 const { t } = useI18n()
 const workspace = useWorkspaceStore()
+watch(
+  () => workspace.activeProject?.rootPath,
+  (root) => {
+    void refreshDasrRuntime(root)
+  },
+  { immediate: true }
+)
 const settings = useSettingsStore()
 const modal = useModalStore()
 const sessions = ref<AgentSessionPayload[]>([])
@@ -548,6 +556,7 @@ async function applyPatch(
   const rootAtStart = projectRoot.value
   if (!stillOnProject(rootAtStart)) return false
   if (!msg.proposedChanges) return false
+  await refreshDasrRuntime(rootAtStart)
   const toolId = liveSession(id)?.context.pendingToolCallId
   const continueTurn = !runOf(id).stopRequested
   try {
@@ -615,6 +624,7 @@ async function rejectPatch(_msg: AgentMessageView): Promise<void> {
 const autoApplyTried = new Set<string>()
 
 async function maybeAutoApply(sessionId?: string): Promise<void> {
+  // dasr-gate:auto-write — auto mode skips the Apply click only. applyPatch still runs the decision gate.
   const id = sessionId ?? session.value?.id ?? ''
   if (!id) return
   if (settings.agentWriteMode !== 'auto') return
@@ -1160,6 +1170,9 @@ function permBadge(s: AgentSessionPayload): string {
           class="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-3 studio-scroll"
           @scroll.passive="onThreadScroll"
         >
+          <p class="mb-2 text-[11px] text-content-muted" data-testid="decision-ledger-label" :title="decisionLedgerMode === 'C2' ? 'DASR on' : 'DASR off'">
+            {{ decisionLedgerLabel }}
+          </p>
           <p v-if="!visibleMessages.length" class="text-[13px] leading-relaxed text-content-secondary">
             {{ t('agent.emptyHint') }}
           </p>

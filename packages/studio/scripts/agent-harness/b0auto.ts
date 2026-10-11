@@ -8,12 +8,21 @@ import { mkdirSync, writeFileSync } from 'node:fs'
 import { readInformal } from './informal'
 import { join } from 'node:path'
 import { refineAspecWithCheck } from '@agile-sofl/aspec'
+import { guardProjectWrite } from '../../src/shared/dasr/projectGate'
 
 export const B0_GENERATOR = '@agile-sofl/aspec refineAspecWithCheck (refineToAsfl + fsfBuilder), default options'
 
 export function runB0Auto(o: { informalPath: string; outDir: string; runId: string; manifestExtra?: Record<string, unknown> }) {
   const runDir = join(o.outDir, 'runs', o.runId)
   mkdirSync(runDir, { recursive: true })
+  // dasr-gate:b0-auto — the generator does not name element ids, so the target set is unknown.
+  const gated = guardProjectWrite(runDir, { writePath: 'b0-auto', impact: { kind: 'unknown' }, commitment: 'confirmed' })
+  if (!gated.allow) {
+    writeFileSync(join(runDir, 'manifest.json'), JSON.stringify({
+      runId: o.runId, generator: B0_GENERATOR, stopReason: 'decision-gate', error: gated.error, llmCalls: 0, ...o.manifestExtra
+    }, null, 2))
+    return { runId: o.runId, runDir, hybridChars: 0, blocked: true as const }
+  }
   const { text: informal, sha256: informalSha } = readInformal(o.informalPath)
   const r = refineAspecWithCheck(informal)
   writeFileSync(join(runDir, 'hybrid.asfl'), r.asflText)

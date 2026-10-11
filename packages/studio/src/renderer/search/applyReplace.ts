@@ -3,6 +3,7 @@ import { useDocumentStore } from '../stores/document'
 import { useHistoryStore } from '../stores/history'
 import { filePathsEqual } from '../stores/tabUtils'
 import { replaceAllInText, replaceMatchesInText, type TextMatch, type TextSearchQuery } from '../../shared/textSearch'
+import { screenRuntimeWrite } from '../../shared/dasr/runtime'
 
 async function readEditorContent(filePath: string): Promise<string | null> {
   const doc = useDocumentStore()
@@ -13,8 +14,15 @@ async function readEditorContent(filePath: string): Promise<string | null> {
   return file.content
 }
 
-function commitEdits(edits: Array<{ path: string; before: string; after: string }>): void {
-  if (!edits.length) return
+function commitEdits(edits: Array<{ path: string; before: string; after: string }>): boolean {
+  if (!edits.length) return false
+  // dasr-gate:find-replace — span replace cannot name tracked elements, so the target set is unknown.
+  const screened = screenRuntimeWrite({
+    writePath: 'find-replace',
+    impact: { kind: 'unknown' },
+    commitment: 'confirmed'
+  })
+  if (!screened.allow) return false
   const doc = useDocumentStore()
   const history = useHistoryStore()
   const previous = doc.activeTabId
@@ -36,12 +44,13 @@ function commitEdits(edits: Array<{ path: string; before: string; after: string 
     })
   }
   if (previous) doc.setActive(previous)
-  if (!mutations.length) return
+  if (!mutations.length) return false
   history.commit({
     kind: HistoryKinds.searchReplace,
     immediate: true,
     mutations
   })
+  return true
 }
 
 export async function replaceEditorMatches(options: {
@@ -66,6 +75,6 @@ export async function replaceEditorMatches(options: {
     edits.push({ path, before, after })
     changed = true
   }
-  commitEdits(edits)
+  if (!commitEdits(edits)) return false
   return changed
 }

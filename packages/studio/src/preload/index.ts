@@ -392,6 +392,25 @@ const studio = {
       content: string
       error?: string
     }>,
+  decisionLedgerLoad: (projectRoot: string) =>
+    ipcRenderer.invoke('studio:decision-ledger-load', projectRoot) as Promise<{
+      enabled: boolean
+      mode: 'C1' | 'C2'
+      label: string
+      ledger: {
+        schemaVersion: 1
+        registration: 'empty' | 'registered' | 'unreadable'
+        decisions: unknown[]
+        links: unknown[]
+        elements: unknown[]
+        audit: unknown[]
+      }
+    }>,
+  decisionLedgerSave: (projectRoot: string, ledger: unknown) =>
+    ipcRenderer.invoke('studio:decision-ledger-save', projectRoot, JSON.parse(JSON.stringify(ledger))) as Promise<{
+      ok: boolean
+      label: string
+    }>,
   acceptHybridWrite: (payload: { before: string; after: string }) =>
     ipcRenderer.invoke('studio:accept-hybrid-write', payload) as Promise<{
       ok: boolean
@@ -804,6 +823,11 @@ export type InformalPatchPayload = {
   mode?: 'crud' | 'source'
   explanation?: string
   operations: Array<Record<string, unknown>>
+  decision?: {
+    commitment?: 'confirmed' | 'provisional'
+    impactElementIds?: string[]
+    impactUnknown?: boolean
+  }
 }
 
 export type AgentSpecPermissionsPayload = {
