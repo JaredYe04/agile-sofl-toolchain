@@ -21,10 +21,16 @@ export type CommitmentClass = (typeof COMMITMENT_CLASSES)[number]
 export const REVIEW_MARKS = ['stale', 'needs-review'] as const
 export type ReviewMark = (typeof REVIEW_MARKS)[number]
 
+/**
+ * Who asserted the link.
+ * `DASR-method-spec.md` was not readable from this checkout (paper repo HTTP 404).
+ * These four values are unchanged until that file can be diffed.
+ */
 export const LINK_PROVENANCE = ['human', 'model', 'system', 'import'] as const
 export type LinkProvenance = (typeof LINK_PROVENANCE)[number]
 
-export const LINK_ACCEPTANCE = ['proposed', 'accepted', 'rejected'] as const
+/** Link acceptance. `rejected` is a decision status, not a link acceptance. */
+export const LINK_ACCEPTANCE = ['proposed', 'accepted', 'withdrawn'] as const
 export type LinkAcceptance = (typeof LINK_ACCEPTANCE)[number]
 
 export const LABEL_NO_DECISIONS_REGISTERED = 'no decisions registered'
@@ -79,7 +85,7 @@ export type DecisionAuditKind =
   | 'status-transition'
   | 'impact-linked'
   | 'impact-accepted'
-  | 'impact-rejected'
+  | 'impact-withdrawn'
   | 'write-blocked'
   | 'write-allowed'
   | 'write-provisional'
@@ -144,6 +150,11 @@ export interface GateRequest {
   writePath: string
   proposalId?: string
   override?: GateOverride
+  /**
+   * True for UI auto-write and harness auto-approve.
+   * Override is refused in this mode. It does not skip the rest of the gate.
+   */
+  automaticMode?: boolean
   now?: string
 }
 

@@ -80,7 +80,8 @@ export function applyHybridProposal(source: string, patch: InformalPatchPayload,
   const gated = guardProjectWrite(projectRoot, {
     writePath: writePathForPatch(patch.target === 'gui' ? 'propose_gui_changes' : 'propose_hybrid_changes', patch),
     impact: decision.impact,
-    commitment: decision.commitment
+    commitment: decision.commitment,
+    automaticMode: true
   })
   if (!gated.allow) return { content: source, error: gated.error, applied: false }
   if (isSourcePatch(patch)) {

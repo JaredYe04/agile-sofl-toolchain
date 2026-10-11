@@ -307,7 +307,7 @@ describe('P4 decision completion is not refinement completion', () => {
 })
 
 describe('impact link provenance and acceptance', () => {
-  it('a proposed link still blocks, and a rejected link does not', () => {
+  it('a proposed link still blocks, and a withdrawn link does not', () => {
     const created = registerDecision(emptyLedger(), {
       question: 'Which carrier?',
       elementIds: ['proc:Ship.Send', 'proc:Ship.Other'],
@@ -318,15 +318,16 @@ describe('impact link provenance and acceptance', () => {
     const links = created.ledger.links
     expect(links.every((link) => link.provenance === 'model' && link.acceptance === 'proposed')).toBe(true)
     expect(gate(created.ledger, { kind: 'elements', ids: ['proc:Ship.Send'] }).allow).toBe(false)
-    const rejected = setLinkAcceptance(created.ledger, {
+    const withdrawn = setLinkAcceptance(created.ledger, {
       linkId: links.find((link) => link.elementId === 'proc:Ship.Other')!.id,
-      acceptance: 'rejected',
+      acceptance: 'withdrawn',
       actorRole: 'analyst',
       now: '2026-10-11T00:01:00.000Z'
     })
-    expect(gate(rejected.ledger, { kind: 'elements', ids: ['proc:Ship.Other'] }).allow).toBe(true)
-    expect(gate(rejected.ledger, { kind: 'elements', ids: ['proc:Ship.Send'] }).allow).toBe(false)
-    const accepted = setLinkAcceptance(rejected.ledger, {
+    expect(withdrawn.ledger.links.find((link) => link.elementId === 'proc:Ship.Other')?.acceptance).toBe('withdrawn')
+    expect(gate(withdrawn.ledger, { kind: 'elements', ids: ['proc:Ship.Other'] }).allow).toBe(true)
+    expect(gate(withdrawn.ledger, { kind: 'elements', ids: ['proc:Ship.Send'] }).allow).toBe(false)
+    const accepted = setLinkAcceptance(withdrawn.ledger, {
       linkId: links.find((link) => link.elementId === 'proc:Ship.Send')!.id,
       acceptance: 'accepted',
       actorRole: 'analyst'
@@ -335,6 +336,46 @@ describe('impact link provenance and acceptance', () => {
       acceptance: 'accepted',
       provenance: 'model'
     })
+  })
+})
+
+describe('override and automatic mode', () => {
+  it('blocks override while automatic mode is on, even with a role and a reason', () => {
+    const { ledger } = tracked()
+    const result = evaluateDecisionGate({
+      dasrEnabled: true,
+      ledger,
+      impact: { kind: 'elements', ids: ['proc:Ship.Send'] },
+      commitment: 'override',
+      writePath: 'auto-write',
+      automaticMode: true,
+      override: { role: 'analyst', reason: 'Stakeholder accepted the risk in session.' },
+      now: '2026-10-11T00:01:00.000Z'
+    })
+    expect(result.allow).toBe(false)
+    expect(result.disposition).toBe('blocked')
+    expect(result.error).toMatch(/automatic mode|auto-approve/)
+    const root = project()
+    enableC2(root)
+    writeDecisionLedger(root, ledger)
+    const harness = guardProjectWrite(root, {
+      writePath: 'harness-auto-accept',
+      impact: { kind: 'elements', ids: ['proc:Ship.Send'] },
+      commitment: 'override',
+      automaticMode: true,
+      override: { role: 'analyst', reason: 'Stakeholder accepted the risk in session.' }
+    })
+    expect(harness.allow).toBe(false)
+  })
+
+  it('allows a human override with role and reason when automatic mode is off', () => {
+    const { ledger, id } = tracked()
+    const result = gate(ledger, { kind: 'elements', ids: ['proc:Ship.Send'] }, 'override', 'propose_hybrid_changes')
+    expect(result.allow).toBe(true)
+    expect(result.disposition).toBe('override')
+    expect(result.decisionIds).toContain(id)
+    expect(result.ledger.elements.find((el) => el.elementId === 'proc:Ship.Send')?.commitment).toBe('override')
+    expect(result.ledger.audit.some((event) => event.kind === 'write-override' && event.actorRole === 'analyst')).toBe(true)
   })
 })
 
@@ -472,6 +513,32 @@ describe('ledger reload, migration, and old projects', () => {
     expect(refused.allow).toBe(false)
     expect(readFileSync(join(root, '.agile-sofl', 'decision-ledger.json'), 'utf8')).toBe(garbage)
     expect(paths.map(hash)).toEqual(hashes)
+  })
+
+  it('loads a stored rejected link as withdrawn and keeps rejected as a decision status', () => {
+    const root = project()
+    mkdirSync(join(root, '.agile-sofl'), { recursive: true })
+    writeFileSync(
+      join(root, '.agile-sofl', 'decision-ledger.json'),
+      JSON.stringify({
+        decisions: [{ id: 'd1', question: 'Air or ground?', status: 'rejected' }],
+        links: [
+          {
+            id: 'l1',
+            decisionId: 'd1',
+            elementId: 'proc:Ship.Send',
+            provenance: 'human',
+            acceptance: 'rejected'
+          }
+        ],
+        audit: [{ id: 'a1', at: '2026-10-11T00:00:00.000Z', kind: 'impact-rejected', elementIds: ['proc:Ship.Send'], note: 'old' }]
+      })
+    )
+    const loaded = readDecisionLedger(root)
+    expect(loaded.decisions[0]?.status).toBe('rejected')
+    expect(loaded.links[0]?.acceptance).toBe('withdrawn')
+    expect(loaded.audit[0]?.kind).toBe('impact-withdrawn')
+    expect(loaded.links[0]?.acceptance).not.toBe('rejected')
   })
 })
 

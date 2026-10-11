@@ -29,6 +29,7 @@ import {
 } from '../../../../shared/clarificationAnswer'
 import { contextMenuPoint } from '../../../lib/contextMenuPoint'
 import { decisionLedgerLabel, decisionLedgerMode, refreshDasrRuntime } from '../../../lib/dasrStatus'
+import { setDasrAutomaticMode } from '../../../shared/dasr/runtime'
 import {
   composerAction,
   enqueueMessage,
@@ -557,6 +558,7 @@ async function applyPatch(
   if (!stillOnProject(rootAtStart)) return false
   if (!msg.proposedChanges) return false
   await refreshDasrRuntime(rootAtStart)
+  setDasrAutomaticMode(settings.agentWriteMode === 'auto')
   const toolId = liveSession(id)?.context.pendingToolCallId
   const continueTurn = !runOf(id).stopRequested
   try {
@@ -610,6 +612,8 @@ async function applyPatch(
     }
     await resume(id, toolId, JSON.stringify({ action: 'error', error: message, userNote }), continueTurn)
     return false
+  } finally {
+    setDasrAutomaticMode(false)
   }
 }
 

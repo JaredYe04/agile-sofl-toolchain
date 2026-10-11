@@ -17,6 +17,10 @@ import type { CommitmentClass, DecisionLedger, GateRequest, GateResult, ImpactDe
  *
  * An unresolved decision with no proposed or accepted impact link has unknown scope
  * and also fails closed: a named target cannot be classified as unrelated.
+ * Withdrawn links are not active. This stricter rule is intentional.
+ *
+ * Override is a human commitment. It is refused when automaticMode is set
+ * (UI auto-write or harness auto-approve), even if a role and reason are present.
  */
 
 function blocked(
@@ -84,6 +88,18 @@ export function evaluateDecisionGate(req: GateRequest): GateResult {
       requiresHuman: false,
       ledger: req.ledger
     }
+  }
+  if (commitment === 'override' && req.automaticMode) {
+    return blocked(req.ledger, {
+      error:
+        'Override commitment is refused while automatic mode or auto-approve is on. Auto mode skips only the Apply click. A human override needs an actor role and a reason outside automatic mode.',
+      decisionIds: unresolvedDecisions(req.ledger).map((d) => d.id),
+      elementIds: elementIdsOf(req.impact),
+      writePath: req.writePath,
+      proposalId: req.proposalId,
+      commitment,
+      now: req.now
+    })
   }
   const impact = req.impact
   if (impact.kind === 'missing' || impact.kind === 'unknown' || impact.kind === 'malformed') {

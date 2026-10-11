@@ -16,7 +16,12 @@ export function runB0Auto(o: { informalPath: string; outDir: string; runId: stri
   const runDir = join(o.outDir, 'runs', o.runId)
   mkdirSync(runDir, { recursive: true })
   // dasr-gate:b0-auto — the generator does not name element ids, so the target set is unknown.
-  const gated = guardProjectWrite(runDir, { writePath: 'b0-auto', impact: { kind: 'unknown' }, commitment: 'confirmed' })
+  const gated = guardProjectWrite(runDir, {
+    writePath: 'b0-auto',
+    impact: { kind: 'unknown' },
+    commitment: 'confirmed',
+    automaticMode: true
+  })
   if (!gated.allow) {
     writeFileSync(join(runDir, 'manifest.json'), JSON.stringify({
       runId: o.runId, generator: B0_GENERATOR, stopReason: 'decision-gate', error: gated.error, llmCalls: 0, ...o.manifestExtra

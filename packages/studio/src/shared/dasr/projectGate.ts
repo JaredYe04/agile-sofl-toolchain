@@ -14,6 +14,9 @@ export function guardProjectWrite(
     proposalId?: string
     now?: string
     env?: NodeJS.ProcessEnv
+    /** Harness auto-approve and B0 set this. Override is then refused. */
+    automaticMode?: boolean
+    override?: { role: string; reason: string }
   }
 ): GateResult {
   const flag = resolveDasrMode({ env: input.env ?? process.env, file: readDasrFileConfig(projectRoot) })
@@ -25,7 +28,9 @@ export function guardProjectWrite(
     commitment: input.commitment ?? 'confirmed',
     writePath: input.writePath,
     proposalId: input.proposalId,
-    now: input.now
+    now: input.now,
+    automaticMode: input.automaticMode,
+    override: input.override
   })
   if (projectRoot && result.ledger !== ledger && result.ledger.registration === 'registered') {
     writeDecisionLedger(projectRoot, result.ledger)

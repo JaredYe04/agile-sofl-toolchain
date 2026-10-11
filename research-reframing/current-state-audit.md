@@ -313,3 +313,7 @@ Source of the runner (tracked):
 | Manuscript claim matrix | No `.tex` in the checkout |
 
 No DASR types, tools, or gates were added in this change.
+
+## Note (Gate 2)
+
+The sections above are the Phase 0 snapshot. The DASR implementation on this branch adds one stricter fail-closed rule on purpose: an unresolved decision with no active impact links blocks confirmed writes. Active links are `proposed` or `accepted`. A `withdrawn` link is not active. A named target is not treated as unrelated when the scope is unknown. The paper method-spec still needs to adopt this clause; this checkout cannot edit that file.

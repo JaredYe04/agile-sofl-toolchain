@@ -117,7 +117,7 @@ function ensureRegistered(ledger: DecisionLedger): void {
 }
 
 export function activeLinks(ledger: DecisionLedger, decisionId: string): ImpactLink[] {
-  return ledger.links.filter((l) => l.decisionId === decisionId && l.acceptance !== 'rejected')
+  return ledger.links.filter((l) => l.decisionId === decisionId && l.acceptance !== 'withdrawn')
 }
 
 export function unresolvedDecisions(ledger: DecisionLedger): RequirementDecision[] {
@@ -342,7 +342,7 @@ export function reopenDecision(
     toStatus: 'unresolved',
     note: `Successor of superseded ${old.id}. Previous confirmation was not overwritten.`
   })
-  for (const link of next.links.filter((l) => l.decisionId === old.id && l.acceptance !== 'rejected')) {
+  for (const link of next.links.filter((l) => l.decisionId === old.id && l.acceptance !== 'withdrawn')) {
     addLink(next, {
       decisionId: successor.id,
       elementId: link.elementId,
@@ -357,16 +357,16 @@ export function reopenDecision(
 
 export function setLinkAcceptance(
   ledger: DecisionLedger,
-  input: { linkId: string; acceptance: 'accepted' | 'rejected'; actorRole: string; now?: string }
+  input: { linkId: string; acceptance: 'accepted' | 'withdrawn'; actorRole: string; now?: string }
 ): { ledger: DecisionLedger; error?: string } {
-  if (!input.actorRole?.trim()) return { ledger, error: 'Accepting or rejecting a link needs an actor role.' }
+  if (!input.actorRole?.trim()) return { ledger, error: 'Accepting or withdrawing a link needs an actor role.' }
   const next = cloneLedger(ledger)
   const link = next.links.find((l) => l.id === input.linkId)
   if (!link) return { ledger, error: `No impact link ${input.linkId}.` }
   const at = nowIso(input.now)
   link.acceptance = input.acceptance
   link.updatedAt = at
-  const kind: DecisionAuditKind = input.acceptance === 'accepted' ? 'impact-accepted' : 'impact-rejected'
+  const kind: DecisionAuditKind = input.acceptance === 'accepted' ? 'impact-accepted' : 'impact-withdrawn'
   pushAudit(next, {
     at,
     kind,
@@ -641,7 +641,11 @@ function migrateLink(raw: unknown, at: string): ImpactLink | null {
       ? row.provenance
       : 'import'
   const acceptance: LinkAcceptance =
-    row.acceptance === 'accepted' || row.acceptance === 'proposed' || row.acceptance === 'rejected' ? row.acceptance : 'proposed'
+    row.acceptance === 'rejected' || row.acceptance === 'withdrawn'
+      ? 'withdrawn'
+      : row.acceptance === 'accepted' || row.acceptance === 'proposed'
+        ? row.acceptance
+        : 'proposed'
   return {
     id: typeof row.id === 'string' ? row.id : newDasrId('lnk'),
     decisionId: row.decisionId,
@@ -652,6 +656,16 @@ function migrateLink(raw: unknown, at: string): ImpactLink | null {
     createdAt: typeof row.createdAt === 'string' ? row.createdAt : at,
     updatedAt: typeof row.updatedAt === 'string' ? row.updatedAt : at
   }
+}
+
+function migrateAudit(raw: unknown): DecisionAuditEvent[] {
+  if (!Array.isArray(raw)) return []
+  return raw.map((event) => {
+    if (!event || typeof event !== 'object') return event as DecisionAuditEvent
+    const row = event as DecisionAuditEvent & { kind?: string }
+    if (row.kind === 'impact-rejected') return { ...row, kind: 'impact-withdrawn' }
+    return row
+  })
 }
 
 /** Load a ledger object from JSON. Missing decisions become an empty ledger, not a claim of resolution. */
@@ -705,7 +719,7 @@ export function ledgerFromJson(raw: unknown): DecisionLedger {
     decisions,
     links,
     elements,
-    audit: Array.isArray(body.audit) ? (body.audit as DecisionAuditEvent[]) : [],
+    audit: migrateAudit(body.audit),
     preserved: Object.keys(preserved).length ? preserved : undefined
   }
   if (body.registration === 'registered') ledger.registration = 'registered'
