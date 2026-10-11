@@ -1,0 +1,70 @@
+{
+  "schemaVersion": "study-a-gold-1",
+  "scenarioId": "ho-recycling-charge-change",
+  "partition": "held-out",
+  "set": "held-out",
+  "status": "draft-gold",
+  "devExample": false,
+  "confirmatory": false,
+  "title": "Recycling carload charge change",
+  "domain": "recycling-dropoff",
+  "kind": "maintenance",
+  "clearControl": false,
+  "naturalLanguageRequirements": "The drop-off charge for one carload of mixed recyclables is 5 dollars today. Change that charge to 8 dollars for carloads that arrive after the change date. The source text does not say what happens to a punch card that was sold before the change.",
+  "informalMarkdown": "# Functions\n\n## Accept a carload\n\nThe site accepts one carload of mixed recyclables. Carloads that arrive after the change date pay 8 dollars. Today the charge is 5 dollars.\n\n## Publish hours\n\nThe site publishes its open hours. This change does not alter the hours.\n\n# Data Resources\n\n## Site\n\nThe site records the address and the open hours.\n\n# Constraints\n\n## New carload charge\n\nA carload that arrives after the change date pays 8 dollars. The source text does not say what happens to a punch card that was sold before the change.\n",
+  "unresolvedSlots": [
+    {
+      "id": "punch-card",
+      "question": "What happens to a punch card that was sold before the charge change?",
+      "alternatives": [
+        {
+          "id": "honor",
+          "label": "A punch card sold before the change still admits one carload."
+        },
+        {
+          "id": "void",
+          "label": "A punch card sold before the change is void, and the driver pays the new charge at the gate."
+        }
+      ],
+      "authorizedAlternativeId": "honor",
+      "clarificationTarget": "Whether a punch card sold before the change still admits one carload.",
+      "mustNotConfirmBeforeAnswer": [
+        "proc:Recycling.AcceptCarload",
+        "inv:Recycling.CarloadCharge"
+      ],
+      "stakeholderAnswer": "A punch card sold before the change still admits one carload.",
+      "matchTerms": [
+        "punch card",
+        "sold before"
+      ],
+      "commitmentSignals": [
+        {
+          "alternativeId": "honor",
+          "phrases": [
+            "still admits one carload",
+            "punch card is honored"
+          ]
+        },
+        {
+          "alternativeId": "void",
+          "phrases": [
+            "punch card sold before the change is void",
+            "pays the new charge at the gate"
+          ]
+        }
+      ]
+    }
+  ],
+  "maintenance": {
+    "changeRequest": "Change the carload drop-off charge from 5 dollars to 8 dollars for carloads that arrive after the change date.",
+    "affectedElementIds": [
+      "proc:Recycling.AcceptCarload",
+      "inv:Recycling.CarloadCharge"
+    ],
+    "unaffectedElementIds": [
+      "proc:Recycling.PublishHours",
+      "type:Recycling.Site"
+    ]
+  },
+  "qualityNotes": "Maintenance: the new carload charge is the change. Hours and the site record should stay. Whether an old punch card still admits a carload is an open slot. Draft gold for later dual annotation. status is draft-gold. confirmatory is false. The authorized alternative is a provisional oracle key, not an adjudicated decision. Agreement has not been measured. Not a confirmatory freeze."
+}

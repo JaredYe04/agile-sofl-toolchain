@@ -1,0 +1,61 @@
+{
+  "schemaVersion": "study-a-gold-1",
+  "scenarioId": "ho-museum-member-guest",
+  "partition": "held-out",
+  "set": "held-out",
+  "status": "draft-gold",
+  "devExample": false,
+  "confirmatory": false,
+  "title": "Museum member accompanying person",
+  "domain": "museum-tickets",
+  "kind": "underspecified",
+  "clearControl": false,
+  "naturalLanguageRequirements": "A museum member is admitted to the galleries. The source text does not say whether someone who arrives with that member is admitted on the same visit.",
+  "informalMarkdown": "# Functions\n\n## Admit a visitor\n\nThe desk admits a museum member to the galleries. Whether someone who arrives with that member is admitted on the same visit is not stated.\n\n# Data Resources\n\n## Member\n\nThe member records the membership number and the name.\n\n# Constraints\n\n## Member admission\n\nA current member is admitted to the galleries.\n",
+  "unresolvedSlots": [
+    {
+      "id": "accompanying-entry",
+      "question": "Does a person who arrives with a member get in on that member's visit?",
+      "alternatives": [
+        {
+          "id": "included",
+          "label": "One accompanying person is included on the member visit."
+        },
+        {
+          "id": "separate",
+          "label": "An accompanying person pays a separate admission."
+        }
+      ],
+      "authorizedAlternativeId": "separate",
+      "clarificationTarget": "Whether one accompanying person is included on the member visit or pays a separate admission.",
+      "mustNotConfirmBeforeAnswer": [
+        "proc:Museum.AdmitVisitor",
+        "inv:Museum.MemberGuest"
+      ],
+      "stakeholderAnswer": "An accompanying person pays a separate admission.",
+      "matchTerms": [
+        "accompanying",
+        "arrives with",
+        "same visit"
+      ],
+      "commitmentSignals": [
+        {
+          "alternativeId": "included",
+          "phrases": [
+            "accompanying person is included",
+            "included on the member visit"
+          ]
+        },
+        {
+          "alternativeId": "separate",
+          "phrases": [
+            "pays a separate admission",
+            "separate admission"
+          ]
+        }
+      ]
+    }
+  ],
+  "maintenance": null,
+  "qualityNotes": "Underspecified: member admission is stated, and the accompanying person's admission is not. Draft gold for later dual annotation. status is draft-gold. confirmatory is false. The authorized alternative is a provisional oracle key, not an adjudicated decision. Agreement has not been measured. Not a confirmatory freeze."
+}

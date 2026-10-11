@@ -1,0 +1,60 @@
+{
+  "schemaVersion": "study-a-gold-1",
+  "scenarioId": "ho-kennel-medicine",
+  "partition": "held-out",
+  "set": "held-out",
+  "status": "draft-gold",
+  "devExample": false,
+  "confirmatory": false,
+  "title": "Kennel medicine left by the owner",
+  "domain": "pet-boarding",
+  "kind": "underspecified",
+  "clearControl": false,
+  "naturalLanguageRequirements": "An owner leaves a pet at a kennel overnight and may leave a packet of medicine with the staff. The source text does not say whether the staff give that medicine.",
+  "informalMarkdown": "# Functions\n\n## Board a pet\n\nAn owner leaves a pet overnight. A packet of medicine may be left with the staff. Whether the staff give that medicine is not stated.\n\n# Data Resources\n\n## Stay\n\nThe stay records the pet, the owner, and the night.\n\n# Constraints\n\n## Recorded stay\n\nA boarded pet has one open stay.\n",
+  "unresolvedSlots": [
+    {
+      "id": "give-medicine",
+      "question": "Do kennel staff give medicine that the owner left with them?",
+      "alternatives": [
+        {
+          "id": "give",
+          "label": "Kennel staff give the owner's medicine at the times the owner wrote down."
+        },
+        {
+          "id": "store",
+          "label": "Kennel staff keep the medicine in storage and do not give it."
+        }
+      ],
+      "authorizedAlternativeId": "give",
+      "clarificationTarget": "Whether kennel staff give medicine the owner left, or only store it.",
+      "mustNotConfirmBeforeAnswer": [
+        "proc:Kennel.GiveCare",
+        "inv:Kennel.Medicine"
+      ],
+      "stakeholderAnswer": "Kennel staff give the owner's medicine at the times the owner wrote down.",
+      "matchTerms": [
+        "medicine",
+        "kennel staff"
+      ],
+      "commitmentSignals": [
+        {
+          "alternativeId": "give",
+          "phrases": [
+            "give the owner's medicine",
+            "at the times the owner wrote"
+          ]
+        },
+        {
+          "alternativeId": "store",
+          "phrases": [
+            "keep the medicine in storage",
+            "do not give it"
+          ]
+        }
+      ]
+    }
+  ],
+  "maintenance": null,
+  "qualityNotes": "Underspecified: leaving medicine with the kennel is allowed, and giving it versus storing it is open. Draft gold for later dual annotation. status is draft-gold. confirmatory is false. The authorized alternative is a provisional oracle key, not an adjudicated decision. Agreement has not been measured. Not a confirmatory freeze."
+}

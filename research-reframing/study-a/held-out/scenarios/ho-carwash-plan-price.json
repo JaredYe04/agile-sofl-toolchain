@@ -1,0 +1,70 @@
+{
+  "schemaVersion": "study-a-gold-1",
+  "scenarioId": "ho-carwash-plan-price",
+  "partition": "held-out",
+  "set": "held-out",
+  "status": "draft-gold",
+  "devExample": false,
+  "confirmatory": false,
+  "title": "Car-wash plan price change",
+  "domain": "car-wash",
+  "kind": "maintenance",
+  "clearControl": false,
+  "naturalLanguageRequirements": "A monthly wash plan costs 20 dollars today. Change the plan price to 25 dollars for renewals after the change date. The source text does not say whether the month already on the books keeps its price.",
+  "informalMarkdown": "# Functions\n\n## Renew a plan\n\nA member renews a monthly wash plan. Renewals after the change date cost 25 dollars. Today the plan costs 20 dollars.\n\n## Sell a single wash\n\nThe site sells one wash with no plan. This change does not alter the single-wash price.\n\n# Data Resources\n\n## Vehicle\n\nThe vehicle records the plate and the member.\n\n# Constraints\n\n## New plan price\n\nA renewal after the change date costs 25 dollars. The source text does not say whether the month already on the books keeps its price.\n",
+  "unresolvedSlots": [
+    {
+      "id": "paid-month",
+      "question": "Does the month already on the books keep the price that was in force when it started?",
+      "alternatives": [
+        {
+          "id": "keep-month",
+          "label": "The month already on the books keeps the 20-dollar price until that month ends."
+        },
+        {
+          "id": "rebill",
+          "label": "The month already on the books is charged the 5-dollar difference at once."
+        }
+      ],
+      "authorizedAlternativeId": "keep-month",
+      "clarificationTarget": "Whether a month already started keeps the 20-dollar price until it ends.",
+      "mustNotConfirmBeforeAnswer": [
+        "proc:CarWash.RenewPlan",
+        "inv:CarWash.PlanPrice"
+      ],
+      "stakeholderAnswer": "The month already on the books keeps the 20-dollar price until that month ends.",
+      "matchTerms": [
+        "already on the books",
+        "5-dollar difference"
+      ],
+      "commitmentSignals": [
+        {
+          "alternativeId": "keep-month",
+          "phrases": [
+            "keeps the 20-dollar price until that month ends",
+            "paid month keeps 20 dollars"
+          ]
+        },
+        {
+          "alternativeId": "rebill",
+          "phrases": [
+            "charged the 5-dollar difference",
+            "difference at once"
+          ]
+        }
+      ]
+    }
+  ],
+  "maintenance": {
+    "changeRequest": "Change the monthly wash plan price from 20 dollars to 25 dollars for renewals after the change date.",
+    "affectedElementIds": [
+      "proc:CarWash.RenewPlan",
+      "inv:CarWash.PlanPrice"
+    ],
+    "unaffectedElementIds": [
+      "proc:CarWash.SellSingleWash",
+      "type:CarWash.Vehicle"
+    ]
+  },
+  "qualityNotes": "Maintenance: the renewal price is the change. Single washes and the vehicle record should stay. The price of a month already on the books is an open slot. Draft gold for later dual annotation. status is draft-gold. confirmatory is false. The authorized alternative is a provisional oracle key, not an adjudicated decision. Agreement has not been measured. Not a confirmatory freeze."
+}

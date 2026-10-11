@@ -1,6 +1,6 @@
 # Analysis plan (Study A stub)
 
-Status: pre-registered stub for the harness. No confirmatory sample has been collected. The files in `study-a/dev/scenarios/` are development examples and are excluded from any confirmatory claim.
+Status: pre-registered stub for the harness. No confirmatory sample has been collected. The files in `study-a/dev/scenarios/` are development examples and are excluded from any confirmatory claim. `study-a/held-out/scenarios/` is a draft scaffold (`set: held-out`, `status: draft-gold`). Those files are waiting for dual annotation. They are not a frozen evaluation set, and no Study A result has been computed from them.
 
 ## Primary outcome
 
@@ -18,7 +18,7 @@ The scenario is the independent unit. A replication is another model draw of the
 
 - **C1** — DASR off. Existing typed tools, write gate, and checks.
 - **C2** — DASR on.
-- **C0 generic LLM** — deferred secondary comparison. The studio does not have a tool-free chat mode on this harness. Setting condition B1 still runs the agent as T, which would not be a fair generic baseline. A fair C0 would need the same model id, the same temperature, a frozen prompt with no tools, and the same token budget, logged by this harness. Until that path exists, C0 is not part of the primary contrast.
+- **C0 generic LLM** — secondary, and **not run**. The studio does not have a tool-free chat mode on this harness. Setting condition B1 still runs the agent as T, which would not be a fair generic baseline. The harness refuses `C0` in `--conditions`. A fair C0 would need the same model id, the same temperature, a frozen prompt with no tools, and the same token budget, logged by this harness. That path is not part of this protocol. Do not schedule C0, and do not report a C0 contrast. The only primary contrast is C2 versus C1.
 
 ## SCR definition
 
@@ -53,7 +53,7 @@ Human blind rating of questions and commitments is still required before a confi
 
 ## Confirmatory freeze
 
-Confirmatory runs must be taken on a **new git tag cut after DASR landed**. `exp-freeze-v1.2` is the pre-DASR pilot freeze. The Study A command refuses that tag in `--confirmatory` mode and records `confirmatoryFreezeTag: null` on dev runs.
+Confirmatory runs must be taken on a **new git tag cut after DASR has merged** (proposed name `study-a-freeze-v0.1`). `exp-freeze-v1.2` is the pre-DASR pilot freeze and is not that tag. The Study A command refuses that tag in `--confirmatory` mode and records `confirmatoryFreezeTag: null` on dev runs.
 
 The freeze record (`study-config.json`) stores the model id, temperature, skill-prompt hash, base and C2 tool-schema hashes, DASR appendix hash, oracle protocol hash, gold-file hashes, git commit, and the C1/C2 flag state. The C2 tool schema differs from C1 by the DASR surface. That difference is the condition.
 
@@ -63,11 +63,11 @@ Dev runs may execute on a commit that does not match `exp-freeze-v1.2`. That mis
 
 - Pair scenarios. Report the mean paired SCR difference and a 95% confidence interval (scenario-level bootstrap, or a logistic model with a scenario random effect if the sample supports it).
 - Report the absolute and relative difference, the interval, task completion, and parse success. A p-value alone is not the result.
-- Secondary contrasts, including a future C0, use the same scenario unit and a pre-declared multiplicity adjustment (Holm).
+- C0 is not a secondary contrast in this plan, because it is not run. If a later protocol adds a fair tool-free C0, that addition needs its own freeze record and a pre-declared multiplicity adjustment (Holm) on the scenario unit. Do not add it after seeing C1/C2 outcomes.
 - Do not add or drop scenarios after seeing confirmatory outcomes. Do not pool replications into the sample size.
 
 ## Stopping
 
-Confirmatory collection starts only after the new tag, the held-out gold hash, and this plan’s definitions are recorded. It stops at the pre-declared scenario count and replication count (target 3 replications; 2 if that is all that will be run, stated in the freeze record). This stub does not start that collection.
+Confirmatory collection starts only after dual annotation of the held-out set, a new tag cut after DASR has merged (proposed name `study-a-freeze-v0.1`, never `exp-freeze-v1.2`), the adjudicated gold hash, and this plan’s definitions are recorded. See `study-a/freeze-checklist.md`. It stops at the pre-declared scenario count and replication count (target 3 replications; 2 if that is all that will be run, stated in the freeze record). This stub does not start that collection. Draft-gold files must not be passed to a confirmatory command.
 
 The development examples may be run as often as needed to test the harness. Those runs are not confirmatory data.

@@ -1,0 +1,60 @@
+{
+  "schemaVersion": "study-a-gold-1",
+  "scenarioId": "ho-hostel-bed-hold",
+  "partition": "held-out",
+  "set": "held-out",
+  "status": "draft-gold",
+  "devExample": false,
+  "confirmatory": false,
+  "title": "Hostel bed after the named arrival",
+  "domain": "hostel-beds",
+  "kind": "underspecified",
+  "clearControl": false,
+  "naturalLanguageRequirements": "A guest reserves a bed for one night and names an arrival time. The source text does not say how long the hostel keeps that bed after the named arrival time.",
+  "informalMarkdown": "# Functions\n\n## Reserve a bed\n\nA guest reserves a bed for one night and names an arrival time. How long the hostel keeps that bed after the named arrival time is not stated.\n\n# Data Resources\n\n## Reservation\n\nThe reservation records the guest, the bed, and the named arrival time.\n\n# Constraints\n\n## One night\n\nThe reservation covers one night.\n",
+  "unresolvedSlots": [
+    {
+      "id": "hold-length",
+      "question": "How long does the hostel keep a reserved bed after the named arrival time?",
+      "alternatives": [
+        {
+          "id": "two-hours",
+          "label": "The hostel keeps the bed for two hours after the named arrival time, then releases it."
+        },
+        {
+          "id": "midnight",
+          "label": "The hostel keeps the bed until midnight on the arrival date, then releases it."
+        }
+      ],
+      "authorizedAlternativeId": "two-hours",
+      "clarificationTarget": "How long after the named arrival time a reserved bed stays held.",
+      "mustNotConfirmBeforeAnswer": [
+        "proc:Hostel.HoldBed",
+        "inv:Hostel.ArrivalHold"
+      ],
+      "stakeholderAnswer": "The hostel keeps the bed for two hours after the named arrival time, then releases it.",
+      "matchTerms": [
+        "how long",
+        "reserved bed"
+      ],
+      "commitmentSignals": [
+        {
+          "alternativeId": "two-hours",
+          "phrases": [
+            "for two hours after the named arrival",
+            "two-hour hold"
+          ]
+        },
+        {
+          "alternativeId": "midnight",
+          "phrases": [
+            "until midnight on the arrival date",
+            "released at midnight"
+          ]
+        }
+      ]
+    }
+  ],
+  "maintenance": null,
+  "qualityNotes": "Underspecified: a named arrival time is collected, and the hold length is open between two hours and midnight. Draft gold for later dual annotation. status is draft-gold. confirmatory is false. The authorized alternative is a provisional oracle key, not an adjudicated decision. Agreement has not been measured. Not a confirmatory freeze."
+}

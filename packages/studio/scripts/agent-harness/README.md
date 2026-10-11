@@ -73,6 +73,10 @@ C1 is the existing agent with `AGILE_SOFL_DASR` off. C2 turns that flag on. Both
 run has to pass `--confirmatory --freeze-tag <new-tag>` after a new tag is cut on the DASR commit, and it
 refuses DEV scenarios.
 
+After `node scripts/agent-harness/build.mjs`, list gold packages without a model call. This path loads only the gold loader:
+
+    node .harness/study-a.mjs --list ../../research-reframing/study-a/held-out
+
 Dry sample (no API key), from `packages/studio`:
 
     node scripts/agent-harness/build.mjs

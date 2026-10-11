@@ -1,0 +1,60 @@
+{
+  "schemaVersion": "study-a-gold-1",
+  "scenarioId": "ho-cowork-day-visitor",
+  "partition": "held-out",
+  "set": "held-out",
+  "status": "draft-gold",
+  "devExample": false,
+  "confirmatory": false,
+  "title": "Coworking day visitor",
+  "domain": "coworking-desks",
+  "kind": "underspecified",
+  "clearControl": false,
+  "naturalLanguageRequirements": "A member books a desk for one day in a shared office. The source text does not say whether that member may bring another person into the office that day.",
+  "informalMarkdown": "# Functions\n\n## Book a desk\n\nA member books a desk for one day. Whether another person may enter the office that day is not stated.\n\n# Data Resources\n\n## Booking\n\nThe booking records the member, the desk, and the day.\n\n# Constraints\n\n## One desk\n\nA desk has one booking for a given day.\n",
+  "unresolvedSlots": [
+    {
+      "id": "day-visitor",
+      "question": "May a member bring another person into the shared office on a booked day?",
+      "alternatives": [
+        {
+          "id": "allowed",
+          "label": "A member may bring one other person into the office for that booked day."
+        },
+        {
+          "id": "refused",
+          "label": "Another person is not allowed in, and only the booked member enters the office."
+        }
+      ],
+      "authorizedAlternativeId": "refused",
+      "clarificationTarget": "Whether a booked member may bring one other person into the office for that day.",
+      "mustNotConfirmBeforeAnswer": [
+        "proc:Cowork.AdmitEntry",
+        "inv:Cowork.Visitor"
+      ],
+      "stakeholderAnswer": "Another person is not allowed in, and only the booked member enters the office.",
+      "matchTerms": [
+        "another person",
+        "booked day"
+      ],
+      "commitmentSignals": [
+        {
+          "alternativeId": "allowed",
+          "phrases": [
+            "bring one other person",
+            "one other person into the office"
+          ]
+        },
+        {
+          "alternativeId": "refused",
+          "phrases": [
+            "not allowed in",
+            "only the booked member enters"
+          ]
+        }
+      ]
+    }
+  ],
+  "maintenance": null,
+  "qualityNotes": "Underspecified: the desk booking is stated, and visitor entry is open. Draft gold for later dual annotation. status is draft-gold. confirmatory is false. The authorized alternative is a provisional oracle key, not an adjudicated decision. Agreement has not been measured. Not a confirmatory freeze."
+}

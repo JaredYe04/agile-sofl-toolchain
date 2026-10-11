@@ -51,7 +51,11 @@ node .harness/study-a.mjs --score-only --key <keyFile>
 
 `dev/scenarios/` has five development examples: three underspecified tasks (library, clinic, parking), one clear control (warehouse), and one maintenance task (library loan period). They are marked `devExample: true` and `confirmatory: false`.
 
-`held-out/HELD_OUT.md` is a placeholder. There is no held-out scenario file.
+`held-out/scenarios/` has fifteen draft packages (`set: held-out`, `status: draft-gold`). Nine are underspecified, three are clear controls, and three are maintenance tasks, across fifteen small-app domains. They are not dual-annotated and they are not the confirmatory freeze. List them without a model call:
+
+```bash
+node .harness/study-a.mjs --list ../../research-reframing/study-a/held-out
+```
 
 ## Freeze tag
 
@@ -61,4 +65,4 @@ node .harness/study-a.mjs --score-only --key <keyFile>
 node .harness/study-a.mjs --confirmatory --freeze-tag <new-tag> --scenario <held-out.json> --allow-held-out ...
 ```
 
-That mode refuses `exp-freeze-v1.2`, refuses a tag that is not `HEAD`, and refuses every DEV scenario. This scaffold has no held-out scenarios, so a confirmatory run cannot be started from these files.
+That mode refuses `exp-freeze-v1.2`, refuses a tag that is not `HEAD`, and refuses every DEV scenario. The proposed confirmatory tag is `study-a-freeze-v0.1`, cut only after DASR has merged and the held-out files have been dual-annotated. Until `freeze-checklist.md` is complete, do not pass these draft files to `--confirmatory`. C0 is not a condition on this command.

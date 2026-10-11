@@ -1,0 +1,60 @@
+{
+  "schemaVersion": "study-a-gold-1",
+  "scenarioId": "ho-camera-damage-hold",
+  "partition": "held-out",
+  "set": "held-out",
+  "status": "draft-gold",
+  "devExample": false,
+  "confirmatory": false,
+  "title": "Camera rental damage hold",
+  "domain": "equipment-rental",
+  "kind": "underspecified",
+  "clearControl": false,
+  "naturalLanguageRequirements": "A customer borrows a camera from a rental desk for a weekend and returns it on Monday. The source text does not say whether the desk collects money up front against damage.",
+  "informalMarkdown": "# Functions\n\n## Check out a camera\n\nA customer borrows a camera for a weekend. Whether the desk collects money up front against damage is not stated.\n\n# Data Resources\n\n## Rental\n\nThe rental records the camera, the customer, and the return day.\n\n# Constraints\n\n## Return day\n\nThe camera is due back on Monday.\n",
+  "unresolvedSlots": [
+    {
+      "id": "upfront-hold",
+      "question": "Does the rental desk collect money up front against damage when the camera goes out?",
+      "alternatives": [
+        {
+          "id": "hold",
+          "label": "The desk places a refundable hold on the customer's card when the camera goes out."
+        },
+        {
+          "id": "later",
+          "label": "The desk takes no money up front, and any damage is billed after the camera comes back."
+        }
+      ],
+      "authorizedAlternativeId": "hold",
+      "clarificationTarget": "Whether pickup places a refundable card hold or damage is billed only after return.",
+      "mustNotConfirmBeforeAnswer": [
+        "proc:Rental.CheckoutCamera",
+        "inv:Rental.DamageHold"
+      ],
+      "stakeholderAnswer": "The desk places a refundable hold on the customer's card when the camera goes out.",
+      "matchTerms": [
+        "up front",
+        "damage"
+      ],
+      "commitmentSignals": [
+        {
+          "alternativeId": "hold",
+          "phrases": [
+            "refundable hold on the customer's card",
+            "places a refundable hold"
+          ]
+        },
+        {
+          "alternativeId": "later",
+          "phrases": [
+            "takes no money up front",
+            "billed after the camera comes back"
+          ]
+        }
+      ]
+    }
+  ],
+  "maintenance": null,
+  "qualityNotes": "Underspecified: the weekend rental is stated, and an up-front damage hold versus a later bill is open. Draft gold for later dual annotation. status is draft-gold. confirmatory is false. The authorized alternative is a provisional oracle key, not an adjudicated decision. Agreement has not been measured. Not a confirmatory freeze."
+}

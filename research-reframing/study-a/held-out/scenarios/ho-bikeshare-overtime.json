@@ -1,0 +1,60 @@
+{
+  "schemaVersion": "study-a-gold-1",
+  "scenarioId": "ho-bikeshare-overtime",
+  "partition": "held-out",
+  "set": "held-out",
+  "status": "draft-gold",
+  "devExample": false,
+  "confirmatory": false,
+  "title": "Bike-share time past the paid window",
+  "domain": "bike-share",
+  "kind": "underspecified",
+  "clearControl": false,
+  "naturalLanguageRequirements": "A rider ends a bike-share trip by docking the bicycle at a station. The source text does not say what the service does when the trip continues after the time the rider paid for.",
+  "informalMarkdown": "# Functions\n\n## End a trip\n\nA rider ends a trip by docking the bicycle at a station. What the service does after the paid time is not stated.\n\n# Data Resources\n\n## Trip\n\nThe trip records the bicycle, the rider, the start time, and the paid time.\n\n# Constraints\n\n## Docking\n\nA trip ends when the bicycle is docked at a station.\n",
+  "unresolvedSlots": [
+    {
+      "id": "overtime-policy",
+      "question": "What does the service do when a trip continues after the paid time?",
+      "alternatives": [
+        {
+          "id": "lock",
+          "label": "The bicycle locks when the paid time ends, and the rider cannot keep riding."
+        },
+        {
+          "id": "surcharge",
+          "label": "The rider may keep riding, and each extra minute adds an overtime charge."
+        }
+      ],
+      "authorizedAlternativeId": "surcharge",
+      "clarificationTarget": "Whether a trip that runs past the paid time locks the bicycle or keeps going with an overtime charge.",
+      "mustNotConfirmBeforeAnswer": [
+        "proc:BikeShare.EndTrip",
+        "inv:BikeShare.Overtime"
+      ],
+      "stakeholderAnswer": "The rider may keep riding, and each extra minute adds an overtime charge.",
+      "matchTerms": [
+        "overtime",
+        "paid time"
+      ],
+      "commitmentSignals": [
+        {
+          "alternativeId": "lock",
+          "phrases": [
+            "locks when the paid time ends",
+            "cannot keep riding"
+          ]
+        },
+        {
+          "alternativeId": "surcharge",
+          "phrases": [
+            "extra minute adds an overtime charge",
+            "keep riding, and each extra minute"
+          ]
+        }
+      ]
+    }
+  ],
+  "maintenance": null,
+  "qualityNotes": "Underspecified: the source leaves the post-paid-time behavior open between a lock and a per-minute charge. Draft gold for later dual annotation. status is draft-gold. confirmatory is false. The authorized alternative is a provisional oracle key, not an adjudicated decision. Agreement has not been measured. Not a confirmatory freeze."
+}

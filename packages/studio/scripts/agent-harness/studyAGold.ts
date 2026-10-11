@@ -3,10 +3,11 @@
  * DEV files in this scaffold are not a confirmatory freeze set.
  */
 import { createHash } from 'node:crypto'
-import { readFileSync } from 'node:fs'
-import type { GoldPackage, GoldSlot } from './studyAGoldTypes'
+import { readdirSync, readFileSync, statSync } from 'node:fs'
+import { join } from 'node:path'
+import type { GoldAnnotationStatus, GoldPackage, GoldSet, GoldSlot } from './studyAGoldTypes'
 
-export type { GoldPackage, GoldSlot, GoldAlternative, GoldMaintenance, CommitmentSignal } from './studyAGoldTypes'
+export type { GoldPackage, GoldSlot, GoldAlternative, GoldMaintenance, CommitmentSignal, GoldSet, GoldAnnotationStatus } from './studyAGoldTypes'
 export { GOLD_SCHEMA_VERSION } from './studyAGoldTypes'
 
 const KINDS = new Set(['underspecified', 'clear-control', 'maintenance'])
@@ -104,7 +105,7 @@ export function validateGold(raw: unknown): { ok: true; gold: GoldPackage } | { 
   const errors: string[] = []
   if (!isObject(raw)) return { ok: false, errors: ['gold package must be a JSON object'] }
   const allowed = new Set([
-    'schemaVersion', 'scenarioId', 'partition', 'devExample', 'confirmatory', 'title', 'domain', 'kind',
+    'schemaVersion', 'scenarioId', 'partition', 'set', 'status', 'devExample', 'confirmatory', 'title', 'domain', 'kind',
     'clearControl', 'naturalLanguageRequirements', 'informalMarkdown', 'unresolvedSlots', 'maintenance', 'qualityNotes'
   ])
   for (const key of Object.keys(raw)) if (!allowed.has(key)) errors.push(`unknown field ${key}`)
@@ -116,6 +117,21 @@ export function validateGold(raw: unknown): { ok: true; gold: GoldPackage } | { 
   if (raw.confirmatory !== false) errors.push('confirmatory must be false; this scaffold is not a confirmatory freeze set')
   if (raw.partition === 'dev' && raw.devExample !== true) errors.push('dev partition requires devExample true')
   if (raw.partition === 'held-out' && raw.devExample !== false) errors.push('held-out partition requires devExample false')
+  const setValue = raw.set
+  const statusValue = raw.status
+  if (setValue !== undefined && setValue !== 'dev' && setValue !== 'held-out') errors.push('set must be dev or held-out')
+  if (statusValue !== undefined && statusValue !== 'draft-gold' && statusValue !== 'dev-example') {
+    errors.push('status must be draft-gold or dev-example; this scaffold has no confirmatory freeze status')
+  }
+  if ((raw.partition === 'dev' || raw.partition === 'held-out') && setValue !== undefined && setValue !== raw.partition) {
+    errors.push('set must match partition')
+  }
+  if (raw.partition === 'held-out' && setValue !== 'held-out') errors.push('held-out packages require set "held-out"')
+  if (raw.partition === 'held-out' && statusValue !== 'draft-gold') errors.push('held-out packages require status "draft-gold"')
+  if (raw.partition === 'dev' && setValue !== undefined && setValue !== 'dev') errors.push('set must be dev when partition is dev')
+  if (raw.partition === 'dev' && statusValue !== undefined && statusValue !== 'dev-example') {
+    errors.push('status must be dev-example when partition is dev')
+  }
   if (typeof raw.title !== 'string' || !raw.title.trim()) errors.push('title is required')
   if (typeof raw.domain !== 'string' || !raw.domain.trim()) errors.push('domain is required')
   if (typeof raw.kind !== 'string' || !KINDS.has(raw.kind)) errors.push('kind must be underspecified, clear-control, or maintenance')
@@ -155,10 +171,14 @@ export function validateGold(raw: unknown): { ok: true; gold: GoldPackage } | { 
   if (errors.length || !scenarioId || (raw.partition !== 'dev' && raw.partition !== 'held-out') || typeof raw.kind !== 'string') {
     return { ok: false, errors }
   }
+  const set: GoldSet | undefined = setValue === 'dev' || setValue === 'held-out' ? setValue : undefined
+  const status: GoldAnnotationStatus | undefined = statusValue === 'draft-gold' || statusValue === 'dev-example' ? statusValue : undefined
   const gold: GoldPackage = {
     schemaVersion: 'study-a-gold-1',
     scenarioId,
     partition: raw.partition,
+    ...(set ? { set } : {}),
+    ...(status ? { status } : {}),
     devExample: raw.devExample === true,
     confirmatory: false,
     title: String(raw.title).trim(),
@@ -190,4 +210,59 @@ export function loadGold(path: string): GoldPackage {
 export function goldFileSha256(path: string): string {
   const text = readFileSync(path, 'utf-8').replace(/^\uFEFF/, '').replace(/\r\n/g, '\n')
   return createHash('sha256').update(text).digest('hex')
+}
+
+export interface GoldListRow {
+  file: string
+  scenarioId: string
+  set: GoldSet | null
+  status: GoldAnnotationStatus | null
+  partition: GoldSet
+  kind: GoldPackage['kind']
+  domain: string
+  title: string
+  clearControl: boolean
+  slots: number
+  maintenance: boolean
+  confirmatory: false
+  devExample: boolean
+}
+
+function jsonFilesIn(dir: string): string[] {
+  const files: string[] = []
+  for (const name of readdirSync(dir)) {
+    const child = join(dir, name)
+    const stat = statSync(child)
+    if (stat.isFile() && name.endsWith('.json')) files.push(child)
+    else if (stat.isDirectory() && name === 'scenarios') {
+      for (const nested of readdirSync(child)) {
+        if (nested.endsWith('.json')) files.push(join(child, nested))
+      }
+    }
+  }
+  return files
+}
+
+/** Load every gold JSON in a file or directory. Does not start a model run. */
+export function listGoldFiles(path: string): GoldListRow[] {
+  const stat = statSync(path)
+  const files = stat.isDirectory() ? jsonFilesIn(path) : path.endsWith('.json') ? [path] : []
+  return files.sort().map((file) => {
+    const gold = loadGold(file)
+    return {
+      file,
+      scenarioId: gold.scenarioId,
+      set: gold.set ?? null,
+      status: gold.status ?? null,
+      partition: gold.partition,
+      kind: gold.kind,
+      domain: gold.domain,
+      title: gold.title,
+      clearControl: gold.clearControl,
+      slots: gold.unresolvedSlots.length,
+      maintenance: gold.kind === 'maintenance',
+      confirmatory: false,
+      devExample: gold.devExample
+    }
+  })
 }

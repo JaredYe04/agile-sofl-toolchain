@@ -3,6 +3,7 @@
  *
  *   node scripts/agent-harness/build.mjs
  *   node .harness/study-a.mjs --scenario <gold.json> --conditions C1,C2 --repeats 1 --dry-run --score
+ *   node .harness/study-a.mjs --list ../../research-reframing/study-a/held-out
  *
  * C1 sets AGILE_SOFL_DASR=0. C2 sets it to 1. Both use agent condition T.
  * C0 is refused: there is no fair generic-chat path on this harness.
@@ -20,6 +21,7 @@ import { freezeStatus, gitIn, harnessSha, isInside } from './freeze'
 import { diagnosticCounts, getExperimentConfig } from '../../src/main/services/llm/experiment'
 import { getEnvLlmFallback } from '../../src/main/services/llm/env'
 import { goldFileSha256, loadGold } from './studyAGold'
+import { printStudyAList } from './studyAList'
 import type { GoldPackage } from './studyAGoldTypes'
 import { createStakeholderOracle } from './studyAOracle'
 import { createStudyEventLog, readStudyEvents } from './studyAEvents'
@@ -334,6 +336,10 @@ function scenarioArgs(): string[] {
 
 async function main() {
   const repo = execFileSync('git', ['-c', 'safe.directory=*', 'rev-parse', '--show-toplevel'], { encoding: 'utf-8' }).trim()
+  if (process.argv.includes('--list')) {
+    printStudyAList()
+    return
+  }
   const scoreOnly = process.argv.includes('--score-only')
   if (scoreOnly) {
     const keyPath = arg('key') ?? arg('key-file')
@@ -409,7 +415,7 @@ async function main() {
   }))
 }
 
-if (process.argv[1] && /study-a\.(mjs|ts)$/.test(process.argv[1])) {
+if (process.argv[1] && /study-a(?:-run)?\.(mjs|ts)$/.test(process.argv[1].replace(/\\/g, '/'))) {
   main().catch((error) => {
     console.error(error instanceof Error ? error.message : String(error))
     process.exit((error as { exitCode?: number }).exitCode ?? 1)
