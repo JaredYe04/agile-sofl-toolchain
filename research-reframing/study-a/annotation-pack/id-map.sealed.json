@@ -1,7 +1,7 @@
 {
   "sealed": true,
   "doNotDistribute": true,
-  "note": "Coordinator only. Zip annotator-a/ for Xujun Ye and annotator-b/ for Jinlin Zhang. Do not include this file or held-out/scenarios/ in either zip. Held-out status stays draft-gold until both sheets are locked and adjudication is finished. This pack does not run C1 or C2, does not report SCR, and does not cut a freeze tag.",
+  "note": "Coordinator only. The annotator entry is study-a-annotator.html; Xujun Ye selects A and Jinlin Zhang selects B. Do not send the Markdown 问卷 folders as the entry. Do not include this file or held-out/scenarios/ in anything sent to annotators. Held-out status stays draft-gold until both sheets are locked and adjudication is finished. This pack does not run C1 or C2, does not report SCR, and does not cut a freeze tag.",
   "annotators": {
     "A": "Xujun Ye",
     "B": "Jinlin Zhang"

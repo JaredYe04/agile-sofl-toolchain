@@ -1,0 +1,1321 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Study A 标注</title>
+<style>
+  :root {
+    --bg: #f3eee6;
+    --bg-deep: #e7e0d4;
+    --card: #fffdf9;
+    --ink: #1c1915;
+    --muted: #5c564c;
+    --faint: #8a8174;
+    --line: #e4dacb;
+    --accent: #0e5c4c;
+    --accent-ink: #084237;
+    --accent-soft: #e4f3ee;
+    --copper: #8d4b22;
+    --copper-soft: #f8ece4;
+    --danger: #8d2c2c;
+    --danger-soft: #fdeeee;
+    --shadow: 0 16px 40px rgba(70, 48, 22, 0.07);
+    --radius: 18px;
+    --sans: "Noto Sans CJK SC", "Noto Sans SC", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Segoe UI", sans-serif;
+    --mono: "IBM Plex Mono", "Source Code Pro", "Noto Sans Mono CJK SC", ui-monospace, monospace;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    color: var(--ink);
+    background:
+      radial-gradient(1200px 500px at 10% -10%, #fff 0%, transparent 55%),
+      linear-gradient(180deg, #f7f3ec 0%, var(--bg) 40%, #efe8dc 100%);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.55;
+  }
+  button, input, textarea { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  code, .mono { font-family: var(--mono); font-size: 0.92em; }
+  .hidden { display: none !important; }
+  .gate {
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    padding: 32px 18px;
+  }
+  .gate-card {
+    width: min(880px, 100%);
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 28px;
+    box-shadow: var(--shadow);
+    padding: 36px 36px 28px;
+  }
+  .kicker {
+    margin: 0 0 8px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    font-size: 12px;
+    color: var(--accent);
+    font-weight: 700;
+  }
+  h1 { margin: 0 0 10px; font-size: 34px; letter-spacing: -0.03em; line-height: 1.2; }
+  .lede { margin: 0 0 22px; color: var(--muted); font-size: 16.5px; }
+  .people { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .person {
+    text-align: left;
+    border: 1.5px solid var(--line);
+    background: #fff;
+    border-radius: 16px;
+    padding: 16px 16px 14px;
+    transition: border-color .15s, box-shadow .15s, transform .15s;
+  }
+  .person:hover { border-color: #b7d4cb; }
+  .person.selected {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 4px var(--accent-soft);
+  }
+  .person .who { display: block; color: var(--accent); font-size: 13px; font-weight: 700; }
+  .person strong { display: block; font-size: 22px; margin: 2px 0 6px; }
+  .person .sub { display: block; color: var(--muted); font-size: 13px; min-height: 1.3em; }
+  .rules {
+    margin: 18px 0;
+    padding: 14px 16px;
+    background: #faf7f2;
+    border-radius: 14px;
+    color: var(--muted);
+  }
+  .rules ul { margin: 8px 0 0; padding-left: 1.2em; }
+  .rules li + li { margin-top: 4px; }
+  .gate-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .btn {
+    border: 0;
+    border-radius: 999px;
+    padding: 11px 18px;
+    background: var(--accent);
+    color: #fff;
+    font-weight: 700;
+  }
+  .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+  .btn.secondary { background: #fff; color: var(--ink); border: 1px solid var(--line); }
+  .btn.copper { background: var(--copper); }
+  .btn.ghost { background: transparent; color: var(--muted); border: 0; padding-inline: 10px; }
+  .btn.small { padding: 7px 12px; font-size: 14px; font-weight: 650; }
+  .file-btn { position: relative; overflow: hidden; }
+  .file-btn input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  header.app-bar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    display: grid;
+    grid-template-columns: minmax(180px, 240px) 1fr auto;
+    gap: 16px;
+    align-items: center;
+    padding: 12px 18px;
+    background: rgba(255, 252, 247, 0.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--line);
+  }
+  .brand { display: flex; gap: 10px; align-items: center; min-width: 0; }
+  .mark {
+    width: 36px; height: 36px; border-radius: 11px;
+    display: grid; place-items: center;
+    background: var(--accent); color: #fff; font-weight: 800;
+    flex: none;
+  }
+  .brand .name { font-weight: 800; letter-spacing: -0.02em; }
+  .brand .meta { color: var(--muted); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .progress-wrap { min-width: 0; }
+  .progress-label { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+  .bar { height: 8px; background: var(--bg-deep); border-radius: 99px; overflow: hidden; }
+  .bar > span { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--accent), #2a9a7a); border-radius: inherit; transition: width .25s ease; }
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+  .save-line { font-size: 12.5px; color: var(--faint); padding: 0 2px; }
+  .layout { display: grid; grid-template-columns: 232px 1fr; gap: 18px; width: min(1180px, calc(100% - 28px)); margin: 18px auto 40px; }
+  nav.rail {
+    position: sticky; top: 86px; align-self: start;
+    display: flex; flex-direction: column; gap: 6px;
+    max-height: calc(100vh - 110px); overflow: auto;
+    padding-right: 4px;
+  }
+  .nav-btn {
+    display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center;
+    text-align: left; border: 1px solid transparent; background: transparent;
+    border-radius: 12px; padding: 8px 10px; color: var(--muted);
+  }
+  .nav-btn .sid { font-variant-numeric: tabular-nums; font-weight: 800; color: var(--ink); }
+  .nav-btn.current { background: #fff; border-color: var(--line); color: var(--ink); box-shadow: 0 4px 16px rgba(70, 48, 22, 0.05); }
+  .dot { width: 9px; height: 9px; border-radius: 99px; border: 1.5px solid #c3b8a8; }
+  .nav-btn.partial .dot { background: #e0b15a; border-color: #e0b15a; }
+  .nav-btn.done .dot { background: var(--accent); border-color: var(--accent); }
+  main { min-width: 0; display: flex; flex-direction: column; gap: 14px; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 20px 22px 18px;
+  }
+  .card h2 { margin: 0 0 4px; font-size: 28px; letter-spacing: -0.03em; }
+  .card h3 { margin: 0 0 10px; font-size: 18px; }
+  .eyebrow { margin: 0; color: var(--accent); font-weight: 700; font-size: 13px; }
+  .en { margin: 0; white-space: pre-wrap; }
+  pre.en, pre.zh {
+    margin: 0; white-space: pre-wrap; word-break: break-word;
+    font-family: var(--sans); font-size: 15px; line-height: 1.6;
+  }
+  .zh-box {
+    margin-top: 12px; padding: 12px 14px; border-radius: 12px;
+    background: #f7f4ee; border: 1px dashed #e0d5c6;
+  }
+  .tag { display: inline-block; margin-bottom: 6px; font-size: 12px; font-weight: 700; color: var(--copper); }
+  .fine { margin: 8px 0 0; color: var(--faint); font-size: 13px; }
+  .keys { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+  .key {
+    background: var(--accent-soft); color: var(--accent-ink);
+    border-radius: 999px; padding: 3px 10px; font-size: 13px;
+  }
+  .checks { display: grid; gap: 8px; }
+  .checks p { margin: 0; }
+  .field { margin-top: 16px; scroll-margin-top: 96px; }
+  #file-bar {
+    width: min(1180px, calc(100% - 28px));
+    margin: 12px auto 0;
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: center;
+    color: var(--muted);
+    font-size: 13.5px;
+  }
+  #live-downloads { display: flex; gap: 8px; flex-wrap: wrap; }
+  #live-downloads a {
+    text-decoration: none;
+    color: var(--accent-ink);
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 6px 12px;
+    font-weight: 750;
+  }
+  .field label.lbl, .legend {
+    display: block; font-weight: 750; margin-bottom: 4px;
+  }
+  .help { margin: 0 0 8px; color: var(--muted); font-size: 14px; }
+  .example {
+    margin: 8px 0 0; color: var(--faint); font-size: 13px;
+  }
+  .example code { color: var(--ink); background: #f3eee6; padding: 1px 6px; border-radius: 6px; }
+  .choices { display: grid; gap: 8px; }
+  .choice {
+    display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: start;
+    border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; background: #fff;
+  }
+  .choice:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
+  .choice b { font-family: var(--mono); font-size: 14px; }
+  .choice small { display: block; color: var(--muted); font-weight: 450; }
+  .yn { display: flex; gap: 8px; }
+  .yn label {
+    flex: 1; border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px;
+    background: #fff; display: flex; gap: 8px; align-items: center;
+  }
+  .yn label:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
+  textarea, input[type="text"] {
+    width: 100%; border: 1px solid #ddd3c4; border-radius: 12px;
+    padding: 10px 12px; background: #fff; resize: vertical;
+  }
+  textarea { min-height: 84px; }
+  textarea:focus, input[type="text"]:focus, .choice:focus-within, .yn label:focus-within {
+    outline: 2px solid #9dcec2; outline-offset: 1px;
+  }
+  .field.invalid textarea, .field.invalid input[type="text"], .field.invalid .choices, .field.invalid .yn {
+    box-shadow: inset 0 0 0 1px var(--danger);
+  }
+  .err { color: var(--danger); font-size: 13.5px; margin: 6px 0 0; }
+  .error-box {
+    border: 1px solid #f0c8c8; background: var(--danger-soft); color: #6d2424;
+    border-radius: 14px; padding: 12px 14px;
+  }
+  .error-box ul { margin: 8px 0 0; padding-left: 1.2em; }
+  .q-en { margin: 0; font-size: 17px; }
+  .q-zh { margin: 6px 0 0; color: var(--muted); }
+  .row-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+  .footer-nav {
+    display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+    position: sticky; bottom: 12px;
+  }
+  .footer-nav .card { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; width: 100%; }
+  .overview table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+  .overview th, .overview td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .overview button.link { background: none; border: 0; padding: 0; color: var(--accent-ink); font-weight: 750; }
+  .modal-back {
+    position: fixed; inset: 0; z-index: 40;
+    background: rgba(40, 30, 18, 0.35);
+    display: grid; place-items: center; padding: 18px;
+  }
+  .modal {
+    width: min(560px, 100%); background: #fff; border-radius: 20px;
+    padding: 22px; box-shadow: var(--shadow);
+  }
+  .modal h3 { margin: 0 0 8px; font-size: 22px; }
+  .modal p { margin: 0 0 10px; color: var(--muted); }
+  .modal .row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+  .dl-list { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+  .dl-list a {
+    display: block; text-decoration: none; color: var(--accent-ink); font-weight: 700;
+    background: var(--accent-soft); border-radius: 12px; padding: 10px 12px;
+  }
+  #toast {
+    position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%);
+    background: var(--ink); color: #fff; border-radius: 14px;
+    padding: 11px 16px; z-index: 50; max-width: min(560px, calc(100% - 24px));
+    font-size: 14px; line-height: 1.5; text-align: center;
+  }
+  .skip-note { margin: 8px 0 0; color: var(--muted); font-size: 14px; }
+  @media (max-width: 860px) {
+    .gate-card { padding: 22px 16px; }
+    h1 { font-size: 28px; }
+    .people { grid-template-columns: 1fr; }
+    header.app-bar { grid-template-columns: 1fr; }
+    .layout { grid-template-columns: 1fr; width: min(100% - 16px, 1180px); }
+    nav.rail {
+      position: sticky; top: 0; max-height: none; flex-direction: row;
+      overflow: auto; background: rgba(243, 238, 230, 0.95); padding: 8px 0; z-index: 15;
+    }
+    .nav-btn { min-width: max-content; }
+    .nav-btn .slabel { display: none; }
+    #file-bar { flex-direction: column; align-items: flex-start; width: min(100% - 16px, 1180px); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { scroll-behavior: auto !important; transition: none !important; }
+  }
+  .col { font-family: var(--mono); font-size: 12px; font-weight: 500; color: var(--faint); margin-left: 6px; }
+  details.fine > summary { cursor: pointer; color: var(--accent-ink); font-weight: 650; }
+  .modal.wide { width: min(780px, 100%); max-height: 86vh; overflow: auto; }
+  .demo-row { border-left: 3px solid var(--accent-soft); padding: 2px 0 2px 10px; margin: 8px 0; font-size: 14.5px; }
+  .demo-row b { display: block; color: var(--accent-ink); font-size: 13px; }
+  .demo-row code { background: #f3eee6; padding: 1px 5px; border-radius: 6px; }
+</style>
+</head>
+<body>
+  <div id="gate" class="gate">
+    <div class="gate-card">
+      <p class="kicker">Study A · 两人独立标注</p>
+      <h1>从 15 段需求里，挑出「没说清楚的地方」</h1>
+      <p class="lede">每道题给你一段需求。你要判断：这段需求里有没有留下一个<strong>本来该由业务方拍板、但原文根本没写</strong>的选择。如果有，就把它写下来——写出两种都说得通的做法，以及要问清哪一件事才能定下来。<br><strong>两个人的题目完全一样，但必须各填各的。</strong>我们会比对两份答案，看大家读到的是不是同一件事——这个比对本身就是研究数据。</p>
+      <div class="people" role="radiogroup" aria-label="选择标注员">
+        <button type="button" class="person" data-pick="A" id="pick-A">
+          <span class="who">标注员 A</span>
+          <strong>Xujun Ye</strong>
+          <span class="sub" id="stat-A">这台电脑上还没有填写记录</span>
+        </button>
+        <button type="button" class="person" data-pick="B" id="pick-B">
+          <span class="who">标注员 B</span>
+          <strong>Jinlin Zhang</strong>
+          <span class="sub" id="stat-B">这台电脑上还没有填写记录</span>
+        </button>
+      </div>
+      <div class="rules">
+        <strong>你要做的事，三步</strong>
+        <ul>
+          <li><b>读</b>：看这一页的「需求」和「非正式说明」两段。下面附的中文译文只是为了读得快；万一和英文对不上，<b>以英文为准</b>。</li>
+          <li><b>判断</b>：这段需求有没有留下一个没写清、但会改变系统做法的选择？每题下面会列出 1–2 个「候选问题」。它们只说明<b>这里可能要定一件事</b>，既不是答案，也不代表原文一定有问题——你觉得原文已经说清了，就选「不保留」。你也可以自己补问题。</li>
+          <li><b>写清楚</b>：确实有没定的地方，就写出两种都说得通、但做法不同的方案，再写出要问清哪一条信息才能定下来。</li>
+        </ul>
+        <strong style="display:block;margin-top:12px">三条注意</strong>
+        <ul>
+          <li>只填自己那一份。不要和另一位讨论，也不要看对方的答案。</li>
+          <li>不用打开别的文件。填完 15 题后，点右上角「交卷：导出并锁定」，把下载的两个文件交给协调人。</li>
+          <li>拿不准就按你的理解填，再在「备注」里写一句为什么。<b>填错比不填好。</b></li>
+        </ul>
+      </div>
+      <div class="gate-actions">
+        <button type="button" class="btn" id="start-btn" disabled>开始填写</button>
+        <button type="button" class="btn secondary" id="demo-btn">先看一道完整示范</button>
+        <label class="btn secondary file-btn">导入 JSON<input id="import-gate" type="file" accept="application/json,.json"></label>
+      </div>
+    </div>
+  </div>
+
+  <div id="app" class="hidden">
+    <header class="app-bar">
+      <div class="brand">
+        <div class="mark" id="mark">A</div>
+        <div>
+          <div class="name" id="brand-name">标注员 A</div>
+          <div class="meta" id="brand-meta">Xujun Ye</div>
+        </div>
+      </div>
+      <div class="progress-wrap">
+        <div class="progress-label"><span id="progress-text">已完成 0/15</span><span id="save-text">填了就会自动保存</span></div>
+        <div class="bar" aria-hidden="true"><span id="progress-bar"></span></div>
+      </div>
+      <div class="actions">
+        <button type="button" class="btn secondary small" id="overview-btn">总览</button>
+        <button type="button" class="btn secondary small" id="bind-btn">选个文件夹自动存</button>
+        <button type="button" class="btn secondary small" id="save-btn">下载备份</button>
+        <button type="button" class="btn copper small" id="lock-btn">交卷：导出并锁定</button>
+      </div>
+    </header>
+    <div class="layout">
+      <nav class="rail" id="nav" aria-label="场景"></nav>
+      <main id="main"></main>
+    </div>
+  </div>
+  <div id="modal-root"></div>
+  <div id="toast" class="hidden" role="status"></div>
+  <script>
+const SCENARIOS = [{"id":"S01","nav":"共享办公室","nl":"A member books a desk for one day in a shared office. The source text does not say whether that member may bring another person into the office that day.","nlZh":"会员预订共享办公室里的一张桌子，使用一天。原文没有说，这一天这位会员能不能再带一个人进办公室。","informal":"# Functions\n\n## Book a desk\n\nA member books a desk for one day. Whether another person may enter the office that day is not stated.\n\n# Data Resources\n\n## Booking\n\nThe booking records the member, the desk, and the day.\n\n# Constraints\n\n## One desk\n\nA desk has one booking for a given day.","informalZh":"# 功能\n\n## 预订桌子\n\n会员预订一张桌子，使用一天。这一天能不能有另一个人进入办公室，原文没有写。\n\n# 数据资源\n\n## 预订\n\n预订记录会员、桌子和日期。\n\n# 约束\n\n## 一张桌子一天一条预订\n\n某一天，一张桌子只有一条预订。","slots":[{"id":"day-visitor","en":"May a member bring another person into the shared office on a booked day?","zh":"会员在已预订的那一天，能不能带另一个人进入共享办公室？"}]},{"id":"S02","nav":"相机租赁","nl":"A customer borrows a camera from a rental desk for a weekend and returns it on Monday. The source text does not say whether the desk collects money up front against damage.","nlZh":"顾客从租赁台借一台相机过周末，周一归还。原文没有说，租赁台会不会在借出时先收一笔钱，用来应对损坏。","informal":"# Functions\n\n## Check out a camera\n\nA customer borrows a camera for a weekend. Whether the desk collects money up front against damage is not stated.\n\n# Data Resources\n\n## Rental\n\nThe rental records the camera, the customer, and the return day.\n\n# Constraints\n\n## Return day\n\nThe camera is due back on Monday.","informalZh":"# 功能\n\n## 借出相机\n\n顾客借一台相机过周末。租赁台会不会在借出时先收一笔钱用来应对损坏，原文没有写。\n\n# 数据资源\n\n## 租赁\n\n租赁记录相机、顾客和归还日。\n\n# 约束\n\n## 归还日\n\n相机应在周一归还。","slots":[{"id":"upfront-hold","en":"Does the rental desk collect money up front against damage when the camera goes out?","zh":"相机借出时，租赁台会不会先收一笔钱，用来应对损坏？"}]},{"id":"S03","nav":"网球场预订","nl":"Members book a tennis court up to 7 days ahead today. Change new bookings so they can be made up to 14 days ahead. The source text does not say what happens to a booking that was placed under the old limit.","nlZh":"会员现在最多可以提前 7 天预订网球场。请把新的预订改成最多可以提前 14 天。原文没有说，已经按旧的 7 天限额订下去的那场预订怎么办。","informal":"# Functions\n\n## Place a booking\n\nA member places a court booking. New bookings may be made up to 14 days ahead. Today the limit is 7 days.\n\n## Charge a no-show\n\nA member who misses a booked court is charged a no-show fee. This change does not alter that fee.\n\n# Data Resources\n\n## Member\n\nThe member records the membership number and the name.\n\n# Constraints\n\n## New advance window\n\nA new booking may be placed up to 14 days ahead. The source text does not say what happens to a booking that was placed under the old limit.","informalZh":"# 功能\n\n## 下预订\n\n会员预订球场。新的预订最多可以提前 14 天。现在的限额是提前 7 天。\n\n## 收取缺席费\n\n会员缺席已预订的球场时，要交缺席费。这次改动不改变这笔费用。\n\n# 数据资源\n\n## 会员\n\n会员记录会员号和姓名。\n\n# 约束\n\n## 新的可提前天数\n\n新的预订最多可以提前 14 天。已经按旧限额订下去的那场预订怎么办，原文没有写。","slots":[{"id":"placed-booking","en":"What happens to a booking that was placed under the 7-day limit?","zh":"已经按 7 天限额订下去的那场预订，会怎么样？"}]},{"id":"S04","nav":"回收投放","nl":"The drop-off charge for one carload of mixed recyclables is 5 dollars today. Change that charge to 8 dollars for carloads that arrive after the change date. The source text does not say what happens to a punch card that was sold before the change.","nlZh":"混合可回收物，一车的投放费今天是 5 美元。请把变更日之后到达的车次改成收费 8 美元。原文没有说，变更之前已经卖掉的次卡怎么办。","informal":"# Functions\n\n## Accept a carload\n\nThe site accepts one carload of mixed recyclables. Carloads that arrive after the change date pay 8 dollars. Today the charge is 5 dollars.\n\n## Publish hours\n\nThe site publishes its open hours. This change does not alter the hours.\n\n# Data Resources\n\n## Site\n\nThe site records the address and the open hours.\n\n# Constraints\n\n## New carload charge\n\nA carload that arrives after the change date pays 8 dollars. The source text does not say what happens to a punch card that was sold before the change.","informalZh":"# 功能\n\n## 接收一车\n\n站点接收一车混合可回收物。变更日之后到达的车次付 8 美元。今天的收费是 5 美元。\n\n## 公布开放时间\n\n站点公布开放时间。这次改动不改变开放时间。\n\n# 数据资源\n\n## 站点\n\n站点记录地址和开放时间。\n\n# 约束\n\n## 新的一车收费\n\n变更日之后到达的一车付 8 美元。变更前已经卖掉的次卡怎么办，原文没有写。","slots":[{"id":"punch-card","en":"What happens to a punch card that was sold before the charge change?","zh":"收费变更之前已经卖掉的次卡，会怎么样？"}]},{"id":"S05","nav":"宠物寄养","nl":"An owner leaves a pet at a kennel overnight and may leave a packet of medicine with the staff. The source text does not say whether the staff give that medicine.","nlZh":"主人把宠物留在寄养处过夜，也可以把一包药留给工作人员。原文没有说，工作人员会不会喂这包药。","informal":"# Functions\n\n## Board a pet\n\nAn owner leaves a pet overnight. A packet of medicine may be left with the staff. Whether the staff give that medicine is not stated.\n\n# Data Resources\n\n## Stay\n\nThe stay records the pet, the owner, and the night.\n\n# Constraints\n\n## Recorded stay\n\nA boarded pet has one open stay.","informalZh":"# 功能\n\n## 寄养宠物\n\n主人把宠物留下过夜。可以把一包药留给工作人员。工作人员会不会喂这包药，原文没有写。\n\n# 数据资源\n\n## 寄养\n\n寄养记录宠物、主人和过夜日期。\n\n# 约束\n\n## 已登记的寄养\n\n一只在寄养的宠物只有一条未结束的寄养记录。","slots":[{"id":"give-medicine","en":"Do kennel staff give medicine that the owner left with them?","zh":"寄养处的工作人员会不会喂主人留下的药？"}]},{"id":"S06","nav":"洗车套餐","nl":"A monthly wash plan costs 20 dollars today. Change the plan price to 25 dollars for renewals after the change date. The source text does not say whether the month already on the books keeps its price.","nlZh":"月度洗车套餐今天是 20 美元。请把变更日之后的续费改成 25 美元。原文没有说，已经记在账上的那一个月是否还按原价。","informal":"# Functions\n\n## Renew a plan\n\nA member renews a monthly wash plan. Renewals after the change date cost 25 dollars. Today the plan costs 20 dollars.\n\n## Sell a single wash\n\nThe site sells one wash with no plan. This change does not alter the single-wash price.\n\n# Data Resources\n\n## Vehicle\n\nThe vehicle records the plate and the member.\n\n# Constraints\n\n## New plan price\n\nA renewal after the change date costs 25 dollars. The source text does not say whether the month already on the books keeps its price.","informalZh":"# 功能\n\n## 续费套餐\n\n会员续费月度洗车套餐。变更日之后的续费是 25 美元。今天的套餐价格是 20 美元。\n\n## 出售单次洗车\n\n站点出售不加入套餐的单次洗车。这次改动不改变单次洗车的价格。\n\n# 数据资源\n\n## 车辆\n\n车辆记录车牌和会员。\n\n# 约束\n\n## 新的套餐价格\n\n变更日之后的续费是 25 美元。已经记在账上的那一个月是否保持原价，原文没有写。","slots":[{"id":"paid-month","en":"Does the month already on the books keep the price that was in force when it started?","zh":"已经记在账上的那一个月，是否保持它开始时的价格？"}]},{"id":"S07","nav":"花园地块","nl":"A member of a community garden may pass a plot to another member. The source text does not say whether the garden association has to agree before the plot changes hands.","nlZh":"社区花园的会员可以把一块地转给另一位会员。原文没有说，地块转手之前，花园协会是否必须同意。","informal":"# Functions\n\n## Pass a plot\n\nA member passes a plot to another member. Whether the garden association has to agree is not stated.\n\n# Data Resources\n\n## Plot\n\nThe plot records the bed number and the current member.\n\n# Constraints\n\n## One holder\n\nA plot has one current member.","informalZh":"# 功能\n\n## 转让地块\n\n会员把一块地转给另一位会员。花园协会是否必须同意，原文没有写。\n\n# 数据资源\n\n## 地块\n\n地块记录畦号和当前会员。\n\n# 约束\n\n## 一个持有人\n\n一块地只有一位当前会员。","slots":[{"id":"transfer-consent","en":"Does a plot change hands only after the garden association agrees?","zh":"是不是必须等花园协会同意，地块才能转手？"}]},{"id":"S08","nav":"共享单车","nl":"A rider ends a bike-share trip by docking the bicycle at a station. The source text does not say what the service does when the trip continues after the time the rider paid for.","nlZh":"骑行者把自行车停进站点，共享单车的这一次行程就结束。原文没有说，行程超过已经付费的时间之后，服务会怎么处理。","informal":"# Functions\n\n## End a trip\n\nA rider ends a trip by docking the bicycle at a station. What the service does after the paid time is not stated.\n\n# Data Resources\n\n## Trip\n\nThe trip records the bicycle, the rider, the start time, and the paid time.\n\n# Constraints\n\n## Docking\n\nA trip ends when the bicycle is docked at a station.","informalZh":"# 功能\n\n## 结束行程\n\n骑行者把自行车停进站点，行程结束。超过已付时间之后服务怎么处理，原文没有写。\n\n# 数据资源\n\n## 行程\n\n行程记录自行车、骑行者、开始时间和已付时间。\n\n# 约束\n\n## 入站即结束\n\n自行车停进站点时，行程结束。","slots":[{"id":"overtime-policy","en":"What does the service do when a trip continues after the paid time?","zh":"行程超过已付时间之后，服务会怎么做？"}]},{"id":"S09","nav":"旅舍床位","nl":"A guest reserves a bed for one night and names an arrival time. The source text does not say how long the hostel keeps that bed after the named arrival time.","nlZh":"客人预订一张床住一晚，并写下预计到达时间。原文没有说，过了这个到达时间之后，旅舍还会把这张床留多久。","informal":"# Functions\n\n## Reserve a bed\n\nA guest reserves a bed for one night and names an arrival time. How long the hostel keeps that bed after the named arrival time is not stated.\n\n# Data Resources\n\n## Reservation\n\nThe reservation records the guest, the bed, and the named arrival time.\n\n# Constraints\n\n## One night\n\nThe reservation covers one night.","informalZh":"# 功能\n\n## 预订床位\n\n客人预订一张床住一晚，并写下预计到达时间。过了这个时间之后床还会留多久，原文没有写。\n\n# 数据资源\n\n## 预订\n\n预订记录客人、床位和写下的到达时间。\n\n# 约束\n\n## 住一晚\n\n这次预订只覆盖一晚。","slots":[{"id":"hold-length","en":"How long does the hostel keep a reserved bed after the named arrival time?","zh":"过了客人写下的到达时间之后，旅舍还会把预订的床留多久？"}]},{"id":"S10","nav":"集市摊位","nl":"A vendor pays 40 dollars for one stall on a market Saturday, and the fee is due before the stall is set up. The amount and the due time are stated. No second stall fee is left open.","nlZh":"摊主在集市的某个周六为一个摊位支付 40 美元，费用在摆摊之前交清。金额和交费时间都已经写明。没有留下第二种摊位费。","informal":"# Functions\n\n## Assign a stall\n\nA vendor pays 40 dollars for one stall on a market Saturday. The fee is due before the stall is set up.\n\n# Data Resources\n\n## Stall\n\nThe stall records the vendor and the Saturday.\n\n# Constraints\n\n## Stated fee\n\nThe stall fee is 40 dollars, due before setup. This rule is fully stated.","informalZh":"# 功能\n\n## 分配摊位\n\n摊主为集市某个周六的一个摊位支付 40 美元。费用在摆摊之前交清。\n\n# 数据资源\n\n## 摊位\n\n摊位记录摊主和那个周六。\n\n# 约束\n\n## 已写明的费用\n\n摊位费是 40 美元，摆摊之前交清。这条规则已经完整写出。","slots":[]},{"id":"S11","nav":"博物馆入场","nl":"A museum member is admitted to the galleries. The source text does not say whether someone who arrives with that member is admitted on the same visit.","nlZh":"博物馆会员可以进入展厅。原文没有说，和这位会员一起来的人，在同一次参观中能不能进入。","informal":"# Functions\n\n## Admit a visitor\n\nThe desk admits a museum member to the galleries. Whether someone who arrives with that member is admitted on the same visit is not stated.\n\n# Data Resources\n\n## Member\n\nThe member records the membership number and the name.\n\n# Constraints\n\n## Member admission\n\nA current member is admitted to the galleries.","informalZh":"# 功能\n\n## 放行参观者\n\n服务台放会员进入展厅。和会员一起来的人在同一次参观中能不能进入，原文没有写。\n\n# 数据资源\n\n## 会员\n\n会员记录会员号和姓名。\n\n# 约束\n\n## 会员入场\n\n当前有效的会员可以进入展厅。","slots":[{"id":"accompanying-entry","en":"Does a person who arrives with a member get in on that member's visit?","zh":"和会员一起来的人，能不能在这次会员参观时一起进入？"}]},{"id":"S12","nav":"泳池场次","nl":"A non-member pays 8 dollars for one swim session at the municipal pool. A member swims during open hours with no session fee. Both rules are stated. No second fee is left open.","nlZh":"非会员在市立泳池游一次，付 8 美元。会员在开放时间内游泳，不收单次费用。两条规则都已经写明。没有留下第二种费用。","informal":"# Functions\n\n## Sell a session\n\nA non-member pays 8 dollars for one swim session. A member swims during open hours with no session fee.\n\n# Data Resources\n\n## Session\n\nThe session records the swimmer and the day.\n\n# Constraints\n\n## Stated fees\n\nThe non-member fee is 8 dollars for one session. The member session fee is zero. This rule is fully stated.","informalZh":"# 功能\n\n## 出售单次游泳\n\n非会员游一次付 8 美元。会员在开放时间内游泳，不收单次费用。\n\n# 数据资源\n\n## 场次\n\n场次记录游泳的人和日期。\n\n# 约束\n\n## 已写明的费用\n\n非会员单次费用是 8 美元。会员的单次费用是零。这条规则已经完整写出。","slots":[]},{"id":"S13","nav":"药房取药","nl":"A filled prescription waits at the pharmacy counter. The source text does not say who is allowed to take it away, and it does not say which proof the counter accepts.","nlZh":"配好的处方药在药房柜台等候领取。原文没有说谁可以把药取走，也没有说柜台接受哪种身份证明。","informal":"# Functions\n\n## Release a prescription\n\nThe counter releases a filled prescription. Who may take it away is not stated.\n\n## Check identity\n\nThe counter checks identity before the release. Which proof is accepted is not stated.\n\n# Data Resources\n\n## Prescription\n\nThe prescription records the patient name, the medicine, and the ready time.\n\n# Constraints\n\n## Ready status\n\nOnly a prescription marked ready may leave the counter.","informalZh":"# 功能\n\n## 发放处方药\n\n柜台发放已配好的处方药。谁可以把它取走，原文没有写。\n\n## 核对身份\n\n柜台在发放前核对身份。接受哪种证明，原文没有写。\n\n# 数据资源\n\n## 处方\n\n处方记录患者姓名、药品和配好的时间。\n\n# 约束\n\n## 已配好才能离开\n\n只有标记为已配好的处方药可以离开柜台。","slots":[{"id":"who-collects","en":"Who is allowed to take a filled prescription away from the counter?","zh":"谁可以把配好的处方药从柜台取走？"},{"id":"id-proof","en":"Which proof does the counter require before it releases the medicine?","zh":"柜台在把药发出去之前，要求看哪种证明？"}]},{"id":"S14","nav":"蛋糕预订","nl":"A cake preorder is accepted only when it is placed before 15:00 on the day before pickup. An order placed after 15:00 is refused. The cutoff time is stated. No second cutoff is left open.","nlZh":"蛋糕预订单只有在取货日前一天下午 15:00 之前下单才会接受。15:00 之后下的单会被拒绝。截止时间已经写明。没有留下第二种截止时间。","informal":"# Functions\n\n## Take a cake preorder\n\nA cake preorder is accepted only when it is placed before 15:00 on the day before pickup. An order placed after 15:00 is refused.\n\n# Data Resources\n\n## Preorder\n\nThe preorder records the cake, the customer, and the pickup day.\n\n# Constraints\n\n## Stated cutoff\n\nThe cutoff is 15:00 on the day before pickup. This rule is fully stated.","informalZh":"# 功能\n\n## 接受蛋糕预订\n\n蛋糕预订单只有在取货日前一天 15:00 之前下单才会接受。15:00 之后下的单会被拒绝。\n\n# 数据资源\n\n## 预订\n\n预订记录蛋糕、顾客和取货日。\n\n# 约束\n\n## 已写明的截止时间\n\n截止时间是取货日前一天的 15:00。这条规则已经完整写出。","slots":[]},{"id":"S15","nav":"献血接待","nl":"A donor gives blood at a donation center that also takes appointments. The source text does not say whether a donor who did not book is seen.","nlZh":"献血者在一个同时接受预约的献血中心献血。原文没有说，没有预约的献血者会不会被接待。","informal":"# Functions\n\n## Receive a donor\n\nThe center receives a donor. Whether a donor who did not book is seen is not stated.\n\n# Data Resources\n\n## Donor visit\n\nThe visit records the donor and the appointment time when one was booked.\n\n# Constraints\n\n## Appointment book\n\nThe center keeps a book of appointments.","informalZh":"# 功能\n\n## 接待献血者\n\n中心接待献血者。没有预约的献血者会不会被接待，原文没有写。\n\n# 数据资源\n\n## 献血到访\n\n到访记录献血者；如果事先有预约，也记录预约时间。\n\n# 约束\n\n## 预约簿\n\n中心保存一本预约簿。","slots":[{"id":"unbooked-donor","en":"Is a donor who did not book an appointment seen at the center?","zh":"没有预约的献血者，中心会不会接待？"}]}];
+
+const COLUMNS = ["annotator","scenario_id","slot_id","row_type","kind","keep_unit","interpretation_1","interpretation_2","interpretations_meaningfully_different","invites_repeated_clarification","clarification_target","must_not_confirm_element_ids","maintenance_affected_ids","maintenance_unaffected_ids","notes"];
+const PEOPLE = {
+  A: { id: "A", name: "Xujun Ye", file: "a" },
+  B: { id: "B", name: "Jinlin Zhang", file: "b" }
+};
+const KINDS = [
+  ["underspecified", "原文有一个「该定没定」的选择。认真读完，你还能提出至少一种同样说得通、但会让系统做法不同的读法。"],
+  ["clear-control", "原文已经把规则写死了：数字、时间、政策都写明，读完不会再产生第二种会改变做法的理解。（这类题是拿来对照的。）"],
+  ["maintenance", "这题是在改一条已有的规则。除了判断「改哪些部分、留哪些部分」，如果改动本身还带出一个没写清的选择，也要单独写成一个问题。"]
+];
+const ID_RE = /^(proc|inv|type):[A-Za-z][A-Za-z0-9]*\.[A-Za-z][A-Za-z0-9]*$/;
+const SLOT_RE = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/;
+// 选项在界面上显示成「是 / 否」，但写进文件里的值仍然是 yes / no。
+const YN_LABEL = { yes: "是", no: "否" };
+
+const state = {
+  annotator: null,
+  index: 0,
+  view: "scenario",
+  answers: {},
+  locked: false,
+  lockedAt: null,
+  updatedAt: null,
+  forceErrors: false,
+  lockAttempted: false,
+  dirHandle: null,
+  pendingDir: null,
+  lastSavedAt: null,
+  lastDirAt: null
+};
+let dirTimer = null;
+let toastTimer = null;
+const blobUrls = [];
+
+function storageKey(letter) {
+  return "study-a-annotator-v1-" + (letter || state.annotator);
+}
+function emptySlot() {
+  return {
+    keep_unit: "",
+    interpretation_1: "",
+    interpretation_2: "",
+    interpretations_meaningfully_different: "",
+    clarification_target: "",
+    must_not_confirm_element_ids: "",
+    notes: ""
+  };
+}
+function emptyScenario(sc) {
+  const slots = {};
+  sc.slots.forEach((slot) => { slots[slot.id] = emptySlot(); });
+  return {
+    scenario: {
+      kind: "",
+      keep_unit: "",
+      invites_repeated_clarification: "",
+      maintenance_affected_ids: "",
+      maintenance_unaffected_ids: "",
+      notes: ""
+    },
+    slots,
+    extra: []
+  };
+}
+function blankAnswers() {
+  const answers = {};
+  SCENARIOS.forEach((sc) => { answers[sc.id] = emptyScenario(sc); });
+  return answers;
+}
+function esc(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (ch) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  }[ch]));
+}
+function trim(value) { return String(value ?? "").trim(); }
+function person() { return PEOPLE[state.annotator]; }
+function current() { return SCENARIOS[state.index]; }
+function pack() { return state.answers[current().id]; }
+
+function readStore(letter) {
+  try {
+    const raw = localStorage.getItem(storageKey(letter));
+    return raw ? JSON.parse(raw) : null;
+  } catch (err) {
+    return null;
+  }
+}
+function normalizeAnswers(answers) {
+  const next = blankAnswers();
+  SCENARIOS.forEach((sc) => {
+    const saved = answers && answers[sc.id];
+    if (!saved) return;
+    const scenario = next[sc.id].scenario;
+    Object.keys(scenario).forEach((key) => {
+      if (typeof saved.scenario?.[key] === "string") scenario[key] = saved.scenario[key];
+    });
+    sc.slots.forEach((slot) => {
+      const src = saved.slots?.[slot.id];
+      if (!src) return;
+      Object.keys(next[sc.id].slots[slot.id]).forEach((key) => {
+        if (typeof src[key] === "string") next[sc.id].slots[slot.id][key] = src[key];
+      });
+    });
+    if (Array.isArray(saved.extra)) {
+      next[sc.id].extra = saved.extra.map((row) => {
+        const slot = emptySlot();
+        slot.slot_id = typeof row.slot_id === "string" ? row.slot_id : "";
+        Object.keys(emptySlot()).forEach((key) => {
+          if (typeof row[key] === "string") slot[key] = row[key];
+        });
+        return slot;
+      });
+    }
+  });
+  return next;
+}
+function snapshot() {
+  return {
+    version: 1,
+    index: state.index,
+    locked: state.locked,
+    lockedAt: state.lockedAt,
+    updatedAt: new Date().toISOString(),
+    answers: state.answers
+  };
+}
+function persistLocal() {
+  const data = snapshot();
+  state.updatedAt = data.updatedAt;
+  state.lastSavedAt = data.updatedAt;
+  try {
+    localStorage.setItem(storageKey(), JSON.stringify(data));
+  } catch (err) {
+    toast("浏览器不让继续自动保存了。请马上点右上角的「下载备份」，把答案存成文件，以免丢失。");
+  }
+  updateChrome();
+  scheduleDirWrite(state.locked ? "locked" : "draft");
+  refreshDraftLinks();
+}
+
+function parseIdList(raw, mode) {
+  const text = trim(raw);
+  if (mode === "none-or-ids") {
+    if (text === "无") return { ids: [] };
+    if (!text) return { error: "这一栏不能空着。没有相关条目就写「无」。" };
+  } else if (!text) {
+    return { error: "这一栏不能空着。请填至少一个条目编号。" };
+  }
+  if (text === "留空" || (mode !== "none-or-ids" && text === "无")) {
+    return { error: "这里要填条目编号。这一栏是必填的，写「无」或「留空」都不行。" };
+  }
+  if (text.includes("；")) return { error: "分隔符要用英文分号 ;（半角），不要用中文分号 ；。" };
+  if (text.includes(",") || text.includes("，")) return { error: "逗号不能当分隔符。多个编号之间用英文分号 ; 隔开，例如 proc:Bus.SellTicket;inv:Bus.DriverShift。" };
+  if (text.split(";").some((part) => !trim(part))) return { error: "分号旁边有空着的位置。请检查是不是多打了一个分号。" };
+  const ids = [];
+  for (const part of text.split(";").map(trim)) {
+    if (!ID_RE.test(part)) {
+      return { error: "「" + part + "」不是一个合法的条目编号。三种写法：proc:区域.名称、inv:区域.名称、type:区域.名称（区域和名称都只用英文字母和数字）。" };
+    }
+    if (ids.includes(part)) return { error: "「" + part + "」写了两次，请删掉重复的。" };
+    ids.push(part);
+  }
+  if (!ids.length) return { error: "这一栏不能空着。请填至少一个条目编号。" };
+  return { ids };
+}
+function exportIds(raw, applicable, allowNone) {
+  if (!applicable) return "";
+  const text = trim(raw);
+  if (allowNone && text === "无") return "无";
+  const parsed = parseIdList(text, allowNone ? "none-or-ids" : "required");
+  return parsed.ids ? parsed.ids.join(";") : text;
+}
+function push(errors, scenarioId, field, message, slotId, extraIndex) {
+  errors.push({ scenarioId, field, message, slotId: slotId || "", extraIndex: extraIndex ?? null });
+}
+function validateSlot(sc, slotId, slot, extraIndex) {
+  const errors = [];
+  const sid = sc.id;
+  const where = slotId ? "候选问题 " + slotId : "你补充的问题";
+  if (extraIndex !== null && extraIndex !== undefined) {
+    const id = trim(slot.slot_id);
+    if (!id) push(errors, sid, "slot_id", "请给这个补充问题起一个编号。", "", extraIndex);
+    else if (!SLOT_RE.test(id)) push(errors, sid, "slot_id", "编号只能用「小写英文字母、数字和连字符」，例如 late-fee。不要用中文、空格或下划线。", "", extraIndex);
+    else if (sc.slots.some((item) => item.id === id) || scPackExtraIds(sc, extraIndex).includes(id)) {
+      push(errors, sid, "slot_id", "这道题里已经有一个叫「" + id + "」的编号了，请换一个。", "", extraIndex);
+    }
+  }
+  if (slot.keep_unit !== "yes" && slot.keep_unit !== "no") {
+    push(errors, sid, "keep_unit", where + "：第 1 项还没选。请选「是」或「否」。", slotId, extraIndex);
+  }
+  if (!trim(slot.interpretation_1)) push(errors, sid, "interpretation_1", where + "：方案 A 还空着。不打算保留时，也要用一两句话说明为什么它不算「没定下来的选择」。", slotId, extraIndex);
+  if (!trim(slot.interpretation_2)) push(errors, sid, "interpretation_2", where + "：方案 B 还空着。", slotId, extraIndex);
+  if (slot.keep_unit === "yes" && trim(slot.interpretation_1) && trim(slot.interpretation_1) === trim(slot.interpretation_2)) {
+    push(errors, sid, "interpretation_2", where + "：方案 A 和方案 B 写得一模一样。第二种读法要能改变系统的做法：做的事、收的钱、允许的事，或留下的记录。", slotId, extraIndex);
+  }
+  const diff = slot.interpretations_meaningfully_different;
+  if (diff !== "yes" && diff !== "no") {
+    push(errors, sid, "interpretations_meaningfully_different", where + "：第 4 项还没选。这两套方案到底是不是真的不同？", slotId, extraIndex);
+  } else if (slot.keep_unit === "yes" && diff !== "yes") {
+    push(errors, sid, "interpretations_meaningfully_different", where + "：第 1 项选了「是」（保留这个问题），但第 4 项选了「否」（两套方案没区别），两句互相矛盾。要么改成「是」，要么把第 1 项改成「否」。", slotId, extraIndex);
+  } else if (slot.keep_unit === "no" && diff !== "no") {
+    push(errors, sid, "interpretations_meaningfully_different", where + "：第 1 项选了「否」（不保留），第 4 项就要选「否」。", slotId, extraIndex);
+  }
+  if (!trim(slot.clarification_target)) push(errors, sid, "clarification_target", where + "：第 5 项还空着。请写「要问对方什么」，不要写你自己猜的答案。", slotId, extraIndex);
+  const ids = parseIdList(slot.must_not_confirm_element_ids, "none-or-ids");
+  if (ids.error) push(errors, sid, "must_not_confirm_element_ids", where + "（第 6 项）：" + ids.error, slotId, extraIndex);
+  if (!trim(slot.notes)) push(errors, sid, "notes", where + "：第 7 项备注还空着。没有补充就写「无」。", slotId, extraIndex);
+  if (packOf(sc).scenario.kind === "clear-control" && slot.keep_unit === "yes") {
+    push(errors, sid, "keep_unit", where + "：这道题选的是 clear-control（原文已经写死了），所以不能再保留一个「没定下来的选择」。要么把它改成「否」，要么回到第 1 项改这道题的类型。", slotId, extraIndex);
+  }
+  return errors;
+}
+function packOf(sc) { return state.answers[sc.id]; }
+function scPackExtraIds(sc, exceptIndex) {
+  return packOf(sc).extra.map((row, index) => index === exceptIndex ? "" : trim(row.slot_id)).filter(Boolean);
+}
+function validateScenario(sc) {
+  const errors = [];
+  const row = packOf(sc).scenario;
+  if (!["underspecified", "clear-control", "maintenance"].includes(row.kind)) {
+    push(errors, sc.id, "kind", "第 1 项还没选。请选一个类型：有没定的选择 / 已经写死了 / 在改一条已有的规则。");
+  }
+  if (row.keep_unit !== "yes" && row.keep_unit !== "no") push(errors, sc.id, "keep_unit", "第 2 项还没选。这道题本身要不要保留？");
+  if (row.invites_repeated_clarification !== "yes" && row.invites_repeated_clarification !== "no") {
+    push(errors, sc.id, "invites_repeated_clarification", "第 3 项还没选。读完之后还会想再追问吗？");
+  }
+  if (row.kind === "clear-control" && row.invites_repeated_clarification === "yes") {
+    push(errors, sc.id, "invites_repeated_clarification", "两道题里的判断打架了：第 1 项选的是「原文已经写死了」，第 3 项却选了「还会想追问」。原文写死了就不会再有要问的；请把第 3 项改成「否」，或者回到第 1 项改类型。");
+  }
+  if (row.kind === "maintenance") {
+    const affected = parseIdList(row.maintenance_affected_ids, "required");
+    const unaffected = parseIdList(row.maintenance_unaffected_ids, "required");
+    if (affected.error) push(errors, sc.id, "maintenance_affected_ids", "「这次改动应该碰到哪些条目」：" + affected.error);
+    if (unaffected.error) push(errors, sc.id, "maintenance_unaffected_ids", "「哪些条目要保持原样」：" + unaffected.error);
+    if (affected.ids && unaffected.ids) {
+      const overlap = affected.ids.filter((id) => unaffected.ids.includes(id));
+      if (overlap.length) push(errors, sc.id, "maintenance_unaffected_ids", "同一个条目不能既算「要改」又算「保持原样」：" + overlap.join("、") + "。请二选一。");
+    }
+  }
+  if (!trim(row.notes)) push(errors, sc.id, "notes", "备注还空着。没有补充就写「无」。");
+  sc.slots.forEach((slot) => errors.push(...validateSlot(sc, slot.id, packOf(sc).slots[slot.id], null)));
+  packOf(sc).extra.forEach((slot, index) => errors.push(...validateSlot(sc, "", slot, index)));
+  if (row.kind === "underspecified" && row.keep_unit === "yes") {
+    const keptPreset = sc.slots.some((slot) => packOf(sc).slots[slot.id].keep_unit === "yes");
+    const keptExtra = packOf(sc).extra.some((slot) => slot.keep_unit === "yes");
+    if (!keptPreset && !keptExtra) {
+      push(errors, sc.id, "kind", "第 1 项选的是「有没定下来的选择」、第 2 项选了「保留」，那么下面至少要保留一个候选问题，并且写出两套真的不同的方案。现在一个都没有。");
+    }
+  }
+  return errors;
+}
+function validateAll() {
+  return SCENARIOS.flatMap(validateScenario);
+}
+function scenarioStatus(sc) {
+  const row = packOf(sc);
+  const bits = [row.scenario.kind, row.scenario.keep_unit, row.scenario.invites_repeated_clarification, row.scenario.notes];
+  sc.slots.forEach((slot) => bits.push(...Object.values(row.slots[slot.id])));
+  row.extra.forEach((slot) => bits.push(...Object.values(slot)));
+  const any = bits.some((value) => trim(value));
+  if (!any) return "empty";
+  return validateScenario(sc).length ? "partial" : "done";
+}
+function doneCount() {
+  return SCENARIOS.filter((sc) => scenarioStatus(sc) === "done").length;
+}
+
+function slotRow(slotId, slot) {
+  return {
+    annotator: state.annotator,
+    scenario_id: "",
+    slot_id: slotId,
+    row_type: "slot",
+    kind: "",
+    keep_unit: trim(slot.keep_unit),
+    interpretation_1: trim(slot.interpretation_1),
+    interpretation_2: trim(slot.interpretation_2),
+    interpretations_meaningfully_different: trim(slot.interpretations_meaningfully_different),
+    invites_repeated_clarification: "",
+    clarification_target: trim(slot.clarification_target),
+    must_not_confirm_element_ids: exportIds(slot.must_not_confirm_element_ids, true, true),
+    maintenance_affected_ids: "",
+    maintenance_unaffected_ids: "",
+    notes: trim(slot.notes)
+  };
+}
+function buildRows() {
+  const rows = [];
+  SCENARIOS.forEach((sc) => {
+    const src = packOf(sc).scenario;
+    const isMaint = src.kind === "maintenance";
+    rows.push({
+      annotator: state.annotator,
+      scenario_id: sc.id,
+      slot_id: "",
+      row_type: "scenario",
+      kind: trim(src.kind),
+      keep_unit: trim(src.keep_unit),
+      interpretation_1: "",
+      interpretation_2: "",
+      interpretations_meaningfully_different: "",
+      invites_repeated_clarification: trim(src.invites_repeated_clarification),
+      clarification_target: "",
+      must_not_confirm_element_ids: "",
+      maintenance_affected_ids: exportIds(src.maintenance_affected_ids, isMaint, false),
+      maintenance_unaffected_ids: exportIds(src.maintenance_unaffected_ids, isMaint, false),
+      notes: trim(src.notes)
+    });
+    sc.slots.forEach((slot) => {
+      const row = slotRow(slot.id, packOf(sc).slots[slot.id]);
+      row.scenario_id = sc.id;
+      rows.push(row);
+    });
+    packOf(sc).extra.forEach((slot) => {
+      const blank = ![slot.slot_id, slot.keep_unit, slot.interpretation_1, slot.interpretation_2, slot.interpretations_meaningfully_different, slot.clarification_target, slot.must_not_confirm_element_ids, slot.notes].some((value) => trim(value));
+      if (blank) return;
+      const row = slotRow(trim(slot.slot_id), slot);
+      row.scenario_id = sc.id;
+      rows.push(row);
+    });
+  });
+  return rows;
+}
+function buildPayload(status) {
+  const who = person();
+  return {
+    pack: "study-a-annotation",
+    version: 1,
+    annotator: who.id,
+    annotatorName: who.name,
+    status,
+    updatedAt: new Date().toISOString(),
+    lockedAt: status === "locked" ? (state.lockedAt || new Date().toISOString()) : null,
+    columns: COLUMNS,
+    rows: buildRows()
+  };
+}
+function csvEscape(value) {
+  const text = value == null ? "" : String(value);
+  if (/[",\r\n]/.test(text)) return '"' + text.replace(/"/g, '""') + '"';
+  return text;
+}
+function toCsv(rows) {
+  const lines = [COLUMNS.join(",")];
+  rows.forEach((row) => lines.push(COLUMNS.map((key) => csvEscape(row[key])).join(",")));
+  return "\uFEFF" + lines.join("\r\n") + "\r\n";
+}
+function filePair(status) {
+  const tag = person().file;
+  const locked = status === "locked";
+  const payload = buildPayload(status);
+  return {
+    jsonName: locked ? "annotator-" + tag + "-locked.json" : "annotator-" + tag + ".json",
+    csvName: locked ? "annotator-" + tag + "-locked.csv" : "annotator-" + tag + ".csv",
+    jsonText: JSON.stringify(payload, null, 2),
+    csvText: toCsv(payload.rows)
+  };
+}
+function downloadText(filename, text, mime) {
+  const blob = new Blob([text], { type: mime + ";charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+  return url;
+}
+function rememberUrl(url) {
+  blobUrls.push(url);
+  if (blobUrls.length > 12) URL.revokeObjectURL(blobUrls.shift());
+}
+function refreshDraftLinks() {
+  if (!state.annotator) return;
+  setDownloadAnchors(filePair(state.locked ? "locked" : "draft"));
+}
+function setDownloadAnchors(files) {
+  const box = document.getElementById("live-downloads");
+  if (!box) return;
+  box.innerHTML = "";
+  [["jsonName", "jsonText", "application/json"], ["csvName", "csvText", "text/csv"]].forEach(([nameKey, textKey, mime]) => {
+    const url = URL.createObjectURL(new Blob([files[textKey]], { type: mime + ";charset=utf-8" }));
+    rememberUrl(url);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = files[nameKey];
+    link.textContent = files[nameKey];
+    box.appendChild(link);
+  });
+}
+function clickDownloads() {
+  document.querySelectorAll("#live-downloads a").forEach((link) => link.click());
+}
+async function writeNamedFile(dir, name, text) {
+  const handle = await dir.getFileHandle(name, { create: true });
+  const writable = await handle.createWritable();
+  await writable.write(text);
+  await writable.close();
+}
+function scheduleDirWrite(status) {
+  if (!state.dirHandle) return;
+  clearTimeout(dirTimer);
+  dirTimer = setTimeout(() => writeDir(status), 500);
+}
+async function writeDir(status) {
+  if (!state.dirHandle) return;
+  const files = filePair(status);
+  try {
+    await writeNamedFile(state.dirHandle, files.jsonName, files.jsonText);
+    await writeNamedFile(state.dirHandle, files.csvName, files.csvText);
+    state.lastDirAt = new Date().toISOString();
+    updateChrome();
+  } catch (err) {
+    toast("写入文件夹失败。请重新绑定，或用下载按钮。");
+  }
+}
+function toast(message) {
+  const node = document.getElementById("toast");
+  node.textContent = message;
+  node.classList.remove("hidden");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => node.classList.add("hidden"), Math.min(12000, 3500 + String(message).length * 130));
+}
+function openModal(opts) {
+  const root = document.getElementById("modal-root");
+  const links = (opts.files || []).map((file) => {
+    const url = URL.createObjectURL(new Blob([file.text], { type: file.mime + ";charset=utf-8" }));
+    rememberUrl(url);
+    return '<a download="' + esc(file.name) + '" href="' + url + '">' + esc(file.name) + "</a>";
+  }).join("");
+  root.innerHTML = '<div class="modal-back" id="modal-back"><div class="modal' + (opts.wide ? " wide" : "") + '" role="dialog" aria-modal="true"><h3>' +
+    esc(opts.title) + "</h3>" + opts.body + (links ? '<div class="dl-list">' + links + "</div>" : "") +
+    '<div class="row"><button type="button" class="btn" id="modal-ok">' + esc(opts.confirmText || "确定") +
+    "</button>" + (opts.cancelText === null ? "" : '<button type="button" class="btn secondary" id="modal-cancel">' + esc(opts.cancelText || "返回") + "</button>") +
+    "</div></div></div>";
+  document.getElementById("modal-ok").onclick = () => { root.innerHTML = ""; opts.onConfirm && opts.onConfirm(); };
+  const cancelBtn = document.getElementById("modal-cancel");
+  if (cancelBtn) cancelBtn.onclick = () => { root.innerHTML = ""; opts.onCancel && opts.onCancel(); };
+  document.getElementById("modal-ok").focus();
+}
+function closeModal() { document.getElementById("modal-root").innerHTML = ""; }
+
+var DEMO_HTML = [
+  '<p>这是一道<strong>虚构的示范题</strong>，不是你 15 题里的任何一道。我们用它把所有空格走一遍，你照着填自己的题就行。</p>',
+  '<div class="demo-row"><b>示范题的原文（虚构）</b>系统支持员工预约通勤班车座位。发车前 30 分钟可以取消预约。发车时间到了还有人没到场时，座位按现行规定处理。</div>',
+  '<div class="demo-row"><b>先找出破绽在哪</b>最后一句写了「按现行规定处理」，但整段原文里根本没有这条规定，也查不到。于是读者可以合理地读出好几种结果——这就是「本来该由业务方拍板、原文却没说」的选择。</div>',
+  '<div class="demo-row"><b>第 1 项 属于哪一类</b>选 <code>underspecified</code>。判断标准就一句话：认真读完之后，我还能提出至少一种同样说得通、但会让系统做法不一样的读法。</div>',
+  '<div class="demo-row"><b>第 2 项 这道题要不要保留</b>选「是」。题目本身立得住：它是真实的业务需求，破绽也确实存在。</div>',
+  '<div class="demo-row"><b>第 3 项 读完之后还想追问吗</b>选「是」。我很想追问一句「座位到底保不保」，而且答案不同，系统的做法就不同。</div>',
+  '<div class="demo-row"><b>候选问题 seat-on-late：这一栏是 1→7 七个小项</b></div>',
+  '<div class="demo-row"><b>　1 这里真的有没定下来的选择吗</b>选「是」。</div>',
+  '<div class="demo-row"><b>　2 方案 A</b>没到场的员工仍然占着座位，一直保留到发车，不释放给候补。</div>',
+  '<div class="demo-row"><b>　3 方案 B</b>发车前 10 分钟仍未到场，座位自动释放，分给候补名单上的下一位。</div>',
+  '<div class="demo-row"><b>　4 两套方案真的不同吗</b>选「是」。方案 A 里候补的人拿不到座位，方案 B 里拿得到——这就是「系统做法不同」。</div>',
+  '<div class="demo-row"><b>　5 要问清哪一件事</b>发车前多久还没到场，就要把座位放给候补？还是保留到发车为止？（写出要问的那句话，不要写你猜的答案。）</div>',
+  '<div class="demo-row"><b>　6 答复前不能当成「已经定了」的条目</b><code>proc:Bus.HoldSeat;inv:Bus.ReleaseLateSeat</code><br>读法：在业务方答复之前，这两条不能再写成某一种确定的做法，先挂起来等答复。想不出具体编号就写「无」。</div>',
+  '<div class="demo-row"><b>　7 备注</b>原文只写了「按现行规定处理」，但原文里没有任何规定可查。</div>',
+  '<div class="demo-row"><b>反过来看：如果原文写清了，就不该保留</b>假如原文改成：「发车前 30 分钟仍未到场，座位立即释放给候补名单上的下一位。」——时间、动作、对象全写死了，读不出第二种会改变做法的理解。这时第 1 项选 <code>clear-control</code>，第 3 项必须选「否」。</div>',
+  '<p>看完可以关掉这一页，回到题目继续填。填不准不要紧，<strong>把理由写在备注里比留空有用得多</strong>。</p>'
+].join("");
+function showDemo() {
+  openModal({ title: "一道题的完整示范", body: DEMO_HTML, wide: true, confirmText: "知道了，去填题", cancelText: null });
+}
+
+function ynField(name, field, value, scope, slotKey, extraIndex) {
+  const attrs = ' data-field="' + field + '" data-scope="' + scope + '"' +
+    (slotKey ? ' data-slot="' + esc(slotKey) + '"' : "") +
+    (extraIndex !== null && extraIndex !== undefined ? ' data-extra="' + extraIndex + '"' : "");
+  return '<div class="yn">' + ["yes", "no"].map((item) =>
+    '<label><input type="radio" name="' + name + '" value="' + item + '"' + attrs + (value === item ? " checked" : "") + "> " + YN_LABEL[item] + "</label>"
+  ).join("") + "</div>";
+}
+function textField(field, value, scope, slotKey, extraIndex, multiline) {
+  const attrs = ' data-field="' + field + '" data-scope="' + scope + '"' +
+    (slotKey ? ' data-slot="' + esc(slotKey) + '"' : "") +
+    (extraIndex !== null && extraIndex !== undefined ? ' data-extra="' + extraIndex + '"' : "") +
+    (state.locked ? " disabled" : "");
+  if (multiline) return '<textarea' + attrs + ">" + esc(value) + "</textarea>";
+  return '<input type="text" autocomplete="off"' + attrs + ' value="' + esc(value) + '">';
+}
+function example(text) {
+  return '<p class="example">编号示例：<code>' + esc(text) + "</code></p>";
+}
+function hint(text) {
+  return '<p class="example">示例：' + text + "</p>";
+}
+function noneButton(field, scope, slotKey, extraIndex) {
+  if (state.locked) return "";
+  return '<div class="row-actions"><button type="button" class="btn secondary small" data-action="fill-none" data-field="' + field +
+    '" data-scope="' + scope + '"' + (slotKey ? ' data-slot="' + esc(slotKey) + '"' : "") +
+    (extraIndex !== null && extraIndex !== undefined ? ' data-extra="' + extraIndex + '"' : "") + ">没有就填「无」</button></div>";
+}
+function scenarioFields(sc) {
+  const row = packOf(sc).scenario;
+  const maint = row.kind === "maintenance";
+  const kindCards = KINDS.map(([value, help]) =>
+    '<label class="choice"><input type="radio" name="kind-' + sc.id + '" value="' + value + '" data-field="kind" data-scope="scenario"' +
+    (row.kind === value ? " checked" : "") + (state.locked ? " disabled" : "") + "><span><b>" + value + "</b><small>" + help + "</small></span></label>"
+  ).join("");
+  return [
+    '<div class="field" data-wrap="kind"><div class="legend">1. 这道题属于哪一类？<span class="col">kind</span></div><p class="help">先选这一项，下面要填的内容会跟着它变。三类里选一个。括号里的英文就是导出表格里会写的值，不用你改。</p><div class="choices">' + kindCards + "</div></div>",
+    '<div class="field" data-wrap="keep_unit"><div class="legend">2. 这道题本身要不要保留？<span class="col">keep_unit</span></div><p class="help">这里判断的是「这道题作为一道题站不站得住」——需求是否清楚、是否真的有一个没定的选择、有没有写错。<b>拿不准就选「是」</b>，再在备注里写一句理由。最终留不留由协调人汇总决定。</p>' + ynField("keep-" + sc.id, "keep_unit", row.keep_unit, "scenario") + "</div>",
+    '<div class="field" data-wrap="invites_repeated_clarification"><div class="legend">3. 读完之后，还会想再追问吗？<span class="col">invites_repeated_clarification</span></div><p class="help">假设你是个很较真的读者：读完这段原文，你还会想追问一个「答错了、系统做法就会变」的问题吗？（追问另一个数字也算。）<br>选<b>「是」</b>＝还会想追问；选<b>「否」</b>＝原文已经说清，没什么可问的。<br>注意：选了 <code>clear-control</code> 的题，这里必须是「否」——这类题本来就是拿来对照「读不出问题」的。</p>' + ynField("invites-" + sc.id, "invites_repeated_clarification", row.invites_repeated_clarification, "scenario") + "</div>",
+    '<p class="skip-note"' + (maint ? " hidden" : "") + ' id="maint-skip">当前类型不是 maintenance，所以「要改到哪些条目 / 哪些要保持原样」两栏会留空（导出时不上报）。</p>',
+    '<div id="maint-fields"' + (maint ? "" : " hidden") + ">",
+    '<div class="field" data-wrap="maintenance_affected_ids"><div class="legend">这次改动应该碰到哪些条目？<span class="col">maintenance_affected_ids</span></div><p class="help">「条目」就是规格里的零件：一个过程、一条约束、一个数据类型。写它们的编号，多个用<b>英文分号</b> <code>;</code> 隔开。编号只有三种写法：<code>proc:区域.名称</code>（过程）、<code>inv:区域.名称</code>（约束）、<code>type:区域.名称</code>（数据类型）。不要和下一栏写重复的。</p>' + textField("maintenance_affected_ids", row.maintenance_affected_ids, "scenario", "", null, false) + example("proc:Bus.SellTicket") + "</div>",
+    '<div class="field" data-wrap="maintenance_unaffected_ids"><div class="legend">哪些条目要保持原样？<span class="col">maintenance_unaffected_ids</span></div><p class="help">这次改动<b>不应该</b>碰到的条目——虽然也在同一段需求里，但和这次要改的规则无关。写法同上。</p>' + textField("maintenance_unaffected_ids", row.maintenance_unaffected_ids, "scenario", "", null, false) + example("inv:Bus.DriverShift") + "</div>",
+    "</div>",
+    '<div class="field" data-wrap="notes"><div class="legend">4. 备注<span class="col">notes</span></div><p class="help">一句话说明你的判断理由，或者写你不确定的地方。没有就写「无」。注意：判断只写在上面各栏，这里不要另写一套结论。<br>如果是交卷以后才发现编号写错了，就写「笔误：原编号 …，应为 …」。</p>' + textField("notes", row.notes, "scenario", "", null, true) + noneButton("notes", "scenario") + "</div>"
+  ].join("");
+}
+function slotFields(scope, slotKey, extraIndex, slot) {
+  const nameBase = scope + "-" + (slotKey || "x" + extraIndex);
+  return [
+    '<div class="field" data-wrap="keep_unit"><div class="legend">1. 这里真的有「没定下来的选择」吗？<span class="col">keep_unit</span></div><p class="help">选<b>「是」</b>＝确实有：下面你要写两种都说得通、但系统做法不同的方案。<br>选<b>「否」</b>＝原文其实已经说清了，或者两种读法做出来的系统一模一样——这时「两种方案是否真的不同」那一项要选「否」。</p>' + ynField(nameBase + "-keep", "keep_unit", slot.keep_unit, scope, slotKey, extraIndex) + "</div>",
+    '<div class="field" data-wrap="interpretation_1"><div class="legend">2. 方案 A<span class="col">interpretation_1</span></div><p class="help">写清系统会怎么做：做什么、收多少钱、允许什么、留下什么记录。用完整的句子，不要只换同义词。</p>' + textField("interpretation_1", slot.interpretation_1, scope, slotKey, extraIndex, true) + hint("（示范题里的写法）迟到的员工仍然占着座位，一直留到发车。") + "</div>",
+    '<div class="field" data-wrap="interpretation_2"><div class="legend">3. 方案 B<span class="col">interpretation_2</span></div><p class="help">必须和方案 A 真的不一样：做的事不同、收的钱不同、允许的事不同，或者留下的记录不同。同一条规则换个说法不算。</p>' + textField("interpretation_2", slot.interpretation_2, scope, slotKey, extraIndex, true) + hint("（示范题里的写法）发车前十分钟还没到，座位就放给候补的人。") + "</div>",
+    '<div class="field" data-wrap="interpretations_meaningfully_different"><div class="legend">4. 这两套方案真的不同吗？<span class="col">interpretations_meaningfully_different</span></div><p class="help">把上面两栏写完再选这一项。选了「保留」时，这一项必须是「是」；选了「不保留」时，必须是「否」。</p>' + ynField(nameBase + "-diff", "interpretations_meaningfully_different", slot.interpretations_meaningfully_different, scope, slotKey, extraIndex) + "</div>",
+    '<div class="field" data-wrap="clarification_target"><div class="legend">5. 要问清哪一件事，才能定下来？<span class="col">clarification_target</span></div><p class="help">写出还缺的那一条信息，要能问一句话就把事情定下来。<b>写「要问什么」，不要写你猜的答案。</b></p>' + textField("clarification_target", slot.clarification_target, scope, slotKey, extraIndex, true) + hint("（示范题里的写法）员工迟到之后，原座位还留不留？") + "</div>",
+    '<div class="field" data-wrap="must_not_confirm_element_ids"><div class="legend">6. 对方回答之前，哪些条目不能当成「已经定了」？<span class="col">must_not_confirm_element_ids</span></div><p class="help">换个说法：如果现在就把这个选择当成某一种做法写进规格，会<b>把哪些条目写死</b>？把这些条目的编号填在这里，意思是「先别定，等答复」。<br>写法同前面：<code>proc:区域.名称</code>、<code>inv:区域.名称</code>、<code>type:区域.名称</code>，多个用<b>英文分号</b> <code>;</code> 隔开。实在想不出就写「无」。</p>' + textField("must_not_confirm_element_ids", slot.must_not_confirm_element_ids, scope, slotKey, extraIndex, false) + noneButton("must_not_confirm_element_ids", scope, slotKey, extraIndex) + example("proc:Bus.HoldSeat;inv:Bus.ReleaseLateSeat") + "</div>",
+    '<div class="field" data-wrap="notes"><div class="legend">7. 备注<span class="col">notes</span></div><p class="help">一句话说明理由，或者写你不确定的地方。没有就写「无」。</p>' + textField("notes", slot.notes, scope, slotKey, extraIndex, true) + noneButton("notes", scope, slotKey, extraIndex) + "</div>"
+  ].join("");
+}
+function renderScenario(sc) {
+  const slotHtml = sc.slots.map((slot) =>
+    '<section class="card"><p class="eyebrow">候选问题 ' + esc(slot.id) + ' · 下面 7 项</p><p class="q-en">' + esc(slot.en) + '</p><p class="q-zh">' + esc(slot.zh) + '</p><p class="fine">这里问的是「该不该停下来问一句」，不是让你给出答案——答案由业务方给。下面 7 项都填完，这个候选问题才算处理过。</p><div class="keys"><span class="key">导出时列为 slot_id=' + esc(slot.id) + '</span><span class="key">导出时列为 row_type=slot</span></div>' +
+    slotFields("slot", slot.id, null, packOf(sc).slots[slot.id]) + "</section>"
+  ).join("");
+  const extraHtml = packOf(sc).extra.map((slot, index) =>
+    '<section class="card"><p class="eyebrow">你补充的问题</p><p class="help">这是你自己加的，所以要起一个短名当编号。规则：只用<b>小写英文字母、数字和连字符</b>，并且不能和已有编号重名。已有：' +
+    esc(sc.slots.map((item) => item.id).join("、") || "无") + "。</p>" +
+    (state.locked ? "" : '<div class="row-actions"><button type="button" class="btn ghost small" data-action="remove-extra" data-extra="' + index + '">删掉这个补充问题</button></div>') +
+    '<div class="field" data-wrap="slot_id"><div class="legend">给这个补充问题起个编号<span class="col">slot_id</span></div><p class="help">举个例子：如果你要问「超时之后收不收违约金」，可以叫 <code>late-fee</code>。以后导出时，这道题就用这个编号标记。</p>' + textField("slot_id", slot.slot_id || "", "extra", "", index, false) + "</div>" +
+    slotFields("extra", "", index, slot) + "</section>"
+  ).join("");
+  const add = state.locked ? "" : '<div class="row-actions"><button type="button" class="btn secondary" data-action="add-extra">我也发现了一个候选问题，补充进来</button></div>';
+  return [
+    '<section class="card"><p class="eyebrow">第 ' + (state.index + 1) + " 题，共 15 题</p><h2>" + sc.id + " · " + esc(sc.nav) + "</h2>",
+    '<div class="keys"><span class="key">标注员 ' + state.annotator + "</span><span class=\"key\">scenario_id=" + sc.id + '</span><span class="key">row_type=scenario</span></div>',
+    '<p class="fine">左边几行小字是导出表格里的表头名，不是你输入的东西，不用去改它——你在下面填的内容会自动对应到那一列。每题先读原文，再按 1→3 的顺序判断，最后逐条看候选问题。</p></section>',
+    '<section class="card"><h3>需求</h3><p class="en">' + esc(sc.nl) + '</p><div class="zh-box"><span class="tag">中文译文</span><p class="en">' + esc(sc.nlZh) + '</p><p class="fine">和英文不一致时，以英文为准。</p></div></section>',
+    '<section class="card"><h3>非正式说明</h3><pre class="en">' + esc(sc.informal) + '</pre><div class="zh-box"><span class="tag">中文译文</span><pre class="zh">' + esc(sc.informalZh) + '</pre><p class="fine">和英文不一致时，以英文为准。</p></div></section>',
+    '<section class="card checks"><h3>填之前，先过两道关</h3><p><strong>关一：能不能想出两套做法？</strong> 只要你说「这里没定」，就必须写出两套方案，而且这两套会让系统的做法不一样——做的事不同、收的钱不同、允许的事不同，或留下的记录不同。只想得出一套，说明这里其实是定下来的。</p><p><strong>关二：说「已经写死了」，就更不该再想问什么。</strong> 如果一道题你归到「已经写死了」这一类，却还觉得有个问题非问不可，那多半是归错了类，回去改第 1 项。</p></section>',
+    '<section class="card"><h3>场景判断</h3><div id="error-box" class="error-box" hidden></div>' + scenarioFields(sc) + "</section>",
+    sc.slots.length ? slotHtml : '<section class="card"><h3>候选问题</h3><p class="help">这份材料没有预先列出候选问题。如果你读完觉得原文确实还有说不清的地方，就用下面的按钮自己补一个；如果你觉得没有，就不用加。</p></section>',
+    extraHtml,
+    add,
+    '<div class="footer-nav"><div class="card"><button type="button" class="btn secondary" data-action="prev"' + (state.index === 0 ? " disabled" : "") + '>上一题</button><button type="button" class="btn secondary" data-action="demo">忘了怎么填？看示范</button><button type="button" class="btn secondary" data-action="check">检查本题</button><button type="button" class="btn" data-action="next"' + (state.index === SCENARIOS.length - 1 ? " disabled" : "") + ">下一题</button></div></div>"
+  ].join("");
+}
+function renderOverview() {
+  const rows = SCENARIOS.map((sc) => {
+    const status = scenarioStatus(sc);
+    const label = status === "done" ? "已完成" : status === "partial" ? "未完成" : "未填";
+    const kind = packOf(sc).scenario.kind || "—";
+    const kept = sc.slots.filter((slot) => packOf(sc).slots[slot.id].keep_unit === "yes").map((slot) => slot.id);
+    packOf(sc).extra.forEach((slot) => { if (slot.keep_unit === "yes" && trim(slot.slot_id)) kept.push(trim(slot.slot_id)); });
+    return "<tr><td><button type=\"button\" class=\"link\" data-goto=\"" + sc.id + "\">" + sc.id + " " + esc(sc.nav) + "</button></td><td>" + label + "</td><td class=\"mono\">" + esc(kind) + "</td><td>" + esc(kept.join("、") || "—") + "</td></tr>";
+  }).join("");
+  const errors = state.lockAttempted ? validateAll() : [];
+  return '<section class="card overview"><p class="eyebrow">十五题</p><h2>总览</h2><p class="help">这里能看到 15 题各自的进度。点题目名可以跳回去接着填。全部完成后，点右上角「交卷：导出并锁定」。</p>' +
+    (errors.length ? '<div class="error-box">还有 ' + errors.length + " 处需要修改。点题目名可以跳到对应位置。</div>" : "") +
+    '<table><thead><tr><th>题目</th><th>进度</th><th>你选的类型</th><th>你标记为「没定下来」的</th></tr></thead><tbody>' + rows + "</tbody></table>" +
+    '<p class="fine">十五题不必一次填完。关掉网页也没关系——答案留在这台电脑的浏览器里，下次打开接着填。</p>' +
+    '<details class="fine"><summary>导出表格的列名（技术信息，看不看都行）</summary><p>导出的 CSV/JSON 与后台表同列：' + COLUMNS.map((key) => "<code>" + key + "</code>").join("、") + "。</p></details></section>";
+}
+function renderMain() {
+  const main = document.getElementById("main");
+  main.innerHTML = state.view === "overview" ? renderOverview() : renderScenario(current());
+  if (state.locked) main.querySelectorAll("input, textarea").forEach((el) => { el.disabled = true; });
+  if (state.forceErrors && state.view === "scenario") paintErrors(validateScenario(current()));
+  updateChrome();
+  refreshDraftLinks();
+}
+function renderNav() {
+  document.getElementById("nav").innerHTML = SCENARIOS.map((sc) =>
+    '<button type="button" class="nav-btn" data-goto="' + sc.id + '"><span class="sid">' + sc.id + '</span><span class="slabel">' + esc(sc.nav) + '</span><span class="dot"></span></button>'
+  ).join("");
+}
+function updateChrome() {
+  const done = state.annotator ? doneCount() : 0;
+  document.getElementById("progress-text").textContent = "已完成 " + done + "/15";
+  document.getElementById("progress-bar").style.width = (done / 15 * 100) + "%";
+  const saved = state.lastSavedAt ? "已保存在这台电脑 · " + state.lastSavedAt.slice(11, 16) : "填了就会自动保存";
+  const dir = state.lastDirAt ? " · 已存入文件夹" : (state.dirHandle ? " · 文件夹还没写入" : "");
+  const lock = state.locked ? " · 已交卷" : "";
+  document.getElementById("save-text").textContent = saved + dir + lock;
+  document.querySelectorAll(".nav-btn").forEach((btn) => {
+    const sc = SCENARIOS.find((item) => item.id === btn.dataset.goto);
+    btn.classList.toggle("current", state.view === "scenario" && sc.id === current().id);
+    btn.classList.remove("done", "partial", "empty");
+    btn.classList.add(scenarioStatus(sc));
+  });
+  document.getElementById("lock-btn").textContent = state.locked ? "重新下载交卷文件" : "交卷：导出并锁定";
+  document.getElementById("overview-btn").textContent = state.view === "overview" ? "返回题目" : "总览";
+  document.getElementById("save-btn").hidden = state.locked;
+  const who = person();
+  document.getElementById("mark").textContent = who.id;
+  document.getElementById("brand-name").textContent = "标注员 " + who.id;
+  document.getElementById("brand-meta").textContent = who.name;
+  document.title = (state.view === "overview" ? "总览" : current().id) + " · Study A 标注";
+}
+function paintErrors(errors) {
+  document.querySelectorAll(".err").forEach((node) => node.remove());
+  document.querySelectorAll(".field.invalid").forEach((node) => node.classList.remove("invalid"));
+  const box = document.getElementById("error-box");
+  if (!box) return;
+  if (!errors.length) { box.hidden = true; box.innerHTML = ""; return; }
+  box.hidden = false;
+  box.innerHTML = "<strong>这一题还有 " + errors.length + " 处要改</strong><ul>" + errors.map((err) => "<li>" + esc(err.message) + "</li>").join("") + "</ul><p>下面标红的地方就是它们的位置。</p>";
+  errors.forEach((err) => {
+    const field = findField(err);
+    if (!field) return;
+    field.classList.add("invalid");
+    field.insertAdjacentHTML("beforeend", '<p class="err">' + esc(err.message) + "</p>");
+  });
+}
+function findField(err) {
+  const fields = document.querySelectorAll(".field");
+  return Array.from(fields).find((field) => {
+    const input = field.querySelector("[data-field]");
+    if (!input || input.dataset.field !== err.field) return false;
+    if (err.extraIndex !== null && err.extraIndex !== undefined) return input.dataset.extra === String(err.extraIndex);
+    if (err.slotId) return input.dataset.slot === err.slotId;
+    return input.dataset.scope === "scenario";
+  });
+}
+function targetSlot(el) {
+  const sc = pack();
+  if (el.dataset.scope === "scenario") return sc.scenario;
+  if (el.dataset.scope === "slot") return sc.slots[el.dataset.slot];
+  return sc.extra[Number(el.dataset.extra)];
+}
+function onField(event) {
+  if (state.locked) return;
+  const el = event.target;
+  if (!el.dataset || !el.dataset.field) return;
+  if (el.type === "radio" && !el.checked) return;
+  const slot = targetSlot(el);
+  if (!slot) return;
+  slot[el.dataset.field] = el.value;
+  if (el.dataset.field === "kind" && el.dataset.scope === "scenario" && el.value !== "maintenance") {
+    slot.maintenance_affected_ids = "";
+    slot.maintenance_unaffected_ids = "";
+    document.querySelectorAll('#maint-fields [data-field]').forEach((input) => { input.value = ""; });
+  }
+  if (el.dataset.field === "kind") {
+    const show = el.value === "maintenance";
+    document.getElementById("maint-fields").hidden = !show;
+    document.getElementById("maint-skip").hidden = show;
+  }
+  persistLocal();
+  if (state.forceErrors && state.view === "scenario") paintErrors(validateScenario(current()));
+}
+function gotoScenario(id) {
+  const index = SCENARIOS.findIndex((sc) => sc.id === id);
+  if (index < 0) return;
+  state.index = index;
+  state.view = "scenario";
+  history.replaceState(null, "", "#" + id);
+  renderMain();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+function addExtra() {
+  if (state.locked) return;
+  const slot = emptySlot();
+  slot.slot_id = "";
+  pack().extra.push(slot);
+  persistLocal();
+  renderMain();
+}
+function fillNone(button) {
+  if (state.locked) return;
+  const fake = { dataset: button.dataset, value: "无", type: "text" };
+  const slot = targetSlot(button);
+  slot[button.dataset.field] = "无";
+  const selector = '[data-field="' + button.dataset.field + '"][data-scope="' + button.dataset.scope + '"]' +
+    (button.dataset.slot ? '[data-slot="' + button.dataset.slot + '"]' : "") +
+    (button.dataset.extra !== undefined ? '[data-extra="' + button.dataset.extra + '"]' : "");
+  document.querySelectorAll(selector).forEach((input) => { if (input.tagName !== "BUTTON") input.value = "无"; });
+  persistLocal();
+  if (state.forceErrors) paintErrors(validateScenario(current()));
+}
+function saveDraft() {
+  if (!state.annotator || state.locked) return;
+  persistLocal();
+  const files = filePair("draft");
+  setDownloadAnchors(files);
+  downloadText(files.jsonName, files.jsonText, "application/json");
+  downloadText(files.csvName, files.csvText, "text/csv");
+  writeDir("draft");
+  toast("已下载 " + files.jsonName + " 和 " + files.csvName + "，答案也留在这台电脑上。这两个文件是备份用的，最后交卷还是要点「交卷：导出并锁定」。");
+}
+function doLock() {
+  state.locked = true;
+  state.lockedAt = new Date().toISOString();
+  persistLocal();
+  const files = filePair("locked");
+  setDownloadAnchors(files);
+  downloadText(files.jsonName, files.jsonText, "application/json");
+  downloadText(files.csvName, files.csvText, "text/csv");
+  writeDir("locked");
+  renderMain();
+  openModal({
+    title: "已交卷",
+    body: "<p>下面这两个文件已经下载好了，请把它们原样交给协调人。</p><p>这一页现在已经变成只读，你的判断不能再改。如果只是误点、还没交出去，点下面的「撤销，继续改」就能恢复。</p>",
+    files: [
+      { name: files.jsonName, text: files.jsonText, mime: "application/json" },
+      { name: files.csvName, text: files.csvText, mime: "text/csv" }
+    ],
+    confirmText: "好，我知道了",
+    cancelText: "撤销，继续改",
+    onCancel: unlockLocal
+  });
+}
+function requestLock() {
+  if (state.locked) {
+    const files = filePair("locked");
+    downloadText(files.jsonName, files.jsonText, "application/json");
+    downloadText(files.csvName, files.csvText, "text/csv");
+    toast("交卷文件又重新下载了一份（内容和上次一样）。");
+    return;
+  }
+  state.forceErrors = true;
+  state.lockAttempted = true;
+  const errors = validateAll();
+  renderMain();
+  if (errors.length) {
+    openModal({
+      title: "还有 " + errors.length + " 处没填完",
+      body: "<p>先把下面这些填好，就能交卷了。还没有生成任何交卷文件。</p><ul>" +
+        errors.slice(0, 8).map((err) => "<li>" + esc(err.scenarioId) + "：" + esc(err.message) + "</li>").join("") +
+        (errors.length > 8 ? "<li>…（还有 " + (errors.length - 8) + " 处）</li>" : "") + "</ul>",
+      confirmText: "带我去第一处",
+      cancelText: "先留在这里",
+      onConfirm: () => gotoScenario(errors[0].scenarioId)
+    });
+    return;
+  }
+  const rows = buildRows();
+  const who = person();
+  openModal({
+    title: "准备交卷",
+    body: "<p>接下来会下载两个文件：<code>annotator-" + who.file + "-locked.json</code> 和 <code>annotator-" + who.file + "-locked.csv</code>，一共 " + rows.length + " 行。请把这两个文件交给协调人。</p><p><b>交卷之后这一页就变成只读了</b>，所以在点「确认交卷」之前，请再确认两件事：十五题都填过了；<b>还没有跟另一位标注员对过答案</b>。</p>",
+    confirmText: "确认交卷",
+    cancelText: "返回再改改",
+    onConfirm: doLock
+  });
+}
+function unlockLocal() {
+  state.locked = false;
+  state.lockedAt = null;
+  persistLocal();
+  renderMain();
+  toast("已撤销交卷，可以继续修改了。刚才下载的那两个文件还在你的下载文件夹里，请删掉它们，以免和重新交卷的文件混淆。");
+}
+async function bindDirectory() {
+  if (!window.showDirectoryPicker) {
+    toast("现在这个打开方式不支持直接存文件夹（多半是双击网页文件打开的）。不影响填写：请用「下载备份」手动保存。");
+    return;
+  }
+  try {
+    state.dirHandle = await window.showDirectoryPicker({ mode: "readwrite", id: "study-a-annotator" });
+    await storeDirHandle(state.dirHandle);
+    await writeDir(state.locked ? "locked" : "draft");
+    toast("已选好文件夹。之后每次改动都会自动更新里面的 JSON 和 CSV，不用再手动下载。");
+  } catch (err) {
+    if (err && err.name !== "AbortError") toast("没有拿到文件夹权限，这次没有绑定成功。可以再试一次，或者用「下载备份」。");
+  }
+}
+function idb() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open("study-a-annotator", 1);
+    req.onupgradeneeded = () => req.result.createObjectStore("kv");
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+async function storeDirHandle(handle) {
+  const db = await idb();
+  await new Promise((resolve, reject) => {
+    const tx = db.transaction("kv", "readwrite");
+    tx.objectStore("kv").put(handle, "dir");
+    tx.oncomplete = resolve;
+    tx.onerror = () => reject(tx.error);
+  });
+}
+function applyImport(data) {
+  const letter = data.annotator === "B" ? "B" : data.annotator === "A" ? "A" : null;
+  if (!letter || !Array.isArray(data.rows)) {
+    toast("这个文件读不出标注内容。请确认选的是本页导出的 .json 文件（文件名以 annotator-A 或 annotator-B 开头）。");
+    return;
+  }
+  state.annotator = letter;
+  state.answers = blankAnswers();
+  data.rows.forEach((row) => {
+    const sc = SCENARIOS.find((item) => item.id === row.scenario_id);
+    if (!sc || typeof row !== "object") return;
+    if (row.row_type === "scenario" && !trim(row.slot_id)) {
+      const scenario = state.answers[sc.id].scenario;
+      ["kind", "keep_unit", "invites_repeated_clarification", "maintenance_affected_ids", "maintenance_unaffected_ids", "notes"].forEach((key) => {
+        if (typeof row[key] === "string") scenario[key] = row[key];
+      });
+      return;
+    }
+    if (row.row_type !== "slot") return;
+    const slotId = trim(row.slot_id);
+    const preset = state.answers[sc.id].slots[slotId];
+    const target = preset || emptySlot();
+    if (!preset) target.slot_id = slotId;
+    ["keep_unit", "interpretation_1", "interpretation_2", "interpretations_meaningfully_different", "clarification_target", "must_not_confirm_element_ids", "notes"].forEach((key) => {
+      if (typeof row[key] === "string") target[key] = row[key];
+    });
+    if (!preset) state.answers[sc.id].extra.push(target);
+  });
+  state.locked = data.status === "locked";
+  state.lockedAt = state.locked ? (data.lockedAt || new Date().toISOString()) : null;
+  state.index = 0;
+  state.view = "scenario";
+  document.getElementById("gate").classList.add("hidden");
+  document.getElementById("app").classList.remove("hidden");
+  renderNav();
+  persistLocal();
+  renderMain();
+  toast("已载入标注员 " + letter + " 之前的文件，可以接着填。");
+}
+function readImportFile(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    try { applyImport(JSON.parse(String(reader.result))); }
+    catch (err) { toast("这个文件打不开：它可能不是本页导出的 .json，或者文件已经损坏。"); }
+  };
+  reader.readAsText(file);
+}
+function start(letter) {
+  state.annotator = letter;
+  try { localStorage.setItem("study-a-annotator-last", letter); } catch (err) {}
+  const saved = readStore(letter);
+  state.answers = normalizeAnswers(saved && saved.answers);
+  state.locked = !!(saved && saved.locked);
+  state.lockedAt = saved && saved.lockedAt || null;
+  state.lastSavedAt = saved && saved.updatedAt || null;
+  const hash = location.hash.replace("#", "");
+  const hashed = SCENARIOS.findIndex((sc) => sc.id === hash);
+  state.index = hashed >= 0 ? hashed : Math.min(saved && saved.index || 0, SCENARIOS.length - 1);
+  state.view = "scenario";
+  document.getElementById("gate").classList.add("hidden");
+  document.getElementById("app").classList.remove("hidden");
+  document.getElementById("bind-btn").hidden = !window.showDirectoryPicker;
+  renderNav();
+  renderMain();
+}
+function refreshGateStats() {
+  ["A", "B"].forEach((letter) => {
+    const saved = readStore(letter);
+    const node = document.getElementById("stat-" + letter);
+    if (!saved || !saved.answers) { node.textContent = "这台电脑上还没有填写记录"; return; }
+    state.annotator = letter;
+    state.answers = normalizeAnswers(saved.answers);
+    const done = doneCount();
+    node.textContent = saved.locked ? "已交卷过 · 完成 " + done + "/15" : "有没填完的记录 · 已完成 " + done + "/15，可以接着填";
+  });
+  state.annotator = null;
+  state.answers = {};
+}
+document.getElementById("gate").addEventListener("click", (event) => {
+  const button = event.target.closest("[data-pick]");
+  if (!button) return;
+  document.querySelectorAll(".person").forEach((node) => node.classList.toggle("selected", node === button));
+  document.getElementById("start-btn").disabled = false;
+  document.getElementById("start-btn").dataset.letter = button.dataset.pick;
+});
+document.getElementById("start-btn").onclick = () => start(document.getElementById("start-btn").dataset.letter);
+document.getElementById("demo-btn").onclick = showDemo;
+document.getElementById("import-gate").addEventListener("change", (event) => {
+  const file = event.target.files && event.target.files[0];
+  if (file) readImportFile(file);
+  event.target.value = "";
+});
+document.getElementById("main").addEventListener("input", onField);
+document.getElementById("main").addEventListener("change", onField);
+document.getElementById("main").addEventListener("click", (event) => {
+  const actionEl = event.target.closest("[data-action]");
+  const goto = event.target.closest("[data-goto]");
+  if (goto) { gotoScenario(goto.dataset.goto); return; }
+  if (!actionEl) return;
+  const action = actionEl.dataset.action;
+  if (action === "add-extra") addExtra();
+  if (action === "remove-extra") {
+    pack().extra.splice(Number(actionEl.dataset.extra), 1);
+    persistLocal();
+    renderMain();
+  }
+  if (action === "fill-none") fillNone(actionEl);
+  if (action === "demo") showDemo();
+  if (action === "prev" && state.index > 0) gotoScenario(SCENARIOS[state.index - 1].id);
+  if (action === "next" && state.index < SCENARIOS.length - 1) gotoScenario(SCENARIOS[state.index + 1].id);
+  if (action === "check") {
+    state.forceErrors = true;
+    const errors = validateScenario(current());
+    paintErrors(errors);
+    if (!errors.length) toast(current().id + " 这一题填完整了，可以翻到下一题。");
+    else document.querySelector(".field.invalid")?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+});
+document.getElementById("nav").addEventListener("click", (event) => {
+  const goto = event.target.closest("[data-goto]");
+  if (goto) gotoScenario(goto.dataset.goto);
+});
+document.getElementById("overview-btn").onclick = () => {
+  state.view = state.view === "overview" ? "scenario" : "overview";
+  renderMain();
+};
+document.getElementById("save-btn").onclick = saveDraft;
+document.getElementById("lock-btn").onclick = requestLock;
+document.getElementById("bind-btn").onclick = bindDirectory;
+document.addEventListener("keydown", (event) => {
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") {
+    event.preventDefault();
+    saveDraft();
+  }
+  if (event.key === "Escape") closeModal();
+});
+document.querySelector(".brand").insertAdjacentHTML("beforeend", '<button type="button" class="btn ghost small" id="switch-btn">换标注员</button>');
+document.getElementById("switch-btn").onclick = () => {
+  document.getElementById("app").classList.add("hidden");
+  document.getElementById("gate").classList.remove("hidden");
+  refreshGateStats();
+};
+const fileBar = document.createElement("div");
+fileBar.id = "file-bar";
+fileBar.innerHTML = '<span>你填的每一处都会自动存在这台电脑上，关掉网页也不会丢。下面是随时可以下载的备份文件，<b>最终交卷请用右上角的「交卷：导出并锁定」</b>。</span><div id="live-downloads"></div>';
+document.querySelector("header").insertAdjacentElement("afterend", fileBar);
+
+if (SCENARIOS.length !== 15 || SCENARIOS.reduce((sum, sc) => sum + sc.slots.length, 0) !== 13) {
+  document.body.innerHTML = "<p>题目数据不完整，请不要使用这个文件。</p>";
+}
+refreshGateStats();
+try {
+  const last = localStorage.getItem("study-a-annotator-last");
+  if ((last === "A" || last === "B") && readStore(last)) start(last);
+} catch (err) {}
+  </script>
+</body>
+</html>

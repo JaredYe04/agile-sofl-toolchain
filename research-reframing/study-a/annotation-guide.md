@@ -1,6 +1,6 @@
 # Study A annotation guide
 
-Annotators do not start with this file. They use `annotation-pack/操作说明-中文.md` and the questionnaires under `annotation-pack/annotator-a/问卷/` and `annotation-pack/annotator-b/问卷/`. This guide is the coordinator's backend rule set.
+Annotators do not start with this file. They open `annotation-pack/study-a-annotator.html` in a browser. The Markdown questionnaires are marked 勿用 and are not the entry. This guide is the coordinator's backend rule set.
 
 Use this guide to label gold packages under `study-a/`. The JSON files in `dev/scenarios/` are harness examples (`partition: dev`). The JSON files in `held-out/scenarios/` are a **draft scaffold** for later dual annotation. Each held-out file is marked `set: held-out` and `status: draft-gold`. `confirmatory` is `false` on every file. The loader rejects `true`.
 

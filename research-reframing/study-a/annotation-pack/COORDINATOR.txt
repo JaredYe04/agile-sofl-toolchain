@@ -3,16 +3,16 @@ Study A blind annotation handoff
 Annotator A: Xujun Ye
 Annotator B: Jinlin Zhang
 
-Send only these folders:
-  zip -r annotator-a.zip annotator-a
-  zip -r annotator-b.zip annotator-b
+Send this file only:
+  annotation-pack/study-a-annotator.html
 
-Xujun Ye receives annotator-a.zip.
-Jinlin Zhang receives annotator-b.zip.
+Xujun Ye opens it and selects A.
+Jinlin Zhang opens it and selects B.
+One person must not fill both.
 
-Leave id-map.sealed.json and held-out/scenarios/ out of both zips.
-Each zip already contains 操作说明-中文.md and 问卷/S01.md through S15.md.
-That Chinese questionnaire is the annotator entry. The blank CSV is a backend backup.
-Annotators return the locked 问卷 folder. After both are locked, transcribe answers into the matching CSV columns.
+Do not send id-map.sealed.json or held-out/scenarios/.
+Do not ask annotators to edit the Markdown 问卷 files. Those files are marked 勿用.
+Annotators return annotator-a-locked.json and annotator-a-locked.csv, or the B pair.
+The locked CSV columns match the blank sheet. Judgment cells in git stay empty.
 Held-out files stay status draft-gold until both sheets are locked and adjudication is finished.
 Do not run C1 or C2. Do not invent SCR. Do not cut a freeze tag. Do not use exp-freeze-v1.2.
