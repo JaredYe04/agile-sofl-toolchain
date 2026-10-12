@@ -1,5 +1,7 @@
 # Study A dual-annotation protocol
 
+Annotators do not start with this file. The human entry is `annotation-pack/操作说明-中文.md`, copied into each annotator folder, and the Chinese questionnaires in `annotation-pack/annotator-a/问卷/` and `annotation-pack/annotator-b/问卷/`. `annotation-pack/README-OPEN.md` only points at that entry. The blank CSV in each annotator folder is a backend backup. After both questionnaires are locked, the coordinator may transcribe answers into the matching CSV columns. This English file stays the coordinator's reference.
+
 This file is the procedure for labeling the held-out scaffold. It adds no labels, no agreement statistic, and no Silent Commitment Rate (SCR). The sheets in `annotation-sheets/` are blank templates. Their filled cells in this commit are the row keys only.
 
 The draft packages under `held-out/scenarios/` stay `status: draft-gold`. Labeling rules for slots, alternatives, must-not-confirm elements, clear controls, and maintenance tasks are in `annotation-guide.md`. This protocol says how two people apply that guide, and when a later change may mark status `gold`.
@@ -15,12 +17,12 @@ The person who drafted the JSON may be one of the two annotators. That person is
 
 ## Kickoff pack
 
-The sheets to send are the blind folders under `annotation-pack/`. Open instructions for both people are `annotation-pack/README-OPEN.md`, copied into each folder.
+The folders to send are the blind folders under `annotation-pack/`. Annotators open `操作说明-中文.md` in their own folder and fill `问卷/S01.md` through `问卷/S15.md`. They do not fill the CSV.
 
 - Xujun Ye receives `annotation-pack/annotator-a/` only.
 - Jinlin Zhang receives `annotation-pack/annotator-b/` only.
 
-Each folder contains the same blind texts and a blank sheet. The texts are the natural-language requirements, the informal specification, and the slot questions. They leave out `kind`, `clearControl`, `qualityNotes`, `alternatives`, `authorizedAlternativeId`, `stakeholderAnswer`, `matchTerms`, `commitmentSignals`, `mustNotConfirmBeforeAnswer`, and the maintenance id lists. Sheet rows use opaque scenario codes `S01`–`S15`. The `annotator` cell is `A` or `B`. Judgment cells are empty.
+Each folder contains the same blind texts, the same Chinese questionnaires, and a blank sheet kept as a backup. The texts are the natural-language requirements, the informal specification, and the slot questions. They leave out `kind`, `clearControl`, `qualityNotes`, `alternatives`, `authorizedAlternativeId`, `stakeholderAnswer`, `matchTerms`, `commitmentSignals`, `mustNotConfirmBeforeAnswer`, and the maintenance id lists. Sheet rows use opaque scenario codes `S01`–`S15`. The `annotator` cell is `A` or `B`. Judgment cells are empty.
 
 `annotation-pack/id-map.sealed.json` maps those codes to the held-out file ids. Annotators must not receive that file or `held-out/scenarios/`. After both sheets are locked, join `scenario_id` on the sheet back to the draft scenario id with that map. Slot ids are unchanged.
 
@@ -40,7 +42,7 @@ During independent labeling, the allowed materials are:
 
 The `question` names the candidate decision. It is the unit being labeled. It is not an answer.
 
-The kickoff folder already contains those three materials and nothing else from the draft file. Leave the draft JSON closed.
+The Chinese questionnaire in the kickoff folder restates those materials and the empty column definitions. Filling it is the annotator entry. It is not an answer key. The kickoff folder already contains those materials and nothing else from the draft file. Leave the draft JSON closed.
 
 Leave these draft fields unread while labeling. They are the author's provisional oracle key and the author's notes:
 

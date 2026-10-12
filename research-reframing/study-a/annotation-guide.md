@@ -1,5 +1,7 @@
 # Study A annotation guide
 
+Annotators do not start with this file. They use `annotation-pack/操作说明-中文.md` and the questionnaires under `annotation-pack/annotator-a/问卷/` and `annotation-pack/annotator-b/问卷/`. This guide is the coordinator's backend rule set.
+
 Use this guide to label gold packages under `study-a/`. The JSON files in `dev/scenarios/` are harness examples (`partition: dev`). The JSON files in `held-out/scenarios/` are a **draft scaffold** for later dual annotation. Each held-out file is marked `set: held-out` and `status: draft-gold`. `confirmatory` is `false` on every file. The loader rejects `true`.
 
 `draft-gold` means one author drafted the package so the harness can load it. It is not an adjudicated label, and it is not a confirmatory freeze. Two annotators still have to label the held-out scenarios independently, then adjudicate. Do not report agreement, and do not run a confirmatory model batch, until that is done and `study-a/freeze-checklist.md` is complete.
