@@ -272,9 +272,9 @@
   }
   #toast {
     position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%);
-    background: var(--ink); color: #fff; border-radius: 999px;
-    padding: 10px 14px; z-index: 50; max-width: min(520px, calc(100% - 24px));
-    font-size: 14px;
+    background: var(--ink); color: #fff; border-radius: 14px;
+    padding: 11px 16px; z-index: 50; max-width: min(560px, calc(100% - 24px));
+    font-size: 14px; line-height: 1.5; text-align: center;
   }
   .skip-note { margin: 8px 0 0; color: var(--muted); font-size: 14px; }
   @media (max-width: 860px) {
@@ -294,37 +294,49 @@
   @media (prefers-reduced-motion: reduce) {
     * { scroll-behavior: auto !important; transition: none !important; }
   }
+  .col { font-family: var(--mono); font-size: 12px; font-weight: 500; color: var(--faint); margin-left: 6px; }
+  details.fine > summary { cursor: pointer; color: var(--accent-ink); font-weight: 650; }
+  .modal.wide { width: min(780px, 100%); max-height: 86vh; overflow: auto; }
+  .demo-row { border-left: 3px solid var(--accent-soft); padding: 2px 0 2px 10px; margin: 8px 0; font-size: 14.5px; }
+  .demo-row b { display: block; color: var(--accent-ink); font-size: 13px; }
+  .demo-row code { background: #f3eee6; padding: 1px 5px; border-radius: 6px; }
 </style>
 </head>
 <body>
   <div id="gate" class="gate">
     <div class="gate-card">
-      <p class="kicker">Study A · 双人独立标注</p>
-      <h1>只打开这一个文件</h1>
-      <p class="lede">十五道题都在这一页里。先选择你是哪一位标注员。两人题目相同，答案分开保存。不需要打开 Markdown 或 CSV。</p>
+      <p class="kicker">Study A · 两人独立标注</p>
+      <h1>从 15 段需求里，挑出「没说清楚的地方」</h1>
+      <p class="lede">每道题给你一段需求。你要判断：这段需求里有没有留下一个<strong>本来该由业务方拍板、但原文根本没写</strong>的选择。如果有，就把它写下来——写出两种都说得通的做法，以及要问清哪一件事才能定下来。<br><strong>两个人的题目完全一样，但必须各填各的。</strong>我们会比对两份答案，看大家读到的是不是同一件事——这个比对本身就是研究数据。</p>
       <div class="people" role="radiogroup" aria-label="选择标注员">
         <button type="button" class="person" data-pick="A" id="pick-A">
           <span class="who">标注员 A</span>
           <strong>Xujun Ye</strong>
-          <span class="sub" id="stat-A">本机还没有草稿</span>
+          <span class="sub" id="stat-A">这台电脑上还没有填写记录</span>
         </button>
         <button type="button" class="person" data-pick="B" id="pick-B">
           <span class="who">标注员 B</span>
           <strong>Jinlin Zhang</strong>
-          <span class="sub" id="stat-B">本机还没有草稿</span>
+          <span class="sub" id="stat-B">这台电脑上还没有填写记录</span>
         </button>
       </div>
       <div class="rules">
-        <strong>填写前</strong>
+        <strong>你要做的事，三步</strong>
         <ul>
-          <li>只根据每题页面上的「需求」和「非正式说明」作答。中文译文只帮助阅读；和英文不一致时，以英文为准。</li>
-          <li>候选问题只指出要决定什么，不是答案。虚构班车的例句只示范格式，不要照抄。</li>
-          <li>一个人只填自己的那一份。不要和另一位讨论，也不要看对方的答案。</li>
-          <li>不要打开本文件以外的材料。填完十五题后点「导出并锁定」，把下载的两个文件交给协调人。</li>
+          <li><b>读</b>：看这一页的「需求」和「非正式说明」两段。下面附的中文译文只是为了读得快；万一和英文对不上，<b>以英文为准</b>。</li>
+          <li><b>判断</b>：这段需求有没有留下一个没写清、但会改变系统做法的选择？每题下面会列出 1–2 个「候选问题」。它们只说明<b>这里可能要定一件事</b>，既不是答案，也不代表原文一定有问题——你觉得原文已经说清了，就选「不保留」。你也可以自己补问题。</li>
+          <li><b>写清楚</b>：确实有没定的地方，就写出两种都说得通、但做法不同的方案，再写出要问清哪一条信息才能定下来。</li>
+        </ul>
+        <strong style="display:block;margin-top:12px">三条注意</strong>
+        <ul>
+          <li>只填自己那一份。不要和另一位讨论，也不要看对方的答案。</li>
+          <li>不用打开别的文件。填完 15 题后，点右上角「交卷：导出并锁定」，把下载的两个文件交给协调人。</li>
+          <li>拿不准就按你的理解填，再在「备注」里写一句为什么。<b>填错比不填好。</b></li>
         </ul>
       </div>
       <div class="gate-actions">
         <button type="button" class="btn" id="start-btn" disabled>开始填写</button>
+        <button type="button" class="btn secondary" id="demo-btn">先看一道完整示范</button>
         <label class="btn secondary file-btn">导入 JSON<input id="import-gate" type="file" accept="application/json,.json"></label>
       </div>
     </div>
@@ -340,14 +352,14 @@
         </div>
       </div>
       <div class="progress-wrap">
-        <div class="progress-label"><span id="progress-text">已完成 0/15</span><span id="save-text">尚未写入</span></div>
+        <div class="progress-label"><span id="progress-text">已完成 0/15</span><span id="save-text">填了就会自动保存</span></div>
         <div class="bar" aria-hidden="true"><span id="progress-bar"></span></div>
       </div>
       <div class="actions">
         <button type="button" class="btn secondary small" id="overview-btn">总览</button>
-        <button type="button" class="btn secondary small" id="bind-btn">绑定文件夹</button>
-        <button type="button" class="btn secondary small" id="save-btn">保存并下载</button>
-        <button type="button" class="btn copper small" id="lock-btn">导出并锁定</button>
+        <button type="button" class="btn secondary small" id="bind-btn">选个文件夹自动存</button>
+        <button type="button" class="btn secondary small" id="save-btn">下载备份</button>
+        <button type="button" class="btn copper small" id="lock-btn">交卷：导出并锁定</button>
       </div>
     </header>
     <div class="layout">
@@ -366,13 +378,14 @@ const PEOPLE = {
   B: { id: "B", name: "Jinlin Zhang", file: "b" }
 };
 const KINDS = [
-  ["underspecified", "原文没把业务写死。认真读完，至少还有一个选择定不下来。"],
-  ["clear-control", "原文已经写明规则，包括数字、截止时间或政策。没有留下第二种会改变做法的读法。"],
-  ["maintenance", "这是在修改一条已经存在的规则，并要判断哪些部分该改、哪些保持原样。改动里若还有没写清的选择，仍要单独写成槽位。"]
+  ["underspecified", "原文有一个「该定没定」的选择。认真读完，你还能提出至少一种同样说得通、但会让系统做法不同的读法。"],
+  ["clear-control", "原文已经把规则写死了：数字、时间、政策都写明，读完不会再产生第二种会改变做法的理解。（这类题是拿来对照的。）"],
+  ["maintenance", "这题是在改一条已有的规则。除了判断「改哪些部分、留哪些部分」，如果改动本身还带出一个没写清的选择，也要单独写成一个问题。"]
 ];
 const ID_RE = /^(proc|inv|type):[A-Za-z][A-Za-z0-9]*\.[A-Za-z][A-Za-z0-9]*$/;
 const SLOT_RE = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/;
-const BUS = "虚构班车，不要照抄";
+// 选项在界面上显示成「是 / 否」，但写进文件里的值仍然是 yes / no。
+const YN_LABEL = { yes: "是", no: "否" };
 
 const state = {
   annotator: null,
@@ -492,7 +505,7 @@ function persistLocal() {
   try {
     localStorage.setItem(storageKey(), JSON.stringify(data));
   } catch (err) {
-    toast("浏览器拒绝继续保存。请马上点「保存并下载」。");
+    toast("浏览器不让继续自动保存了。请马上点右上角的「下载备份」，把答案存成文件，以免丢失。");
   }
   updateChrome();
   scheduleDirWrite(state.locked ? "locked" : "draft");
@@ -503,25 +516,25 @@ function parseIdList(raw, mode) {
   const text = trim(raw);
   if (mode === "none-or-ids") {
     if (text === "无") return { ids: [] };
-    if (!text) return { error: "没有就写「无」。" };
+    if (!text) return { error: "这一栏不能空着。没有相关条目就写「无」。" };
   } else if (!text) {
-    return { error: "请填写零件编号。" };
+    return { error: "这一栏不能空着。请填至少一个条目编号。" };
   }
   if (text === "留空" || (mode !== "none-or-ids" && text === "无")) {
-    return { error: "这里要写零件编号，不要写「留空」或「无」。" };
+    return { error: "这里要填条目编号。这一栏是必填的，写「无」或「留空」都不行。" };
   }
-  if (text.includes("；")) return { error: "请用英文分号 ; 隔开，不要用中文分号。" };
-  if (text.includes(",") || text.includes("，")) return { error: "不要用逗号。多个编号用英文分号 ; 隔开。" };
-  if (text.split(";").some((part) => !trim(part))) return { error: "分号旁边有空的编号。" };
+  if (text.includes("；")) return { error: "分隔符要用英文分号 ;（半角），不要用中文分号 ；。" };
+  if (text.includes(",") || text.includes("，")) return { error: "逗号不能当分隔符。多个编号之间用英文分号 ; 隔开，例如 proc:Bus.SellTicket;inv:Bus.DriverShift。" };
+  if (text.split(";").some((part) => !trim(part))) return { error: "分号旁边有空着的位置。请检查是不是多打了一个分号。" };
   const ids = [];
   for (const part of text.split(";").map(trim)) {
     if (!ID_RE.test(part)) {
-      return { error: "编号格式不对：" + part + "。要用 proc:区域.名称、inv:区域.名称 或 type:区域.名称。" };
+      return { error: "「" + part + "」不是一个合法的条目编号。三种写法：proc:区域.名称、inv:区域.名称、type:区域.名称（区域和名称都只用英文字母和数字）。" };
     }
-    if (ids.includes(part)) return { error: "编号重复：" + part + "。" };
+    if (ids.includes(part)) return { error: "「" + part + "」写了两次，请删掉重复的。" };
     ids.push(part);
   }
-  if (!ids.length) return { error: "请填写零件编号。" };
+  if (!ids.length) return { error: "这一栏不能空着。请填至少一个条目编号。" };
   return { ids };
 }
 function exportIds(raw, applicable, allowNone) {
@@ -537,37 +550,37 @@ function push(errors, scenarioId, field, message, slotId, extraIndex) {
 function validateSlot(sc, slotId, slot, extraIndex) {
   const errors = [];
   const sid = sc.id;
-  const where = slotId ? "槽位 " + slotId : "自行增加的槽位";
+  const where = slotId ? "候选问题 " + slotId : "你补充的问题";
   if (extraIndex !== null && extraIndex !== undefined) {
     const id = trim(slot.slot_id);
-    if (!id) push(errors, sid, "slot_id", "请填写新槽位编号。", "", extraIndex);
-    else if (!SLOT_RE.test(id)) push(errors, sid, "slot_id", "编号用小写英文、数字和连字符，例如 late-fee。", "", extraIndex);
+    if (!id) push(errors, sid, "slot_id", "请给这个补充问题起一个编号。", "", extraIndex);
+    else if (!SLOT_RE.test(id)) push(errors, sid, "slot_id", "编号只能用「小写英文字母、数字和连字符」，例如 late-fee。不要用中文、空格或下划线。", "", extraIndex);
     else if (sc.slots.some((item) => item.id === id) || scPackExtraIds(sc, extraIndex).includes(id)) {
-      push(errors, sid, "slot_id", "这个编号已经有了，请换一个。", "", extraIndex);
+      push(errors, sid, "slot_id", "这道题里已经有一个叫「" + id + "」的编号了，请换一个。", "", extraIndex);
     }
   }
   if (slot.keep_unit !== "yes" && slot.keep_unit !== "no") {
-    push(errors, sid, "keep_unit", where + "：请选择是否保留。", slotId, extraIndex);
+    push(errors, sid, "keep_unit", where + "：第 1 项还没选。请选「是」或「否」。", slotId, extraIndex);
   }
-  if (!trim(slot.interpretation_1)) push(errors, sid, "interpretation_1", where + "：请写第一种做法。不保留时，用一两句话说明为什么不是未决选择。", slotId, extraIndex);
-  if (!trim(slot.interpretation_2)) push(errors, sid, "interpretation_2", where + "：请写第二种做法。", slotId, extraIndex);
+  if (!trim(slot.interpretation_1)) push(errors, sid, "interpretation_1", where + "：方案 A 还空着。不打算保留时，也要用一两句话说明为什么它不算「没定下来的选择」。", slotId, extraIndex);
+  if (!trim(slot.interpretation_2)) push(errors, sid, "interpretation_2", where + "：方案 B 还空着。", slotId, extraIndex);
   if (slot.keep_unit === "yes" && trim(slot.interpretation_1) && trim(slot.interpretation_1) === trim(slot.interpretation_2)) {
-    push(errors, sid, "interpretation_2", where + "：两种做法是同一条规则。要写出会改变行为、收费、允许的事或留下的东西的第二种做法。", slotId, extraIndex);
+    push(errors, sid, "interpretation_2", where + "：方案 A 和方案 B 写得一模一样。第二种读法要能改变系统的做法：做的事、收的钱、允许的事，或留下的记录。", slotId, extraIndex);
   }
   const diff = slot.interpretations_meaningfully_different;
   if (diff !== "yes" && diff !== "no") {
-    push(errors, sid, "interpretations_meaningfully_different", where + "：请选择两种做法是否真的不同。", slotId, extraIndex);
+    push(errors, sid, "interpretations_meaningfully_different", where + "：第 4 项还没选。这两套方案到底是不是真的不同？", slotId, extraIndex);
   } else if (slot.keep_unit === "yes" && diff !== "yes") {
-    push(errors, sid, "interpretations_meaningfully_different", where + "：保留为未决选择时，这里必须是 yes。", slotId, extraIndex);
+    push(errors, sid, "interpretations_meaningfully_different", where + "：第 1 项选了「是」（保留这个问题），但第 4 项选了「否」（两套方案没区别），两句互相矛盾。要么改成「是」，要么把第 1 项改成「否」。", slotId, extraIndex);
   } else if (slot.keep_unit === "no" && diff !== "no") {
-    push(errors, sid, "interpretations_meaningfully_different", where + "：不保留这个槽位时，这里选 no。", slotId, extraIndex);
+    push(errors, sid, "interpretations_meaningfully_different", where + "：第 1 项选了「否」（不保留），第 4 项就要选「否」。", slotId, extraIndex);
   }
-  if (!trim(slot.clarification_target)) push(errors, sid, "clarification_target", where + "：请写要问清的那条信息，不要替业务方选结论。", slotId, extraIndex);
+  if (!trim(slot.clarification_target)) push(errors, sid, "clarification_target", where + "：第 5 项还空着。请写「要问对方什么」，不要写你自己猜的答案。", slotId, extraIndex);
   const ids = parseIdList(slot.must_not_confirm_element_ids, "none-or-ids");
-  if (ids.error) push(errors, sid, "must_not_confirm_element_ids", where + "：" + ids.error, slotId, extraIndex);
-  if (!trim(slot.notes)) push(errors, sid, "notes", where + "：请填写备注，没有就写「无」。", slotId, extraIndex);
+  if (ids.error) push(errors, sid, "must_not_confirm_element_ids", where + "（第 6 项）：" + ids.error, slotId, extraIndex);
+  if (!trim(slot.notes)) push(errors, sid, "notes", where + "：第 7 项备注还空着。没有补充就写「无」。", slotId, extraIndex);
   if (packOf(sc).scenario.kind === "clear-control" && slot.keep_unit === "yes") {
-    push(errors, sid, "keep_unit", where + "：类型是 clear-control 时，不能保留未决槽位。", slotId, extraIndex);
+    push(errors, sid, "keep_unit", where + "：这道题选的是 clear-control（原文已经写死了），所以不能再保留一个「没定下来的选择」。要么把它改成「否」，要么回到第 1 项改这道题的类型。", slotId, extraIndex);
   }
   return errors;
 }
@@ -579,33 +592,33 @@ function validateScenario(sc) {
   const errors = [];
   const row = packOf(sc).scenario;
   if (!["underspecified", "clear-control", "maintenance"].includes(row.kind)) {
-    push(errors, sc.id, "kind", "请选择类型。");
+    push(errors, sc.id, "kind", "第 1 项还没选。请选一个类型：有没定的选择 / 已经写死了 / 在改一条已有的规则。");
   }
-  if (row.keep_unit !== "yes" && row.keep_unit !== "no") push(errors, sc.id, "keep_unit", "请选择是否保留这道题。");
+  if (row.keep_unit !== "yes" && row.keep_unit !== "no") push(errors, sc.id, "keep_unit", "第 2 项还没选。这道题本身要不要保留？");
   if (row.invites_repeated_clarification !== "yes" && row.invites_repeated_clarification !== "no") {
-    push(errors, sc.id, "invites_repeated_clarification", "请选择是否还要反复追问。");
+    push(errors, sc.id, "invites_repeated_clarification", "第 3 项还没选。读完之后还会想再追问吗？");
   }
   if (row.kind === "clear-control" && row.invites_repeated_clarification === "yes") {
-    push(errors, sc.id, "invites_repeated_clarification", "清晰对照不能仍要反复追问。请改类型，或把这一项改为 no。");
+    push(errors, sc.id, "invites_repeated_clarification", "两道题里的判断打架了：第 1 项选的是「原文已经写死了」，第 3 项却选了「还会想追问」。原文写死了就不会再有要问的；请把第 3 项改成「否」，或者回到第 1 项改类型。");
   }
   if (row.kind === "maintenance") {
     const affected = parseIdList(row.maintenance_affected_ids, "required");
     const unaffected = parseIdList(row.maintenance_unaffected_ids, "required");
-    if (affected.error) push(errors, sc.id, "maintenance_affected_ids", "要改到的零件：" + affected.error);
-    if (unaffected.error) push(errors, sc.id, "maintenance_unaffected_ids", "保持原样的零件：" + unaffected.error);
+    if (affected.error) push(errors, sc.id, "maintenance_affected_ids", "「这次改动应该碰到哪些条目」：" + affected.error);
+    if (unaffected.error) push(errors, sc.id, "maintenance_unaffected_ids", "「哪些条目要保持原样」：" + unaffected.error);
     if (affected.ids && unaffected.ids) {
       const overlap = affected.ids.filter((id) => unaffected.ids.includes(id));
-      if (overlap.length) push(errors, sc.id, "maintenance_unaffected_ids", "这些编号不能同时出现在两边：" + overlap.join("、"));
+      if (overlap.length) push(errors, sc.id, "maintenance_unaffected_ids", "同一个条目不能既算「要改」又算「保持原样」：" + overlap.join("、") + "。请二选一。");
     }
   }
-  if (!trim(row.notes)) push(errors, sc.id, "notes", "请填写备注，没有就写「无」。");
+  if (!trim(row.notes)) push(errors, sc.id, "notes", "备注还空着。没有补充就写「无」。");
   sc.slots.forEach((slot) => errors.push(...validateSlot(sc, slot.id, packOf(sc).slots[slot.id], null)));
   packOf(sc).extra.forEach((slot, index) => errors.push(...validateSlot(sc, "", slot, index)));
   if (row.kind === "underspecified" && row.keep_unit === "yes") {
     const keptPreset = sc.slots.some((slot) => packOf(sc).slots[slot.id].keep_unit === "yes");
     const keptExtra = packOf(sc).extra.some((slot) => slot.keep_unit === "yes");
     if (!keptPreset && !keptExtra) {
-      push(errors, sc.id, "kind", "类型是 underspecified，并且这道题要保留时，至少保留一个槽位，并写出两种不同做法。");
+      push(errors, sc.id, "kind", "第 1 项选的是「有没定下来的选择」、第 2 项选了「保留」，那么下面至少要保留一个候选问题，并且写出两套真的不同的方案。现在一个都没有。");
     }
   }
   return errors;
@@ -782,7 +795,7 @@ function toast(message) {
   node.textContent = message;
   node.classList.remove("hidden");
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => node.classList.add("hidden"), 4200);
+  toastTimer = setTimeout(() => node.classList.add("hidden"), Math.min(12000, 3500 + String(message).length * 130));
 }
 function openModal(opts) {
   const root = document.getElementById("modal-root");
@@ -791,23 +804,46 @@ function openModal(opts) {
     rememberUrl(url);
     return '<a download="' + esc(file.name) + '" href="' + url + '">' + esc(file.name) + "</a>";
   }).join("");
-  root.innerHTML = '<div class="modal-back" id="modal-back"><div class="modal" role="dialog" aria-modal="true"><h3>' +
+  root.innerHTML = '<div class="modal-back" id="modal-back"><div class="modal' + (opts.wide ? " wide" : "") + '" role="dialog" aria-modal="true"><h3>' +
     esc(opts.title) + "</h3>" + opts.body + (links ? '<div class="dl-list">' + links + "</div>" : "") +
     '<div class="row"><button type="button" class="btn" id="modal-ok">' + esc(opts.confirmText || "确定") +
-    '</button><button type="button" class="btn secondary" id="modal-cancel">' + esc(opts.cancelText || "返回") +
-    "</button></div></div></div>";
+    "</button>" + (opts.cancelText === null ? "" : '<button type="button" class="btn secondary" id="modal-cancel">' + esc(opts.cancelText || "返回") + "</button>") +
+    "</div></div></div>";
   document.getElementById("modal-ok").onclick = () => { root.innerHTML = ""; opts.onConfirm && opts.onConfirm(); };
-  document.getElementById("modal-cancel").onclick = () => { root.innerHTML = ""; opts.onCancel && opts.onCancel(); };
+  const cancelBtn = document.getElementById("modal-cancel");
+  if (cancelBtn) cancelBtn.onclick = () => { root.innerHTML = ""; opts.onCancel && opts.onCancel(); };
   document.getElementById("modal-ok").focus();
 }
 function closeModal() { document.getElementById("modal-root").innerHTML = ""; }
+
+var DEMO_HTML = [
+  '<p>这是一道<strong>虚构的示范题</strong>，不是你 15 题里的任何一道。我们用它把所有空格走一遍，你照着填自己的题就行。</p>',
+  '<div class="demo-row"><b>示范题的原文（虚构）</b>系统支持员工预约通勤班车座位。发车前 30 分钟可以取消预约。发车时间到了还有人没到场时，座位按现行规定处理。</div>',
+  '<div class="demo-row"><b>先找出破绽在哪</b>最后一句写了「按现行规定处理」，但整段原文里根本没有这条规定，也查不到。于是读者可以合理地读出好几种结果——这就是「本来该由业务方拍板、原文却没说」的选择。</div>',
+  '<div class="demo-row"><b>第 1 项 属于哪一类</b>选 <code>underspecified</code>。判断标准就一句话：认真读完之后，我还能提出至少一种同样说得通、但会让系统做法不一样的读法。</div>',
+  '<div class="demo-row"><b>第 2 项 这道题要不要保留</b>选「是」。题目本身立得住：它是真实的业务需求，破绽也确实存在。</div>',
+  '<div class="demo-row"><b>第 3 项 读完之后还想追问吗</b>选「是」。我很想追问一句「座位到底保不保」，而且答案不同，系统的做法就不同。</div>',
+  '<div class="demo-row"><b>候选问题 seat-on-late：这一栏是 1→7 七个小项</b></div>',
+  '<div class="demo-row"><b>　1 这里真的有没定下来的选择吗</b>选「是」。</div>',
+  '<div class="demo-row"><b>　2 方案 A</b>没到场的员工仍然占着座位，一直保留到发车，不释放给候补。</div>',
+  '<div class="demo-row"><b>　3 方案 B</b>发车前 10 分钟仍未到场，座位自动释放，分给候补名单上的下一位。</div>',
+  '<div class="demo-row"><b>　4 两套方案真的不同吗</b>选「是」。方案 A 里候补的人拿不到座位，方案 B 里拿得到——这就是「系统做法不同」。</div>',
+  '<div class="demo-row"><b>　5 要问清哪一件事</b>发车前多久还没到场，就要把座位放给候补？还是保留到发车为止？（写出要问的那句话，不要写你猜的答案。）</div>',
+  '<div class="demo-row"><b>　6 答复前不能当成「已经定了」的条目</b><code>proc:Bus.HoldSeat;inv:Bus.ReleaseLateSeat</code><br>读法：在业务方答复之前，这两条不能再写成某一种确定的做法，先挂起来等答复。想不出具体编号就写「无」。</div>',
+  '<div class="demo-row"><b>　7 备注</b>原文只写了「按现行规定处理」，但原文里没有任何规定可查。</div>',
+  '<div class="demo-row"><b>反过来看：如果原文写清了，就不该保留</b>假如原文改成：「发车前 30 分钟仍未到场，座位立即释放给候补名单上的下一位。」——时间、动作、对象全写死了，读不出第二种会改变做法的理解。这时第 1 项选 <code>clear-control</code>，第 3 项必须选「否」。</div>',
+  '<p>看完可以关掉这一页，回到题目继续填。填不准不要紧，<strong>把理由写在备注里比留空有用得多</strong>。</p>'
+].join("");
+function showDemo() {
+  openModal({ title: "一道题的完整示范", body: DEMO_HTML, wide: true, confirmText: "知道了，去填题", cancelText: null });
+}
 
 function ynField(name, field, value, scope, slotKey, extraIndex) {
   const attrs = ' data-field="' + field + '" data-scope="' + scope + '"' +
     (slotKey ? ' data-slot="' + esc(slotKey) + '"' : "") +
     (extraIndex !== null && extraIndex !== undefined ? ' data-extra="' + extraIndex + '"' : "");
   return '<div class="yn">' + ["yes", "no"].map((item) =>
-    '<label><input type="radio" name="' + name + '" value="' + item + '"' + attrs + (value === item ? " checked" : "") + "> " + item + "</label>"
+    '<label><input type="radio" name="' + name + '" value="' + item + '"' + attrs + (value === item ? " checked" : "") + "> " + YN_LABEL[item] + "</label>"
   ).join("") + "</div>";
 }
 function textField(field, value, scope, slotKey, extraIndex, multiline) {
@@ -819,7 +855,10 @@ function textField(field, value, scope, slotKey, extraIndex, multiline) {
   return '<input type="text" autocomplete="off"' + attrs + ' value="' + esc(value) + '">';
 }
 function example(text) {
-  return '<p class="example">格式示例（' + BUS + '）：<code>' + esc(text) + "</code></p>";
+  return '<p class="example">编号示例：<code>' + esc(text) + "</code></p>";
+}
+function hint(text) {
+  return '<p class="example">示例：' + text + "</p>";
 }
 function noneButton(field, scope, slotKey, extraIndex) {
   if (state.locked) return "";
@@ -835,54 +874,54 @@ function scenarioFields(sc) {
     (row.kind === value ? " checked" : "") + (state.locked ? " disabled" : "") + "><span><b>" + value + "</b><small>" + help + "</small></span></label>"
   ).join("");
   return [
-    '<div class="field" data-wrap="kind"><div class="legend">类型 kind</div><p class="help">这道题属于哪一种？只选下面三个英文词之一。</p><div class="choices">' + kindCards + "</div>" + example("underspecified") + "</div>",
-    '<div class="field" data-wrap="keep_unit"><div class="legend">是否保留这道题 keep_unit</div><p class="help">这道题要不要留在这一批标注里？拿不准时选 yes，并在备注里说明。</p>' + ynField("keep-" + sc.id, "keep_unit", row.keep_unit, "scenario") + example("yes") + "</div>",
-    '<div class="field" data-wrap="invites_repeated_clarification"><div class="legend">是否还要反复追问 invites_repeated_clarification</div><p class="help">认真的读者还会不会追问一个可能改掉原文规则的问题？包括追问另一个数字。只有类型是 clear-control、这道题保留、并且这里是 no，才算清晰对照。</p>' + ynField("invites-" + sc.id, "invites_repeated_clarification", row.invites_repeated_clarification, "scenario") + example("no") + "</div>",
-    '<p class="skip-note"' + (maint ? " hidden" : "") + ' id="maint-skip">当前类型不是 maintenance。导出的表格里，maintenance_affected_ids 和 maintenance_unaffected_ids 留空。</p>',
+    '<div class="field" data-wrap="kind"><div class="legend">1. 这道题属于哪一类？<span class="col">kind</span></div><p class="help">先选这一项，下面要填的内容会跟着它变。三类里选一个。括号里的英文就是导出表格里会写的值，不用你改。</p><div class="choices">' + kindCards + "</div></div>",
+    '<div class="field" data-wrap="keep_unit"><div class="legend">2. 这道题本身要不要保留？<span class="col">keep_unit</span></div><p class="help">这里判断的是「这道题作为一道题站不站得住」——需求是否清楚、是否真的有一个没定的选择、有没有写错。<b>拿不准就选「是」</b>，再在备注里写一句理由。最终留不留由协调人汇总决定。</p>' + ynField("keep-" + sc.id, "keep_unit", row.keep_unit, "scenario") + "</div>",
+    '<div class="field" data-wrap="invites_repeated_clarification"><div class="legend">3. 读完之后，还会想再追问吗？<span class="col">invites_repeated_clarification</span></div><p class="help">假设你是个很较真的读者：读完这段原文，你还会想追问一个「答错了、系统做法就会变」的问题吗？（追问另一个数字也算。）<br>选<b>「是」</b>＝还会想追问；选<b>「否」</b>＝原文已经说清，没什么可问的。<br>注意：选了 <code>clear-control</code> 的题，这里必须是「否」——这类题本来就是拿来对照「读不出问题」的。</p>' + ynField("invites-" + sc.id, "invites_repeated_clarification", row.invites_repeated_clarification, "scenario") + "</div>",
+    '<p class="skip-note"' + (maint ? " hidden" : "") + ' id="maint-skip">当前类型不是 maintenance，所以「要改到哪些条目 / 哪些要保持原样」两栏会留空（导出时不上报）。</p>',
     '<div id="maint-fields"' + (maint ? "" : " hidden") + ">",
-    '<div class="field" data-wrap="maintenance_affected_ids"><div class="legend">这次要改到的零件 maintenance_affected_ids</div><p class="help">多个编号用英文分号 ; 隔开。格式只有 proc:区域.名称、inv:区域.名称、type:区域.名称。不要和下面的编号重复。</p>' + textField("maintenance_affected_ids", row.maintenance_affected_ids, "scenario", "", null, false) + example("proc:Bus.SellTicket") + "</div>",
-    '<div class="field" data-wrap="maintenance_unaffected_ids"><div class="legend">这次保持原样的零件 maintenance_unaffected_ids</div><p class="help">这次不要改的零件。格式与上一题相同。</p>' + textField("maintenance_unaffected_ids", row.maintenance_unaffected_ids, "scenario", "", null, false) + example("inv:Bus.DriverShift") + "</div>",
+    '<div class="field" data-wrap="maintenance_affected_ids"><div class="legend">这次改动应该碰到哪些条目？<span class="col">maintenance_affected_ids</span></div><p class="help">「条目」就是规格里的零件：一个过程、一条约束、一个数据类型。写它们的编号，多个用<b>英文分号</b> <code>;</code> 隔开。编号只有三种写法：<code>proc:区域.名称</code>（过程）、<code>inv:区域.名称</code>（约束）、<code>type:区域.名称</code>（数据类型）。不要和下一栏写重复的。</p>' + textField("maintenance_affected_ids", row.maintenance_affected_ids, "scenario", "", null, false) + example("proc:Bus.SellTicket") + "</div>",
+    '<div class="field" data-wrap="maintenance_unaffected_ids"><div class="legend">哪些条目要保持原样？<span class="col">maintenance_unaffected_ids</span></div><p class="help">这次改动<b>不应该</b>碰到的条目——虽然也在同一段需求里，但和这次要改的规则无关。写法同上。</p>' + textField("maintenance_unaffected_ids", row.maintenance_unaffected_ids, "scenario", "", null, false) + example("inv:Bus.DriverShift") + "</div>",
     "</div>",
-    '<div class="field" data-wrap="notes"><div class="legend">备注 notes</div><p class="help">短备注。没有就写「无」。这里不写第二套判断。若锁定后发现编号写错，写「笔误：旧编号 …，新编号 …」。</p>' + textField("notes", row.notes, "scenario", "", null, true) + noneButton("notes", "scenario") + example("无") + "</div>"
+    '<div class="field" data-wrap="notes"><div class="legend">4. 备注<span class="col">notes</span></div><p class="help">一句话说明你的判断理由，或者写你不确定的地方。没有就写「无」。注意：判断只写在上面各栏，这里不要另写一套结论。<br>如果是交卷以后才发现编号写错了，就写「笔误：原编号 …，应为 …」。</p>' + textField("notes", row.notes, "scenario", "", null, true) + noneButton("notes", "scenario") + "</div>"
   ].join("");
 }
 function slotFields(scope, slotKey, extraIndex, slot) {
   const nameBase = scope + "-" + (slotKey || "x" + extraIndex);
   return [
-    '<div class="field" data-wrap="keep_unit"><div class="legend">是否保留这个槽位 keep_unit</div><p class="help">这是不是原文还没定下来的业务选择？保留时，下面要有两种会改变系统做法的规则。不保留时，「是否真的不同」选 no。</p>' + ynField(nameBase + "-keep", "keep_unit", slot.keep_unit, scope, slotKey, extraIndex) + example("yes") + "</div>",
-    '<div class="field" data-wrap="interpretation_1"><div class="legend">第一种做法 interpretation_1</div><p class="help">写出系统会怎样做、怎样收费、允许什么或留下什么。不要只换同义词。</p>' + textField("interpretation_1", slot.interpretation_1, scope, slotKey, extraIndex, true) + example("迟到的员工仍保留原座位，直到班车发出。") + "</div>",
-    '<div class="field" data-wrap="interpretation_2"><div class="legend">第二种做法 interpretation_2</div><p class="help">必须和第一种在行为、收费、允许的事或留下的东西上不同。同一条规则的两种说法不算。</p>' + textField("interpretation_2", slot.interpretation_2, scope, slotKey, extraIndex, true) + example("发车前十分钟还没到的员工失去原座位，座位改给候补。") + "</div>",
-    '<div class="field" data-wrap="interpretations_meaningfully_different"><div class="legend">两种做法是否真的不同 interpretations_meaningfully_different</div><p class="help">先写完上面两种做法再选。保留槽位时必须是 yes。</p>' + ynField(nameBase + "-diff", "interpretations_meaningfully_different", slot.interpretations_meaningfully_different, scope, slotKey, extraIndex) + example("yes") + "</div>",
-    '<div class="field" data-wrap="clarification_target"><div class="legend">问清什么才能定下来 clarification_target</div><p class="help">写出还缺的那条信息。不要在这里替业务方选好结论。</p>' + textField("clarification_target", slot.clarification_target, scope, slotKey, extraIndex, true) + example("需要问清：员工迟到之后，原座位还留不留。") + "</div>",
-    '<div class="field" data-wrap="must_not_confirm_element_ids"><div class="legend">答复前不能写死的零件 must_not_confirm_element_ids</div><p class="help">在这个选择得到答复之前，哪些零件不应当写成已经确定的行为？多个编号用英文分号 ; 隔开。没有就写「无」。</p>' + textField("must_not_confirm_element_ids", slot.must_not_confirm_element_ids, scope, slotKey, extraIndex, false) + noneButton("must_not_confirm_element_ids", scope, slotKey, extraIndex) + example("proc:Bus.HoldSeat;inv:Bus.ReleaseLateSeat") + "</div>",
-    '<div class="field" data-wrap="notes"><div class="legend">备注 notes</div><p class="help">短备注。没有就写「无」。不写第二套判断。</p>' + textField("notes", slot.notes, scope, slotKey, extraIndex, true) + noneButton("notes", scope, slotKey, extraIndex) + example("无") + "</div>"
+    '<div class="field" data-wrap="keep_unit"><div class="legend">1. 这里真的有「没定下来的选择」吗？<span class="col">keep_unit</span></div><p class="help">选<b>「是」</b>＝确实有：下面你要写两种都说得通、但系统做法不同的方案。<br>选<b>「否」</b>＝原文其实已经说清了，或者两种读法做出来的系统一模一样——这时「两种方案是否真的不同」那一项要选「否」。</p>' + ynField(nameBase + "-keep", "keep_unit", slot.keep_unit, scope, slotKey, extraIndex) + "</div>",
+    '<div class="field" data-wrap="interpretation_1"><div class="legend">2. 方案 A<span class="col">interpretation_1</span></div><p class="help">写清系统会怎么做：做什么、收多少钱、允许什么、留下什么记录。用完整的句子，不要只换同义词。</p>' + textField("interpretation_1", slot.interpretation_1, scope, slotKey, extraIndex, true) + hint("（示范题里的写法）迟到的员工仍然占着座位，一直留到发车。") + "</div>",
+    '<div class="field" data-wrap="interpretation_2"><div class="legend">3. 方案 B<span class="col">interpretation_2</span></div><p class="help">必须和方案 A 真的不一样：做的事不同、收的钱不同、允许的事不同，或者留下的记录不同。同一条规则换个说法不算。</p>' + textField("interpretation_2", slot.interpretation_2, scope, slotKey, extraIndex, true) + hint("（示范题里的写法）发车前十分钟还没到，座位就放给候补的人。") + "</div>",
+    '<div class="field" data-wrap="interpretations_meaningfully_different"><div class="legend">4. 这两套方案真的不同吗？<span class="col">interpretations_meaningfully_different</span></div><p class="help">把上面两栏写完再选这一项。选了「保留」时，这一项必须是「是」；选了「不保留」时，必须是「否」。</p>' + ynField(nameBase + "-diff", "interpretations_meaningfully_different", slot.interpretations_meaningfully_different, scope, slotKey, extraIndex) + "</div>",
+    '<div class="field" data-wrap="clarification_target"><div class="legend">5. 要问清哪一件事，才能定下来？<span class="col">clarification_target</span></div><p class="help">写出还缺的那一条信息，要能问一句话就把事情定下来。<b>写「要问什么」，不要写你猜的答案。</b></p>' + textField("clarification_target", slot.clarification_target, scope, slotKey, extraIndex, true) + hint("（示范题里的写法）员工迟到之后，原座位还留不留？") + "</div>",
+    '<div class="field" data-wrap="must_not_confirm_element_ids"><div class="legend">6. 对方回答之前，哪些条目不能当成「已经定了」？<span class="col">must_not_confirm_element_ids</span></div><p class="help">换个说法：如果现在就把这个选择当成某一种做法写进规格，会<b>把哪些条目写死</b>？把这些条目的编号填在这里，意思是「先别定，等答复」。<br>写法同前面：<code>proc:区域.名称</code>、<code>inv:区域.名称</code>、<code>type:区域.名称</code>，多个用<b>英文分号</b> <code>;</code> 隔开。实在想不出就写「无」。</p>' + textField("must_not_confirm_element_ids", slot.must_not_confirm_element_ids, scope, slotKey, extraIndex, false) + noneButton("must_not_confirm_element_ids", scope, slotKey, extraIndex) + example("proc:Bus.HoldSeat;inv:Bus.ReleaseLateSeat") + "</div>",
+    '<div class="field" data-wrap="notes"><div class="legend">7. 备注<span class="col">notes</span></div><p class="help">一句话说明理由，或者写你不确定的地方。没有就写「无」。</p>' + textField("notes", slot.notes, scope, slotKey, extraIndex, true) + noneButton("notes", scope, slotKey, extraIndex) + "</div>"
   ].join("");
 }
 function renderScenario(sc) {
   const slotHtml = sc.slots.map((slot) =>
-    '<section class="card"><p class="eyebrow">槽位 ' + esc(slot.id) + '</p><p class="q-en">' + esc(slot.en) + '</p><p class="q-zh">' + esc(slot.zh) + '</p><p class="fine">这个问题只指出要判断的决定，不是答案。</p><div class="keys"><span class="key">slot_id ' + esc(slot.id) + '</span><span class="key">row_type slot</span></div>' +
+    '<section class="card"><p class="eyebrow">候选问题 ' + esc(slot.id) + ' · 下面 7 项</p><p class="q-en">' + esc(slot.en) + '</p><p class="q-zh">' + esc(slot.zh) + '</p><p class="fine">这里问的是「该不该停下来问一句」，不是让你给出答案——答案由业务方给。下面 7 项都填完，这个候选问题才算处理过。</p><div class="keys"><span class="key">导出时列为 slot_id=' + esc(slot.id) + '</span><span class="key">导出时列为 row_type=slot</span></div>' +
     slotFields("slot", slot.id, null, packOf(sc).slots[slot.id]) + "</section>"
   ).join("");
   const extraHtml = packOf(sc).extra.map((slot, index) =>
-    '<section class="card"><p class="eyebrow">自行增加的槽位</p><p class="help">英文短名，小写和连字符，不能与已列出的编号相同。已列出：' +
+    '<section class="card"><p class="eyebrow">你补充的问题</p><p class="help">这是你自己加的，所以要起一个短名当编号。规则：只用<b>小写英文字母、数字和连字符</b>，并且不能和已有编号重名。已有：' +
     esc(sc.slots.map((item) => item.id).join("、") || "无") + "。</p>" +
-    (state.locked ? "" : '<div class="row-actions"><button type="button" class="btn ghost small" data-action="remove-extra" data-extra="' + index + '">删除这个槽位</button></div>') +
-    '<div class="field" data-wrap="slot_id"><div class="legend">新槽位编号 slot_id</div>' + textField("slot_id", slot.slot_id || "", "extra", "", index, false) + example("late-fee") + "</div>" +
+    (state.locked ? "" : '<div class="row-actions"><button type="button" class="btn ghost small" data-action="remove-extra" data-extra="' + index + '">删掉这个补充问题</button></div>') +
+    '<div class="field" data-wrap="slot_id"><div class="legend">给这个补充问题起个编号<span class="col">slot_id</span></div><p class="help">举个例子：如果你要问「超时之后收不收违约金」，可以叫 <code>late-fee</code>。以后导出时，这道题就用这个编号标记。</p>' + textField("slot_id", slot.slot_id || "", "extra", "", index, false) + "</div>" +
     slotFields("extra", "", index, slot) + "</section>"
   ).join("");
-  const add = state.locked ? "" : '<div class="row-actions"><button type="button" class="btn secondary" data-action="add-extra">自行增加槽位</button></div>';
+  const add = state.locked ? "" : '<div class="row-actions"><button type="button" class="btn secondary" data-action="add-extra">我也发现了一个候选问题，补充进来</button></div>';
   return [
     '<section class="card"><p class="eyebrow">第 ' + (state.index + 1) + " 题，共 15 题</p><h2>" + sc.id + " · " + esc(sc.nav) + "</h2>",
-    '<div class="keys"><span class="key">annotator ' + state.annotator + "</span><span class=\"key\">scenario_id " + sc.id + '</span><span class="key">场景行 slot_id 为空</span><span class="key">row_type scenario</span></div>',
-    '<p class="fine">下面四格已经定好，不用改。判断写在这一页的空格里，会按同名列写入 JSON 和 CSV。</p></section>',
+    '<div class="keys"><span class="key">标注员 ' + state.annotator + "</span><span class=\"key\">scenario_id=" + sc.id + '</span><span class="key">row_type=scenario</span></div>',
+    '<p class="fine">左边几行小字是导出表格里的表头名，不是你输入的东西，不用去改它——你在下面填的内容会自动对应到那一列。每题先读原文，再按 1→3 的顺序判断，最后逐条看候选问题。</p></section>',
     '<section class="card"><h3>需求</h3><p class="en">' + esc(sc.nl) + '</p><div class="zh-box"><span class="tag">中文译文</span><p class="en">' + esc(sc.nlZh) + '</p><p class="fine">和英文不一致时，以英文为准。</p></div></section>',
     '<section class="card"><h3>非正式说明</h3><pre class="en">' + esc(sc.informal) + '</pre><div class="zh-box"><span class="tag">中文译文</span><pre class="zh">' + esc(sc.informalZh) + '</pre><p class="fine">和英文不一致时，以英文为准。</p></div></section>',
-    '<section class="card checks"><h3>先用这两条检查</h3><p><strong>至少两种不同的业务解读。</strong> 保留的每个槽位都要有两种做法，而且会让系统的行为、收费、允许的事或留下的东西不一样。</p><p><strong>清晰对照不得仍需反复澄清。</strong> 规则已经写死时，读者不该还能提出一个会改掉规则的问题。若仍会提出，类型不要选 clear-control。</p></section>',
+    '<section class="card checks"><h3>填之前，先过两道关</h3><p><strong>关一：能不能想出两套做法？</strong> 只要你说「这里没定」，就必须写出两套方案，而且这两套会让系统的做法不一样——做的事不同、收的钱不同、允许的事不同，或留下的记录不同。只想得出一套，说明这里其实是定下来的。</p><p><strong>关二：说「已经写死了」，就更不该再想问什么。</strong> 如果一道题你归到「已经写死了」这一类，却还觉得有个问题非问不可，那多半是归错了类，回去改第 1 项。</p></section>',
     '<section class="card"><h3>场景判断</h3><div id="error-box" class="error-box" hidden></div>' + scenarioFields(sc) + "</section>",
-    sc.slots.length ? slotHtml : '<section class="card"><h3>候选槽位</h3><p class="help">这份材料没有列出候选槽位。若你认为原文仍有没写清的业务选择，用下面的「自行增加槽位」。若没有，就不要加。</p></section>',
+    sc.slots.length ? slotHtml : '<section class="card"><h3>候选问题</h3><p class="help">这份材料没有预先列出候选问题。如果你读完觉得原文确实还有说不清的地方，就用下面的按钮自己补一个；如果你觉得没有，就不用加。</p></section>',
     extraHtml,
     add,
-    '<div class="footer-nav"><div class="card"><button type="button" class="btn secondary" data-action="prev"' + (state.index === 0 ? " disabled" : "") + '>上一题</button><button type="button" class="btn secondary" data-action="check">检查本题</button><button type="button" class="btn" data-action="next"' + (state.index === SCENARIOS.length - 1 ? " disabled" : "") + ">下一题</button></div></div>"
+    '<div class="footer-nav"><div class="card"><button type="button" class="btn secondary" data-action="prev"' + (state.index === 0 ? " disabled" : "") + '>上一题</button><button type="button" class="btn secondary" data-action="demo">忘了怎么填？看示范</button><button type="button" class="btn secondary" data-action="check">检查本题</button><button type="button" class="btn" data-action="next"' + (state.index === SCENARIOS.length - 1 ? " disabled" : "") + ">下一题</button></div></div>"
   ].join("");
 }
 function renderOverview() {
@@ -895,10 +934,11 @@ function renderOverview() {
     return "<tr><td><button type=\"button\" class=\"link\" data-goto=\"" + sc.id + "\">" + sc.id + " " + esc(sc.nav) + "</button></td><td>" + label + "</td><td class=\"mono\">" + esc(kind) + "</td><td>" + esc(kept.join("、") || "—") + "</td></tr>";
   }).join("");
   const errors = state.lockAttempted ? validateAll() : [];
-  return '<section class="card overview"><p class="eyebrow">十五题</p><h2>总览</h2><p class="help">点场景名回去修改。全部完成后点右上角「导出并锁定」。</p>' +
-    (errors.length ? '<div class="error-box">还有 ' + errors.length + " 处需要修改。</div>" : "") +
-    '<table><thead><tr><th>场景</th><th>进度</th><th>类型</th><th>保留的槽位</th></tr></thead><tbody>' + rows + "</tbody></table>" +
-    '<p class="fine">导出的列与后台表一致：' + COLUMNS.map((key) => "<code>" + key + "</code>").join("、") + "。</p></section>";
+  return '<section class="card overview"><p class="eyebrow">十五题</p><h2>总览</h2><p class="help">这里能看到 15 题各自的进度。点题目名可以跳回去接着填。全部完成后，点右上角「交卷：导出并锁定」。</p>' +
+    (errors.length ? '<div class="error-box">还有 ' + errors.length + " 处需要修改。点题目名可以跳到对应位置。</div>" : "") +
+    '<table><thead><tr><th>题目</th><th>进度</th><th>你选的类型</th><th>你标记为「没定下来」的</th></tr></thead><tbody>' + rows + "</tbody></table>" +
+    '<p class="fine">十五题不必一次填完。关掉网页也没关系——答案留在这台电脑的浏览器里，下次打开接着填。</p>' +
+    '<details class="fine"><summary>导出表格的列名（技术信息，看不看都行）</summary><p>导出的 CSV/JSON 与后台表同列：' + COLUMNS.map((key) => "<code>" + key + "</code>").join("、") + "。</p></details></section>";
 }
 function renderMain() {
   const main = document.getElementById("main");
@@ -917,9 +957,9 @@ function updateChrome() {
   const done = state.annotator ? doneCount() : 0;
   document.getElementById("progress-text").textContent = "已完成 " + done + "/15";
   document.getElementById("progress-bar").style.width = (done / 15 * 100) + "%";
-  const saved = state.lastSavedAt ? "已写入浏览器 " + state.lastSavedAt.slice(11, 16) : "修改后写入浏览器";
-  const dir = state.lastDirAt ? " · 已写入文件夹" : (state.dirHandle ? " · 文件夹待写入" : "");
-  const lock = state.locked ? " · 已锁定" : "";
+  const saved = state.lastSavedAt ? "已保存在这台电脑 · " + state.lastSavedAt.slice(11, 16) : "填了就会自动保存";
+  const dir = state.lastDirAt ? " · 已存入文件夹" : (state.dirHandle ? " · 文件夹还没写入" : "");
+  const lock = state.locked ? " · 已交卷" : "";
   document.getElementById("save-text").textContent = saved + dir + lock;
   document.querySelectorAll(".nav-btn").forEach((btn) => {
     const sc = SCENARIOS.find((item) => item.id === btn.dataset.goto);
@@ -927,7 +967,7 @@ function updateChrome() {
     btn.classList.remove("done", "partial", "empty");
     btn.classList.add(scenarioStatus(sc));
   });
-  document.getElementById("lock-btn").textContent = state.locked ? "重新下载锁定文件" : "导出并锁定";
+  document.getElementById("lock-btn").textContent = state.locked ? "重新下载交卷文件" : "交卷：导出并锁定";
   document.getElementById("overview-btn").textContent = state.view === "overview" ? "返回题目" : "总览";
   document.getElementById("save-btn").hidden = state.locked;
   const who = person();
@@ -943,7 +983,7 @@ function paintErrors(errors) {
   if (!box) return;
   if (!errors.length) { box.hidden = true; box.innerHTML = ""; return; }
   box.hidden = false;
-  box.innerHTML = "<strong>这一题还有 " + errors.length + " 处要改</strong><ul>" + errors.map((err) => "<li>" + esc(err.message) + "</li>").join("") + "</ul>";
+  box.innerHTML = "<strong>这一题还有 " + errors.length + " 处要改</strong><ul>" + errors.map((err) => "<li>" + esc(err.message) + "</li>").join("") + "</ul><p>下面标红的地方就是它们的位置。</p>";
   errors.forEach((err) => {
     const field = findField(err);
     if (!field) return;
@@ -1025,7 +1065,7 @@ function saveDraft() {
   downloadText(files.jsonName, files.jsonText, "application/json");
   downloadText(files.csvName, files.csvText, "text/csv");
   writeDir("draft");
-  toast("已下载 " + files.jsonName + " 和 " + files.csvName + "。答案也留在这台浏览器里。");
+  toast("已下载 " + files.jsonName + " 和 " + files.csvName + "，答案也留在这台电脑上。这两个文件是备份用的，最后交卷还是要点「交卷：导出并锁定」。");
 }
 function doLock() {
   state.locked = true;
@@ -1038,14 +1078,14 @@ function doLock() {
   writeDir("locked");
   renderMain();
   openModal({
-    title: "已导出并锁定",
-    body: "<p>请把这两个文件交给协调人。本页已改为只读，判断不再改。若还没交回、只是误点，可以解除本机锁定。</p>",
+    title: "已交卷",
+    body: "<p>下面这两个文件已经下载好了，请把它们原样交给协调人。</p><p>这一页现在已经变成只读，你的判断不能再改。如果只是误点、还没交出去，点下面的「撤销，继续改」就能恢复。</p>",
     files: [
       { name: files.jsonName, text: files.jsonText, mime: "application/json" },
       { name: files.csvName, text: files.csvText, mime: "text/csv" }
     ],
-    confirmText: "完成",
-    cancelText: "解除本机锁定",
+    confirmText: "好，我知道了",
+    cancelText: "撤销，继续改",
     onCancel: unlockLocal
   });
 }
@@ -1054,7 +1094,7 @@ function requestLock() {
     const files = filePair("locked");
     downloadText(files.jsonName, files.jsonText, "application/json");
     downloadText(files.csvName, files.csvText, "text/csv");
-    toast("已再次下载锁定文件。");
+    toast("交卷文件又重新下载了一份（内容和上次一样）。");
     return;
   }
   state.forceErrors = true;
@@ -1063,12 +1103,12 @@ function requestLock() {
   renderMain();
   if (errors.length) {
     openModal({
-      title: "还不能锁定",
-      body: "<p>共 " + errors.length + " 处需要修改。锁定文件还没有下载。</p><ul>" +
+      title: "还有 " + errors.length + " 处没填完",
+      body: "<p>先把下面这些填好，就能交卷了。还没有生成任何交卷文件。</p><ul>" +
         errors.slice(0, 8).map((err) => "<li>" + esc(err.scenarioId) + "：" + esc(err.message) + "</li>").join("") +
-        (errors.length > 8 ? "<li>…</li>" : "") + "</ul>",
-      confirmText: "去修改第一处",
-      cancelText: "留下",
+        (errors.length > 8 ? "<li>…（还有 " + (errors.length - 8) + " 处）</li>" : "") + "</ul>",
+      confirmText: "带我去第一处",
+      cancelText: "先留在这里",
       onConfirm: () => gotoScenario(errors[0].scenarioId)
     });
     return;
@@ -1076,10 +1116,10 @@ function requestLock() {
   const rows = buildRows();
   const who = person();
   openModal({
-    title: "导出并锁定",
-    body: "<p>将下载 <code>annotator-" + who.file + "-locked.json</code> 和 <code>annotator-" + who.file + "-locked.csv</code>，共 " + rows.length + " 行。锁定后本页改为只读。请把这两个文件交给协调人。锁定之前不要和另一位对答案。</p>",
-    confirmText: "导出并锁定",
-    cancelText: "返回修改",
+    title: "准备交卷",
+    body: "<p>接下来会下载两个文件：<code>annotator-" + who.file + "-locked.json</code> 和 <code>annotator-" + who.file + "-locked.csv</code>，一共 " + rows.length + " 行。请把这两个文件交给协调人。</p><p><b>交卷之后这一页就变成只读了</b>，所以在点「确认交卷」之前，请再确认两件事：十五题都填过了；<b>还没有跟另一位标注员对过答案</b>。</p>",
+    confirmText: "确认交卷",
+    cancelText: "返回再改改",
     onConfirm: doLock
   });
 }
@@ -1088,20 +1128,20 @@ function unlockLocal() {
   state.lockedAt = null;
   persistLocal();
   renderMain();
-  toast("已解除本机锁定。已经下载的锁定文件不会自动作废。");
+  toast("已撤销交卷，可以继续修改了。刚才下载的那两个文件还在你的下载文件夹里，请删掉它们，以免和重新交卷的文件混淆。");
 }
 async function bindDirectory() {
   if (!window.showDirectoryPicker) {
-    toast("直接双击打开时，浏览器不能绑定文件夹。请用「保存并下载」和「导出并锁定」。");
+    toast("现在这个打开方式不支持直接存文件夹（多半是双击网页文件打开的）。不影响填写：请用「下载备份」手动保存。");
     return;
   }
   try {
     state.dirHandle = await window.showDirectoryPicker({ mode: "readwrite", id: "study-a-annotator" });
     await storeDirHandle(state.dirHandle);
     await writeDir(state.locked ? "locked" : "draft");
-    toast("已绑定。之后每次修改都会覆盖写入 JSON 和 CSV。");
+    toast("已选好文件夹。之后每次改动都会自动更新里面的 JSON 和 CSV，不用再手动下载。");
   } catch (err) {
-    if (err && err.name !== "AbortError") toast("没有获得文件夹权限。");
+    if (err && err.name !== "AbortError") toast("没有拿到文件夹权限，这次没有绑定成功。可以再试一次，或者用「下载备份」。");
   }
 }
 function idb() {
@@ -1124,7 +1164,7 @@ async function storeDirHandle(handle) {
 function applyImport(data) {
   const letter = data.annotator === "B" ? "B" : data.annotator === "A" ? "A" : null;
   if (!letter || !Array.isArray(data.rows)) {
-    toast("这个 JSON 不是本页导出的标注文件。");
+    toast("这个文件读不出标注内容。请确认选的是本页导出的 .json 文件（文件名以 annotator-A 或 annotator-B 开头）。");
     return;
   }
   state.annotator = letter;
@@ -1158,13 +1198,13 @@ function applyImport(data) {
   renderNav();
   persistLocal();
   renderMain();
-  toast("已导入标注员 " + letter + " 的文件。");
+  toast("已载入标注员 " + letter + " 之前的文件，可以接着填。");
 }
 function readImportFile(file) {
   const reader = new FileReader();
   reader.onload = () => {
     try { applyImport(JSON.parse(String(reader.result))); }
-    catch (err) { toast("JSON 读不出来。"); }
+    catch (err) { toast("这个文件打不开：它可能不是本页导出的 .json，或者文件已经损坏。"); }
   };
   reader.readAsText(file);
 }
@@ -1190,11 +1230,11 @@ function refreshGateStats() {
   ["A", "B"].forEach((letter) => {
     const saved = readStore(letter);
     const node = document.getElementById("stat-" + letter);
-    if (!saved || !saved.answers) { node.textContent = "本机还没有草稿"; return; }
+    if (!saved || !saved.answers) { node.textContent = "这台电脑上还没有填写记录"; return; }
     state.annotator = letter;
     state.answers = normalizeAnswers(saved.answers);
     const done = doneCount();
-    node.textContent = saved.locked ? "本机已有锁定记录 · 完成 " + done + "/15" : "继续草稿 · 完成 " + done + "/15";
+    node.textContent = saved.locked ? "已交卷过 · 完成 " + done + "/15" : "有没填完的记录 · 已完成 " + done + "/15，可以接着填";
   });
   state.annotator = null;
   state.answers = {};
@@ -1207,6 +1247,7 @@ document.getElementById("gate").addEventListener("click", (event) => {
   document.getElementById("start-btn").dataset.letter = button.dataset.pick;
 });
 document.getElementById("start-btn").onclick = () => start(document.getElementById("start-btn").dataset.letter);
+document.getElementById("demo-btn").onclick = showDemo;
 document.getElementById("import-gate").addEventListener("change", (event) => {
   const file = event.target.files && event.target.files[0];
   if (file) readImportFile(file);
@@ -1227,13 +1268,14 @@ document.getElementById("main").addEventListener("click", (event) => {
     renderMain();
   }
   if (action === "fill-none") fillNone(actionEl);
+  if (action === "demo") showDemo();
   if (action === "prev" && state.index > 0) gotoScenario(SCENARIOS[state.index - 1].id);
   if (action === "next" && state.index < SCENARIOS.length - 1) gotoScenario(SCENARIOS[state.index + 1].id);
   if (action === "check") {
     state.forceErrors = true;
     const errors = validateScenario(current());
     paintErrors(errors);
-    if (!errors.length) toast(current().id + " 已填完整。");
+    if (!errors.length) toast(current().id + " 这一题填完整了，可以翻到下一题。");
     else document.querySelector(".field.invalid")?.scrollIntoView({ behavior: "smooth", block: "center" });
   }
 });
@@ -1255,7 +1297,7 @@ document.addEventListener("keydown", (event) => {
   }
   if (event.key === "Escape") closeModal();
 });
-document.querySelector(".brand").insertAdjacentHTML("beforeend", '<button type="button" class="btn ghost small" id="switch-btn">换人</button>');
+document.querySelector(".brand").insertAdjacentHTML("beforeend", '<button type="button" class="btn ghost small" id="switch-btn">换标注员</button>');
 document.getElementById("switch-btn").onclick = () => {
   document.getElementById("app").classList.add("hidden");
   document.getElementById("gate").classList.remove("hidden");
@@ -1263,7 +1305,7 @@ document.getElementById("switch-btn").onclick = () => {
 };
 const fileBar = document.createElement("div");
 fileBar.id = "file-bar";
-fileBar.innerHTML = '<span>每次修改都会写入这台浏览器，并更新下面两个文件。点文件名即可下载。交回请用「导出并锁定」。</span><div id="live-downloads"></div>';
+fileBar.innerHTML = '<span>你填的每一处都会自动存在这台电脑上，关掉网页也不会丢。下面是随时可以下载的备份文件，<b>最终交卷请用右上角的「交卷：导出并锁定」</b>。</span><div id="live-downloads"></div>';
 document.querySelector("header").insertAdjacentElement("afterend", fileBar);
 
 if (SCENARIOS.length !== 15 || SCENARIOS.reduce((sum, sc) => sum + sc.slots.length, 0) !== 13) {
