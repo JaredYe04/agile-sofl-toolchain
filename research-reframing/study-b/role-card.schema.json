@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agile-sofl.local/study-b/role-card.schema.json",
+  "title": "Study B simulated-analyst role card",
+  "description": "Blank schema for one simulated-analyst role card under protocol study-b-sim-1. A document that validates against this schema is a role configuration. It is not a human analyst, not Annotator A or Annotator B, and not a results record. Do not store session outcomes, timings, SUS, or workload in a role card.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "protocolId",
+    "roleId",
+    "kind",
+    "label",
+    "skillClaims",
+    "maySupply",
+    "mustNotInvent",
+    "acknowledgements"
+  ],
+  "properties": {
+    "protocolId": {
+      "const": "study-b-sim-1"
+    },
+    "roleId": {
+      "description": "Stable id stored in decision-ledger actor fields. Personal names are not role ids.",
+      "enum": ["sim:junior-se", "sim:mid-re", "sim:senior-fm"]
+    },
+    "kind": {
+      "const": "simulated-analyst"
+    },
+    "label": {
+      "description": "Short role label, for example the junior software engineer, mid-level requirements analyst, or senior formal methods card named in the protocol.",
+      "type": "string",
+      "minLength": 1
+    },
+    "skillClaims": {
+      "description": "What this role is assumed to know. Skill claims license technical form of already authorized facts.",
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "maySupply": {
+      "description": "Edits and judgements this role may add without inventing a stakeholder fact.",
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "mustNotInvent": {
+      "description": "Business facts, labels, and scores this role must not create.",
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "acknowledgements": {
+      "description": "The five tokens are mandatory as a set. uniqueItems with minItems and maxItems of 5, over this five-value enum, admits only a permutation of the full set. The tokens restate the protocol hard rules on the card itself.",
+      "type": "array",
+      "uniqueItems": true,
+      "minItems": 5,
+      "maxItems": 5,
+      "items": {
+        "enum": [
+          "role-is-simulated-analyst",
+          "not-study-a-annotator",
+          "does-not-produce-confirmatory-gold",
+          "does-not-invent-unauthorized-stakeholder-facts",
+          "does-not-support-human-time-sus-or-workload-claims"
+        ]
+      }
+    }
+  }
+}
