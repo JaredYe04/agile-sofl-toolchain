@@ -383,6 +383,7 @@ const state = {
   lockedAt: null,
   updatedAt: null,
   forceErrors: false,
+  lockAttempted: false,
   dirHandle: null,
   pendingDir: null,
   lastSavedAt: null,
@@ -893,7 +894,7 @@ function renderOverview() {
     packOf(sc).extra.forEach((slot) => { if (slot.keep_unit === "yes" && trim(slot.slot_id)) kept.push(trim(slot.slot_id)); });
     return "<tr><td><button type=\"button\" class=\"link\" data-goto=\"" + sc.id + "\">" + sc.id + " " + esc(sc.nav) + "</button></td><td>" + label + "</td><td class=\"mono\">" + esc(kind) + "</td><td>" + esc(kept.join("、") || "—") + "</td></tr>";
   }).join("");
-  const errors = state.forceErrors ? validateAll() : [];
+  const errors = state.lockAttempted ? validateAll() : [];
   return '<section class="card overview"><p class="eyebrow">十五题</p><h2>总览</h2><p class="help">点场景名回去修改。全部完成后点右上角「导出并锁定」。</p>' +
     (errors.length ? '<div class="error-box">还有 ' + errors.length + " 处需要修改。</div>" : "") +
     '<table><thead><tr><th>场景</th><th>进度</th><th>类型</th><th>保留的槽位</th></tr></thead><tbody>' + rows + "</tbody></table>" +
@@ -1057,6 +1058,7 @@ function requestLock() {
     return;
   }
   state.forceErrors = true;
+  state.lockAttempted = true;
   const errors = validateAll();
   renderMain();
   if (errors.length) {
