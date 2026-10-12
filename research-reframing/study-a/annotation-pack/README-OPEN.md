@@ -1,10 +1,9 @@
 # 从这里开始
 
-标注入口只有一篇：[操作说明-中文.md](操作说明-中文.md)。
+用浏览器打开这一个文件作答：
 
-- 标注员 A（Xujun Ye）填写 [annotator-a/问卷](annotator-a/问卷)。
-- 标注员 B（Jinlin Zhang）填写 [annotator-b/问卷](annotator-b/问卷)。
+[study-a-annotator.html](study-a-annotator.html)
 
-空白 CSV 是后台备份，不是答题纸。各文件夹里的 `CSV备份说明.md` 说明了日后怎样誊到表里。
+选择标注员 A（Xujun Ye）或 B（Jinlin Zhang）。填完 S01 到 S15 后，点「导出并锁定」，交回下载的 JSON 和 CSV。
 
-英文协议留给协调人作后台参考，不是标注入口。不要把 `id-map.sealed.json` 或 `held-out/scenarios/` 放进交给标注员的压缩包。
+同目录里的 Markdown 问卷不要填写。

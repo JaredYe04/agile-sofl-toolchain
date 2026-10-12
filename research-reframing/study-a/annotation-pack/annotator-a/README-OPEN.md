@@ -1,11 +1,1 @@
-# 从这里开始
-
-你是标注员 A（Xujun Ye）。
-
-1. 先读 [操作说明-中文.md](操作说明-中文.md)。
-2. 再填写 [问卷](问卷) 里的 `S01.md` 到 `S15.md`。
-3. 锁定后把 `问卷` 文件夹交回。
-
-[annotator-a.blank.csv](annotator-a.blank.csv) 是后台备份，不是答题纸。见 [CSV备份说明.md](CSV备份说明.md)。
-
-不要把 CSV 当作题目入口。不要打开本文件夹以外的文件。
+> **勿用。** 标注入口不是这个文件夹。请用浏览器打开 [../study-a-annotator.html](../study-a-annotator.html)。
