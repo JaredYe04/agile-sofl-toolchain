@@ -11,5 +11,8 @@ Xujun Ye receives annotator-a.zip.
 Jinlin Zhang receives annotator-b.zip.
 
 Leave id-map.sealed.json and held-out/scenarios/ out of both zips.
+Each zip already contains 操作说明-中文.md and 问卷/S01.md through S15.md.
+That Chinese questionnaire is the annotator entry. The blank CSV is a backend backup.
+Annotators return the locked 问卷 folder. After both are locked, transcribe answers into the matching CSV columns.
 Held-out files stay status draft-gold until both sheets are locked and adjudication is finished.
 Do not run C1 or C2. Do not invent SCR. Do not cut a freeze tag. Do not use exp-freeze-v1.2.
