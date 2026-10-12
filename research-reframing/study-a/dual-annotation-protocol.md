@@ -6,14 +6,27 @@ The draft packages under `held-out/scenarios/` stay `status: draft-gold`. Labeli
 
 ## Two annotators
 
-Two independent annotators, A and B, label every held-out scenario. Each person has one sheet:
+Two independent annotators label every held-out scenario.
 
-- `annotation-sheets/annotator-a.blank.csv`
-- `annotation-sheets/annotator-b.blank.csv`
-
-The two files list the same keys. The only filled difference is the `annotator` cell (`A` or `B`).
+- Annotator A is Xujun Ye.
+- Annotator B is Jinlin Zhang.
 
 The person who drafted the JSON may be one of the two annotators. That person is one vote. A second annotator is still required. One person cannot complete both sheets.
+
+## Kickoff pack
+
+The sheets to send are the blind folders under `annotation-pack/`. Open instructions for both people are `annotation-pack/README-OPEN.md`, copied into each folder.
+
+- Xujun Ye receives `annotation-pack/annotator-a/` only.
+- Jinlin Zhang receives `annotation-pack/annotator-b/` only.
+
+Each folder contains the same blind texts and a blank sheet. The texts are the natural-language requirements, the informal specification, and the slot questions. They leave out `kind`, `clearControl`, `qualityNotes`, `alternatives`, `authorizedAlternativeId`, `stakeholderAnswer`, `matchTerms`, `commitmentSignals`, `mustNotConfirmBeforeAnswer`, and the maintenance id lists. Sheet rows use opaque scenario codes `S01`–`S15`. The `annotator` cell is `A` or `B`. Judgment cells are empty.
+
+`annotation-pack/id-map.sealed.json` maps those codes to the held-out file ids. Annotators must not receive that file or `held-out/scenarios/`. After both sheets are locked, join `scenario_id` on the sheet back to the draft scenario id with that map. Slot ids are unchanged.
+
+`annotation-sheets/annotator-a.blank.csv` and `annotation-sheets/annotator-b.blank.csv` keep the real scenario ids for the coordinator. They are the unblinded key template. They are not the sheets to send. Their judgment cells stay empty.
+
+Every held-out file stays `status: draft-gold` until both kickoff sheets are locked and adjudication under this protocol has finished. This pack does not run a model, does not report SCR, and does not cut a freeze tag.
 
 ## No peeking
 
@@ -26,6 +39,8 @@ During independent labeling, the allowed materials are:
 - on a slot row, that slot's `question` in the draft JSON
 
 The `question` names the candidate decision. It is the unit being labeled. It is not an answer.
+
+The kickoff folder already contains those three materials and nothing else from the draft file. Leave the draft JSON closed.
 
 Leave these draft fields unread while labeling. They are the author's provisional oracle key and the author's notes:
 
