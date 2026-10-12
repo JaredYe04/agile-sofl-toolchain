@@ -1,0 +1,142 @@
+{
+  "sealed": true,
+  "doNotDistribute": true,
+  "note": "Coordinator only. Zip annotator-a/ for Xujun Ye and annotator-b/ for Jinlin Zhang. Do not include this file or held-out/scenarios/ in either zip. Held-out status stays draft-gold until both sheets are locked and adjudication is finished. This pack does not run C1 or C2, does not report SCR, and does not cut a freeze tag.",
+  "annotators": {
+    "A": "Xujun Ye",
+    "B": "Jinlin Zhang"
+  },
+  "permutationSeed": 20261012,
+  "scenarios": [
+    {
+      "opaqueId": "S01",
+      "scenarioId": "ho-cowork-day-visitor",
+      "sourceFile": "held-out/scenarios/ho-cowork-day-visitor.json",
+      "slotIds": [
+        "day-visitor"
+      ],
+      "blindSha256": "badd73dab37422a47adc80244a3239c2ebbc43ef3a7d15391d249c2c57920669"
+    },
+    {
+      "opaqueId": "S02",
+      "scenarioId": "ho-camera-damage-hold",
+      "sourceFile": "held-out/scenarios/ho-camera-damage-hold.json",
+      "slotIds": [
+        "upfront-hold"
+      ],
+      "blindSha256": "82306fb5600aee48da966ce6998479cdfee8e645fa48f895cb7d12df9044f08d"
+    },
+    {
+      "opaqueId": "S03",
+      "scenarioId": "ho-court-window-change",
+      "sourceFile": "held-out/scenarios/ho-court-window-change.json",
+      "slotIds": [
+        "placed-booking"
+      ],
+      "blindSha256": "2a4297cb76da181f0652e191713e6fca865b114a13ab45915d1e617681d68921"
+    },
+    {
+      "opaqueId": "S04",
+      "scenarioId": "ho-recycling-charge-change",
+      "sourceFile": "held-out/scenarios/ho-recycling-charge-change.json",
+      "slotIds": [
+        "punch-card"
+      ],
+      "blindSha256": "416ffd7cedbd85a93b73e678656320a58066f5821ee72afc1b70fdfe3b46765f"
+    },
+    {
+      "opaqueId": "S05",
+      "scenarioId": "ho-kennel-medicine",
+      "sourceFile": "held-out/scenarios/ho-kennel-medicine.json",
+      "slotIds": [
+        "give-medicine"
+      ],
+      "blindSha256": "5942faac90f7121873db7022660da0ad588c135e83f61e8ed5eefe5954ce92bd"
+    },
+    {
+      "opaqueId": "S06",
+      "scenarioId": "ho-carwash-plan-price",
+      "sourceFile": "held-out/scenarios/ho-carwash-plan-price.json",
+      "slotIds": [
+        "paid-month"
+      ],
+      "blindSha256": "a0a72792b240d506e7c84ceb45b0e6d7b3472f1ccd98aab6b956622e6b7945cc"
+    },
+    {
+      "opaqueId": "S07",
+      "scenarioId": "ho-garden-plot-transfer",
+      "sourceFile": "held-out/scenarios/ho-garden-plot-transfer.json",
+      "slotIds": [
+        "transfer-consent"
+      ],
+      "blindSha256": "983d98f35a0e99aab7f9011c8f723374da26032babc7ff6f85c6468eab125ef1"
+    },
+    {
+      "opaqueId": "S08",
+      "scenarioId": "ho-bikeshare-overtime",
+      "sourceFile": "held-out/scenarios/ho-bikeshare-overtime.json",
+      "slotIds": [
+        "overtime-policy"
+      ],
+      "blindSha256": "9258c4f18e642d607e2cf156514682b949465c389f1175706305b32e81319f85"
+    },
+    {
+      "opaqueId": "S09",
+      "scenarioId": "ho-hostel-bed-hold",
+      "sourceFile": "held-out/scenarios/ho-hostel-bed-hold.json",
+      "slotIds": [
+        "hold-length"
+      ],
+      "blindSha256": "def50b4cf301998375ecab1c3bb1ab9fbe30d478baa0561f2038d45c82fb63e7"
+    },
+    {
+      "opaqueId": "S10",
+      "scenarioId": "ho-market-stall-fee",
+      "sourceFile": "held-out/scenarios/ho-market-stall-fee.json",
+      "slotIds": [],
+      "blindSha256": "1616447da58980aa9f3ce02391219de38ba1a41df1f46a42705c04e3e34c1cc0"
+    },
+    {
+      "opaqueId": "S11",
+      "scenarioId": "ho-museum-member-guest",
+      "sourceFile": "held-out/scenarios/ho-museum-member-guest.json",
+      "slotIds": [
+        "accompanying-entry"
+      ],
+      "blindSha256": "813e90a078ac5181d1a41acfe7d720a8d8ba6df901214b9833dce8ee6236ab12"
+    },
+    {
+      "opaqueId": "S12",
+      "scenarioId": "ho-pool-session-fee",
+      "sourceFile": "held-out/scenarios/ho-pool-session-fee.json",
+      "slotIds": [],
+      "blindSha256": "53af0843b87819c8079c256e9552929fa60b51b3a5e2225a6dd9b9a0cdc178a4"
+    },
+    {
+      "opaqueId": "S13",
+      "scenarioId": "ho-pharmacy-counter",
+      "sourceFile": "held-out/scenarios/ho-pharmacy-counter.json",
+      "slotIds": [
+        "who-collects",
+        "id-proof"
+      ],
+      "blindSha256": "8ecf6af648384f10b0b1aaee2c3a1be5eeccf2ff085426feb301461d6dbe79a2"
+    },
+    {
+      "opaqueId": "S14",
+      "scenarioId": "ho-bakery-cutoff",
+      "sourceFile": "held-out/scenarios/ho-bakery-cutoff.json",
+      "slotIds": [],
+      "blindSha256": "c519bf40e6fce88a7e7c7615faef01c92e8b2820f3d26d622b74177d80591ca1"
+    },
+    {
+      "opaqueId": "S15",
+      "scenarioId": "ho-donor-unbooked",
+      "sourceFile": "held-out/scenarios/ho-donor-unbooked.json",
+      "slotIds": [
+        "unbooked-donor"
+      ],
+      "blindSha256": "5b7081a2d36ff48fd86dbe80b69669e570e8fa7fa9dd2009d90819c3f489cca8"
+    }
+  ]
+}

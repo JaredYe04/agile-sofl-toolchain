@@ -51,7 +51,7 @@ node .harness/study-a.mjs --score-only --key <keyFile>
 
 `dev/scenarios/` has five development examples: three underspecified tasks (library, clinic, parking), one clear control (warehouse), and one maintenance task (library loan period). They are marked `devExample: true` and `confirmatory: false`.
 
-`held-out/scenarios/` has fifteen draft packages (`set: held-out`, `status: draft-gold`). Nine are underspecified, three are clear controls, and three are maintenance tasks, across fifteen small-app domains. They are not dual-annotated and they are not the confirmatory freeze. The dual-annotation hard gate, and the empty A/B sheets, are `dual-annotation-protocol.md` and `annotation-sheets/`. List the scaffold without a model call:
+`held-out/scenarios/` has fifteen draft packages (`set: held-out`, `status: draft-gold`). Nine are underspecified, three are clear controls, and three are maintenance tasks, across fifteen small-app domains. They are not dual-annotated and they are not the confirmatory freeze. The dual-annotation hard gate is `dual-annotation-protocol.md`. The kickoff folders to send are `annotation-pack/annotator-a/` (Annotator A, Xujun Ye) and `annotation-pack/annotator-b/` (Annotator B, Jinlin Zhang). Those folders use opaque scenario codes. The crosswalk stays in `annotation-pack/id-map.sealed.json`. Held-out status stays `draft-gold` until both sheets are locked and adjudication has finished. `annotation-sheets/` keeps the unblinded blank templates. List the scaffold without a model call:
 
 ```bash
 node .harness/study-a.mjs --list ../../research-reframing/study-a/held-out

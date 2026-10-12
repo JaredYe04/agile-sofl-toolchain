@@ -2,7 +2,7 @@
 
 This checklist is the gate in front of a confirmatory Study A run. The files in `held-out/scenarios/` do **not** pass it. They are `status: draft-gold`: a scaffold for human dual annotation. No confirmatory result exists, and this document does not record one.
 
-**Hard gate.** Dual annotation is a hard gate before freeze. Follow `dual-annotation-protocol.md`. The blank sheets in `annotation-sheets/` (`annotator-a.blank.csv`, `annotator-b.blank.csv`) carry scenario id and slot id keys only. Their judgment cells are empty. They are not labels, agreement, or SCR. Do not cut `study-a-freeze-v0.1` until that protocol allows status `gold`. Author-solo gold does not open this gate.
+**Hard gate.** Dual annotation is a hard gate before freeze. Follow `dual-annotation-protocol.md`. Annotator A is Xujun Ye. Annotator B is Jinlin Zhang. The folders to send are `annotation-pack/annotator-a/` and `annotation-pack/annotator-b/`. The blank sheets in `annotation-sheets/` (`annotator-a.blank.csv`, `annotator-b.blank.csv`) carry the real scenario id and slot id keys only. Their judgment cells are empty. They are not labels, agreement, or SCR, and they are not the sheets to send. Do not cut `study-a-freeze-v0.1` until that protocol allows status `gold`. Author-solo gold does not open this gate. Status stays `draft-gold` until both kickoff sheets are locked and adjudication has finished.
 
 Do not start a real model batch, and do not pass `--confirmatory`, until every item below is done. A dry `--list` of the scaffold is allowed. It does not call a model and does not freeze anything.
 
