@@ -14,7 +14,7 @@
  * Prints the launch command. Makes no LLM calls.
  */
 import { execFileSync, execSync } from 'node:child_process'
-import { copyFileSync, existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync, readdirSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -35,12 +35,29 @@ if (head !== tagCommit) { console.error(`worktree ${wt} is at ${head}, expected 
 const dstHarness = join(wt, 'packages', 'studio', 'scripts', 'agent-harness')
 mkdirSync(dstHarness, { recursive: true })
 for (const f of readdirSync(here)) copyFileSync(join(here, f), join(dstHarness, f))
+// Optional sibling: case-study-sim is not the classroom batch; copy if present so the freeze tree can run P4–P23.
+const srcSim = join(here, '..', 'case-study-sim')
+const dstSim = join(wt, 'packages', 'studio', 'scripts', 'case-study-sim')
+if (existsSync(srcSim)) {
+  mkdirSync(dstSim, { recursive: true })
+  const copySim = (src, dst) => {
+    mkdirSync(dst, { recursive: true })
+    for (const name of readdirSync(src)) {
+      const from = join(src, name), to = join(dst, name)
+      const st = statSync(from)
+      if (st.isDirectory()) copySim(from, to)
+      else copyFileSync(from, to)
+    }
+  }
+  copySim(srcSim, dstSim)
+}
 const fx = join('packages', 'parser', 'tests', 'fixtures', 'reference-systems')
 for (const f of ['classroom.aspec', 'delivery-trimmed.aspec']) copyFileSync(join(repo, fx, f), join(wt, fx, f))
 
 if (!argv.includes('--skip-install')) sh('npm ci --no-audit --no-fund', wt)
 for (const w of ['@agile-sofl/parser', '@agile-sofl/gui', '@agile-sofl/aspec', '@agile-sofl/editor-api', '@agile-sofl/language-server']) sh(`npm run build --workspace ${w}`, wt)
 sh('node scripts/agent-harness/build.mjs', join(wt, 'packages', 'studio'))
+if (existsSync(join(dstSim, 'build.mjs'))) sh('node scripts/case-study-sim/build.mjs', join(wt, 'packages', 'studio'))
 mkdirSync(join(wt, 'packages', 'studio', '.harness'), { recursive: true })
 writeFileSync(join(wt, 'packages', 'studio', '.harness', 'v12-origin.json'),
   JSON.stringify({ originRepo: repo, envFile: join(repo, 'packages', 'studio', '.env'), tag: TAG, tagCommit }, null, 2))
@@ -48,3 +65,7 @@ console.log(`\nv1.2 worktree ready: ${wt} (HEAD ${tagCommit})`)
 console.log(`  cd "${join(wt, 'packages', 'studio')}"`)
 console.log('  node .harness/batch.mjs --dry-run --repeats 1                                          # no LLM calls')
 console.log('  node .harness/batch.mjs --systems classroom,delivery --conditions T,B2,B0-auto --repeats 5   # real batch')
+if (existsSync(join(wt, 'packages', 'studio', '.harness', 'case-study-sim.mjs'))) {
+  console.log('  node .harness/case-study-sim.mjs --dry-run --pilot                                    # P4–P6 fake LLM')
+  console.log('  node .harness/case-study-sim.mjs --pilot                                              # P4–P6 ChatECNU')
+}
