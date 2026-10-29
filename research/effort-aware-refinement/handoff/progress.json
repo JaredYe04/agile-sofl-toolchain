@@ -2,7 +2,7 @@
   "project": "Effort-Aware Incremental Refinement of Hybrid Requirements Specifications with LLM Agents",
   "branch": "research/effort-aware-refinement",
   "baseline_commit": "8f325dfe32db9e2c3498032860fa7bc0cb450227",
-  "last_commit": "e298cfe",
+  "last_commit": "9f06918",
   "phase": "P1",
   "completed_tasks": [
     "P0: clone repo at 8f325df, create branch research/effort-aware-refinement",
