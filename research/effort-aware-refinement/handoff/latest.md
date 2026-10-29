@@ -1,38 +1,44 @@
 # HANDOFF — latest
 
 ## Current status
-- **Branch / commit:** `research/effort-aware-refinement` / P0 commit `2ef7d8c03c4a89b6b1bf995ca0c5ad9ffe62998a`.
-  Baseline `8f325df`.
-- **Current phase:** **P0 complete → P1 in progress (literature verification agent dispatched).**
-- **Implemented and verified (P0):** clone + branch + research workspace; `npm ci` (exit 0); `npm run build`
-  (exit 0); `npm test` (1092 pass / 5 pre-existing studio failures: 4× environmental Electron-binary-missing,
-  1× pre-existing prompt-content assertion); full read-only audit of all 7 packages → `design/architecture.md`.
-- **Key finding:** the toolchain ALREADY has (a) a complete atomic-requirement refinement model
-  (`editor-api/refinement.ts`: buildRefinementState/applyRefinementStep/formatRefinementDigest + audit log
-  `.agile-sofl/refinement-log.jsonl`), (b) a mature LLM agent (`studio/.../llm/agentLoop.ts`) with
-  ask_clarification / propose_refinement_step / read_refinement_state + permission gates + post-clarify read
-  budget, (c) an experiment-condition system (T/B2) + JSONL telemetry, (d) a trace-link provenance system
-  (`TraceabilityGraph` / `.agile-sofl/trace/workspace-v3.json`), and (e) a **production headless experiment
-  harness** (`scripts/agent-harness/`: runOnce, block-randomized batch, seed, freeze guard, resume, blinded
-  outputs, per-step parser/L1/L2 diagnostics, B0-auto no-LLM baseline, `resolveClarification` oracle hook,
-  anti-fabrication `UNMATCHED_CLARIFICATION_REPLY`, `promptHash` fairness). Also `moduleGraph.ts`
-  (module/process/function nodes + parent/decom edges) and `specMaps` (architecture/workflow/sequence/dataflow/
-  lifecycle maps with typed edges) are the existing graph substrate.
+- **Branch / commit:** `research/effort-aware-refinement` / latest `28269cd`. Baseline `8f325df`.
+  P0 commit `2ef7d8c`; P1 commits `7e30f73` (novelty + BLOCKERS) and `28269cd` (preregistration).
+- **Current phase:** **P1 in progress.** P0 complete. Literature-verification agent
+  (`aa5fa1c96a090d235`) **still running** (verifying external competing work). Internal prior-work
+  boundary and the RQ/metric/threshold/comparison pre-registration are **done and committed**.
+- **Implemented and verified (P0 + P1 so far):** clone + branch + research workspace; `npm ci` (exit 0);
+  `npm run build` (exit 0); `npm test` (1092 pass / 5 pre-existing studio failures: 4× environmental
+  Electron-binary-missing, 1× pre-existing prompt-content assertion); full read-only audit of all 7
+  packages → `design/architecture.md`; **full audit of the headless experiment harness**
+  (`scripts/agent-harness/`); audit of the two reference benchmark tasks; **novelty-assessment.md**
+  (internal gap G1–G7 verified from source; external rows PENDING, none invented); **hypotheses-and-
+  preregistration.md** (frozen RQs, DVs, quality floor, task/oracle schema, anti-fabrication invariants,
+  stats plan, run plan).
+- **Key findings (P1):**
+  1. The headless harness is **usable in this sandbox**: `tests/agentHarness.test.ts` mocks electron and
+     passes; an **offline `--dry-run` fake-LLM path** lets me validate the harness end-to-end with no
+     network/key before any model spend.
+  2. **Freeze guard gotcha for P5/P6:** `freeze.ts` `TOOL_PATHS` includes `packages/studio/src`. When P4
+     adds the planner as new agent tools under `studio/src`, a **new freeze tag (e.g. `exp-freeze-v1.3`)**
+     is required before real batches run. `packages/refinement` (new) is NOT in `TOOL_PATHS`.
+  3. Experiment conditions today are `T | B2 | B0-auto`; my **A/B/C/D + ablations** extend this enum in P5.
+     `B0-auto` = `refineAspecWithCheck` (deterministic no-LLM) is a reusable baseline.
+  4. The **prior trace-recovery paper** by the same group (referenced in `docs/26`) and the existing
+     atomic-requirement / dual-line / grain refinement model (`docs/25`) are the main things to cite and
+     differentiate; our increment is the requirement-level structure + cost-aware planner + propagation +
+     readiness, not the language or the goal formalism.
 - **Tests run (command + exit code):** `npm test` → exit 1 (baseline; 5 pre-existing failures in
-  `baseline-report.md`). No new failures (no code changed yet).
-- **Changed files/modules (P0):** research workspace docs only (committed in `2ef7d8c`). **No product source
-  changed.**
-- **New research findings with citations:** prior related work is in `docs/25` (atomic req / dual-line
-  refinement / audit log) and `docs/26` (trace + bidirectional linkage, refs a prior trace-recovery paper);
-  harness README documents a v1.2 freeze. Must be cited/differentiated in the paper (P1).
-- **Experimental evidence available:** none run yet (P0 = audit only). Baseline results recorded.
-- **Remaining gaps/risks:** research core (P2–P3), oracle/baselines/scorer (P5), real-model runs (P6),
-  user study (P7, design-only), paper (P8) all not yet done.
+  `baseline-report.md`). No new failures (no product source changed yet).
+- **Changed files/modules (P0–P1):** research workspace docs only. **No product source changed.**
+- **Experimental evidence available:** none run yet (P0/P1 = audit + design). Baseline results recorded.
+- **Remaining gaps/risks:** external-literature verification (agent running); research core (P2–P3);
+  oracle/baselines/scorer (P5); real-model runs (P6); user study (P7, design-only); paper (P8).
 - **External blockers:** Electron binary (B1, environmental, non-blocking); real-model budget = FREE APIs
   (B4, non-blocking); user study needs real participants (B5, by design); literature may be paywalled (B6).
-- **Exact next actions (P1):**
-  1. (running) Literature agent verifying OntoAgent/Tower/SAGE-Agent/Goal2Story/KAOS/SOFL + NASA-TLX +
-     RE 2026 CFP → will populate `research/literature-matrix.csv`, `literature-notes.md`,
-     `novelty-assessment.md`.
-  2. Write `research/research-questions.md` (2–3 primary RQs + null hypotheses + IV/DV + operational defs).
-  3. **Freeze RQs** before large implementation (task book §3.4). Do NOT jump to P3 before the P1 gate.
+- **Exact next actions:**
+  1. (running) Literature agent → when it returns, fill `literature-matrix.csv`, `literature-notes.md`,
+     novelty-assessment §3; then record the **final** GO/REVISE/PIVOT decision (the P1 gate).
+  2. Finalize `research/conceptual-model.md` (drafted) + semantic design + ADRs (P2).
+  3. De-risk P5/P6: confirm the two authorized FREE APIs (lab `lab-qwen3.8-27b`, ECNU `ecnu-max`) are
+     reachable; plan the `exp-freeze-v1.3` tag for after P4.
+  4. **Do NOT start P3 before the final P1 GO is recorded** (task book §3.4).

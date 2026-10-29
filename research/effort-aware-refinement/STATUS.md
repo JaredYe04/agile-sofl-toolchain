@@ -1,14 +1,14 @@
 # STATUS — Effort-Aware Refinement Research
 
 **Branch:** `research/effort-aware-refinement` · **Baseline commit:** `8f325df`
-**Last updated:** 2026-10-30 (P0 complete)
+**Last updated:** 2026-10-30 (P1 in progress)
 
 ## Phase gates
 
 | Phase | Gate | Status |
 |---|---|---|
-| **P0** | Baseline report + arch map + branch + research dir + reproducible build/test | ✅ **DONE** (this session) |
-| P1 | Literature + novelty assessment + RQ freeze | ⬜ next |
+| **P0** | Baseline report + arch map + branch + research dir + reproducible build/test | ✅ **DONE** |
+| **P1** | Literature + novelty assessment + RQ freeze | 🟡 **IN PROGRESS** (novelty + prereg written; external-lit agent running; RQ freeze conditional) |
 | P2 | Conceptual model + semantic design + ADRs | ⬜ |
 | P3 | Refinement tree/graph infra + tests-first (stable) | ⬜ |
 | P4 | Agent harness + human decision loop | ⬜ |
@@ -35,15 +35,36 @@
   cost-aware question-selection policy, no first-class obligation entities, no readiness policy, no
   benchmark/oracle/baselines.
 
-## Blockers (see BLOCKERS.md)
-- Electron binary not installed in sandbox (4 studio test files fail environmentally). Non-blocking for
-  the research core (parser/aspec/editor-api + headless agent harness).
-- (transient) harness command-safety classifier flapping during P0 — retries succeeded.
+## P1 — completed so far
+- Confirmed B1 is a true environmental blocker (electron `dist` incomplete) and the **headless
+  experiment harness is usable here** (`tests/agentHarness.test.ts` mocks electron and passes).
+- Full read-only audit of the experiment harness (`scripts/agent-harness/`): `Condition =
+  'T'|'B2'|'B0-auto'`; block-randomized seeded schedule; 429/503 backoff; resume + `--stop-at`;
+  blinded outputs; `resolveClarification` oracle hook; offline `--dry-run` fake-LLM path;
+  `promptHash` fairness; `UNMATCHED_CLARIFICATION_REPLY` anti-fabrication. B0-auto =
+  `refineAspecWithCheck` (no LLM). **Freeze guard** (`freeze.ts`): `TOOL_PATHS` covers
+  `packages/studio/src`, so P4's new agent tools will require a **new freeze tag** (e.g.
+  `exp-freeze-v1.3`); `packages/refinement` is not in `TOOL_PATHS`.
+- Audited the two reference benchmark tasks (`classroom.aspec`, `delivery-trimmed.aspec`): both have
+  state machines, cross-process constraints, role boundaries, and time/idempotency boundaries that
+  exercise gaps G1–G7.
+- Wrote `research/novelty-assessment.md`: internal prior-work boundary verified from source (I1–I8,
+  gap G1–G7); external-literature rows marked PENDING (no citation invented); interim GO +
+  REVISE/PIVOT triggers.
+- Wrote `research/hypotheses-and-preregistration.md`: frozen RQ1–RQ3 (RQ4 supplementary), DV
+  operational definitions, pre-registered quality floor, task/oracle schema with anti-fabrication
+  invariants, statistical plan, exclusion rules, free-API-only run plan.
 
-## Next actions (P1)
-1. Verify the direct-competition literature (OntoAgent arXiv:2605.05828; Tower TSC
-   10.1109/TSC.2025.3624915; SAGE-Agent ACL Findings 2026; Goal2Story arXiv:2503.13279; KAOS; SOFL Liu
-   JSS 2021 10.1016/j.jss.2021.110975) via WebSearch/WebFetch; record verified citations.
-2. Build `research/research-questions.md` (2–3 primary RQs), `literature-matrix.csv`,
-   `literature-notes.md`, `novelty-assessment.md` (go/revise/pivot).
-3. Freeze RQs before large implementation (task book §3.4).
+## Blockers (see BLOCKERS.md)
+- Electron binary not installed in sandbox (4 studio tests fail environmentally). Non-blocking for the
+  research core (parser/aspec/editor-api + headless agent harness).
+- (transient) harness command-safety classifier flapping — retries succeed; read-only tools unaffected.
+
+## Next actions
+1. **P1 (await):** literature agent returns verified external rows → populate
+   `research/literature-matrix.csv`, `literature-notes.md`, and fill novelty-assessment §3; then record
+   the **final** GO/REVISE/PIVOT decision.
+2. **P2:** finalize `research/conceptual-model.md` (drafted) + semantic design + ADRs.
+3. **Do not start P3 before the final P1 GO is recorded** (task book §3.4).
+4. **P5/P6 de-risk:** confirm the two authorized free APIs (lab `lab-qwen3.8-27b`, ECNU `ecnu-max`) are
+   reachable; plan the `exp-freeze-v1.3` tag for after P4.
