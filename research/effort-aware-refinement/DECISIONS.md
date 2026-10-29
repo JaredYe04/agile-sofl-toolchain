@@ -62,3 +62,31 @@ model:
 
 **Consequences.** Tree depth / child count is **not** a completion metric. LLM guesses are never
 auto-marked `user_confirmed`. Hidden reference requirements stay out of evaluated-agent context.
+
+## ADR-004 — P2 component placement (where each piece of the conceptual model lives)
+**Status:** Accepted (2026-10-30, P2)
+
+**Context.** `conceptual-model.md` §14 names the pieces; this ADR fixes their homes so P3 has no
+ambiguity about module boundaries (docs/13) and so the freeze guard (P5) is predictable.
+
+**Decision.**
+- **`packages/refinement`** (new, headless, deterministic, no Electron; depends on `@agile-sofl/parser`
+  and, where needed, `@agile-sofl/aspec`) owns: the typed requirement graph (nodes/edges/invariants),
+  the obligation checker (mechanical detectors), the cost-aware selector, the readiness assessment, the
+  lifecycle state machine, the append-only event stream, and serialization/version-migration.
+- **`@agile-sofl/studio`** (agent layer) owns thin agent tools that *call into* `packages/refinement`
+  (`read_requirement_graph`, `list_obligations`, `select_next_clarification`, `record_decision`,
+  `assess_readiness`). The agent **proposes**; a decision **records** provenance. The agent never
+  auto-sets `user_confirmed` and never reads hidden reference requirements. LLM-assisted
+  *candidate* obligation alerts are raised here (or in a dedicated checker) and always land as
+  `llm_candidate` — they are confirmed or dismissed by a `RequirementDecision`, never auto-discharged.
+- **Experiment harness** (`scripts/agent-harness/`) consumes the selector + readiness to drive
+  conditions A/B/C/D + ablations, reusing `runOnce` + the `resolveClarification` oracle hook.
+
+**Consequences.**
+- `packages/refinement` is **not** in the freeze guard's `TOOL_PATHS` (freeze.ts), so building it does
+  not trip the `exp-freeze-v1.2` check. Adding Studio agent tools **does** (TOOL_PATHS includes
+  `packages/studio/src`), so P4 will require a new freeze tag (planned `exp-freeze-v1.3`) before real
+  batches run.
+- Keeping the graph/obligations/selector/readiness headless makes them unit/property/replay-testable
+  and CI-able (P3), independent of the Electron-unavailable sandbox (B1).
