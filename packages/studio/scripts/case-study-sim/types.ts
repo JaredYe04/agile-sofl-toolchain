@@ -49,6 +49,25 @@ export type PhaseResult = {
   tools: string[]
 }
 
+export type ClarificationFact = {
+  phase?: PhaseName
+  question: string
+  matched: boolean
+  unmatched: boolean
+  matchedSlotIds: string[]
+  answerPreview: string
+}
+
+export type ProposalFact = {
+  phase?: PhaseName
+  tool: string
+  applied: boolean
+  applyError?: string
+  explanation: string
+  target?: string
+  opKinds: string[]
+}
+
 export type SubjectFacts = {
   participantId: string
   domain: string
@@ -71,6 +90,17 @@ export type SubjectFacts = {
   guiChars: number
   eventCount: number
   screenshotsPrepared: false
+  /** Raw loop events; questionnaire text is derived from these, not invented. */
+  events: SessionEvent[]
+  clarifications: ClarificationFact[]
+  proposals: ProposalFact[]
+}
+
+/** Nested like human P1 experience.json. */
+export type ExperienceFeedback = {
+  mostHelpful: string
+  mostDifficult: string
+  suggestion: string
 }
 
 export type ExperienceJson = {
@@ -83,7 +113,7 @@ export type ExperienceJson = {
   initialModel: string
   extension: string
   probe: string
-  feedback: string
+  feedback: ExperienceFeedback
   screenshotsPrepared: boolean
 }
 

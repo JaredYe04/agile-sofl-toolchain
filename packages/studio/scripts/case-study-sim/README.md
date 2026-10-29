@@ -3,7 +3,7 @@
 Headless ChatECNU + frozen `agent-loop` for **agent-simulated** software-engineer subjects.
 This is **not** the classroom T/B2/B0-auto batch (`scripts/agent-harness/`). Do not mix the two pipelines.
 
-Does not drive the Electron GUI. Does not invent interview quotes. Questionnaire text in `experience.json` is derived only from session facts (write counts, stop reasons, artifact sizes).
+Does not drive the Electron GUI. Does not invent interview quotes. `experience.json` follows the human P1 nested `feedback.mostHelpful` / `mostDifficult` / `suggestion` shape. Probe and feedback are written from session events (applied patches, clarification questions, matched task-packet facts, apply errors) — not raw telemetry dumps.
 
 ## Freeze
 
@@ -39,7 +39,7 @@ Each subject folder:
 ```
 P4/
   meta.json              # subjectType: agent-simulated, modelId, temperature, toolchainCommit/tag, timeWindow, materialsComplete
-  experience.json        # formVersion 5-flexible-single-20261023 + questionnaire fields
+  experience.json        # formVersion 5-flexible-single-20261023; probe + nested feedback.mostHelpful/mostDifficult/suggestion
   informal.aspec
   hybrid.asfl
   session/events.jsonl   # real loop events only

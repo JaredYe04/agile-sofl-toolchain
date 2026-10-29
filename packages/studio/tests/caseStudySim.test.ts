@@ -16,9 +16,11 @@ import { loadSimEnv, resolveApiKey, missingKeyError } from '../scripts/case-stud
 import { clampConcurrency, mapPool } from '../scripts/case-study-sim/pool'
 import { loadSubjects, selectSubjects } from '../scripts/case-study-sim/subjects'
 import { experienceFromFacts } from '../scripts/case-study-sim/experience'
+import { buildSubjectFacts, clarificationsFromEvents } from '../scripts/case-study-sim/facts'
+import { resolveFromFacts } from '../scripts/case-study-sim/oracle'
 import { runCaseStudyBatch } from '../scripts/case-study-sim/batch'
-import { PILOT_TEMPERATURE } from '../scripts/agent-harness/core'
-import type { SubjectFacts } from '../scripts/case-study-sim/types'
+import { PILOT_TEMPERATURE, UNMATCHED_CLARIFICATION_REPLY } from '../scripts/agent-harness/core'
+import type { SessionEvent, SubjectFacts } from '../scripts/case-study-sim/types'
 
 const repo = execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf-8' }).trim()
 const assetsDir = join(repo, 'packages', 'studio', 'scripts', 'case-study-sim')
@@ -150,18 +152,72 @@ describe('concurrency cap', () => {
   })
 })
 
+describe('oracle ≥1 keyword hits', () => {
+  it('joins all authorized facts when a question names several domains', () => {
+    const p4 = loadSubjects(assetsDir).find((s) => s.id === 'P4')!
+    const resolve = resolveFromFacts(p4.authorizedFacts)
+    const r = resolve({ question: '场景图/资源/主循环怎么划分模块？' })
+    expect(r.unmatched).toBe(false)
+    expect(r.matchedSlotIds).toEqual(expect.arrayContaining(['scene-graph', 'assets', 'loop']))
+    expect(r.matchedSlotIds.length).toBeGreaterThanOrEqual(2)
+    expect(r.text).toContain('场景图是变换/网格/相机/灯光节点树。')
+    expect(r.text).toContain('资源覆盖网格、纹理、着色器，按引用计数加载卸载。')
+    expect(r.text).toContain('主循环顺序为输入 → 更新 → 渲染。')
+    expect(r.text).toMatch(/\n/)
+  })
+
+  it('stays unmatched when nothing in the task packet hits', () => {
+    const p4 = loadSubjects(assetsDir).find((s) => s.id === 'P4')!
+    const resolve = resolveFromFacts(p4.authorizedFacts)
+    const r = resolve({ question: 'Who may export payroll to an unnamed third party?' })
+    expect(r.unmatched).toBe(true)
+    expect(r.matchedSlotIds ?? []).toEqual([])
+    expect(r.text).toBe(UNMATCHED_CLARIFICATION_REPLY)
+  })
+})
+
 describe('experience.json from session facts only', () => {
-  it('fills required fields without invented quotes', () => {
-    const facts: SubjectFacts = {
-      participantId: 'P4',
-      domain: '游戏引擎/渲染',
-      yearsSpecWork: '5to10',
-      task: 'greenfield',
-      initialModel: '场景图/资源/主循环',
-      extension: '热重载与多线程调度',
+  it('fills nested P1-style feedback from events, without invented quotes', () => {
+    const p4 = loadSubjects(assetsDir).find((s) => s.id === 'P4')!
+    const events: SessionEvent[] = [
+      { at: 't0', phase: 'informal', type: 'clarification_asked', question: '场景图/资源/主循环怎么划分？' },
+      {
+        at: 't1',
+        phase: 'informal',
+        type: 'oracle_reply',
+        question: '场景图/资源/主循环怎么划分？',
+        matched: true,
+        unmatched: false,
+        matchedSlotIds: ['scene-graph', 'assets', 'loop'],
+        answerPreview: '场景图是变换/网格/相机/灯光节点树。'
+      },
+      {
+        at: 't2',
+        phase: 'informal',
+        type: 'proposal',
+        tool: 'propose_changes',
+        applied: true,
+        explanation: 'add scene graph function',
+        target: 'informal',
+        opKinds: ['add']
+      },
+      {
+        at: 't3',
+        phase: 'hybrid',
+        type: 'proposal',
+        tool: 'propose_hybrid_changes',
+        applied: false,
+        applyError: 'duplicate module',
+        explanation: 'add SYSTEM_RenderCore',
+        target: 'hybrid',
+        opKinds: ['add']
+      }
+    ]
+    const facts: SubjectFacts = buildSubjectFacts({
+      subject: p4,
       startedAt: '2026-10-29T01:00:00.000+00:00',
       endedAt: '2026-10-29T01:05:00.000+00:00',
-      dryRun: true,
+      dryRun: false,
       modelAlias: 'ecnu-max',
       modelId: 'deepseek-v4-flash',
       temperature: PILOT_TEMPERATURE,
@@ -170,22 +226,30 @@ describe('experience.json from session facts only', () => {
           phase: 'informal',
           skillId: 'requirement-discovery',
           approvals: 1,
+          clarificationsAnswered: 1,
+          clarificationsMatched: 1,
+          clarificationsUnmatched: 0,
+          stopReason: 'agent finished',
+          tools: ['propose_changes']
+        },
+        {
+          phase: 'hybrid',
+          skillId: 'hybrid-generation',
+          approvals: 1,
           clarificationsAnswered: 0,
           clarificationsMatched: 0,
           clarificationsUnmatched: 0,
           stopReason: 'approval budget reached',
-          tools: ['propose_changes']
+          tools: ['propose_hybrid_changes']
         }
       ],
-      approvals: 1,
-      clarificationsAnswered: 0,
-      stopReasons: ['informal:approval budget reached'],
+      events,
       informalChars: 120,
       hybridChars: 40,
-      guiChars: 10,
-      eventCount: 3,
-      screenshotsPrepared: false
-    }
+      guiChars: 10
+    })
+    expect(clarificationsFromEvents(events)).toHaveLength(1)
+    expect(facts.proposals).toHaveLength(2)
     const exp = experienceFromFacts(facts)
     expect(exp).toMatchObject({
       formVersion: FORM_VERSION,
@@ -197,9 +261,21 @@ describe('experience.json from session facts only', () => {
       extension: '热重载与多线程调度',
       screenshotsPrepared: false
     })
-    expect(exp.probe).toMatch(/1 次写入/)
-    expect(exp.probe).toMatch(/propose_changes/)
-    expect(exp.feedback).toMatch(/screenshotsPrepared=false/)
+    expect(exp.feedback).toEqual(
+      expect.objectContaining({
+        mostHelpful: expect.any(String),
+        mostDifficult: expect.any(String),
+        suggestion: expect.any(String)
+      })
+    )
+    expect(exp.feedback.mostHelpful).toMatch(/propose_changes/)
+    expect(exp.feedback.mostHelpful).toMatch(/场景图\/资源\/主循环/)
+    expect(exp.feedback.mostHelpful).toMatch(/scene-graph/)
+    expect(exp.feedback.mostDifficult).toMatch(/duplicate module|写入失败/)
+    expect(exp.feedback.mostDifficult).toMatch(/budget/)
+    expect(exp.feedback.suggestion).toMatch(/propose_source_edit|预算/)
+    expect(exp.probe).toMatch(/场景图\/资源\/主循环/)
+    expect(exp.probe).not.toMatch(/^按任务包做了/)
     expect(JSON.stringify(exp)).not.toMatch(/我觉得|非常好用|participant said/)
   })
 })
@@ -252,6 +328,16 @@ describe('dry-run P4 layout', () => {
     const exp = JSON.parse(readFileSync(join(dir, 'experience.json'), 'utf-8'))
     expect(exp.formVersion).toBe(FORM_VERSION)
     expect(exp.screenshotsPrepared).toBe(false)
+    expect(exp.feedback).toEqual(
+      expect.objectContaining({
+        mostHelpful: expect.any(String),
+        mostDifficult: expect.any(String),
+        suggestion: expect.any(String)
+      })
+    )
+    expect(exp.feedback.mostHelpful).toMatch(/场景图\/资源\/主循环|propose_/)
+    expect(exp.feedback.suggestion).toMatch(/dry-run|截图/)
+    expect(typeof exp.feedback).not.toBe('string')
     const blob = readFileSync(join(dir, 'experience.json'), 'utf-8') + readFileSync(join(dir, 'meta.json'), 'utf-8')
     expect(blob).not.toContain('dry-run-placeholder')
     expect(blob).not.toMatch(/sk-[a-zA-Z0-9]{8,}/)

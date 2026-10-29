@@ -9,8 +9,9 @@ import { artifactsDir, finalizeSubjectLayout, subjectDir } from './layout'
 import { clampConcurrency, mapPool } from './pool'
 import { initSubjectProject } from './project'
 import { resolveModel } from './env'
+import { buildSubjectFacts } from './facts'
 import { loadSubjects, resolveAssetsDir, selectSubjects } from './subjects'
-import type { SessionEvent, Subject, SubjectFacts } from './types'
+import type { SessionEvent, Subject } from './types'
 
 export type CaseStudyOptions = {
   repo: string
@@ -73,13 +74,8 @@ async function runOneSubject(
       phaseResults.push(await runPhase({ subject, phase, projectRoot: art, ctx, maxApprovals, onEvent }))
     }
     const endedAt = localIso(now())
-    const facts: SubjectFacts = {
-      participantId: subject.id,
-      domain: subject.domain,
-      yearsSpecWork: subject.yearsSpecWork,
-      task: subject.task,
-      initialModel: subject.initialModel,
-      extension: subject.extension,
+    const facts = buildSubjectFacts({
+      subject,
       startedAt,
       endedAt,
       dryRun: o.dryRun,
@@ -87,15 +83,11 @@ async function runOneSubject(
       modelId: model.modelId,
       temperature: PILOT_TEMPERATURE,
       phases: phaseResults,
-      approvals: phaseResults.reduce((n, p) => n + p.approvals, 0),
-      clarificationsAnswered: phaseResults.reduce((n, p) => n + p.clarificationsAnswered, 0),
-      stopReasons: phaseResults.map((p) => `${p.phase}:${p.stopReason}`),
+      events,
       informalChars: (ctx.informalMarkdown ?? '').length,
       hybridChars: (ctx.hybridAsfl ?? '').length,
-      guiChars: (ctx.guiHtml ?? '').length,
-      eventCount: events.length,
-      screenshotsPrepared: false
-    }
+      guiChars: (ctx.guiHtml ?? '').length
+    })
     const layout = finalizeSubjectLayout({
       out: o.out,
       subject,

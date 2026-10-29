@@ -75,7 +75,13 @@ export async function runPhase(o: {
         multiSelect: pending.clarification.multiSelect,
         allowCustom: pending.clarification.allowCustom
       }
-      o.onEvent({ at: localIso(), phase: o.phase, type: 'clarification_asked', question: ask.question })
+      o.onEvent({
+        at: localIso(),
+        phase: o.phase,
+        type: 'clarification_asked',
+        question: ask.question,
+        options: (ask.options ?? []).map((x) => x.label)
+      })
       const resolved: ClarificationResolution = resolve(ask)
       const reply = String(resolved?.text ?? '').trim()
       const unmatched = !!resolved?.unmatched || !reply
@@ -136,7 +142,9 @@ export async function runPhase(o: {
       tool,
       applied,
       applyError,
-      explanation: patch.explanation ?? ''
+      explanation: patch.explanation ?? '',
+      target: patch.target,
+      opKinds: (patch.operations ?? []).map((op) => String(op.op ?? op.kind ?? '')).filter(Boolean)
     })
     session = await resumeWithToolResult(
       session,
