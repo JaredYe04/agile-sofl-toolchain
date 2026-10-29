@@ -1,0 +1,70 @@
+{
+  "project": "Effort-Aware Incremental Refinement of Hybrid Requirements Specifications with LLM Agents",
+  "branch": "research/effort-aware-refinement",
+  "baseline_commit": "8f325dfe32db9e2c3498032860fa7bc0cb450227",
+  "last_commit": "PENDING_P0_COMMIT",
+  "phase": "P1",
+  "completed_tasks": [
+    "P0: clone repo at 8f325df, create branch research/effort-aware-refinement",
+    "P0: create research/effort-aware-refinement workspace",
+    "P0: npm ci (exit 0), npm run build (exit 0)",
+    "P0: npm test baseline -> 1092 pass / 5 pre-existing studio failures (4 environmental electron, 1 prompt-content)",
+    "P0: full read-only audit of all 7 packages -> design/architecture.md (cross-validated by 2 Explore agents)",
+    "P0: identified existing capability (atomic-req refinement model, LLM agent, experiment harness T/B2/B0-auto, trace provenance) and the research gap",
+    "P0: wrote README, baseline-report, design/architecture, STATUS, WORKLOG, DECISIONS, BLOCKERS"
+  ],
+  "remaining_tasks": [
+    "P1: verify competing literature (agent dispatched; populate literature-matrix.csv, literature-notes.md, novelty-assessment.md)",
+    "P1: write research-questions.md (2-3 primary RQs, null hypotheses, IV/DV, operational defs)",
+    "P1: freeze RQs (gate)",
+    "P2: conceptual model + semantic design + ADRs (requirement-level typed structure, obligations, readiness policy, cross-links)",
+    "P3: packages/refinement core (typed tree/graph + obligations + cost-aware selector) + tests-first (unit/property/contract)",
+    "P4: wire as agent tools + new experiment conditions + decision provenance + replay tests",
+    "P5: extend agent-harness with simulated-stakeholder oracle, A/B/C/D+ablation conditions, scorer, preregistration, smoke+pilot",
+    "P6: run smoke/pilot/main on authorized free model, diagnose, iterate (no test-set overfitting)",
+    "P7: user study protocol (design-only; no fabricated participants)",
+    "P8: LaTeX paper (IEEE template, TikZ figures, verified references, claims-audit.md, reviewer-attack.md)",
+    "FINAL: FINAL_RESEARCH_REPORT.md + handoff"
+  ],
+  "blocking_issues": [
+    "B1: Electron binary not installed (4 studio test files fail environmentally; non-blocking for research core)",
+    "B4: real-model runs use FREE authorized APIs (lab lab-qwen3.8-27b, ECNU) with hard budgets; no paid spend",
+    "B5: user study needs real participants (design-only by design)",
+    "B6: some literature may be paywalled (record abstract-only honestly)"
+  ],
+  "commands_run": [
+    "git clone https://github.com/JaredYe04/agile-sofl-toolchain",
+    "git checkout -b research/effort-aware-refinement",
+    "npm ci   # exit 0",
+    "npm run build   # exit 0",
+    "npm test   # exit 1 (5 pre-existing baseline failures, documented in baseline-report.md)"
+  ],
+  "tests_passed": {
+    "parser": 493, "gui": 23, "aspec": 46, "editor-api": 196, "language-server": 50, "vscode": 84,
+    "studio_passed": 322, "total_passed": 1092
+  },
+  "tests_failed": {
+    "studio": 5,
+    "detail": [
+      "projectTemplate.test.ts (electron binary missing - environmental)",
+      "experimentTelemetry.test.ts x4 (electron binary missing - environmental)",
+      "llmPromptsFsf.test.ts (pre-existing: hybrid-generation skill prompt contains 'implies', grammar-guard test forbids it)"
+    ]
+  },
+  "artifacts": [
+    "research/effort-aware-refinement/README.md",
+    "research/effort-aware-refinement/baseline-report.md",
+    "research/effort-aware-refinement/design/architecture.md",
+    "research/effort-aware-refinement/STATUS.md",
+    "research/effort-aware-refinement/WORKLOG.md",
+    "research/effort-aware-refinement/DECISIONS.md",
+    "research/effort-aware-refinement/BLOCKERS.md",
+    "research/effort-aware-refinement/handoff/latest.md",
+    "research/effort-aware-refinement/handoff/progress.json"
+  ],
+  "next_actions": [
+    "Await literature agent; write research/literature-matrix.csv, literature-notes.md, novelty-assessment.md",
+    "Write research/research-questions.md and freeze RQs (P1 gate)",
+    "Do not start P3 implementation before P1 RQ freeze"
+  ]
+}
