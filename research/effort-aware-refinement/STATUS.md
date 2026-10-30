@@ -1,16 +1,16 @@
 # STATUS — Effort-Aware Refinement Research
 
 **Branch:** `research/effort-aware-refinement` · **Baseline commit:** `8f325df`
-**Last updated:** 2026-10-30 (P1 in progress)
+**Last updated:** 2026-10-30 (P1 + P2 done; P3 starting)
 
 ## Phase gates
 
 | Phase | Gate | Status |
 |---|---|---|
 | **P0** | Baseline report + arch map + branch + research dir + reproducible build/test | ✅ **DONE** |
-| **P1** | Literature + novelty assessment + RQ freeze | 🟡 **IN PROGRESS** (novelty + prereg written; external-lit agent running; RQ freeze conditional) |
-| P2 | Conceptual model + semantic design + ADRs | ⬜ |
-| P3 | Refinement tree/graph infra + tests-first (stable) | ⬜ |
+| **P1** | Literature + novelty assessment + RQ freeze | ✅ **DONE** — **REVISE** decision (cost-aware selection = prior art [SAGE-Agent]; claim re-scoped to the joint over a verified hybrid spec) |
+| **P2** | Conceptual model + semantic design + ADRs | ✅ **DONE** (`conceptual-model.md` finalized vs §4; ADR-004) |
+| **P3** | Refinement tree/graph infra + tests-first (stable) | 🟡 **IN PROGRESS** |
 | P4 | Agent harness + human decision loop | ⬜ |
 | P5 | Benchmark + oracle + baselines + preregistration | ⬜ |
 | P6 | Run experiments (authorized free model) + diagnose | ⬜ |
@@ -60,11 +60,28 @@
   research core (parser/aspec/editor-api + headless agent harness).
 - (transient) harness command-safety classifier flapping — retries succeed; read-only tools unaffected.
 
+## P1 — completed (gate passed, REVISE)
+- Literature agent returned **verified** citations (Crossref/arXiv/ACL). Wrote `literature-matrix.csv`
+  + `literature-notes.md`; filled novelty-assessment §3–§5.
+- **Pivotal finding:** SAGE-Agent (Findings of ACL 2026) already implements cost-aware EVPI−Cost
+  question selection → the **selection mechanism is prior art** (adopted + cited, not claimed novel).
+- **REVISE decision recorded** (task book §3.4): re-scope the claim to the **joint** (typed structure +
+  detector-classified obligations + decision provenance + readiness policy + cross-node decision
+  propagation) over a **verified hybrid Agile-SOFL spec**. Appended v2 to the frozen preregistration
+  (re-scopes RQ1 DVs + RQ3 baseline; no metric/threshold/comparison change). **P3 is unblocked.**
+
+## P2 — completed
+- `conceptual-model.md` finalized against task book §4 (domain event flow, per-obligation
+  detector/discharge table, lifecycle completion semantics, serialization/migration, placement).
+  `DECISIONS.md` ADR-004 fixes component placement + freeze-guard implication.
+
 ## Next actions
-1. **P1 (await):** literature agent returns verified external rows → populate
-   `research/literature-matrix.csv`, `literature-notes.md`, and fill novelty-assessment §3; then record
-   the **final** GO/REVISE/PIVOT decision.
-2. **P2:** finalize `research/conceptual-model.md` (drafted) + semantic design + ADRs.
-3. **Do not start P3 before the final P1 GO is recorded** (task book §3.4).
-4. **P5/P6 de-risk:** confirm the two authorized free APIs (lab `lab-qwen3.8-27b`, ECNU `ecnu-max`) are
-   reachable; plan the `exp-freeze-v1.3` tag for after P4.
+1. **P3 (start):** implement `packages/refinement` **tests-first** — typed requirement graph
+   (nodes/edges/invariants), obligation checker, cost-aware selector (SAGE-Agent EVPI−Cost form),
+   readiness assessment, lifecycle state machine, event stream, serialization/migration.
+   Unit/property/replay tests per `conceptual-model.md` §13.
+2. **P4:** wire as Studio agent tools (typed domain tools per task book §6.1) + decision provenance +
+   replay tests; then cut the `exp-freeze-v1.3` freeze tag.
+3. **P5/P6:** extend the harness (A/B/C/D + ablations, oracle, scorer, prereg check, smoke+pilot); run on
+   the two authorized FREE APIs (both confirmed reachable; ECNU `ecnu-max` = `deepseek-v4-flash`).
+4. Paper (P8): cite SAGE-Agent + the others per `literature-notes.md`; RE 2026 = double-blind, 10+2 pages.

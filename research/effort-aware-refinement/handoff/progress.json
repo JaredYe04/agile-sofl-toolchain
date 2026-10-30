@@ -2,41 +2,34 @@
   "project": "Effort-Aware Incremental Refinement of Hybrid Requirements Specifications with LLM Agents",
   "branch": "research/effort-aware-refinement",
   "baseline_commit": "8f325dfe32db9e2c3498032860fa7bc0cb450227",
-  "p0_commit": "2ef7d8c03c4a89b6b1bf995ca0c5ad9ffe62998a",
-  "last_commit": "28269cd",
-  "phase": "P1",
+  "last_commit": "f528189",
+  "phase": "P3",
+  "p1_gate": "PASSED (REVISE)",
+  "p1_gate_note": "Cost-aware EVPI-Cost question selection is PRIOR ART (SAGE-Agent, Findings ACL 2026). Claim re-scoped to the JOINT (typed structure + detector-classified obligations + decision provenance + readiness policy + cross-node decision propagation) over a verified hybrid Agile-SOFL spec. Per task book 3.4: shrink claim, record pivot, keep building.",
   "completed_tasks": [
-    "P0: clone repo at 8f325df, create branch research/effort-aware-refinement",
-    "P0: create research/effort-aware-refinement workspace",
-    "P0: npm ci (exit 0), npm run build (exit 0)",
-    "P0: npm test baseline -> 1092 pass / 5 pre-existing studio failures (4 environmental electron, 1 prompt-content)",
-    "P0: full read-only audit of all 7 packages -> design/architecture.md (cross-validated by Explore agents)",
+    "P0: clone repo at 8f325df, branch research/effort-aware-refinement, workspace, npm ci/build (exit 0), npm test baseline (1092 pass / 5 pre-existing studio failures), 7-package audit -> design/architecture.md",
     "P0: identified existing capability (atomic-req refinement, LLM agent, experiment harness T/B2/B0-auto, trace provenance) + 7-item research gap",
-    "P0: wrote README, baseline-report, design/architecture, STATUS, WORKLOG, DECISIONS, BLOCKERS, handoff",
-    "P1: confirmed B1 environmental (electron dist incomplete) AND headless harness usable here (agentHarness.test.ts mocks electron, passes)",
-    "P1: full read-only audit of scripts/agent-harness (core/batch/schedule/b0auto/freeze/electron-stub/run/steps) + the two reference benchmark tasks",
-    "P1: read @skills writing skills (project-writing-overlay, humanizer, de-ai-writing) for P8 prep",
-    "P1: wrote research/novelty-assessment.md (internal gap G1-G7 verified from source; external rows PENDING, none invented; interim GO + REVISE/PIVOT triggers)",
-    "P1: wrote research/hypotheses-and-preregistration.md (frozen RQ1-RQ3, DVs, quality floor, task/oracle schema, anti-fabrication invariants, stats plan, free-API-only run plan)",
-    "P1: drafted research/research-questions.md and research/conceptual-model.md (P2)"
+    "P1: confirmed B1 environmental + headless harness usable here; full audit of scripts/agent-harness (freeze-guard gotcha, B0-auto baseline, dry-run offline path, A/B/C/D extension point); audit of classroom.aspec + delivery-trimmed.aspec benchmark tasks",
+    "P1: verified external literature (literature agent, Crossref/arXiv/ACL) -> literature-matrix.csv + literature-notes.md; novelty-assessment.md sections 2/3/4/5; P1 GATE PASSED (REVISE)",
+    "P1: hypotheses-and-preregistration.md FROZEN (RQ1-RQ3, DVs, quality floor recall>=0.80/unsupported-policy=0/critical-coverage>=0.70, task/oracle schema, anti-fabrication invariants, stats plan, free-API-only run plan) + v2 (REVISE re-scope: RQ1 DVs + RQ3 SAGE-Agent baseline; no metric/threshold/comparison change)",
+    "P2: conceptual-model.md FINALIZED vs task book section 4 (two-layer structure, entities, obligations detector/discharge table, lifecycle, provenance, readiness, cost-aware selector, Agile-SOFL relation, domain event flow, serialization/migration, P3 slice, 3 e2e scenarios, test list); DECISIONS.md ADR-004 (component placement + freeze-guard)",
+    "P0-P2: confirmed both authorized FREE APIs reachable (lab lab-qwen3.8-27b reasoning model; ECNU ecnu-max = deepseek-v4-flash)"
   ],
   "remaining_tasks": [
-    "P1: (AWAIT) literature agent aa5fa1c96a090d235 -> populate literature-matrix.csv, literature-notes.md, novelty-assessment section 3; then record FINAL go/revise/pivot decision (P1 gate)",
-    "P2: finalize conceptual model + semantic design + ADRs (requirement-level typed structure, obligations, readiness policy, cross-links)",
-    "P3: packages/refinement core (typed tree/graph + obligations + cost-aware selector) tests-first (unit/property/contract) - BLOCKED until final P1 GO",
-    "P4: wire as agent tools + new experiment conditions + decision provenance + replay tests (then cut new freeze tag exp-freeze-v1.3)",
+    "P3 (IN PROGRESS): implement packages/refinement tests-first (typed graph + obligations + cost-aware selector [SAGE-Agent EVPI-Cost form] + readiness + lifecycle + event stream + serialization/migration); unit/property/contract/replay tests per conceptual-model section 13; must be stable before AI experiments",
+    "P4: wire as Studio agent tools (typed domain tools per task book 6.1) + decision provenance + replay tests; then cut exp-freeze-v1.3 tag",
     "P5: extend agent-harness with simulated-stakeholder oracle, A/B/C/D+ablation conditions, scorer, prereg check, smoke+pilot",
     "P6: run smoke/pilot/main on authorized free model, diagnose, iterate (no test-set overfitting)",
     "P7: user study protocol (design-only; no fabricated participants)",
-    "P8: LaTeX paper (IEEE template, TikZ figures, verified references, claims-audit.md, reviewer-attack.md) following @skills",
+    "P8: LaTeX paper (IEEE/RE2026 template, TikZ figures, verified references per literature-notes.md, claims-audit.md, reviewer-attack.md) following @skills; RE 2026 = double-blind 10+2 pages",
     "FINAL: FINAL_RESEARCH_REPORT.md + handoff"
   ],
   "blocking_issues": [
     "B1: Electron binary not installed (4 studio tests fail environmentally; NON-blocking - headless harness works here)",
-    "B4: real-model runs use FREE authorized APIs only (lab lab-qwen3.8-27b, ECNU ecnu-max); no paid spend; mark sub-results 'not run: budget not authorized' if insufficient",
+    "B4: real-model runs use FREE authorized APIs only (lab lab-qwen3.8-27b, ECNU ecnu-max=deepseek-v4-flash); no paid spend",
     "B5: user study needs real participants (design-only by design)",
-    "B6: some literature may be paywalled (record abstract-only honestly; never invent citations)",
-    "P5 note: freeze guard TOOL_PATHS includes packages/studio/src -> after P4 add a new freeze tag (exp-freeze-v1.3); packages/refinement is safe"
+    "B6: some literature paywalled (Tower, SOFL-2021 JSS are abstract-only; never invent citations)",
+    "P5 note: freeze guard TOOL_PATHS includes packages/studio/src -> after P4 add new freeze tag (exp-freeze-v1.3); packages/refinement is safe"
   ],
   "commands_run": [
     "git clone https://github.com/JaredYe04/agile-sofl-toolchain",
@@ -63,19 +56,20 @@
     "research/effort-aware-refinement/design/architecture.md",
     "research/effort-aware-refinement/STATUS.md",
     "research/effort-aware-refinement/WORKLOG.md",
-    "research/effort-aware-refinement/DECISIONS.md",
+    "research/effort-aware-refinement/DECISIONS.md (ADR-001..004 + API reachability note)",
     "research/effort-aware-refinement/BLOCKERS.md",
     "research/effort-aware-refinement/handoff/latest.md",
     "research/effort-aware-refinement/handoff/progress.json",
     "research/effort-aware-refinement/research/research-questions.md (DRAFT, P1)",
-    "research/effort-aware-refinement/research/conceptual-model.md (DRAFT, P2)",
-    "research/effort-aware-refinement/research/novelty-assessment.md (DRAFT, P1; external rows PENDING)",
-    "research/effort-aware-refinement/research/hypotheses-and-preregistration.md (FROZEN, P1)"
+    "research/effort-aware-refinement/research/conceptual-model.md (FINAL, P2)",
+    "research/effort-aware-refinement/research/novelty-assessment.md (VERIFIED, P1 gate; REVISE)",
+    "research/effort-aware-refinement/research/hypotheses-and-preregistration.md (FROZEN v1 + v2)",
+    "research/effort-aware-refinement/research/literature-matrix.csv",
+    "research/effort-aware-refinement/research/literature-notes.md"
   ],
   "next_actions": [
-    "Await literature agent aa5fa1c96a090d235; write literature-matrix.csv, literature-notes.md; fill novelty-assessment section 3; record FINAL go/revise/pivot",
-    "Do NOT start P3 before the final P1 GO is recorded (task book 3.4)",
-    "Finalize conceptual-model.md (P2) after the gate",
-    "De-risk P5/P6: confirm free APIs reachable; plan exp-freeze-v1.3 tag for after P4"
+    "P3: create packages/refinement (mirror an existing package's package.json/tsconfig/test setup) and implement tests-first",
+    "P3 acceptance (task book 5.3): all section-13 tests green, no product regression (1092 floor holds), package builds in the workspace",
+    "Do NOT consume paid APIs; do NOT fabricate results; do NOT push without authorization"
   ]
 }
