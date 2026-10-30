@@ -1,0 +1,30 @@
+{
+  "name": "@agile-sofl/refinement",
+  "version": "0.1.0",
+  "description": "Requirement-level typed refinement structure: typed graph, obligations, cost-aware clarification selection, readiness policy, decision provenance and propagation (research core; headless, deterministic, no Electron)",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": ["dist", "README.md"],
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@agile-sofl/parser": "file:../parser"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "typescript": "^5.3.0",
+    "vitest": "^1.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT"
+}
