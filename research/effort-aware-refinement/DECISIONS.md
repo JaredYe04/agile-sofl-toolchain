@@ -40,6 +40,15 @@ replay (API-free). No paid calls.
 **Consequences.** Real-model runs are logged to `llm-calls.jsonl` (per-call cost, model, tokens) for the
 paper's cost metrics. Mock runs need no network.
 
+**Reachability + actual model identity (verified 2026-10-30, one minimal call each, both exit 0):**
+- Lab `https://219.228.144.122:8080/v1/chat/completions`, `lab-qwen3.8-27b` → **reachable**; a
+  **reasoning model** (returns `reasoning_content` in addition to `content`).
+- ECNU `https://chat.ecnu.edu.cn/open/api/v1/chat/completions`, `ecnu-max` → **reachable**; the response
+  reports the serving model as **`deepseek-v4-flash`** (i.e. `ecnu-max` is an alias/front for that model).
+- **Honesty note for the paper:** the cost/model record must state the *actual* serving model IDs
+  (`lab-qwen3.8-27b`, `deepseek-v4-flash`) and the free endpoints used, with the pricing date. Do not
+  report "ecnu-max" as if it were a distinct model.
+
 ## ADR-003 — Research scope (the increment), explicitly bounded
 **Status:** Accepted (2026-10-30, P0)
 

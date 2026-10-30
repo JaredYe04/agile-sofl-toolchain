@@ -181,5 +181,21 @@ sentinel is preserved.
 - **Do not start P3 implementation before the final GO is recorded** (task book §3.4).
 
 ## 10. Versioning
-- v1 (this file): frozen at the P1 gate. Any later change is appended as a dated v2+ entry with a
+- **v1 (this file):** frozen at the P1 gate. Any later change is appended as a dated v2+ entry with a
   justification; it never alters v1 in place.
+- **v2 (2026-10-30, P1 gate passed with a REVISE scope decision — see `novelty-assessment.md` §5):**
+  The P1 literature verification found that **cost-aware, expected-value question selection is prior art
+  (SAGE-Agent, Findings of ACL 2026, `argmax_q[EVPI(q,ℬ) − Cost(q,t)]`)**. Consequences, applied **without
+  changing any v1 metric definition, threshold, exclusion rule, or comparison family**:
+  - The cost-aware selection **mechanism** is **adopted and cited**, not claimed novel.
+  - **RQ3 ablation re-scope:** the baseline selector is now explicitly the SAGE-Agent EVPI−Cost form
+    (instantiated with a stakeholder-effort cost term); the ablation isolates the *increment* of our
+    typed obligations + decision provenance + readiness policy + cross-node decision propagation **over a
+    cost-aware selector** (not "cost-aware vs nothing"). The ablation set `D − cost-aware`,
+    `D − propagation`, `D − obligations` is unchanged.
+  - **RQ1 DV re-scope:** "correct / complete / consistent / fewer unconfirmed policies" are scoped to the
+    **formal-specification target** (the produced `.asfl` + its requirement graph). The DV *definitions*
+    (§3.1) are unchanged.
+  - The frozen contribution is the **joint** (typed structure + typed obligations + provenance +
+    readiness + decision propagation) over a verified hybrid Agile-SOFL spec; related work cites
+    SAGE-Agent and the others per `literature-notes.md`. **No metric, threshold, or comparison changes.**
