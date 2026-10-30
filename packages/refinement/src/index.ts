@@ -77,3 +77,17 @@ export type { RequirementDocument, RequirementState, LoadOptions } from './seria
 // Append-only replayable event log.
 export { EventLog } from './events.js'
 export type { TimedEvent } from './events.js'
+
+// RefinementSession — the requirement-layer typed domain tools + turn orchestration (P4, task book §6).
+// Headless and deterministic: the Studio agent and the experiment harness consume it as thin wrappers.
+export { RefinementSession } from './session.js'
+export type {
+  DecisionAnswer,
+  DecisionAnswerKind,
+  ClarificationOutcome,
+  DecisionEffect,
+  RevisionProposal,
+  ApplyRevisionResult,
+  TurnResult,
+  SessionOptions,
+} from './session.js'
