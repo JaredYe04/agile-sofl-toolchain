@@ -2,11 +2,13 @@
   "project": "Effort-Aware Incremental Refinement of Hybrid Requirements Specifications with LLM Agents",
   "branch": "research/effort-aware-refinement",
   "baseline_commit": "8f325dfe32db9e2c3498032860fa7bc0cb450227",
-  "last_commit": "b110284",
-  "phase": "P4 (P3 DONE — green checkpoint committed)",
+  "last_commit": "094bfcb",
+  "phase": "P4 (core DONE — RefinementSession + 6 §6.6 gate replay tests; thin studio tools + exp-freeze-v1.3 pending)",
   "p1_gate": "PASSED (REVISE)",
   "p1_gate_note": "Cost-aware EVPI-Cost question selection is PRIOR ART (SAGE-Agent, Findings ACL 2026). Claim re-scoped to the JOINT (typed structure + detector-classified obligations + decision provenance + readiness policy + cross-node decision propagation) over a verified hybrid Agile-SOFL spec. Per task book 3.4: shrink claim, record pivot, keep building.",
   "completed_tasks": [
+    "P4: RefinementSession (packages/refinement/src/session.ts) — the single headless, deterministic, typed domain-tool + turn-orchestration layer (task book 6.1, NOT a second agent system). Tools: readRefinementTree, proposeRefinement (AI_hypothesis candidates, never user_confirmed), checkObligations, listOpenObligations, selectNextClarification (cost-aware; answered obligations never re-asked), recordDecision (isolated actor; confirm/answer discharges + honest source, defer tracks deferral, unknown/reject fabricates nothing; supersedes re-evaluates the full impact set + pulls dependents back to needs_clarification, no auto re-approval), proposeRevision/applyRevision (version-gated; stale proposals REJECTED not overwritten), assessReadiness, runTurn (deterministic turn loop; budget exhaustion = stop). Committed 094bfcb.",
+    "P4: 6 §6.6 GATE replay tests (tests/session-gate.test.ts) — coarse->confirm->refine->ready; unknown does not fabricate; defer preserves risk + non-blocking branches continue; prior-rule change invalidates dependents w/o auto re-approval; version-stale edit proposal rejected; no infinite re-ask. Each run twice with deterministic id generators to prove replay determinism (+2 supplementary anti-fabrication tests). refinement 115 tests green (107+8); tsc + build clean; full monorepo npm test 1329 passing / 5 failing (same pre-existing studio failures), zero new failures.",
     "P3: packages/refinement (107 tests green) — typed RequirementGraph (refines tree + typed cross-links, INV-1..INV-5, iterative traversals to 10k nodes), detector-classified obligations (mechanical/llm_candidate/user_decision) with discharge() as the anti-fabrication choke point, provenance table (single enforcement), DecisionStore + withdraw propagation (re-opens satisfied/waived/deferred, demotes grounded confirmed nodes, never re-approves), cost-aware selector (SAGE-Agent EVPI-Cost form), ReadinessAssessor (5 verdicts; budget-exhaustion = stop not pass), node lifecycle, dense-sequenced replayable EventLog, schemaVersion=1 serialization (additive migration, crash recovery, future-version rejection, round-trip invariants). Committed b110284. Root build/test wiring added.",
     "P0: clone repo at 8f325df, branch research/effort-aware-refinement, workspace, npm ci/build (exit 0), npm test baseline (1092 pass / 5 pre-existing studio failures), 7-package audit -> design/architecture.md",
     "P0: identified existing capability (atomic-req refinement, LLM agent, experiment harness T/B2/B0-auto, trace provenance) + 7-item research gap",
@@ -17,7 +19,7 @@
     "P0-P2: confirmed both authorized FREE APIs reachable (lab lab-qwen3.8-27b reasoning model; ECNU ecnu-max = deepseek-v4-flash)"
   ],
   "remaining_tasks": [
-    "P4: wire as Studio agent tools (typed domain tools per task book 6.1: read_requirement_graph, list_obligations, select_next_clarification, record_decision, assess_readiness) as thin HybridAgentBootstrapPayload wrappers + decision provenance + replay tests; then cut exp-freeze-v1.3 tag",
+    "P4 (REMAINING): wire the (now-complete) RefinementSession as THIN Studio agent tools (HybridAgentBootstrapPayload specs per refineAgentTools.ts + registration in main/services/llm/agentLoop.ts — thin wrappers, no logic duplication) + add @agile-sofl/refinement to studio deps; THEN cut the exp-freeze-v1.3 tag (the current exp-freeze-v1.2 guard covers packages/studio/src, which this touches). The requirement-layer core + the 6 §6.6 gate replay tests are DONE (094bfcb). Gate scenario #7 (real .asfl fixtures still pass the language checks) is the studio/parser layer, exercised in P5/P6.",
     "P5: extend agent-harness (oracle = resolveClarification per core.ts:52; A/B/C/D+ablation conditions off T/B2/B0-auto; scorer; prereg check; smoke+pilot)",
     "P6: run smoke/pilot/main on authorized free model, diagnose, iterate (no test-set overfitting)",
     "P7: user study protocol (design-only; no fabricated participants)",
@@ -39,9 +41,9 @@
     "npm test   # exit 1 (5 pre-existing baseline failures, documented in baseline-report.md)"
   ],
   "tests_passed": {
-    "parser": 493, "refinement": 107, "gui": 23, "aspec": 46, "editor-api": 196, "language-server": 50, "vscode": 84,
-    "studio_passed": 322, "total_passed": 1199,
-    "note": "1199 = 1092 baseline + 107 new refinement. Baseline floor HOLDS; same 5 pre-existing studio failures (4 environmental Electron + 1 llmPromptsFsf 'implies' assertion); zero new failures."
+    "parser": 493, "refinement": 115, "gui": 23, "aspec": 46, "editor-api": 196, "language-server": 50, "vscode": 84,
+    "studio_passed": 322, "total_passed": 1329,
+    "note": "VERIFIED per-workspace full `npm test` run (commit 094bfcb): 493+115+23+46+196+50+84+322 = 1329 passing / 5 failing. Same 5 pre-existing studio failures (4 environmental Electron-binary + 1 llmPromptsFsf 'implies' assertion); ZERO new failures. (Note: the previously-recorded '1199' total was a miscount of this same per-workspace breakdown — the true sum was always 1321 at the 107-refinement point and is 1329 with the 8 new P4 tests; the 5 pre-existing studio failures are unchanged.)"
   },
   "tests_failed": {
     "studio": 5,
@@ -66,10 +68,12 @@
     "research/effort-aware-refinement/research/novelty-assessment.md (VERIFIED, P1 gate; REVISE)",
     "research/effort-aware-refinement/research/hypotheses-and-preregistration.md (FROZEN v1 + v2)",
     "research/effort-aware-refinement/research/literature-matrix.csv",
-    "research/effort-aware-refinement/research/literature-notes.md"
+    "research/effort-aware-refinement/research/literature-notes.md",
+    "packages/refinement/src/session.ts (P4 RefinementSession domain-tool + turn-orchestration core, 094bfcb)",
+    "packages/refinement/tests/session-gate.test.ts (P4 six §6.6 gate replay tests + 2 anti-fabrication, 094bfcb)"
   ],
   "next_actions": [
-    "P4: wire packages/refinement as thin Studio agent tools (read_requirement_graph, list_obligations, select_next_clarification, record_decision, assess_readiness) — follow the HybridAgentBootstrapPayload pattern in packages/studio/src/renderer/lib/refineAgentTools.ts + the agent tool registration in main/services/llm/agentLoop.ts; thread decision provenance; add replay tests (task book 6.6)",
+    "P4 (core DONE at 094bfcb; REMAINING): wire RefinementSession as THIN Studio agent tools (read_requirement_graph, list_obligations, select_next_clarification, record_decision, assess_readiness) as HybridAgentBootstrapPayload specs (pattern: packages/studio/src/renderer/lib/refineAgentTools.ts; registration: main/services/llm/agentLoop.ts) — thin wrappers only, no logic duplication; add packages/refinement to studio deps; then cut the exp-freeze-v1.3 freeze tag (exp-freeze-v1.2 guard covers packages/studio/src which this touches). The requirement-layer core + 6 §6.6 gate replay tests are DONE.",
     "P4 acceptance: new tools are a thin layer over the (already-tested) refinement package; add packages/refinement to studio deps; cut the exp-freeze-v1.3 freeze tag (current exp-freeze-v1.2 guard covers packages/studio/src)",
     "P5: implement the simulated-stakeholder oracle as a resolveClarification hook (core.ts:52); extend Condition to A/B/C/D + ablations (SAGE-Agent EVPI-Cost as RQ3 baseline); scorer + prereg check; smoke+pilot",
     "Do NOT consume paid APIs; do NOT fabricate results; do NOT push without authorization"

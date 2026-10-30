@@ -1,8 +1,23 @@
 # HANDOFF — latest
 
 ## Current status
-- **Branch / commit:** `research/effort-aware-refinement` / latest `b110284` (P3 green). Baseline `8f325df`.
-- **Current phase:** **P0+P1+P2+P3 DONE → P4 starting.** P1 gate **PASSED (REVISE)**; **P3 gate PASSED**.
+- **Branch / commit:** `research/effort-aware-refinement` / latest `094bfcb` (P4 core green). Baseline `8f325df`.
+- **Current phase:** **P0+P1+P2+P3 DONE → P4 CORE DONE.** P1 gate **PASSED (REVISE)**; **P3 gate PASSED**;
+  **P4 requirement-layer core + the 6 §6.6 gate replay tests are DONE** (`094bfcb`). Remaining P4 = thin
+  Studio agent-tool wiring + `exp-freeze-v1.3` tag.
+- **P4 core decision (the important one for a resumer):** the requirement layer is now a single
+  **headless, deterministic `RefinementSession`** in `@agile-sofl/refinement` (task book §6.1 — **NOT a
+  second agent system**). It is the one place the typed domain tools + turn orchestration live, so the
+  Studio agent / experiment harness consume it as **thin wrappers** (no logic duplication). Because it
+  lives in `packages/refinement` (not `packages/studio/src`), it is **freeze-guard-safe** (no new tag
+  needed) and **Electron-free** (testable here). The Studio-tool wiring that WILL touch
+  `packages/studio/src` still needs the `exp-freeze-v1.3` tag. The 6 §6.6 gate behaviors are implemented
+  and replay-tested at this layer: coarse→confirm→refine→ready; `unknown` never fabricates; `defer`
+  preserves risk + non-blocking branches continue; a changed prior rule invalidates/re-evaluates
+  dependents with **no auto re-approval**; a version-stale agent edit is **REJECTED, not silently
+  overwritten**; and a decision is **never re-asked** (answered obligations are excluded from selection).
+  Anti-fabrication stays structural: a `simulated_user`+`simulated_user_answer` answer DOES discharge
+  (the study's interaction proxy) but can **never** launder a node into `user_confirmed`/`analyst_approved`.
 - **P3 gate decision (the important one for a resumer):** `@agile-sofl/refinement` is complete and
   green — 107 tests, `tsc` clean, full `npm test` 1199 passing (1092 baseline + 107; same 5 pre-existing
   studio failures, **zero new**). The anti-fabrication semantics are the subtle part: a
@@ -37,28 +52,33 @@
     it is a hypothesis under test (RQ3), not a novel mechanism.
   - The two authorized **FREE** APIs are both reachable: lab `lab-qwen3.8-27b` (reasoning model, returns
     `reasoning_content`) and ECNU `ecnu-max` (served by **`deepseek-v4-flash`**).
-- **Tests run (command + exit code):** `npm run test --workspace @agile-sofl/refinement` → 107/107 pass
-  (10 files). Full `npm test` → 1199 passing (1092 baseline + 107 refinement); same **5 pre-existing**
-  studio failures (4 environmental Electron + 1 `llmPromptsFsf` "implies" assertion), **zero new**.
-  `npm run build --workspace @agile-sofl/refinement` → `tsc` clean (exit 0).
-- **Changed files/modules (P3):** new `packages/refinement/` (14 src + 10 test + README/package.json/
-  tsconfig/vitest.config, 3722 insertions, commit `b110284`); root `package.json` build/test chains +
-  `package-lock.json` (refinement workspace entry). **Product packages untouched** (no parser/studio
-  source change).
-- **Remaining gaps/risks:** P4 agent wiring (next), P5 oracle/baselines/scorer, P6 runs, P7 user study
-  (design-only), P8 paper.
+- **Tests run (command + exit code, P4 core @ `094bfcb`):** `npx tsc --noEmit` → clean.
+  `npm run build --workspace @agile-sofl/refinement` → exit 0. `npx vitest run` (refinement) →
+  **115/115 pass** (11 files = P3's 10 + new `session-gate.test.ts`). Full `npm test` → **1329 passing /
+  5 failing** (verified per-workspace: parser 493, refinement 115, gui 23, aspec 46, editor-api 196,
+  language-server 50, vscode 84, studio 322; the **5 are the same pre-existing** studio failures — 4
+  environmental Electron + 1 `llmPromptsFsf` "implies" — **zero new**).
+- **Changed files/modules (P4 core):** `packages/refinement/src/session.ts` (new, `RefinementSession`),
+  `packages/refinement/src/index.ts` (exports), `packages/refinement/tests/session-gate.test.ts` (new,
+  8 tests) — commit `094bfcb` (3 files, 894 insertions). **Product packages untouched** (the Studio-tool
+  wiring + `package.json` dep + freeze tag are the REMAINING P4, which touch `packages/studio`).
+- **Remaining gaps/risks:** P4 thin Studio agent-tool wiring + `exp-freeze-v1.3` tag (next), P5
+  oracle/baselines/scorer, P6 runs, P7 user study (design-only), P8 paper.
 - **External blockers:** Electron (B1, environmental, non-blocking); free APIs only (B4, non-blocking);
   user study needs real participants (B5); some literature paywalled (B6).
-- **Exact next actions (P4 — P3 is DONE at `b110284`):**
+- **Exact next actions (P4 REMAINING — core is DONE at `094bfcb`):**
   1. Add `@agile-sofl/refinement` to studio deps; build the 5 **thin** agent tools
      (`read_requirement_graph`, `list_obligations`, `select_next_clarification`, `record_decision`,
      `assess_readiness`) as `HybridAgentBootstrapPayload` specs (pattern:
      `packages/studio/src/renderer/lib/refineAgentTools.ts`; registration:
-     `main/services/llm/agentLoop.ts`), each a thin call into the refinement package — no logic
-     duplication.
-  2. Thread decision provenance (actor + provenance on every decision; never an `AI_hypothesis`
-     confirmation). Add **replay tests** (task book §6.6): same op sequence + deterministic id gen ⇒
-     identical ids / verdicts.
-  3. Acceptance: `tsc` clean + full `npm test` green (1199 floor). Then cut the `exp-freeze-v1.3` tag
-     (the current `exp-freeze-v1.2` guard covers `packages/studio/src`, which P4 touches).
+     `main/services/llm/agentLoop.ts`), **each a thin call into `RefinementSession`** — no logic
+     duplication. `record_decision` must pass the actor explicitly (the isolated simulated stakeholder in
+     experiments) — never the agent impersonating the user.
+  2. Acceptance: `tsc` clean + full `npm test` green (1329 floor, same 5 pre-existing failures). Then cut
+     the `exp-freeze-v1.3` tag (the current `exp-freeze-v1.2` guard covers `packages/studio/src`, which
+     this touches).
+  3. Then **P5**: the simulated-stakeholder oracle as the harness `resolveClarification` hook
+     (`scripts/agent-harness/core.ts:52`) driving `RefinementSession.runTurn`; extend `Condition` to
+     A/B/C/D + ablations (SAGE-Agent EVPI−Cost as the RQ3 baseline); scorer + prereg check; smoke +
+     pilot on the offline `--dry-run` fake-LLM path first, then the authorized FREE APIs.
   4. No paid APIs, no fabricated results, no unapproved push.

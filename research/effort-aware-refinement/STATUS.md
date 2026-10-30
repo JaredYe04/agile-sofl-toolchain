@@ -1,7 +1,7 @@
 # STATUS — Effort-Aware Refinement Research
 
 **Branch:** `research/effort-aware-refinement` · **Baseline commit:** `8f325df`
-**Last updated:** 2026-10-30 (P1 + P2 + **P3 done/green**; P4 starting)
+**Last updated:** 2026-10-31 (P1 + P2 + P3 + **P4 core done/green** at `094bfcb`; P4 thin Studio tools remaining)
 
 ## Phase gates
 
@@ -11,7 +11,7 @@
 | **P1** | Literature + novelty assessment + RQ freeze | ✅ **DONE** — **REVISE** decision (cost-aware selection = prior art [SAGE-Agent]; claim re-scoped to the joint over a verified hybrid spec) |
 | **P2** | Conceptual model + semantic design + ADRs | ✅ **DONE** (`conceptual-model.md` finalized vs §4; ADR-004) |
 | **P3** | Refinement tree/graph infra + tests-first (stable) | ✅ **DONE** (`b110284`; 107 tests green; 1199-test floor holds) |
-| **P4** | Agent harness + human decision loop | 🟡 **STARTING** |
+| **P4** | Agent harness + human decision loop | 🟡 **CORE DONE** (`094bfcb`: `RefinementSession` + 6 §6.6 gate replay tests); thin Studio tools + `exp-freeze-v1.3` remaining |
 | P5 | Benchmark + oracle + baselines + preregistration | ⬜ |
 | P6 | Run experiments (authorized free model) + diagnose | ⬜ |
 | P7 | User study protocol (design-only; no fabricated participants) | ⬜ |
@@ -103,18 +103,50 @@
     crash recovery, expected-version gate, **future-version rejection**, round-trip invariants).
 - **Tests:** 107 green (unit + property 400-op random trees + replay/determinism + 3 §12 e2e scenarios +
   perf). Root `build`/`test` workspace chains updated.
-- **Baseline floor holds:** full `npm test` → 1199 passing (1092 + 107), same 5 pre-existing studio
-  failures, **zero new failures**. `tsc` clean.
+- **Baseline floor holds:** full `npm test` → 1321 passing at the 107-refinement point (per-workspace
+  sum; the "1199" first recorded here was a miscount of that same breakdown), same 5 pre-existing
+  studio failures, **zero new failures**. `tsc` clean.
+
+## P4 — core completed (`RefinementSession` + §6.6 gate replay tests; commit `094bfcb`)
+- **`RefinementSession`** (`packages/refinement/src/session.ts`) — the single **headless, deterministic,
+  typed domain-tool + turn-orchestration** layer (task book §6.1 — **NOT a second agent system**). The
+  Studio agent / experiment harness consume it as **thin wrappers** (no logic duplication). Lives in
+  `packages/refinement` → **freeze-guard-safe** (no new tag needed) + **Electron-free** (testable here).
+  Tools: `readRefinementTree`, `proposeRefinement` (AI_hypothesis candidates, never user_confirmed),
+  `checkObligations`, `listOpenObligations`, `selectNextClarification` (cost-aware; answered obligations
+  never re-asked), `recordDecision` (isolated actor; confirm/answer discharges + honest source, defer
+  tracks a deferral, unknown/reject fabricates nothing; `supersedes` re-evaluates the **full impact set**
+  and pulls dependents back to `needs_clarification` — **no auto re-approval**),
+  `proposeRevision`/`applyRevision` (version-gated; stale proposals **REJECTED, not silently overwritten**),
+  `assessReadiness`, `runTurn` (deterministic turn loop; budget exhaustion = a stop).
+- **The six §6.6 gate replay tests** (`tests/session-gate.test.ts`) — each run **twice with deterministic
+  id generators** to prove replay determinism: (1) coarse→confirm→multi-round refine→READY; (2) `unknown`
+  → **no fabricated rule** (obligation stays open, node stays AI_hypothesis/draft, scope not ready, not
+  re-asked); (3) `defer` → risk preserved (DEFERRED) + a non-blocking branch continues; (4) changing a
+  prior rule → dependent invalidated/re-evaluated (needs_clarification), **no auto re-approval**, original
+  decision withdrawn; (5) a version-stale agent edit → **REJECTED** (a fresh proposal at the current
+  version applies); (6) a never-resolving stakeholder → each decision asked **at most once**, loop
+  terminates on "no eligible candidate" with budget left. + 2 supplementary anti-fabrication tests (a
+  correctly-labeled `simulated_user`+`simulated_user_answer` answer discharges as a proxy but can **never**
+  launder a node into `user_confirmed`).
+- **Tests:** refinement **115 green** (107 + 8); `tsc` + `build` clean. **Full `npm test` → 1329 passing /
+  5 failing** (verified per-workspace: parser 493, refinement 115, gui 23, aspec 46, editor-api 196,
+  language-server 50, vscode 84, studio 322) — the **5 are the same pre-existing** studio failures
+  (4 environmental Electron + 1 `llmPromptsFsf` "implies"), **zero new**.
+- **Remaining P4 (touches `packages/studio`):** wire the 5 **thin** agent tools over `RefinementSession`
+  + add the studio dep + cut `exp-freeze-v1.3`. Gate scenario #7 (real `.asfl` fixtures pass the language
+  checks) is the studio/parser layer, exercised in P5/P6.
 
 ## Next actions
-1. **P4 (start):** wire `packages/refinement` as **thin** Studio agent tools — `read_requirement_graph`,
+1. **P4 (REMAINING):** wire `RefinementSession` as **thin** Studio agent tools — `read_requirement_graph`,
    `list_obligations`, `select_next_clarification`, `record_decision`, `assess_readiness` — following the
    `HybridAgentBootstrapPayload` pattern in `packages/studio/src/renderer/lib/refineAgentTools.ts` + tool
-   registration in `main/services/llm/agentLoop.ts`; thread decision provenance; add replay tests
-   (task book §6.6). Add `@agile-sofl/refinement` to studio deps. Then cut the `exp-freeze-v1.3` tag.
-2. **P5:** simulated-stakeholder **oracle** as a `resolveClarification` hook (harness `core.ts:52`); extend
-   `Condition` to A/B/C/D + ablations (SAGE-Agent EVPI−Cost as the RQ3 baseline); scorer + prereg check;
-   smoke + pilot.
+   registration in `main/services/llm/agentLoop.ts` (each a thin call into the session; `record_decision`
+   passes the actor explicitly — never the agent impersonating the user). Add `@agile-sofl/refinement` to
+   studio deps; `tsc` clean + full `npm test` green (1329 floor); then cut `exp-freeze-v1.3`.
+2. **P5:** simulated-stakeholder **oracle** as a `resolveClarification` hook (harness `core.ts:52`) driving
+   `RefinementSession.runTurn`; extend `Condition` to A/B/C/D + ablations (SAGE-Agent EVPI−Cost as the RQ3
+   baseline); scorer + prereg check; smoke + pilot on the offline `--dry-run` fake-LLM path first.
 3. **P6:** run on the two authorized FREE APIs (both confirmed reachable; ECNU `ecnu-max` =
    `deepseek-v4-flash`); diagnose; iterate (no test-set overfitting).
 4. Paper (P8): cite SAGE-Agent + the others per `literature-notes.md`; RE 2026 = double-blind, 10+2 pages.

@@ -86,3 +86,24 @@
 
 ## 2026-10-30 — P3 (refinement infrastructure, tests-first) — DONE, committed `b110284`
 Built `@agile-sofl/refinement` (headless, deterministic; 14 src + 10 test) tests-first per conceptual-model §11/§13: typed RequirementGraph, detector-classified obligations with `discharge()` as the anti-fabrication choke point, provenance, DecisionStore + propagation, cost-aware selector, ReadinessAssessor, replayable EventLog, schemaVersion=1 serialization. 107/107 pass, tsc clean, full npm test 1199 (1092 baseline + 107; same 5 pre-existing studio failures, zero new) → floor holds. P3 gate PASSED → P4 next (integration points in handoff/latest.md).
+
+## 2026-10-31 — P4 (requirement-layer domain tools + §6.6 gate replay tests) — CORE DONE, committed `094bfcb`
+Built `RefinementSession` (`packages/refinement/src/session.ts`) — the single **headless, deterministic,
+typed domain-tool + turn-orchestration** layer (task book §6.1: NOT a second agent system; the Studio agent
+/ harness consume it as thin wrappers). Placed in `packages/refinement` → freeze-guard-safe + Electron-free.
+Tools: readRefinementTree, proposeRefinement (AI_hypothesis candidates, never user_confirmed),
+checkObligations, listOpenObligations, selectNextClarification (cost-aware; answered obligations never
+re-asked), recordDecision (isolated actor; confirm/answer discharges + honest source, defer tracks,
+unknown/reject fabricates nothing; `supersedes` re-evaluates the full impact set + pulls dependents to
+needs_clarification — no auto re-approval), proposeRevision/applyRevision (version-gated; stale proposals
+REJECTED not overwritten), assessReadiness, runTurn (deterministic loop; budget exhaustion = stop).
+Added the **six §6.6 gate replay tests** (`tests/session-gate.test.ts`), each run twice with deterministic id
+generators to prove replay determinism: (1) coarse→confirm→refine→READY; (2) `unknown` does not fabricate;
+(3) `defer` preserves risk + non-blocking branch continues; (4) prior-rule change invalidates dependents,
+no auto re-approval; (5) version-stale edit REJECTED; (6) no infinite re-ask. + 2 anti-fabrication tests
+(simulated_user answer discharges as proxy, never launders into user_confirmed).
+**Tests:** refinement 115 green (107+8); tsc + build clean; full `npm test` **1329 passing / 5 failing**
+(verified per-workspace: parser 493, refinement 115, gui 23, aspec 46, editor-api 196, language-server 50,
+vscode 84, studio 322) — same 5 pre-existing studio failures, **zero new**. (Corrected the earlier
+"1199" total, which was a miscount of this same breakdown.) Remaining P4 = thin Studio agent tools +
+`exp-freeze-v1.3` tag (touches `packages/studio`).
