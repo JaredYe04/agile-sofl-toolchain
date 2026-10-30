@@ -83,3 +83,6 @@
   smoke/pilot/main run plan on the two authorized FREE APIs only.
 - **P1 gate state:** RQ freeze structure is done; final GO/REVISE/PIVOT is **conditional on** the
   literature agent's verified external rows. Do not start P3 before the final GO is recorded.
+
+## 2026-10-30 — P3 (refinement infrastructure, tests-first) — DONE, committed `b110284`
+Built `@agile-sofl/refinement` (headless, deterministic; 14 src + 10 test) tests-first per conceptual-model §11/§13: typed RequirementGraph, detector-classified obligations with `discharge()` as the anti-fabrication choke point, provenance, DecisionStore + propagation, cost-aware selector, ReadinessAssessor, replayable EventLog, schemaVersion=1 serialization. 107/107 pass, tsc clean, full npm test 1199 (1092 baseline + 107; same 5 pre-existing studio failures, zero new) → floor holds. P3 gate PASSED → P4 next (integration points in handoff/latest.md).
