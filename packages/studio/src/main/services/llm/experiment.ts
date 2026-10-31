@@ -136,6 +136,13 @@ export const KNOWN_CONDITIONS = ['T', 'B2'] as const
 /** Human-readable startup notice of the active condition (always a warning so it is visible in logs). */
 export function conditionNotice(cfg: ExperimentConfig): string {
   const mode = cfg.semanticChecks ? 'full tool: agent + parser + L1 + L2' : 'agent + parser feedback only; L1/L2 disabled'
+  // The headless CLI sets this so its console line describes checks, not an internal mode label.
+  if (process.env.AGILE_SOFL_HEADLESS === '1') {
+    const headlessMode = cfg.semanticChecks
+      ? 'parser and semantic checks are fed back to the agent'
+      : 'parser diagnostics only; semantic checks are off'
+    return `[agile-sofl] headless agent: ${headlessMode}`
+  }
   let msg = `[agile-sofl experiment] active condition=${cfg.condition} (${mode}), participant=${cfg.participantId}`
   if (cfg.condition === 'B0' || cfg.condition === 'B1') msg += ` — WARNING: ${cfg.condition} is an external baseline not implemented in the studio; running as T`
   else if (!(KNOWN_CONDITIONS as readonly string[]).includes(cfg.condition)) msg += ` — WARNING: unknown condition label; running as T`

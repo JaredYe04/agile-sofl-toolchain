@@ -1,4 +1,5 @@
-// Bundles the headless agent harness with `electron` replaced by a stub. Output: packages/studio/.harness/{run,batch}.mjs
+// Bundles this directory into packages/studio/.harness/*.mjs. electron is replaced by a stub.
+// Supported entry: run.ts via headless.mjs. Run the build from packages/studio.
 import { build } from 'esbuild'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'

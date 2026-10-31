@@ -107,6 +107,14 @@ Electron + Vue shell for a future visual editor (FSF form blocks, module graph c
 
 See `packages/studio/README.md` and `docs/12-Electron编辑器集成.md`.
 
+Studio also ships a headless agent CLI: informal `.aspec` in, hybrid `.asfl` out, without opening the desktop window. `ECNU_API_KEY` selects an OpenAI-compatible model; `--dry-run` needs no key.
+
+```bash
+node packages/studio/scripts/agent-harness/headless.mjs --help
+```
+
+Details: `packages/studio/scripts/agent-harness/README.md`.
+
 ---
 
 ## Example Specifications
@@ -316,6 +324,14 @@ node node_modules/@agile-sofl/language-server/dist/server.js --stdio
 Electron + Vue 可视化编辑器空壳（FSF 表单块、模块图画布待实现）。当前已具备：主进程 LSP spawn、`buildDocumentModel` IPC 演示。
 
 详见 `packages/studio/README.md` 与 `docs/12-Electron编辑器集成.md`。
+
+Studio 另有无界面的智能体命令行：输入非正式规格 `.aspec`，输出混合规格 `.asfl`，不打开桌面窗口。用 `ECNU_API_KEY` 配置兼容 OpenAI 的模型；`--dry-run` 不需要密钥、也不访问网络。
+
+```bash
+node packages/studio/scripts/agent-harness/headless.mjs --help
+```
+
+说明见 `packages/studio/scripts/agent-harness/README.md`。
 
 ---
 

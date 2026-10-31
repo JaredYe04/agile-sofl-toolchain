@@ -1,12 +1,8 @@
 /**
- * Headless driver for the studio agent loop (runAgentTurn / resumeWithToolResult) with the real LLM.
- * Mirrors what AgentPanel.vue does in auto-write mode: every proposal is auto-approved and applied
- * exactly as applyHybridDocumentPatch would (source edit / refinement step / CRUD patch), then the loop
- * is resumed with {action:'applied'} so post_write_diagnostics are logged by the production code.
- *
- * Seed of the automated-pilot batch runner: one call = one run in one condition, written to a run
- * directory named by a random id; the condition<->id key is returned to the caller (kept out of the
- * run directory, for blind coding). Runs are strictly serial (no concurrency).
+ * Headless driver for the studio agent loop (runAgentTurn / resumeWithToolResult).
+ * Mirrors AgentPanel auto-write: each hybrid proposal is applied, then the loop resumes
+ * with {action:'applied'} so post-write diagnostics are logged by the production code.
+ * One call writes one run directory. Callers run one run at a time.
  */
 import { createHash, randomBytes } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
@@ -46,16 +42,20 @@ export interface RunOptions {
   maxApprovals?: number
   clarificationAnswer?: string
   /**
-   * Clarification experiments: map ask_clarification to a stakeholder/oracle answer.
-   * When set, the harness never falls back to DEFAULT_CLARIFICATION (best-judgement).
+   * Map each ask_clarification to a reply. When set, the static clarification string is not used.
    */
   resolveClarification?: (ask: ClarificationAsk) => ClarificationResolution | Promise<ClarificationResolution>
-  /** Study/pilot telemetry (e.g. clarification_asked, oracle_reply). */
+  /** Optional callback for clarification and proposal events. */
   onStudyEvent?: (event: Record<string, unknown>) => void
+  /** Label stored with the run. Omitted runs use a generated id. */
   participantId?: string
-  /** externally assigned (blinded) run id; random when omitted */
+  /** Shown to the model as the current project. Defaults to the historical label `pilot`. */
+  projectName?: string
+  /** Max tool round-trips (clarifications and proposals). Default 20. */
+  maxRounds?: number
+  /** Run id; random when omitted. */
   runId?: string
-  /** extra fields written into manifest.json (e.g. commit provenance from the batch runner) */
+  /** Extra fields merged into manifest.json. */
   manifestExtra?: Record<string, unknown>
   /** called after every approved step with the spec as it stands after applying it (before the agent resumes) */
   onStep?: (step: StepInfo) => Promise<void> | void
@@ -135,7 +135,7 @@ export async function runOnce(o: RunOptions): Promise<RunResult> {
   const maxApprovals = o.maxApprovals ?? 3
 
   const ctx: AgentTurnContext = {
-    projectName: 'pilot', projectRoot: runDir, moduleId: 'project',
+    projectName: o.projectName ?? 'pilot', projectRoot: runDir, moduleId: 'project',
     informalMarkdown: informal, hybridAsfl: o.initialHybridAsfl ?? '', skillId, permissions: generationAgentPermissions()
   }
   if (o.initialHybridAsfl !== undefined) writeFileSync(join(runDir, 'hybrid.asfl'), o.initialHybridAsfl)
@@ -146,7 +146,8 @@ export async function runOnce(o: RunOptions): Promise<RunResult> {
   let approvals = 0
   let clarificationsAnswered = 0
   let stopReason = 'agent finished'
-  for (let guard = 0; guard < 20; guard++) {
+  const maxRounds = o.maxRounds ?? 20
+  for (let guard = 0; guard < maxRounds; guard++) {
     const pending = session.messages.find((m) => m.pending)
     const toolId = session.context.pendingToolCallId
     if (!pending || !toolId) break
