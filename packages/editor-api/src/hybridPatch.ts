@@ -23,6 +23,7 @@ import {
   type ParsedHybridId
 } from './hybridIds.js'
 import { addModule, removeModule, renameModule, setModuleParent } from './modulePatch.js'
+import { repairGuiModuleStub } from './guiModuleStubRepair.js'
 import { integrateOrphanModulesAfterProgramDot } from './moduleProgramLayout.js'
 import {
   patchComment,
@@ -1215,6 +1216,9 @@ export function applyHybridPatch(
   const integrated = integrateOrphanModulesAfterProgramDot(content)
   content = integrated.text
   if (integrated.notes.length) lintWarnings.push(...integrated.notes)
+  const stubFixed = repairGuiModuleStub(content)
+  content = stubFixed.text
+  if (stubFixed.notes.length) lintWarnings.push(...stubFixed.notes)
   const leftover = hybridLeftoverMessage(content)
   if (leftover) lintWarnings.push(leftover)
   const warnings = [...opFailures, ...lintWarnings]
