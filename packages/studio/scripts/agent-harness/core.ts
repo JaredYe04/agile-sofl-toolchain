@@ -26,6 +26,9 @@ export type ClarificationAsk = {
   options?: Array<{ id: string; label: string }>
   multiSelect?: boolean
   allowCustom?: boolean
+  /** Set when this clarification IS a requirement-layer obligation (task book §6.1): the oracle logs
+   *  it so the interaction log records each question's type (prereg §7.3). */
+  obligationId?: string
 }
 
 export type ClarificationResolution = {
@@ -156,7 +159,8 @@ export async function runOnce(o: RunOptions): Promise<RunResult> {
         question: String(pending.clarification.question || 'Please clarify.'),
         options: pending.clarification.options,
         multiSelect: pending.clarification.multiSelect,
-        allowCustom: pending.clarification.allowCustom
+        allowCustom: pending.clarification.allowCustom,
+        ...(pending.clarification.obligationId ? { obligationId: pending.clarification.obligationId } : {})
       }
       o.onStudyEvent?.({
         type: 'clarification_asked',
@@ -183,7 +187,10 @@ export async function runOnce(o: RunOptions): Promise<RunResult> {
         answerText = UNMATCHED_CLARIFICATION_REPLY
       }
       clarificationsAnswered++
-      session = await resumeWithToolResult(session, runDir, ctx, toolId, answerText, undefined, !last)
+      // The experiment harness stands in for the stakeholder, so a clarification answered through the
+      // resolveClarification oracle is recorded under the ISOLATED `simulated_user` actor (task book 6.1,
+      // prereg 7.5) — NEVER the `user` product default and never the agent. This is the P5 oracle seam.
+      session = await resumeWithToolResult(session, runDir, ctx, toolId, answerText, undefined, !last, undefined, 'simulated_user')
       if (last) { stopReason = 'call budget reached'; break }
       continue
     }
