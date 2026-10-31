@@ -26,7 +26,7 @@ const screens = computed(() => gui.model.value?.screens ?? [])
 const fullHtml = computed(() => gui.model.value?.html ?? '')
 const guiViewOptions = computed(() => [
   { id: 'code', label: t('workspace.codeTab') },
-  { id: 'visual', label: t('workspace.visualTab') }
+  { id: 'visual', label: t('workspace.guiDesign') }
 ])
 const codeActive = computed(() => workspace.guiMode === 'code')
 const selectedScreen = computed(() => {

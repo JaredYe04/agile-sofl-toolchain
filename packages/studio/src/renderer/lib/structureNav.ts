@@ -5,8 +5,13 @@ export type HybridSpanModel = {
   modules: Array<{
     name: string
     span?: SerializableSpan
+    cdfdSpan?: SerializableSpan
     processes: Array<{ name: string; span?: SerializableSpan }>
     functions: Array<{ name: string; span?: SerializableSpan }>
+    types?: Array<{ name: string; span?: SerializableSpan }>
+    vars?: Array<{ name: string; span?: SerializableSpan }>
+    consts?: Array<{ name: string; span?: SerializableSpan }>
+    invariants?: Array<{ span?: SerializableSpan }>
   }>
   moduleGraph?: unknown
 } | null
@@ -52,7 +57,48 @@ export function spanForHybridSelection(model: HybridSpanModel, sel: TreeSelectio
   if (sel.kind === 'function') {
     return mod.functions.find((f) => f.name === sel.functionName)?.span ?? null
   }
+  if (sel.kind === 'type') return mod.types?.find((item) => item.name === sel.name)?.span ?? null
+  if (sel.kind === 'var') return mod.vars?.find((item) => item.name === sel.name)?.span ?? null
+  if (sel.kind === 'const') return mod.consts?.find((item) => item.name === sel.name)?.span ?? null
+  if (sel.kind === 'inv') return mod.invariants?.[sel.index]?.span ?? null
+  if (sel.kind === 'cdfd') return mod.cdfdSpan ?? null
   return mod.span ?? graphNodeSpan(model.moduleGraph, sel.moduleName)
+}
+
+export function sameSelection(a: TreeSelection, b: TreeSelection): boolean {
+  if (a === b) return true
+  if (!a || !b || a.kind !== b.kind || a.moduleName !== b.moduleName) return false
+  if (a.kind === 'process' && b.kind === 'process') return a.processName === b.processName
+  if (a.kind === 'function' && b.kind === 'function') return a.functionName === b.functionName
+  if (a.kind === 'type' && b.kind === 'type') return a.name === b.name
+  if (a.kind === 'var' && b.kind === 'var') return a.name === b.name
+  if (a.kind === 'const' && b.kind === 'const') return a.name === b.name
+  if (a.kind === 'inv' && b.kind === 'inv') return a.index === b.index
+  return a.kind === 'module' || a.kind === 'cdfd'
+}
+
+/** Innermost entity whose span contains the source offset. */
+export function selectionAtOffset(model: HybridSpanModel, offset: number): TreeSelection {
+  if (!model) return null
+  let best: { sel: TreeSelection; size: number } | null = null
+  const consider = (span: SerializableSpan | undefined, sel: TreeSelection) => {
+    if (!span || !sel || offset < span.start || offset > span.end) return
+    const size = Math.max(0, span.end - span.start)
+    if (!best || size <= best.size) best = { sel, size }
+  }
+  for (const mod of model.modules) {
+    consider(mod.span, { kind: 'module', moduleName: mod.name })
+    for (const item of mod.types ?? []) consider(item.span, { kind: 'type', moduleName: mod.name, name: item.name })
+    for (const item of mod.consts ?? []) consider(item.span, { kind: 'const', moduleName: mod.name, name: item.name })
+    for (const item of mod.vars ?? []) consider(item.span, { kind: 'var', moduleName: mod.name, name: item.name })
+    ;(mod.invariants ?? []).forEach((item, index) =>
+      consider(item.span, { kind: 'inv', moduleName: mod.name, index })
+    )
+    for (const item of mod.functions) consider(item.span, { kind: 'function', moduleName: mod.name, functionName: item.name })
+    for (const item of mod.processes) consider(item.span, { kind: 'process', moduleName: mod.name, processName: item.name })
+    consider(mod.cdfdSpan, { kind: 'cdfd', moduleName: mod.name })
+  }
+  return best?.sel ?? null
 }
 
 export function selectElementText(el: HTMLElement): void {

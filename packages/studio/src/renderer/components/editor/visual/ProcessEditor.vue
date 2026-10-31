@@ -133,6 +133,13 @@ function onFsfPatch(scenarios: FsfModelDto['scenarios'], others?: string): void 
   emit('patch', { kind: 'fsf', processName: props.processName, scenarios, others })
 }
 
+function commitName(): void {
+  if (props.draftMode || props.disabled || props.process.isInit) return
+  const next = nameDraft.value.trim()
+  if (!next || next === props.processName) return
+  emit('rename', next)
+}
+
 function onSignature(sig: string): void {
   signatureDraft.value = sig
   if (props.draftMode) return
@@ -226,7 +233,7 @@ defineExpose({
 
     <div v-show="section === 'basic'" class="space-y-3">
       <FormField v-if="!process.isInit" :label="t('visual.process.name')">
-        <TextField v-model="nameDraft" mono :disabled="disabled" />
+        <TextField v-model="nameDraft" mono :disabled="disabled" @blur="commitName" />
       </FormField>
       <label class="flex items-center gap-2 text-sm text-content-primary">
         <input v-model="isInitDraft" type="checkbox" class="rounded border-border-subtle" :disabled="disabled" />

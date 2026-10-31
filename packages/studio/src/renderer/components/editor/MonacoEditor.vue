@@ -3,7 +3,7 @@ import { useI18n } from 'vue-i18n'
 import { useTraceabilityStore } from '../../stores/traceability'
 import { traceNotification } from '../../../shared/traceInteraction'
 import { filePathsEqual } from '../../stores/tabUtils'
-import { ref, watch, onMounted, onUnmounted, shallowRef, computed, nextTick } from 'vue'
+import { ref, watch, onMounted, onUnmounted, shallowRef, computed, nextTick, inject } from 'vue'
 import type * as Monaco from 'monaco-editor'
 import { monaco, initMonacoBase } from '../../monaco/setup'
 import { editorThemeName } from '../../monaco/themes'
@@ -21,6 +21,7 @@ import type { DiagnosticSummary, HybridRegionPayload } from '../../../preload/in
 import { useEditorUiStore } from '../../stores/editorUi'
 import { useSettingsStore } from '../../stores/settings'
 import { monacoLanguageForDocumentKind } from '../../stores/tabUtils'
+import { VISUAL_MODEL_KEY } from '../../composables/visualModelContext'
 
 export type SerializableSpan = {
   start: number
@@ -34,15 +35,20 @@ const props = withDefaults(defineProps<{ tabId?: string; active?: boolean }>(), 
   active: true
 })
 
+const emit = defineEmits<{ 'cursor-offset': [offset: number] }>()
+
 const container = ref<HTMLElement | null>(null)
 const editor = shallowRef<Monaco.editor.IStandaloneCodeEditor | null>(null)
 const models = new Map<string, Monaco.editor.ITextModel>()
 let markerSub: Monaco.IDisposable | null = null
 let highlightDecorations: string[] = []
+let focusDecorations: string[] = []
+let moduleDecorations: string[] = []
 let highlightClearTimer: ReturnType<typeof setTimeout> | null = null
 let suppressHistory = false
 
 const doc = useDocumentStore()
+const visualModel = inject(VISUAL_MODEL_KEY, null)
 const history = useHistoryStore()
 const lsp = useLspStore()
 const lspDiagnostics = useLspDiagnosticsStore()
@@ -163,9 +169,63 @@ function revealSpan(span: SerializableSpan, options?: { select?: boolean }): voi
   }, 2000)
 }
 
+function setFocusHighlight(span: SerializableSpan | null): void {
+  const ed = editor.value
+  const model = ed?.getModel()
+  if (!ed || !model || !span) {
+    focusDecorations = ed?.deltaDecorations(focusDecorations, []) ?? []
+    return
+  }
+  const safeStart = Math.max(0, Math.min(span.start, model.getValueLength()))
+  const safeEnd = Math.max(safeStart, Math.min(span.end, model.getValueLength()))
+  const start = model.getPositionAt(safeStart)
+  const end = model.getPositionAt(safeEnd)
+  focusDecorations = ed.deltaDecorations(focusDecorations, [
+    {
+      range: new monaco.Range(start.lineNumber, 1, end.lineNumber, 1),
+      options: { isWholeLine: true, className: 'studio-code-highlight-line' }
+    }
+  ])
+}
+
+function applyModuleBands(): void {
+  const ed = editor.value
+  const model = ed?.getModel()
+  const tab = activeDocumentTab.value
+  const modules = visualModel?.model.value?.modules ?? []
+  if (!ed || !model || !tab || tab.documentKind !== 'asfl' || !modules.length) {
+    moduleDecorations = ed?.deltaDecorations(moduleDecorations, []) ?? []
+    return
+  }
+  const decorations: Monaco.editor.IModelDeltaDecoration[] = []
+  modules.forEach((mod, index) => {
+    const span = mod.span
+    if (!span) return
+    const safeStart = Math.max(0, Math.min(span.start, model.getValueLength()))
+    const safeEnd = Math.max(safeStart, Math.min(Math.max(span.end - 1, span.start), model.getValueLength()))
+    const start = model.getPositionAt(safeStart)
+    const end = model.getPositionAt(safeEnd)
+    decorations.push({
+      range: new monaco.Range(start.lineNumber, 1, end.lineNumber, 1),
+      options: {
+        isWholeLine: true,
+        className: index % 2 === 0 ? 'studio-module-band-a' : 'studio-module-band-b'
+      }
+    })
+    if (index > 0) {
+      decorations.push({
+        range: new monaco.Range(start.lineNumber, 1, start.lineNumber, 1),
+        options: { isWholeLine: true, className: 'studio-module-separator' }
+      })
+    }
+  })
+  moduleDecorations = ed.deltaDecorations(moduleDecorations, decorations)
+}
+
 defineExpose({
   runEditCommand: runCommand,
   relayout,
+  setFocusHighlight,
   flushToDocument() {
     flushEditorToDocument()
   },
@@ -294,6 +354,7 @@ function syncModel(): void {
     ed.setModel(model)
   }
   scheduleHybridDecorations()
+  applyModuleBands()
 }
 
 function markerSeverityLabel(severity: Monaco.MarkerSeverity): string {
@@ -434,8 +495,14 @@ async function bootMonaco(): Promise<void> {
       }
     })
     editor.value.onDidChangeModelContent(onContentChange)
+    editor.value.onDidChangeCursorPosition((event) => {
+      const model = editor.value?.getModel()
+      if (!model) return
+      emit('cursor-offset', model.getOffsetAt(event.position))
+    })
     editor.value.onDidBlurEditorText(() => flushEditorToDocument())
     syncModel()
+    applyModuleBands()
     installTraceLenses()
     resizeObserver = new ResizeObserver(() => relayout())
     resizeObserver.observe(container.value.parentElement ?? container.value)
@@ -456,6 +523,8 @@ async function bootMonaco(): Promise<void> {
   if (editorDisposed) return
   markerSub = monaco.editor.onDidChangeMarkers(() => updateMarkerDiagnostics())
 }
+
+watch(() => visualModel?.model.value, () => applyModuleBands())
 
 watch([() => doc.activeTabId, () => props.tabId], () => {
   syncModel()
@@ -536,5 +605,14 @@ onUnmounted(() => {
 }
 .monaco-editor .studio-hybrid-decom {
   background: rgba(204, 167, 0, 0.12);
+}
+.monaco-editor .studio-module-band-a {
+  background: rgba(128, 128, 128, 0.045);
+}
+.monaco-editor .studio-module-band-b {
+  background: rgba(128, 128, 128, 0.12);
+}
+.monaco-editor .studio-module-separator {
+  box-shadow: inset 0 1px 0 rgba(128, 128, 128, 0.65);
 }
 </style>

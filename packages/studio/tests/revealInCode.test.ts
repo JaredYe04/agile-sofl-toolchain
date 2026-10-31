@@ -10,11 +10,11 @@ describe('revealInCodeEditor', () => {
     setActivePinia(createPinia())
   })
 
-  it('leaves visual-only mode and opens hybrid code before revealing', async () => {
+  it('leaves refine mode and opens hybrid code before revealing', async () => {
     const ui = useEditorUiStore()
     const workspace = useWorkspaceStore()
     ui.setViewMode('visual')
-    workspace.hybridMode = 'visual'
+    workspace.hybridMode = 'refine'
     const revealed: Array<{ start: number }> = []
     await revealInCodeEditor(
       {

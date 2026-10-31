@@ -49,9 +49,19 @@ import {
   toolLabelKey,
   upsertToolCall
 } from './agentToolUx'
+import {
+  assistantTextVisible,
+  groupAgentTurns,
+  messageHasTrace,
+  turnHasWork,
+  workDurationMs,
+  workDurationParts,
+  type AgentTurn
+} from './agentTurns'
 
 type MenuAction = 'copy' | 'rename' | 'delete' | 'pin' | 'archive'
 type AgentMessageView = AgentSessionPayload['messages'][0]
+const OPTIMISTIC_USER = 'local-user-'
 
 const props = defineProps<{
   informalMarkdown: string
@@ -127,6 +137,10 @@ const visibleSessions = computed(() =>
 const visibleMessages = computed(
   () => session.value?.messages.filter((m) => m.role !== 'tool') ?? []
 )
+const turns = computed(() => groupAgentTurns(visibleMessages.value, busy.value))
+const workOpen = ref<Record<string, boolean>>({})
+const nowMs = ref(Date.now())
+let workClock = 0
 const liveSessions = new Map<string, AgentSessionPayload>()
 const activeSessionId = computed(() => session.value?.id ?? '')
 const busy = computed(() => (activeSessionId.value ? runOf(activeSessionId.value).busy : false))
@@ -182,11 +196,35 @@ function sessionIsBusy(id: string): boolean {
   return Boolean(runs.value[id]?.busy)
 }
 
+function reconcileSession(prev: AgentSessionPayload | null, next: AgentSessionPayload): AgentSessionPayload {
+  if (!prev || prev.id !== next.id) return next
+  const optimistic = prev.messages.filter((message) => message.role === 'user' && message.id.startsWith(OPTIMISTIC_USER))
+  if (!optimistic.length) return next
+  const pool = next.messages.filter((message) => message.role === 'user').map((message) => message.content)
+  const missing: AgentMessageView[] = []
+  for (const message of optimistic) {
+    const index = pool.indexOf(message.content)
+    if (index >= 0) pool.splice(index, 1)
+    else missing.push(message)
+  }
+  if (!missing.length) return next
+  const messages = [...next.messages]
+  for (const message of missing) {
+    const at = prev.messages.findIndex((item) => item.id === message.id)
+    const anchor = [...prev.messages.slice(0, at)].reverse().find((item) => !item.id.startsWith(OPTIMISTIC_USER))
+    const anchorAt = anchor ? messages.findIndex((item) => item.id === anchor.id) : -1
+    messages.splice(anchorAt >= 0 ? anchorAt + 1 : messages.length, 0, message)
+  }
+  return { ...next, messages }
+}
+
 function publishSession(next: AgentSessionPayload): void {
-  liveSessions.set(next.id, next)
-  const listed = sessions.value.find((item) => item.id === next.id)
-  if (listed && listed.title !== next.title) listed.title = next.title
-  if (session.value?.id === next.id) session.value = next
+  const prev = session.value?.id === next.id ? session.value : liveSessions.get(next.id) ?? null
+  const merged = reconcileSession(prev, next)
+  liveSessions.set(merged.id, merged)
+  const listed = sessions.value.find((item) => item.id === merged.id)
+  if (listed && listed.title !== merged.title) listed.title = merged.title
+  if (session.value?.id === merged.id) session.value = merged
 }
 
 function showSession(next: AgentSessionPayload): void {
@@ -246,8 +284,8 @@ async function finishCall(
     if (runOf(sessionId).agentCalls > 0 || runOf(sessionId).autoApplyLock) return
     patchRun(sessionId, { busy: false, turnInFlight: false })
     await nextTick()
-    if (session.value?.id === sessionId) {
-      thread.value?.scrollTo({ top: thread.value.scrollHeight, behavior: 'smooth' })
+    if (session.value?.id === sessionId && pinThreadToBottom) {
+      thread.value?.scrollTo({ top: thread.value.scrollHeight })
     }
     if (stillOnProject(rootAtStart)) await flushQueue(sessionId, false)
   }
@@ -267,6 +305,106 @@ async function scrollThreadIfPinned(): Promise<void> {
   if (!pinThreadToBottom) return
   await nextTick()
   thread.value?.scrollTo({ top: thread.value.scrollHeight })
+}
+
+async function scrollThreadToEnd(): Promise<void> {
+  pinThreadToBottom = true
+  await nextTick()
+  thread.value?.scrollTo({ top: thread.value.scrollHeight })
+  await nextTick()
+  thread.value?.scrollTo({ top: thread.value.scrollHeight })
+}
+
+async function revealUserMessage(id: string): Promise<void> {
+  pinThreadToBottom = false
+  await nextTick()
+  const node = thread.value?.querySelector(`[data-agent-msg="${CSS.escape(id)}"]`)
+  node?.scrollIntoView({ block: 'start' })
+}
+
+function appendOptimisticUser(target: AgentSessionPayload, text: string): string {
+  const id = `${OPTIMISTIC_USER}${crypto.randomUUID()}`
+  publishSession({
+    ...target,
+    messages: [
+      ...target.messages,
+      { id, role: 'user', content: text, timestamp: new Date().toISOString() }
+    ]
+  })
+  return id
+}
+
+function isWorkOpen(turn: AgentTurn<AgentMessageView>): boolean {
+  const pref = workOpen.value[turn.id]
+  if (pref != null) return pref
+  return turn.live
+}
+
+function toggleWork(turn: AgentTurn<AgentMessageView>): void {
+  workOpen.value = { ...workOpen.value, [turn.id]: !isWorkOpen(turn) }
+}
+
+function assistantProseHidden(msg: AgentMessageView): boolean {
+  const content = String(msg.content ?? '').trim()
+  if (msg.clarification) {
+    const question = String(msg.clarification.question ?? '').trim()
+    if (!content || content === question) return true
+  }
+  const explanation = String(msg.proposedChanges?.explanation ?? '').trim()
+  return Boolean(explanation && content === explanation)
+}
+
+function showAssistantBody(kind: string, msg: AgentMessageView, turn: AgentTurn<AgentMessageView>): boolean {
+  if (kind !== 'work' && kind !== 'summary') return false
+  const pinned =
+    msg.id === turn.summaryId ||
+    Boolean(msg.clarification || msg.proposedChanges || msg.review?.issues?.length)
+  return assistantTextVisible(kind, msg.id, turn.summaryId, {
+    pinned,
+    hideText: assistantProseHidden(msg)
+  })
+}
+
+function showMessageChrome(kind: string, msg: AgentMessageView, turn: AgentTurn<AgentMessageView>): boolean {
+  if (kind === 'user' || msg.role === 'user') return true
+  if (showAssistantBody(kind, msg, turn) && String(msg.content ?? '').trim()) return true
+  if (kind !== 'work') return false
+  return Boolean((msg.thinking ?? '').trim() || msg.toolCalls?.length || shouldShowThinkingPlaceholder(msg))
+}
+
+function compactWorkChrome(kind: string, msg: AgentMessageView, turn: AgentTurn<AgentMessageView>): boolean {
+  return kind === 'work' && (messageIsToolOnly(msg) || !showAssistantBody(kind, msg, turn))
+}
+
+function workedLabel(turn: AgentTurn<AgentMessageView>): string {
+  const parts = workDurationParts(workDurationMs(turn, nowMs.value))
+  if (parts.h) return t('agent.workedHours', parts)
+  if (parts.m) return t('agent.workedMinutes', parts)
+  return t('agent.workedSeconds', { s: parts.s })
+}
+
+function turnRows(turn: AgentTurn<AgentMessageView>): Array<{
+  kind: 'user' | 'work' | 'summary' | 'toggle'
+  key: string
+  msg?: AgentMessageView
+  turn?: AgentTurn<AgentMessageView>
+}> {
+  const rows: Array<{
+    kind: 'user' | 'work' | 'summary' | 'toggle'
+    key: string
+    msg?: AgentMessageView
+    turn?: AgentTurn<AgentMessageView>
+  }> = []
+  if (turn.user) rows.push({ kind: 'user', key: turn.user.id, msg: turn.user })
+  if (turnHasWork(turn)) rows.push({ kind: 'toggle', key: `${turn.id}:toggle`, turn })
+  for (const msg of turn.assistants) {
+    const intermediate = msg.id !== turn.summaryId
+    if (intermediate || messageHasTrace(msg)) rows.push({ kind: 'work', key: `${msg.id}:work`, msg })
+    if (!intermediate || msg.clarification || msg.proposedChanges || msg.review?.issues?.length) {
+      rows.push({ kind: 'summary', key: `${msg.id}:out`, msg })
+    }
+  }
+  return rows
 }
 
 function queueScroll(): void {
@@ -424,7 +562,10 @@ async function send(text?: string, opts?: { sessionId?: string }): Promise<void>
     await maybeAutoApply(targetId)
     return
   }
-  if (session.value?.id === targetId) pinThreadToBottom = true
+  if (session.value?.id === targetId) {
+    const optimisticId = appendOptimisticUser(target, typed)
+    void revealUserMessage(optimisticId)
+  }
   const context = ctxFor(target)
   beginCall(targetId, { turn: true, clearStop: true })
   try {
@@ -1136,6 +1277,7 @@ onMounted(() => {
   })
   onUnmounted(() => {
     if (scrollFrame) cancelAnimationFrame(scrollFrame)
+    if (workClock) window.clearInterval(workClock)
     document.removeEventListener('mousedown', closeMenu)
     unsubLaunch()
     unsub?.()
@@ -1150,6 +1292,32 @@ watch(
   (isOpen, wasOpen) => {
     if (wasOpen && !isOpen) void syncLlmConfigured()
   }
+)
+
+watch(
+  () => session.value?.id ?? '',
+  async (id, prev) => {
+    if (!id || id === prev) return
+    workOpen.value = {}
+    await scrollThreadToEnd()
+  }
+)
+
+watch(
+  busy,
+  (value) => {
+    if (value) {
+      if (workClock) return
+      workClock = window.setInterval(() => {
+        nowMs.value = Date.now()
+      }, 1000)
+      return
+    }
+    if (!workClock) return
+    window.clearInterval(workClock)
+    workClock = 0
+  },
+  { immediate: true }
 )
 
 watch(projectRoot, () => {
@@ -1265,24 +1433,38 @@ function permBadge(s: AgentSessionPayload): string {
           <p v-if="!visibleMessages.length" class="text-[13px] leading-relaxed text-content-secondary">
             {{ t('agent.emptyHint') }}
           </p>
-          <div
-            v-for="msg in visibleMessages"
-            :key="msg.id"
-            class="min-w-0 max-w-full"
-            :class="messageIsToolOnly(msg) ? 'mb-1' : 'mb-2'"
+          <template v-for="turn in turns" :key="turn.id">
+          <template v-for="entry in turnRows(turn)" :key="entry.key">
+          <button
+            v-if="entry.kind === 'toggle' && entry.turn"
+            type="button"
+            class="mb-1 flex items-center gap-1 rounded px-1 py-0.5 text-[12px] font-medium text-content-secondary hover:bg-surface-overlay hover:text-content-primary"
+            @click="toggleWork(entry.turn)"
           >
+            <span class="text-[10px]">{{ isWorkOpen(entry.turn) ? '▾' : '▸' }}</span>
+            {{ workedLabel(entry.turn) }}
+          </button>
+          <div
+            v-else-if="entry.msg"
+            v-show="entry.kind !== 'work' || isWorkOpen(turn)"
+            :data-agent-msg="entry.kind === 'user' ? entry.msg.id : undefined"
+            class="min-w-0 max-w-full scroll-mt-2"
+            :class="compactWorkChrome(entry.kind, entry.msg, turn) ? 'mb-1' : 'mb-2'"
+          >
+            <template v-for="msg in [entry.msg]" :key="msg.id">
             <div
+              v-if="showMessageChrome(entry.kind, msg, turn)"
               class="agent-bubble studio-text-selectable max-w-[92%] min-w-0 overflow-hidden text-[13px] leading-snug break-words"
               :class="
                 msg.role === 'user'
                   ? 'agent-bubble-user ml-auto rounded-lg px-2.5 py-1.5'
-                  : messageIsToolOnly(msg)
+                  : compactWorkChrome(entry.kind, msg, turn)
                     ? 'agent-bubble-assistant rounded-md px-1.5 py-0.5'
                     : 'agent-bubble-assistant rounded-lg px-2.5 py-1.5'
               "
             >
               <details
-                v-if="msg.thinking"
+                v-if="msg.thinking && entry.kind === 'work'"
                 class="mb-1 text-[12px] text-content-muted"
                 :open="isThinkingLive(msg)"
               >
@@ -1291,6 +1473,7 @@ function permBadge(s: AgentSessionPayload): string {
                 </summary>
                 <pre class="mt-1 max-h-40 overflow-auto whitespace-pre-wrap font-sans text-[12px] leading-relaxed studio-scroll">{{ msg.thinking }}</pre>
               </details>
+              <template v-if="entry.kind === 'work'">
               <AgentToolActivity
                 v-for="(call, i) in msg.toolCalls"
                 :key="`${msg.id}-tool-${i}`"
@@ -1299,12 +1482,13 @@ function permBadge(s: AgentSessionPayload): string {
                 :message-streaming="Boolean(msg.streaming)"
                 :busy="busy"
               />
+              </template>
               <p
-                v-if="msg.content && msg.role === 'assistant' && msg.streaming"
+                v-if="msg.content && msg.role === 'assistant' && msg.streaming && showAssistantBody(entry.kind, msg, turn)"
                 class="cursor-text whitespace-pre-wrap"
               >{{ msg.content }}</p>
               <AgentMarkdownPreview
-                v-else-if="msg.content && msg.role === 'assistant'"
+                v-else-if="msg.content && msg.role === 'assistant' && showAssistantBody(entry.kind, msg, turn)"
                 :markdown="msg.content"
               />
               <textarea
@@ -1316,17 +1500,17 @@ function permBadge(s: AgentSessionPayload): string {
                 @keydown.escape.prevent="cancelUserMessageEdit"
               />
               <p
-                v-else-if="msg.content"
+                v-else-if="msg.role === 'user' && msg.content"
                 class="cursor-text whitespace-pre-wrap"
                 @dblclick="startUserMessageEdit(msg)"
               >
                 {{ msg.content }}
               </p>
-              <p v-else-if="shouldShowThinkingPlaceholder(msg)" class="text-[12px] text-content-muted">{{ t('agent.thinking') }}</p>
+              <p v-else-if="entry.kind === 'work' && shouldShowThinkingPlaceholder(msg)" class="text-[12px] text-content-muted">{{ t('agent.thinking') }}</p>
               <div
-                v-if="!msg.streaming || msg.content"
+                v-if="(!msg.streaming || msg.content) && (entry.kind !== 'work' || showAssistantBody(entry.kind, msg, turn))"
                 class="flex cursor-default select-none items-center gap-0.5"
-                :class="messageIsToolOnly(msg) ? 'mt-0' : 'mt-1.5 border-t border-border-subtle pt-1'"
+                :class="compactWorkChrome(entry.kind, msg, turn) ? 'mt-0' : 'mt-1.5 border-t border-border-subtle pt-1'"
               >
                 <template v-if="msg.role === 'user' && editingUserMessageId === msg.id">
                   <IconActionButton
@@ -1367,7 +1551,7 @@ function permBadge(s: AgentSessionPayload): string {
               </div>
             </div>
             <ClarificationCard
-              v-if="msg.clarification"
+              v-if="msg.clarification && entry.kind !== 'work'"
               :question="msg.clarification.question"
               :options="msg.clarification.options"
               :allow-custom="msg.clarification.allowCustom"
@@ -1384,7 +1568,7 @@ function permBadge(s: AgentSessionPayload): string {
               @change="reopenClarification(msg, $event)"
             />
             <PatchPreview
-              v-if="msg.proposedChanges"
+              v-if="msg.proposedChanges && entry.kind !== 'work'"
               :patch="msg.proposedChanges"
               :disabled="busy"
               :pending="Boolean(msg.pending) && settings.agentWriteMode !== 'auto'"
@@ -1396,7 +1580,7 @@ function permBadge(s: AgentSessionPayload): string {
               @reject="rejectPatch(msg)"
             />
             <ul
-              v-if="msg.review?.issues?.length"
+              v-if="msg.review?.issues?.length && entry.kind !== 'work'"
               class="agent-bubble mt-1 min-w-0 max-w-full space-y-1 overflow-hidden rounded-lg bg-surface-raised p-2"
             >
               <li
@@ -1408,7 +1592,10 @@ function permBadge(s: AgentSessionPayload): string {
                 — {{ issue.message }}
               </li>
             </ul>
+            </template>
           </div>
+          </template>
+          </template>
           <p v-if="error" class="text-[12px] text-semantic-error">{{ error }}</p>
         </div>
         <div class="shrink-0 border-t border-border-subtle">

@@ -47,6 +47,7 @@ export type VisualModelResult = {
     isSystem: boolean
     parentName?: string
     span: ReturnType<typeof toSerializableSpan>
+    cdfdSpan?: ReturnType<typeof toSerializableSpan>
     constCount: number
     typeCount: number
     varCount: number
@@ -259,6 +260,7 @@ export function buildVisualModelTolerant(source: string): VisualModelResult {
       isSystem: mod.isSystem,
       parentName: mod.parent?.name,
       span: toSerializableSpan(mod.span),
+      cdfdSpan: mod.cdfd ? toSerializableSpan(mod.cdfd.span) : undefined,
       constCount: mod.consts.length,
       typeCount: mod.types.length,
       varCount: mod.vars.length,

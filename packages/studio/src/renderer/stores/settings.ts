@@ -47,7 +47,7 @@ function readTransparency(): number {
 }
 
 export type InformalViewMode = 'document' | 'graphical'
-export type HybridViewMode = 'code' | 'visual' | 'refine'
+export type HybridViewMode = 'code' | 'refine'
 
 function readInformalDefault(): InformalViewMode {
   const raw = localStorage.getItem('studio-default-informal-view')
@@ -56,8 +56,7 @@ function readInformalDefault(): InformalViewMode {
 
 function readHybridDefault(): HybridViewMode {
   const raw = localStorage.getItem('studio-default-hybrid-view')
-  if (raw === 'code' || raw === 'refine') return raw
-  return 'visual'
+  return raw === 'refine' ? 'refine' : 'code'
 }
 
 function readStoredSlotPanels(): WorkspaceSlotPanels {

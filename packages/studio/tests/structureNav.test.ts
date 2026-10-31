@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
-import { findHeadingIndex, spanForHybridSelection } from '../src/renderer/lib/structureNav'
+import { findHeadingIndex, selectionAtOffset, spanForHybridSelection } from '../src/renderer/lib/structureNav'
 import { useWorkspaceStore } from '../src/renderer/stores/workspace'
 
 describe('structureNav', () => {
@@ -36,6 +36,29 @@ describe('structureNav', () => {
     ).toEqual({ start: 56, end: 70, line: 10, column: 1 })
     expect(spanForHybridSelection(model, { kind: 'module', moduleName: 'Missing' })).toBeNull()
   })
+
+  it('picks the cdfd span when the cursor is inside it', () => {
+    const model = {
+      modules: [
+        {
+          name: 'ATM',
+          span: { start: 0, end: 200, line: 1, column: 1 },
+          cdfdSpan: { start: 80, end: 120, line: 12, column: 1 },
+          processes: [{ name: 'Withdraw', span: { start: 20, end: 60, line: 4, column: 1 } }],
+          functions: [],
+          types: [{ name: 'Card', span: { start: 4, end: 18, line: 2, column: 1 } }]
+        }
+      ]
+    }
+    expect(selectionAtOffset(model, 10)).toEqual({ kind: 'type', moduleName: 'ATM', name: 'Card' })
+    expect(selectionAtOffset(model, 30)).toEqual({
+      kind: 'process',
+      moduleName: 'ATM',
+      processName: 'Withdraw'
+    })
+    expect(selectionAtOffset(model, 90)).toEqual({ kind: 'cdfd', moduleName: 'ATM' })
+    expect(spanForHybridSelection(model, { kind: 'cdfd', moduleName: 'ATM' })?.start).toBe(80)
+  })
 })
 
 describe('structure reveal requests', () => {
@@ -57,7 +80,7 @@ describe('structure reveal requests', () => {
 
   it('switches hybrid panel to code and selects the target module', () => {
     const workspace = useWorkspaceStore()
-    workspace.hybridMode = 'visual'
+    workspace.hybridMode = 'refine'
     workspace.revealHybridInCode('ATM', {
       kind: 'process',
       moduleName: 'ATM',

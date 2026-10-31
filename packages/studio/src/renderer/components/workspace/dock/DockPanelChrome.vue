@@ -22,7 +22,7 @@ function toggleFullscreen(): void {
 
 <template>
   <header
-    class="relative z-[110] flex h-[32px] min-w-0 shrink-0 flex-nowrap items-center gap-1 overflow-hidden border-b border-border-subtle bg-surface-base px-2"
+    class="relative z-20 flex h-[32px] min-w-0 shrink-0 flex-nowrap items-center gap-1 overflow-hidden border-b border-border-subtle bg-surface-base px-2"
   >
     <slot name="title">
       <h2 class="min-w-0 truncate text-xs font-semibold text-content-primary">{{ title }}</h2>

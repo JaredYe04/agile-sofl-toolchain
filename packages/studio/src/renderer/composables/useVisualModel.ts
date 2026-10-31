@@ -397,4 +397,7 @@ export type TreeSelection =
   | { kind: 'module'; moduleName: string }
   | { kind: 'process'; moduleName: string; processName: string }
   | { kind: 'function'; moduleName: string; functionName: string }
+  | { kind: 'type' | 'var' | 'const'; moduleName: string; name: string }
+  | { kind: 'inv'; moduleName: string; index: number }
+  | { kind: 'cdfd'; moduleName: string }
   | null

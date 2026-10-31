@@ -59,6 +59,8 @@ export interface RunOptions {
   manifestExtra?: Record<string, unknown>
   /** called after every approved step with the spec as it stands after applying it (before the agent resumes) */
   onStep?: (step: StepInfo) => Promise<void> | void
+  /** Omit ask_clarification from the tool list (ablation). */
+  omitAskClarification?: boolean
 }
 
 export interface StepInfo {
@@ -114,6 +116,7 @@ export function applyHybridProposal(source: string, patch: InformalPatchPayload,
 }
 
 export async function runOnce(o: RunOptions): Promise<RunResult> {
+  process.env.AGILE_SOFL_HARNESS_SKIP_POST_WRITE_DIAG = '1'
   const runId = o.runId ?? randomBytes(4).toString('hex')
   const runDir = join(o.outDir, 'runs', runId)
   mkdirSync(join(runDir, '.agile-sofl'), { recursive: true })
@@ -136,7 +139,8 @@ export async function runOnce(o: RunOptions): Promise<RunResult> {
 
   const ctx: AgentTurnContext = {
     projectName: 'pilot', projectRoot: runDir, moduleId: 'project',
-    informalMarkdown: informal, hybridAsfl: o.initialHybridAsfl ?? '', skillId, permissions: generationAgentPermissions()
+    informalMarkdown: informal, hybridAsfl: o.initialHybridAsfl ?? '', skillId, permissions: generationAgentPermissions(),
+    ...(o.omitAskClarification ? { harnessOmitAskClarification: true } : {})
   }
   if (o.initialHybridAsfl !== undefined) writeFileSync(join(runDir, 'hybrid.asfl'), o.initialHybridAsfl)
   const now = new Date().toISOString()

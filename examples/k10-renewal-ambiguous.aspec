@@ -1,0 +1,34 @@
+# Functions
+
+## RenewLoan
+
+Renew an active loan by extending its due date.
+
+- Inputs: member_id (nat), loan_id (nat)
+- Outputs: success (nat)
+- The renewal succeeds only for a currently active loan.
+- A renewal is allowed up to a cutoff measured from the current due date.
+- The rule for whether the exact cutoff instant itself is allowed is not specified.
+
+## ReturnBook
+
+Return a borrowed book and close its loan.
+
+- Inputs: member_id (nat), loan_id (nat)
+- Outputs: success (nat)
+- An active loan becomes closed and the book becomes available.
+
+# Data Resources
+
+## LoanStatus
+
+Status of a loan: active or closed.
+
+## days_remaining
+
+Natural number of days until a loan is due.
+
+# Constraints
+
+- A loan may be renewed at most once.
+- A closed loan cannot be renewed.

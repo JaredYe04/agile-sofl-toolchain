@@ -135,9 +135,13 @@ function selectionStillValid(sel: TreeSelection, list: VisualModuleSummary[]): b
   if (!sel) return false
   const mod = list.find((m) => m.name === sel.moduleName)
   if (!mod) return false
-  if (sel.kind === 'module') return true
+  if (sel.kind === 'module' || sel.kind === 'cdfd') return true
   if (sel.kind === 'process') return mod.processes.some((p) => p.name === sel.processName)
   if (sel.kind === 'function') return mod.functions.some((f) => f.name === sel.functionName)
+  if (sel.kind === 'type') return mod.types.some((item) => item.name === sel.name)
+  if (sel.kind === 'var') return mod.vars.some((item) => item.name === sel.name)
+  if (sel.kind === 'const') return mod.consts.some((item) => item.name === sel.name)
+  if (sel.kind === 'inv') return sel.index >= 0 && sel.index < mod.invariants.length
   return false
 }
 

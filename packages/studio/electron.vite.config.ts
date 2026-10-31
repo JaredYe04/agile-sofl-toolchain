@@ -49,6 +49,10 @@ export default defineConfig({
     root: resolve(__dirname, 'src/renderer'),
     publicDir: resolve(__dirname, 'public'),
     server: {
+      // Vite default 5173 sits in a Windows hyper-v excluded range (often 5166-5265) → EACCES.
+      host: '127.0.0.1',
+      port: 5280,
+      strictPort: true,
       // A production preview inlines Monaco as a data URL and the workspace never mounts.
       // Dev keeps the real Monaco URL. Capture turns HMR off so a save cannot wipe the window.
       hmr: process.env.STUDIO_CAPTURE === '1' ? false : undefined,

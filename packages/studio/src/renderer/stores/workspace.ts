@@ -51,8 +51,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const structureCollapsed = ref(false)
   const columnWidths = ref<number[]>([...DEFAULT_COLUMN_WIDTHS])
   const expandedProjectIds = ref<string[]>([])
-  const hybridMode = ref<'code' | 'visual' | 'refine'>(
-    readStoredView('studio-default-hybrid-view', ['code', 'visual', 'refine'] as const, 'visual')
+  const hybridMode = ref<'code' | 'refine'>(
+    readStoredView('studio-default-hybrid-view', ['code', 'refine'] as const, 'code')
   )
   const guiMode = ref<'visual' | 'code'>('visual')
   const structureMode = ref<StructureMode>('tree')
@@ -157,6 +157,19 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   function isGuiDirty(): boolean {
     return Boolean(guiTab.value?.isDirty)
   }
+
+  const activeProjectDirty = computed(() => {
+    const root = activeProject.value?.rootPath
+    if (!root) return false
+    if (dirtyNames.value.length > 0) return true
+    return doc.documentTabs.some(
+      (tab) =>
+        tab.kind === 'document' &&
+        tab.isDirty &&
+        Boolean(tab.filePath) &&
+        fileBelongsToRoot(tab.filePath!, root)
+    )
+  })
 
   function tabForFocusedPanel() {
     switch (focusedPanel.value) {
@@ -483,14 +496,18 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     await activateProject(project)
   }
 
-  function selectModule(name: string | null, extra?: TreeSelection): void {
+  function selectModule(
+    name: string | null,
+    extra?: TreeSelection,
+    options?: { persist?: boolean }
+  ): void {
     selectedModuleName.value = name
     if (extra) selection.value = extra
     else if (name) selection.value = { kind: 'module', moduleName: name }
     else selection.value = null
     const tab = hybridTab.value
     if (tab) doc.setActive(tab.id)
-    void persistUi()
+    if (options?.persist !== false) void persistUi()
   }
 
   function revealInformalInDocument(id: string): void {
@@ -701,6 +718,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     isInformalDirty,
     isHybridDirty,
     isGuiDirty,
+    activeProjectDirty,
     tabForFocusedPanel,
     setFocusedPanel,
     refreshProjects,

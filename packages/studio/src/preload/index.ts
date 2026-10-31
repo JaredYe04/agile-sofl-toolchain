@@ -580,6 +580,7 @@ export type VisualModuleSummary = {
   isSystem: boolean
   parentName?: string
   span: { start: number; end: number; line: number; column: number }
+  cdfdSpan?: { start: number; end: number; line: number; column: number }
   constCount: number
   typeCount: number
   varCount: number

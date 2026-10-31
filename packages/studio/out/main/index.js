@@ -11324,10 +11324,10 @@ function takePostClarifySpecReadDenial(session, toolName) {
 function permissionsOf(session, ctx) {
   return normalizePermissions(ctx.permissions ?? session.context.permissions);
 }
-function toolsFor(permissions) {
+function toolsFor(permissions, ctx) {
   return AGENT_TOOLS.filter((tool) => {
     const name = tool.function.name;
-    if (name === "ask_clarification") return true;
+    if (name === "ask_clarification") return !ctx?.harnessOmitAskClarification;
     if (name === "read_specification" || name === "review_specification") return permissions.informal.read;
     if (name === "propose_changes") return permissions.informal.write;
     if (name === "read_hybrid_specification" || name === "review_hybrid" || name === "read_refinement_state")
@@ -11870,7 +11870,7 @@ async function runAgentTurn(session, projectRoot, ctx, userText, sink, signal) {
     const history = { ...session, messages: session.messages.filter((m) => m.id !== assistantId) };
     const request = {
       messages: toApiMessages(history, ctx, permissions, { continuation: needsContinuationNudge }),
-      tools: toolsFor(permissions),
+      tools: toolsFor(permissions, ctx),
       temperature: 0.35
     };
     const streamDeltas = attachStreamDeltas(live, sink);
@@ -12325,7 +12325,7 @@ async function resumeWithToolResult(session, projectRoot, ctx, toolCallId, resul
         toolCallId
       });
     }
-    if (payload.action === "applied" && !payload.error && patch.target === "hybrid" && ctx.hybridAsfl !== void 0) {
+    if (payload.action === "applied" && !payload.error && patch.target === "hybrid" && ctx.hybridAsfl !== void 0 && process.env.AGILE_SOFL_HARNESS_SKIP_POST_WRITE_DIAG !== "1") {
       try {
         logTelemetry(projectRoot, cfg, session.id, {
           event: "post_write_diagnostics",

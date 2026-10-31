@@ -67,7 +67,6 @@ const informalOptions = computed(() => [
 
 const hybridOptions = computed(() => [
   { id: 'code', label: t('workspace.codeTab') },
-  { id: 'visual', label: t('workspace.visualTab') },
   { id: 'refine', label: t('workspace.refineTab') }
 ])
 
@@ -133,7 +132,7 @@ function onInformal(id: string): void {
 }
 
 function onHybrid(id: string): void {
-  if (id === 'code' || id === 'visual' || id === 'refine') settings.setDefaultHybridView(id)
+  if (id === 'code' || id === 'refine') settings.setDefaultHybridView(id)
 }
 
 function onCustomHex(value: string): void {

@@ -113,6 +113,8 @@ export type AgentTurnContext = {
   skillId?: string
   permissions?: AgentSpecPermissions
   promptExtras?: string
+  /** Headless harness only: omit ask_clarification from the tool list. */
+  harnessOmitAskClarification?: boolean
 }
 
 export type AgentStreamEvent =
@@ -142,10 +144,10 @@ function permissionsOf(session: AgentSession, ctx: AgentTurnContext): AgentSpecP
   return normalizePermissions(ctx.permissions ?? session.context.permissions)
 }
 
-function toolsFor(permissions: AgentSpecPermissions) {
+function toolsFor(permissions: AgentSpecPermissions, ctx?: AgentTurnContext) {
   return AGENT_TOOLS.filter((tool) => {
     const name = tool.function.name
-    if (name === 'ask_clarification') return true
+    if (name === 'ask_clarification') return !ctx?.harnessOmitAskClarification
     if (name === 'read_specification' || name === 'review_specification') return permissions.informal.read
     if (name === 'propose_changes') return permissions.informal.write
     if (name === 'read_hybrid_specification' || name === 'review_hybrid' || name === 'read_refinement_state')
@@ -779,7 +781,7 @@ export async function runAgentTurn(
     const history = { ...session, messages: session.messages.filter((m) => m.id !== assistantId) }
     const request = {
       messages: toApiMessages(history, ctx, permissions, { continuation: needsContinuationNudge }),
-      tools: toolsFor(permissions),
+      tools: toolsFor(permissions, ctx),
       temperature: 0.35
     }
 
@@ -1344,7 +1346,13 @@ export async function resumeWithToolResult(
         toolCallId
       })
     }
-    if (payload.action === 'applied' && !payload.error && patch.target === 'hybrid' && ctx.hybridAsfl !== undefined) {
+    if (
+      payload.action === 'applied' &&
+      !payload.error &&
+      patch.target === 'hybrid' &&
+      ctx.hybridAsfl !== undefined &&
+      process.env.AGILE_SOFL_HARNESS_SKIP_POST_WRITE_DIAG !== '1'
+    ) {
       try {
         logTelemetry(projectRoot, cfg, session.id, {
           event: 'post_write_diagnostics',

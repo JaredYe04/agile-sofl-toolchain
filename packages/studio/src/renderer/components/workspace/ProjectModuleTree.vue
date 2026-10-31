@@ -294,6 +294,11 @@ watch(
             class="min-w-0 flex-1 truncate text-[12px] font-semibold tracking-tight"
             :class="gitClassForProject(project)"
           >{{ project.name }}</span>
+          <span
+            v-if="project.id === workspace.activeProjectId && workspace.activeProjectDirty"
+            class="shrink-0 text-[10px] text-accent"
+            :title="t('workspace.projectDirty')"
+          >●</span>
           <button
             v-if="project.id !== workspace.activeProjectId"
             type="button"
