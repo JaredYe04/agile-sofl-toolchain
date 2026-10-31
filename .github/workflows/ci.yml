@@ -26,6 +26,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build --workspace @agile-sofl/parser
+      - run: npm run build --workspace @agile-sofl/aspec
+      - run: npm run build --workspace @agile-sofl/gui
       - run: npm run build --workspace @agile-sofl/editor-api
       - run: npm run build --workspace @agile-sofl/language-server
       - run: npm run bundle --workspace @agile-sofl/language-server
