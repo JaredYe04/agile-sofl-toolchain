@@ -45,7 +45,8 @@ export function mergeClarificationCustom(encoded: string, extra: string): string
   }
 }
 
-function readStructured(result: string): { selected: string[]; custom: string } | null {
+/** Parse a UI answer envelope ({selected, custom}) from the encoded result; null for plain text. */
+export function readStructured(result: string): { selected: string[]; custom: string } | null {
   try {
     const parsed = JSON.parse(result) as { action?: unknown; selected?: unknown; custom?: unknown }
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null

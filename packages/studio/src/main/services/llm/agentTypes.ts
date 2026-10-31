@@ -10,6 +10,9 @@ export type ClarificationPrompt = {
   multiSelect?: boolean
   pendingToolCallId?: string
   answer?: string
+  /** Set when this clarification IS a requirement-layer obligation (from select_next_clarification):
+   *  the human's answer to it is recorded into the RefinementSession on resume (task book §6.1). */
+  obligationId?: string
 }
 
 export type ReviewIssue = {

@@ -23,7 +23,7 @@ import {
   formatRefinementDigest
 } from '@agile-sofl/editor-api'
 import { formatGuiInventory, numberedGuiSource } from '@agile-sofl/gui'
-import { formatClarificationToolContent } from '../../../shared/clarificationAnswer'
+import { formatClarificationToolContent, readStructured } from '../../../shared/clarificationAnswer'
 import { normalizeHybridPatch } from '../../../shared/asflRepair'
 import { numberedSource } from '../../../shared/sourceEdit.js'
 import { projectRefinementState } from '../refinementLog.js'
@@ -42,6 +42,15 @@ import {
   validateAgentPatch
 } from './agentPatch'
 import { parseToolArguments } from './parseToolArgs'
+import {
+  runRequirementTool,
+  requirementToolAllowed,
+  recordHumanClarificationAnswer,
+  REQUIREMENT_TOOL_NAMES,
+  type RequirementToolName
+} from './requirementTools'
+import { loadRequirementSession, saveRequirementSession } from './requirementStore'
+import type { ActorKind, RefinementSession } from '@agile-sofl/refinement'
 
 const MAX_HISTORY = 20
 
@@ -154,8 +163,19 @@ function toolsFor(permissions: AgentSpecPermissions) {
     if (name === 'read_gui_specification') return permissions.hybrid.read || permissions.informal.read
     if (name === 'propose_gui_changes') return permissions.hybrid.write || permissions.informal.write
     if (name === 'propose_source_edit') return permissions.informal.write || permissions.hybrid.write
+    // Requirement-layer typed domain tools (P4): all four are reads (the decision is recorded from
+    // the human's clarification answer, never offered to the model — task book §6.1).
+    if ((REQUIREMENT_TOOL_NAMES as readonly string[]).includes(name))
+      return requirementToolAllowed(name as RequirementToolName, permissions)
     return true
   })
+}
+
+/** Requirement-layer tool names routed into the requirement dispatch. Includes `record_decision`
+ *  ONLY so that a stale/hallucinated call reaches the explicit refusal in runRequirementTool
+ *  (it is never offered to the model — see toolsFor, which excludes it). */
+function isRequirementTool(name: string): boolean {
+  return (REQUIREMENT_TOOL_NAMES as readonly string[]).includes(name) || name === 'record_decision'
 }
 
 function compactSpec(markdown: string): string {
@@ -736,6 +756,10 @@ export async function runAgentTurn(
   if (ctx.promptExtras) session.context.promptExtras = ctx.promptExtras
   else ctx.promptExtras = session.context.promptExtras
   ctx.permissions = permissions
+  // Load the project's requirement-layer session ONCE per turn (stateful across turns; the
+  // requirement tools dispatch onto it and persist it after any mutation). A fresh/empty session
+  // when the project has no requirement artifact yet (the layer is optional).
+  const requirement = loadRequirementSession(projectRoot)
   const continuation = !userText?.trim()
   let needsContinuationNudge = continuation
 
@@ -885,6 +909,23 @@ export async function runAgentTurn(
               ? `${args.explanation}\n\n${note}`
               : note
         }
+        // Requirement-layer typed domain tools (P4) — thin dispatch onto the per-project session.
+        // The LLM may only READ (graph/obligations/selection/readiness); a decision is recorded
+        // from the human's clarification answer in resumeWithToolResult, never from the model
+        // (task book §6.1). A stray record_decision call lands here and is refused explicitly.
+        if (isRequirementTool(call.function.name)) {
+          const result = runRequirementTool(requirement, String(call.function.name), args)
+          session.messages.push({
+            id: call.id,
+            role: 'tool',
+            content: JSON.stringify(result.content),
+            timestamp: new Date().toISOString()
+          })
+          live.content = live.content || `Requirement: ${call.function.name}`
+          markCallStatus(live, call.id, result.ok ? 'done' : 'error', sink)
+          if (result.mutated) saveRequirementSession(projectRoot, requirement)
+          continue
+        }
                 const readBudgetDenial = takePostClarifySpecReadDenial(session, call.function.name)
         if (readBudgetDenial) {
           session.messages.push({
@@ -905,6 +946,13 @@ export async function runAgentTurn(
                 .filter((o) => o.label)
                 .map((o, i) => ({ id: o.id || `opt-${i}`, label: String(o.label) }))
             : undefined
+          // When this question IS a requirement-layer obligation (selected via
+          // select_next_clarification), tag the pending clarification so the HUMAN's answer to it
+          // is recorded into the RefinementSession on resume — the only path a decision may take.
+          const obligationId =
+            typeof args.obligationId === 'string' && args.obligationId.trim()
+              ? args.obligationId.trim()
+              : undefined
           live.content = String(args.question || live.content || '')
           live.clarification = {
             id: newId('q'),
@@ -912,7 +960,8 @@ export async function runAgentTurn(
             options,
             allowCustom: args.allowCustom !== false,
             multiSelect: Boolean(args.multiSelect),
-            pendingToolCallId: call.id
+            pendingToolCallId: call.id,
+            obligationId
           }
           live.pending = true
           session.context.pendingToolCallId = call.id
@@ -1281,6 +1330,16 @@ function completeSiblingToolCalls(
   }
 }
 
+/** Parse a tool-result JSON string into a plain object, or {} for anything that is not one. */
+function safeParseJson(text: string): Record<string, unknown> {
+  try {
+    const parsed = JSON.parse(text) as unknown
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? (parsed as Record<string, unknown>) : {}
+  } catch {
+    return {}
+  }
+}
+
 function parseResumePayload(result: string): {
   action?: string
   error?: string
@@ -1317,7 +1376,11 @@ export async function resumeWithToolResult(
   result: string,
   sink?: AgentStreamSink,
   continueTurn = true,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  /** Who answered a tagged requirement clarification: `user` (the person in the Studio UI, the
+   *  product default) or the ISOLATED `simulated_user` oracle (the experiment harness, P5). The
+   *  model is never the actor — a decision is recorded only from this human/oracle answer. */
+  answerActor: ActorKind = 'user'
 ): Promise<AgentSession> {
   const payload = parseResumePayload(result)
   const pending = session.messages.find(
@@ -1432,6 +1495,46 @@ export async function resumeWithToolResult(
         }
       }
     }
+  }
+  // Requirement layer (P4, task book §6.1): when the answered clarification WAS a requirement
+  // obligation (ask_clarification was tagged with its obligationId), record the STAKEHOLDER's
+  // actual answer — the option label(s) and/or text exactly as the UI (or the experiment
+  // oracle) submitted them — into the project's RefinementSession. The model chose the QUESTION
+  // (via select_next_clarification) but never the answer, so no guess can become a confirmed
+  // source; this resume path is the ONLY route a stakeholder decision may take. The effect is
+  // merged into the tool message so the loop sees the obligation as resolved and must not
+  // re-ask it, and the session is persisted before the turn continues.
+  const answeredObligationId = clarificationMsg?.clarification?.obligationId
+  if (answeredObligationId) {
+    // The answer the STAKEHOLDER actually gave: for a Studio UI submission that is the clicked
+    // option labels + typed text (the {selected, custom} envelope); for the experiment oracle it
+    // is plain text (readStructured is null). Never the model's text, never the model's choice.
+    const structured = readStructured(result)
+    const optionLabels = new Set(clarificationMsg?.clarification?.options?.map((o) => o.label) ?? [])
+    const selectedLabels = structured
+      ? structured.selected.filter((l) => optionLabels.has(l))
+      : result.split(';').map((s) => s.trim()).filter((s) => optionLabels.has(s))
+    const custom = structured ? structured.custom : result.trim()
+    const req = loadRequirementSession(projectRoot)
+    const effect = recordHumanClarificationAnswer(
+      req,
+      answeredObligationId,
+      { selectedLabels, custom },
+      answerActor
+    )
+    if (effect.ok) saveRequirementSession(projectRoot, req)
+    const merged = typeof toolContent === 'string' ? safeParseJson(toolContent) : {}
+    toolContent = JSON.stringify({
+      ...merged,
+      requirementDecision: {
+        obligationId: answeredObligationId,
+        ok: effect.ok,
+        ...(effect.ok ? effect.content : { error: String((effect.content as { error?: string }).error ?? 'record failed') }),
+        next: effect.ok
+          ? 'The stakeholder answer above is ALREADY recorded in the requirement layer under their own name. Do NOT re-ask this obligation and do NOT call record_decision (it is not an agent tool). If open obligations remain, select the next one; otherwise finish the task.'
+          : 'The requirement answer could not be recorded; continue without assuming it was.'
+      }
+    })
   }
   session.messages.push({
     id: toolCallId,

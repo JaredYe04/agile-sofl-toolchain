@@ -40,6 +40,7 @@
     "@agile-sofl/gui": "file:../gui",
     "@agile-sofl/language-server": "file:../language-server",
     "@agile-sofl/parser": "file:../parser",
+    "@agile-sofl/refinement": "file:../refinement",
     "@vitalets/google-translate-api": "^9.2.1",
     "@vitejs/plugin-vue": "^5.0.4",
     "autoprefixer": "^10.4.19",

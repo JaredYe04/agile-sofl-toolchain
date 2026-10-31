@@ -106,7 +106,7 @@ export const AGENT_TOOLS = [
     function: {
       name: 'ask_clarification',
       description:
-        'Ask the user a structured clarification question when a stakeholder decision is needed (threshold, permission/role scope, policy boundary, capacity, open course-assignment/export scope, undecided allow/deny, merge vs rebuild, next refinement slice). The UI renders options plus a custom text field. The tool result has selected (clicked options) and custom (text the user typed). A non-empty custom answer is required context for both single-choice and multi-choice, even when selected is also set. Never ignore custom. Do not invent those concrete values in the specification before this tool returns — especially do not write allow/deny defaults for an undefined policy via propose_hybrid_changes first. Use this instead of listing questions only in prose when a decision is needed.',
+        'Ask the user a structured clarification question when a stakeholder decision is needed (threshold, permission/role scope, policy boundary, capacity, open course-assignment/export scope, undecided allow/deny, merge vs rebuild, next refinement slice). The UI renders options plus a custom text field. The tool result has selected (clicked options) and custom (text the user typed). A non-empty custom answer is required context for both single-choice and multi-choice, even when selected is also set. Never ignore custom. Do not invent those concrete values in the specification before this tool returns — especially do not write allow/deny defaults for an undefined policy via propose_hybrid_changes first. Use this instead of listing questions only in prose when a decision is needed. When presenting a question returned by select_next_clarification, ALSO pass its obligationId: the user answer is then recorded in the requirement layer automatically (do not record decisions yourself; record_decision is not a tool you can call).',
       parameters: {
         type: 'object',
         properties: {
@@ -120,7 +120,12 @@ export const AGENT_TOOLS = [
             }
           },
           allowCustom: { type: 'boolean' },
-          multiSelect: { type: 'boolean' }
+          multiSelect: { type: 'boolean' },
+          obligationId: {
+            type: 'string',
+            description:
+              'Set ONLY when this question is a requirement-layer obligation (pass the obligationId returned by select_next_clarification). The stakeholder answer to it is recorded into the requirement layer when they respond.'
+          }
         },
         required: ['question']
       }
@@ -510,6 +515,68 @@ export const AGENT_TOOLS = [
           }
         },
         required: ['issues']
+      }
+    }
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'read_requirement_graph',
+      description:
+        'Read the requirement-level refinement graph (the typed structure ABOVE the process tree): nodes (goal/capability/scenario refs + cross-links), a count summary, the document version, and a readiness preview. Use this to orient before propose/list/decide. It is a separate, optional artifact from the .asfl spec.',
+      parameters: {
+        type: 'object',
+        properties: {
+          scope: { type: 'string', description: 'Limit the readiness preview to a scope label (default: the dominant scope).' },
+          includeLinks: { type: 'boolean', description: 'Include typed cross-link edges (default true).' }
+        }
+      }
+    }
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'list_obligations',
+      description:
+        'List the open refinement obligations that still need a stakeholder decision: each with its detector class (mechanical | llm_candidate | user_decision), severity, and policyRequired flag. highImpact lists the gated policy obligations that must be confirmed one-by-one. Use this before select_next_clarification.',
+      parameters: {
+        type: 'object',
+        properties: {
+          severity: { type: 'string', enum: ['critical', 'major', 'minor'] },
+          status: { type: 'string', enum: ['open', 'satisfied', 'disputed', 'deferred', 'waived'], description: 'Filter by status (default: open + disputed).' }
+        }
+      }
+    }
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'select_next_clarification',
+      description:
+        'Cost-aware: return the single highest-priority, not-yet-answered clarification the stakeholder should be asked next (question, target node, option set, score, and explainable reasons). Already-answered obligations are never re-asked. Returns next=null when none is eligible. Present the result via ask_clarification (use its question and options, and pass next.obligationId as ask_clarification\'s obligationId): the stakeholder answers in the UI and their answer is recorded in the requirement layer automatically. You cannot record a decision yourself — record_decision is not an agent tool and the agent must never impersonate the user.',
+      parameters: {
+        type: 'object',
+        properties: {
+          budgetRemaining: { type: 'number', description: 'Remaining question budget for this turn (0 => no selection).' },
+          stage: { type: 'string', description: 'Target stage for readiness (default: impl).' }
+        }
+      }
+    }
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'assess_readiness',
+      description:
+        'Assess readiness of a scope for a target stage: verdict (READY | NEEDS_CLARIFICATION | DEFERRED | BLOCKED | INCOMPLETE_WITH_RISK) with its reason, the unresolved critical obligations, deferred obligations, checker diagnostics, and decision provenance. Budget exhaustion is a STOP, never a pass. Use this to decide whether to stop refining.',
+      parameters: {
+        type: 'object',
+        properties: {
+          scope: { type: 'string', description: 'The scope label to assess (default: default).' },
+          targetStage: { type: 'string', description: 'The target stage (default: impl).' },
+          nodeIds: { type: 'array', items: { type: 'string' }, description: 'Restrict the assessment to specific nodes.' },
+          budgetRemaining: { type: 'number', description: 'Remaining question budget (0 => INCOMPLETE_WITH_RISK if not ready/blocked).' }
+        }
       }
     }
   }
