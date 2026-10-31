@@ -1,71 +1,143 @@
-# Agent harness and experiment batch runner
+# Headless agent CLI
 
-Run all commands from `packages/studio` unless noted. The scripts make no LLM calls unless a real batch is
-started, and never print the API key.
+Run the Agile-SOFL Studio specification agent without the Electron window.
 
-## 1. Prepare a v1.2 worktree (once)
-Batches must run on `exp-freeze-v1.2` (177749b). `main` contains later tool changes, so the batch refuses to run
-there (exit 2). Prepare a worktree of the tag that uses the current harness scripts:
+An informal specification (`.aspec`) goes in. The agent proposes hybrid edits, the CLI applies them automatically, and a hybrid specification (`.asfl`) comes out, together with a run directory (manifest and call log).
 
-    node scripts/agent-harness/prepare-v12.mjs            # -> ../../../agile-sofl-toolchain-v12 (next to the repo)
+```text
+informal .aspec  →  headless agent loop  →  hybrid .asfl + run artifacts
+```
 
-This runs `npm ci`, builds the workspace packages and the harness, and records where this checkout's
-`packages/studio/.env` is. The key is read from there in place and is not copied.
+API keys are read from the environment or an env file and are never printed.
 
-## 2. Dry run (no LLM calls, no key needed)
-    cd <worktree>/packages/studio
-    node .harness/batch.mjs --dry-run --repeats 1
+## Prerequisites
 
-`--dry-run-delay-ms <ms>` adds fake LLM latency, e.g. to try `--stop-at` and `--resume` in real time.
+Node.js 18 or newer. From the repository root, install dependencies and build the libraries the agent loads:
 
-## 3. Real batch (serial; 2 systems x 3 conditions x 5 repeats = 30 runs, 20 of them with LLM calls)
-    cd <worktree>/packages/studio
-    node .harness/batch.mjs --systems classroom,delivery --conditions T,B2,B0-auto --repeats 5 --seed 20261008 --stop-at 08:00
+```bash
+npm install
+npm run build --workspace @agile-sofl/parser
+npm run build --workspace @agile-sofl/gui
+npm run build --workspace @agile-sofl/aspec
+npm run build --workspace @agile-sofl/editor-api
+```
 
-- `--seed <n>` (0..4294967295; default: random, printed as `seed: <n>`): seeds the mulberry32 PRNG that builds
-  the **block-randomised** schedule. Block k contains repeat k of every (system, condition) pair exactly once, in
-  a seeded random order, so the 30 runs form 5 blocks of 6 and an interruption leaves the conditions balanced
-  (to within one block). Seed, design and the full schedule (order -> system/condition/repeat/runId) are written
-  **only to the key file**: with the seed, the schedule can be rebuilt, so treat it like the key.
-- `--stop-at HH:MM` (local time): before each run, if it is at/after the next HH:MM following the session start,
-  the batch stops cleanly without starting another run (a run already in progress finishes, so it can overrun
-  by up to one run). `interruptedAt`, the next order and the reason go to the key file and `batch.json`
-  (counts only). The command prints the resume command.
+The CLI bundles Studio's agent sources itself. It does not start Electron.
 
-## 4. Resume an interrupted or aborted batch
-    cd <worktree>/packages/studio
-    node .harness/batch.mjs --resume "<keyFile>" [--stop-at HH:MM]
+## Configure the model
 
-Continues the same schedule from the next unfinished order into the same output dir. It first re-checks the
-freeze guard, tool commit, harness sha256, informal inputs and prompt hashes against the first session, and
-refuses (exit 2) if any differ. Every session (start/end, runs done, end reason) and the per-run session index
-are recorded in the key file only. A run that was cut off mid-way (process killed), or the run(s) of an error
-streak that aborted a session (3 consecutive errors), is moved to `aborted/<runId>-a<n>/`, logged in
-`aborted/aborted.log` and rerun from scratch with the same run id. A dry batch always resumes as a dry run.
+Real runs call an OpenAI-compatible chat API that supports tool calls.
 
-The command prints the output directory and the key file:
-- **Output** (default `.harness/batch-<time>/`):
-  - `blinded/<runId>/final.asfl` and `blinded/<runId>/steps/<n>.asfl`: final hybrid spec and the spec after
-    each approved step, to hand to coders.
-  - `runs/<runId>/`: manifest (maxApprovals, tool commit, freeze check, harness sha256), final-diagnostics.json,
-    `steps/<n>.asfl` with `steps.jsonl` / `steps.csv` (parser, L1 and L2 error/warning counts of every snapshot,
-    computed by the full checker regardless of condition), and `.agile-sofl/llm-calls.jsonl`. The telemetry
-    names the condition, so don't give `runs/` to coders. B0-auto has a single snapshot (step 1).
-  - `retries.log`: every HTTP 429/503 retry and give-up, with local time, run id, run order and attempt.
-  - `aborted/` (only after a resume): partial runs that were rerun, plus `aborted.log`.
-  - `batch.json` (status, runs done, next order, interruptions; incl. `stepSummary`: per step n, mean counts over the ok runs that reached n, all conditions
-    pooled).
-- **Key file** (default `../../../agile-sofl-batch-keys/batch-<time>.key.json`, outside the outputs): seed,
-  block design, full schedule, sessions and per-run session/attempt; maps each
-  run id to its system, condition, repeat, order, prompt hash and number of steps, plus `stepSummaryByGroup`
-  (the per-step aggregate per system/condition).
+| Variable | Required | Default |
+|----------|----------|---------|
+| `ECNU_API_KEY` | yes, except `--dry-run` | |
+| `ECNU_API_BASE_URL` | no | `https://chat.ecnu.edu.cn/open/api/v1` |
+| `ECNU_MODEL` | no | `ecnu-max` |
 
-The batch aborts on a prompt-hash mismatch within a system, or after 3 consecutive run errors (resume it with `--resume`).
-Condition B0-auto is the rule-based generator (`@agile-sofl/aspec` `refineAspecWithCheck`); it makes no LLM calls.
+Put them in the environment, in `packages/studio/.env`, or in a file passed with `--env-file`. Existing environment variables win. `.env` is not committed. The CLI keeps an empty profile list under `.harness/userdata` so the key is not copied into a profile store.
 
-## Windows notes
-- Informal inputs are read with BOM stripped and CRLF normalised to LF (`informal.ts`), so a Windows checkout
-  with `core.autocrlf=true` gives the same prompt, prompt hash (manifest `promptHash`, `informalSha256`) and
-  B0-auto output as Linux/macOS. The harness sha256 is computed over LF-normalised files for the same reason.
-- git is always called with `-c safe.directory=<repo>`; run the commands from PowerShell or cmd as shown
-  (no shell-specific quoting needed).
+`--dry-run` uses a local fake model. It makes no network calls and does not need a key.
+
+## Run
+
+From the repository root:
+
+```bash
+node packages/studio/scripts/agent-harness/headless.mjs --help
+
+node packages/studio/scripts/agent-harness/headless.mjs \
+  --informal packages/studio/public/templates/minimal-informal.aspec \
+  --dry-run \
+  --out packages/studio/.harness/dry
+
+node packages/studio/scripts/agent-harness/headless.mjs \
+  --informal path/to/spec.aspec \
+  --out packages/studio/.harness/out \
+  --max-approvals 8
+```
+
+The same entry is available as an npm script (the working directory becomes `packages/studio`):
+
+```bash
+npm run agent:headless --workspace @agile-sofl/studio -- --help
+npm run agent:headless --workspace @agile-sofl/studio -- --informal public/templates/minimal-informal.aspec --dry-run
+```
+
+`--informal`, `--out`, and the other file options are relative to the directory where you launched the command. The bundle itself runs with `packages/studio` as its working directory so workspace packages resolve.
+
+`headless.mjs` builds `packages/studio/.harness/run.mjs` (gitignored) and runs it. To build once and invoke the bundle directly, from `packages/studio`:
+
+```bash
+node scripts/agent-harness/build.mjs
+node .harness/run.mjs --informal public/templates/minimal-informal.aspec --dry-run
+```
+
+Informal files are read as UTF-8. A leading BOM is stripped and newlines are normalized to LF.
+
+## Options
+
+| Option | Meaning |
+|--------|---------|
+| `--informal <file>` | Informal specification. Required. |
+| `--out <dir>` | Output directory. Default `.harness/out` under `packages/studio`. |
+| `--initial-hybrid <file>` | Existing `.asfl` to revise. Omit to generate from the informal spec. |
+| `--task <text>` / `--task-file <file>` | Task sent to the agent. Default: generate a hybrid specification. |
+| `--skill <id>` | Agent skill. Default `hybrid-generation`. |
+| `--max-approvals <n>` | Stop after this many auto-approved proposals (1–100, default 8). |
+| `--clarification <text>` / `--clarification-file <file>` | One reply reused for every clarification question. |
+| `--checks` / `--no-checks` | `--checks` (default) feeds parser and semantic checks back to the agent. `--no-checks` feeds parser diagnostics only. |
+| `--dry-run` | Local fake model. Optional `--dry-run-delay-ms` (0–60000) pauses each fake call. |
+| `--env-file <path>` | `KEY=VALUE` file. Does not override existing environment variables. |
+| `--help`, `-h` | Usage. |
+
+Skills: `hybrid-generation`, `hybrid-refinement`, `requirement-discovery`, `requirement-clarification`, `function-decomposition`, `data-modeling`, `constraint-discovery`, `specification-review`.
+
+## What the loop does
+
+Hybrid proposals are applied automatically, up to `--max-approvals`, using the same patch path as Studio. The agent then sees the tool result and can continue. Proposals aimed at other documents are returned as errors so the agent can recover. There is no preview window and no manual apply step.
+
+If the agent asks a clarification and you did not pass `--clarification`, the CLI answers that no further stakeholder decision is available and that the agent must not invent business rules (thresholds, roles, limits, and similar choices). Pass `--clarification` when you want one fixed reply used for every question.
+
+stdout and stderr redact `ECNU_API_KEY`. A real run retries HTTP 429 and 503 with backoff and appends each retry to `retries.log`.
+
+## Output
+
+| Path | Contents |
+|------|----------|
+| `<out>/hybrid.asfl` | Hybrid specification from this run |
+| `<out>/runs/<id>/hybrid.asfl` | Same text |
+| `<out>/runs/<id>/manifest.json` | Approvals, stop reason, prompt hash, skill, `checks`, `dryRun` |
+| `<out>/runs/<id>/.agile-sofl/llm-calls.jsonl` | Model, token counts, and tool names. Prompt text is omitted unless `AGILE_SOFL_LOG_PROMPTS=1` |
+| `<out>/retries.log` | HTTP 429/503 retries, when any occur |
+
+The process prints one JSON object on stdout: `runId`, `out`, `hybrid`, `approvals`, `stopReason`, `hybridChars`, `checks`, `dryRun`, and a short `promptHash`.
+
+`<out>` under `.harness/` is gitignored. Point `--out` somewhere else if you want to keep artifacts outside that directory.
+
+## Example informal specification
+
+```markdown
+# Functions
+
+## Add note
+
+Save a short note for the current user.
+
+# Data Resources
+
+## Note
+
+Text of a note.
+
+# Constraints
+
+## Non-empty
+
+A note has non-empty text.
+```
+
+Save it as `note.aspec`, set `ECNU_API_KEY`, then:
+
+```bash
+node packages/studio/scripts/agent-harness/headless.mjs --informal note.aspec --out ./agent-out
+```

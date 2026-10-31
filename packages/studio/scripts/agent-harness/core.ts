@@ -1,17 +1,16 @@
 /**
- * Headless driver for the studio agent loop (runAgentTurn / resumeWithToolResult) with the real LLM.
- * Mirrors what AgentPanel.vue does in auto-write mode: every proposal is auto-approved and applied
- * exactly as applyHybridDocumentPatch would (source edit / refinement step / CRUD patch), then the loop
- * is resumed with {action:'applied'} so post_write_diagnostics are logged by the production code.
- *
- * Seed of the automated-pilot batch runner: one call = one run in one condition, written to a run
- * directory named by a random id; the condition<->id key is returned to the caller (kept out of the
- * run directory, for blind coding). Runs are strictly serial (no concurrency).
+ * Headless driver for the studio agent loop (runAgentTurn / resumeWithToolResult).
+ * Mirrors AgentPanel auto-write: each hybrid proposal is applied, then the loop resumes
+ * with {action:'applied'} so post-write diagnostics are logged by the production code.
+ * One call writes one run directory. Callers run one run at a time.
  */
 import { createHash, randomBytes } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { applyHybridPatch } from '@agile-sofl/editor-api'
+import { applyHybridPatch, collectHybridAgentDiagnostics } from '@agile-sofl/editor-api'
+import { acceptHybridWrite, setHybridWriteDiagnosticCollector } from '../../src/shared/asflRepair'
+
+setHybridWriteDiagnosticCollector(collectHybridAgentDiagnostics)
 import { runAgentTurn, resumeWithToolResult, type AgentTurnContext } from '../../src/main/services/llm/agentLoop'
 import { generationAgentPermissions, newId, type AgentSession, type InformalPatchPayload } from '../../src/main/services/llm/agentTypes'
 import { skillById } from '../../src/main/services/llm/skills'
@@ -46,16 +45,20 @@ export interface RunOptions {
   maxApprovals?: number
   clarificationAnswer?: string
   /**
-   * Clarification experiments: map ask_clarification to a stakeholder/oracle answer.
-   * When set, the harness never falls back to DEFAULT_CLARIFICATION (best-judgement).
+   * Map each ask_clarification to a reply. When set, the static clarification string is not used.
    */
   resolveClarification?: (ask: ClarificationAsk) => ClarificationResolution | Promise<ClarificationResolution>
-  /** Study/pilot telemetry (e.g. clarification_asked, oracle_reply). */
+  /** Optional callback for clarification and proposal events. */
   onStudyEvent?: (event: Record<string, unknown>) => void
+  /** Label stored with the run. Omitted runs use a generated id. */
   participantId?: string
-  /** externally assigned (blinded) run id; random when omitted */
+  /** Shown to the model as the current project. Defaults to the historical label `pilot`. */
+  projectName?: string
+  /** Max tool round-trips (clarifications and proposals). Default 20. */
+  maxRounds?: number
+  /** Run id; random when omitted. */
   runId?: string
-  /** extra fields written into manifest.json (e.g. commit provenance from the batch runner) */
+  /** Extra fields merged into manifest.json. */
   manifestExtra?: Record<string, unknown>
   /** called after every approved step with the spec as it stands after applying it (before the agent resumes) */
   onStep?: (step: StepInfo) => Promise<void> | void
@@ -100,19 +103,45 @@ export function promptHash(o: { informal: string; skillPrompt: string; userText:
     .digest('hex')
 }
 
-export function applyHybridProposal(source: string, patch: InformalPatchPayload, projectRoot: string): { content: string; error?: string; applied: boolean } {
+export function applyHybridProposal(
+  source: string,
+  patch: InformalPatchPayload,
+  projectRoot: string
+): {
+  content: string
+  error?: string
+  applied: boolean
+  warnings?: string[]
+  diagnostics?: { errors: number; warnings: number; items?: unknown[] }
+} {
+  const gate = (next: string, softError?: string) => {
+    const gated = acceptHybridWrite(source, next)
+    return {
+      content: gated.content,
+      error: softError,
+      applied: gated.content !== source,
+      warnings: gated.warnings,
+      diagnostics: gated.diagnostics
+    }
+  }
   if (isSourcePatch(patch)) {
     const r = applySourceEdits(source, patch.operations as never)
-    return { content: r.content, error: r.error, applied: r.content !== source }
+    const out = gate(r.content, r.error)
+    if (r.error && out.warnings) out.warnings = [...out.warnings, r.error]
+    else if (r.error) out.warnings = [r.error]
+    return out
   }
   const stepOp = patch.operations.find((op) => op.op === 'refine-step')
   if (stepOp && patch.operations.length === 1) {
     const r = applyProjectRefinementStep(projectRoot, source, stepOp as never) as { source: string; error?: string }
     if (r.error) return { content: source, error: r.error, applied: false }
-    return { content: r.source, applied: r.source !== source }
+    return gate(r.source)
   }
   const r = applyHybridPatch(source, patch as never)
-  return { content: r.content, error: r.error, applied: r.content !== source }
+  const out = gate(r.content, r.error)
+  const warnings = [...(out.warnings ?? []), ...(r.warnings ?? [])]
+  if (warnings.length) out.warnings = warnings
+  return out
 }
 
 export async function runOnce(o: RunOptions): Promise<RunResult> {
@@ -138,9 +167,14 @@ export async function runOnce(o: RunOptions): Promise<RunResult> {
   const maxApprovals = o.maxApprovals ?? 3
 
   const ctx: AgentTurnContext = {
+<<<<<<< HEAD
     projectName: 'pilot', projectRoot: runDir, moduleId: 'project',
     informalMarkdown: informal, hybridAsfl: o.initialHybridAsfl ?? '', skillId, permissions: generationAgentPermissions(),
     ...(o.omitAskClarification ? { harnessOmitAskClarification: true } : {})
+=======
+    projectName: o.projectName ?? 'pilot', projectRoot: runDir, moduleId: 'project',
+    informalMarkdown: informal, hybridAsfl: o.initialHybridAsfl ?? '', skillId, permissions: generationAgentPermissions()
+>>>>>>> a79d781360c04c3ab82330693b5ad7ec48562864
   }
   if (o.initialHybridAsfl !== undefined) writeFileSync(join(runDir, 'hybrid.asfl'), o.initialHybridAsfl)
   const now = new Date().toISOString()
@@ -150,7 +184,8 @@ export async function runOnce(o: RunOptions): Promise<RunResult> {
   let approvals = 0
   let clarificationsAnswered = 0
   let stopReason = 'agent finished'
-  for (let guard = 0; guard < 20; guard++) {
+  const maxRounds = o.maxRounds ?? 20
+  for (let guard = 0; guard < maxRounds; guard++) {
     const pending = session.messages.find((m) => m.pending)
     const toolId = session.context.pendingToolCallId
     if (!pending || !toolId) break
@@ -198,8 +233,17 @@ export async function runOnce(o: RunOptions): Promise<RunResult> {
       const r = applyHybridProposal(ctx.hybridAsfl ?? '', patch, runDir)
       ctx.hybridAsfl = r.content
       writeFileSync(join(runDir, 'hybrid.asfl'), r.content)
-      payload = r.error ? { action: r.applied ? 'applied' : 'error', error: r.error } : { action: 'applied' }
-      applied = r.applied; applyError = r.error
+      payload = r.error
+        ? {
+            action: r.applied ? 'applied' : 'error',
+            ok: r.applied,
+            error: r.error,
+            warnings: r.warnings,
+            diagnostics: r.diagnostics
+          }
+        : { action: 'applied', ok: true, warnings: r.warnings, diagnostics: r.diagnostics }
+      applied = r.applied
+      applyError = r.error
     } else {
       payload = { action: 'error', error: `harness only applies hybrid proposals (got ${patch.target})` }
       applyError = String(payload.error)
