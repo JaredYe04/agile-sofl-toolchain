@@ -178,9 +178,249 @@ export const BOOKING_TASK: P5Task = {
   }
 }
 
-/** The pilot set so far (3 required for the pilot; more are authored in P5 as the set grows). */
+/**
+ * Pilot scenario #2 — e-commerce order / inventory (task book §7.1 domain "e-commerce / order /
+ * inventory: cross-process data consistency"). Independently authored; the gold is the researcher's
+ * decision of what a correct order-inventory spec must decide. It deliberately mixes the four
+ * stakeholder stances so the oracle exercises knows / unknown / refuse / defer:
+ *   - inventory floor (knows, policy)
+ *   - refund processing window (knows, policy)
+ *   - price calculation (knows, critical boundary)
+ *   - low-stock notification threshold (knows, policy)
+ *   - oversell behavior (unknown — the stakeholder has not decided it)
+ *   - discount stacking (refuse — a private commercial decision)
+ *   - stock release timing on cancellation (defer — deferred to a later term)
+ */
+export const ECOMMERCE_TASK: P5Task = {
+  id: 'ecommerce-01',
+  domain: 'ecommerce',
+  language: 'en',
+  initialRoughStory:
+    'Build a system where customers place orders against a live inventory. An order holds the stock ' +
+    'it needs, the stock must stay consistent with what is really available, and cancellations and ' +
+    'refunds have to keep the stock and the payment in step. The merchant wants sensible business ' +
+    'rules, but several of the details (how much stock is kept in reserve, how refunds are processed, ' +
+    'whether the system may ever sell more than it has, when held stock is released after a ' +
+    'cancellation, how the final price is computed, and any discount or promotion rules) have not all ' +
+    'been settled yet. Ask the stakeholder where a decision is genuinely needed and do not invent a ' +
+    'concrete business value on your own.',
+  stakeholderProfile:
+    'A merchant operations lead who knows the inventory floor, the refund processing window, the price ' +
+    'calculation rule, and the low-stock notification threshold. They have NOT decided the oversell ' +
+    'behavior, they will not disclose discount-stacking policy, and they are deferring the stock-release ' +
+    'timing on cancellation to next term.',
+  referenceItems: [
+    {
+      id: 'inventory-floor',
+      statement: 'A floor of 10 units of every SKU is held in reserve and never sold.',
+      answer: 'a floor of 10 units is held in reserve',
+      keywords: ['inventory floor', 'reserve', 'buffer stock', 'safety stock', '保留库存', '安全库存'],
+      topicPhrase: 'the inventory floor kept in reserve',
+      policy: 'knows',
+      mustHave: true,
+      policyDecision: true
+    },
+    {
+      id: 'refund-processing',
+      statement: 'A refund is processed to the customer within 5 business days of the return approval.',
+      answer: 'processed within 5 business days of return approval',
+      keywords: ['refund', 'refund processing', 'business days', '退款处理', '退款周期'],
+      topicPhrase: 'how quickly a refund is processed',
+      policy: 'knows',
+      mustHave: true,
+      policyDecision: true
+    },
+    {
+      id: 'oversell',
+      statement: 'OVERSELL BEHAVIOR IS UNDECIDED — the stakeholder does not know whether to oversell.',
+      answer: 'unknown',
+      keywords: ['oversell', 'over-sell', 'sell more than', 'in stock', '超卖'],
+      topicPhrase: 'whether the system may sell more than it has in stock',
+      policy: 'unknown',
+      mustHave: true,
+      policyDecision: true
+    },
+    {
+      id: 'stock-release',
+      statement: 'STOCK-RELEASE TIMING on cancellation is DEFERRED to next term (not decided now).',
+      answer: 'defer',
+      keywords: ['stock release', 'held stock', 'after a cancellation', '释放库存'],
+      topicPhrase: 'when held stock is released back to inventory after a cancellation',
+      policy: 'defer',
+      policyDecision: true
+    },
+    {
+      id: 'price-calc',
+      statement: 'The final price is unit price times quantity, plus 10% tax, plus a flat 5 shipping fee when the pre-tax total is under 50.',
+      answer: 'unit price times quantity plus 10% tax plus flat 5 shipping under 50',
+      keywords: ['price calculation', 'final price', 'price', 'calculated', 'tax', 'shipping fee', '定价', '税费', '运费'],
+      topicPhrase: 'how the final order price is calculated',
+      policy: 'knows',
+      mustHave: true,
+      critical: true
+    },
+    {
+      id: 'low-stock',
+      statement: 'The system raises a low-stock alert when an available quantity drops to or below 20 units.',
+      answer: 'an alert is raised when available quantity drops to 20 or below',
+      keywords: ['low stock', 'running low', 'threshold', 'reorder point', 'restock', '低库存', '补货点'],
+      topicPhrase: 'the threshold at which the system warns that stock is running low',
+      policy: 'knows',
+      mustHave: true,
+      policyDecision: true
+    },
+    {
+      id: 'discount-stacking',
+      statement: 'DISCOUNT-STACKING is a private commercial decision the stakeholder will not disclose.',
+      answer: 'none_of_above',
+      keywords: ['discount', 'coupon', 'promo', 'promotion', 'stack', '折扣', '优惠券', '促销'],
+      topicPhrase: 'whether discounts can be combined',
+      policy: 'refuse',
+      policyDecision: true
+    }
+  ],
+  complexityTags: {
+    treeBreadth: 7,
+    treeDepth: 2,
+    interdependency: 'low',
+    number_of_critical_decisions: 3
+  }
+}
+
+/**
+ * Pilot scenario #3 — task management (task book §7.1 domain "task management: roles, dependencies,
+ * delete/restore"). Independently authored; the gold is the researcher's decision of what a correct
+ * task-management spec must decide. It deliberately mixes the four stakeholder stances so the oracle
+ * exercises knows / unknown / refuse / defer:
+ *   - archived-task limit (knows, policy)
+ *   - task expiration (knows, critical boundary)
+ *   - assignment permission (knows, policy)
+ *   - delete guard for subtasks (knows, critical state)
+ *   - dependency cascade on delete (knows, critical state)
+ *   - restore behavior (knows, boundary)
+ *   - activity-log retention (defer — deferred to a later term)
+ *   - priority scheme (refuse — a private commercial decision)
+ *   - subtask cap (unknown — the stakeholder has not decided it)
+ */
+export const TASKMGMT_TASK: P5Task = {
+  id: 'taskmgmt-01',
+  domain: 'taskmanagement',
+  language: 'en',
+  initialRoughStory:
+    'Build a system where a team creates, assigns, and tracks tasks. A task has an assignee, an ' +
+    'optional deadline, and can depend on other tasks and contain subtasks. Tasks can be archived and ' +
+    'deleted, and a deleted task may be restored. The team lead wants sensible business rules, but ' +
+    'several of the details (who may assign a task, when an unworked task expires, what happens to a ' +
+    'task with active subtasks when it is deleted, how a task is restored after deletion, how many ' +
+    'tasks may be archived, and any priority or ranking behaviour) have not all been settled yet. Ask ' +
+    'the stakeholder where a decision is genuinely needed and do not invent a concrete business value ' +
+    'on your own.',
+  stakeholderProfile:
+    'A team lead who knows the archived-task limit, the task expiration rule, the assignment ' +
+    'permission, the delete guard for tasks with subtasks, the dependency-cascade rule, and the ' +
+    'restore window. They have NOT decided the subtask cap, they are deferring activity-log retention ' +
+    'to next term, and they will not disclose the priority scheme.',
+  referenceItems: [
+    {
+      id: 'archive-limit',
+      statement: 'A user may keep at most 5 archived tasks; the 6th archive fails until one is deleted.',
+      answer: 'at most 5 archived tasks at the same time',
+      keywords: ['archive limit', 'archived tasks', 'archived', '归档上限', '已归档'],
+      topicPhrase: 'how many archived tasks a user may keep',
+      policy: 'knows',
+      mustHave: true,
+      policyDecision: true
+    },
+    {
+      id: 'task-expiration',
+      statement: 'A task with no activity for 30 days is auto-marked expired and moves out of the active list.',
+      answer: 'after 30 days without activity',
+      keywords: ['expire', 'expiration', 'inactive', 'auto-close', '过期', '未活动'],
+      topicPhrase: 'when a task is marked expired',
+      policy: 'knows',
+      mustHave: true,
+      critical: true
+    },
+    {
+      id: 'assignment',
+      statement: 'A task may be assigned to any team member, including the task creator.',
+      answer: 'any team member, including the creator',
+      keywords: ['assign', 'assignment', 'assignee', '分配', '指派'],
+      topicPhrase: 'who a task may be assigned to',
+      policy: 'knows',
+      mustHave: true,
+      policyDecision: true
+    },
+    {
+      id: 'delete-guard',
+      statement: 'A task with active subtasks cannot be deleted until its subtasks are completed or re-parented.',
+      answer: 'a task with active subtasks cannot be deleted',
+      keywords: ['can be deleted', 'delete task', 'guard', 'prevent delete', '删除任务', '删除保护'],
+      topicPhrase: 'whether a task with subtasks can be deleted',
+      policy: 'knows',
+      mustHave: true,
+      critical: true
+    },
+    {
+      id: 'dependency-cascade',
+      statement: 'When a task is deleted, its dependents are re-parented to the deleted task parent.',
+      answer: 'its dependents are re-parented to the deleted task parent',
+      keywords: ['dependents', 'cascade', 're-parent', 'reparent', '依赖', '级联'],
+      topicPhrase: 'what happens to a task dependents when it is deleted',
+      policy: 'knows',
+      mustHave: true,
+      critical: true
+    },
+    {
+      id: 'restore',
+      statement: 'A deleted task can be restored within 7 days of deletion; after 7 days it is gone permanently.',
+      answer: 'within 7 days of deletion',
+      keywords: ['restore', 'undo delete', 'recover', '恢复', '撤销删除'],
+      topicPhrase: 'how long a deleted task can be restored',
+      policy: 'knows',
+      mustHave: true
+    },
+    {
+      id: 'activity-log-retention',
+      statement: 'ACTIVITY-LOG RETENTION is DEFERRED to next term (not decided now).',
+      answer: 'defer',
+      keywords: ['activity history', 'activity', 'kept', 'retention', 'audit log', '活动日志', '保留'],
+      topicPhrase: 'how long task activity history is kept',
+      policy: 'defer',
+      policyDecision: true
+    },
+    {
+      id: 'priority-scheme',
+      statement: 'PRIORITY SCHEME is a private commercial decision the stakeholder will not disclose.',
+      answer: 'none_of_above',
+      keywords: ['priority', 'ranking', 'weight', '优先级', '排序'],
+      topicPhrase: 'how tasks are ranked by priority',
+      policy: 'refuse',
+      policyDecision: true
+    },
+    {
+      id: 'subtask-cap',
+      statement: 'SUBTASK CAP IS UNDECIDED — the stakeholder does not know the limit.',
+      answer: 'unknown',
+      keywords: ['subtask', 'sub-task', 'children', '子任务'],
+      topicPhrase: 'how many subtasks a task may have',
+      policy: 'unknown',
+      mustHave: true
+    }
+  ],
+  complexityTags: {
+    treeBreadth: 9,
+    treeDepth: 3,
+    interdependency: 'medium',
+    number_of_critical_decisions: 3
+  }
+}
+
+/** The pilot set (3 required for the pilot; more are authored in P5 as the set grows). */
 export const P5_TASKS: Record<string, P5Task> = {
-  'booking-01': BOOKING_TASK
+  'booking-01': BOOKING_TASK,
+  'ecommerce-01': ECOMMERCE_TASK,
+  'taskmgmt-01': TASKMGMT_TASK
 }
 
 /** Load a task by id; throws if unknown (fail fast, not a silent default). */
