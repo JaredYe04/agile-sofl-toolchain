@@ -34,6 +34,7 @@ import { ObligationEngine } from './obligations.js'
 import { DecisionStore, computeImpactSet } from './decisions.js'
 import { ReadinessAssessor } from './readiness.js'
 import { EventLog } from './events.js'
+import type { TimedEvent } from './events.js'
 import { selectNext, computeBenefit, computeCost, DEFAULT_WEIGHTS } from './selector.js'
 import type { SelectionContext, ScoredCandidate, SelectorWeights } from './selector.js'
 import { isConfirmedSource } from './provenance.js'
@@ -44,9 +45,12 @@ import type {
   ClarificationCandidate,
   NodeStatus,
   ProvenanceStatus,
+  RefinementEdge,
   RefinementObligation,
   ReadinessAssessment,
   ReadinessVerdict,
+  RequirementDecision,
+  RequirementNode,
 } from './types.js'
 
 /** How a stakeholder answers a clarification (task book §6.2 option set). */
@@ -134,6 +138,27 @@ export interface SessionOptions {
   docVersion?: number
 }
 
+/**
+ * The fully stateful snapshot of a `RefinementSession` (task book §6.1 — "keep the agent decoupled
+ * from the persistence model"). Unlike the P3 `RequirementDocument` (which round-trips only
+ * graph/obligations/decisions/events), this also captures the turn-orchestration memory that a live
+ * session holds: the document version (stale-proposal gate), the set of obligations that already
+ * received an answer (no-infinite-re-ask), and per-obligation re-ask counts. The Studio agent and the
+ * experiment harness persist this per-project so a stateful session survives across per-call tools.
+ */
+export interface SessionSnapshot {
+  graph: { nodes: RequirementNode[]; edges: RefinementEdge[] }
+  obligations: RefinementObligation[]
+  decisions: RequirementDecision[]
+  events: TimedEvent[]
+  /** Document version — survives restore so the stale-proposal / expected-version gate stays correct. */
+  docVersion: number
+  /** Obligations that received an answer (any kind) — survives restore so they are never re-asked. */
+  answeredObligationIds: string[]
+  /** Per-obligation re-ask counter (belt-and-suspenders cap). */
+  reAskCounts: Record<string, number>
+}
+
 /** The confirming provenance an actor is allowed to stamp for a confirm/answer (anti-fabrication). */
 function confirmingProvenance(actorKind: ActorKind): ProvenanceStatus {
   if (actorKind === 'authorized_decider') return 'analyst_approved'
@@ -150,10 +175,11 @@ export class RefinementSession {
   private readonly weights: SelectorWeights
   /** Document version — bumped on every structural/state mutation; gates applyRevision. */
   docVersion: number
-  /** Obligations that received an answer (any kind). Excluded from re-asking (no infinite re-ask). */
-  private readonly answeredObligationIds = new Set<string>()
+  /** Obligations that received an answer (any kind). Excluded from re-asking (no infinite re-ask).
+   *  Not `readonly`: `restore()` reassigns these two from a snapshot (a legitimate re-materialization). */
+  private answeredObligationIds = new Set<string>()
   /** Per-obligation re-ask counter (belt-and-suspenders cap in addition to `answered`). */
-  private readonly reAskCounts: Record<string, number> = {}
+  private reAskCounts: Record<string, number> = {}
   /** Pending revision proposals (preview_revision -> apply_approved_revision). */
   private readonly proposals = new Map<string, RevisionProposal>()
 
@@ -595,5 +621,55 @@ export class RefinementSession {
   private primaryScope(): string {
     const first = this.graph.allNodes()[0]
     return first ? first.scope : 'default'
+  }
+
+  // ---- snapshot / restore (task book §6.1 — agent decoupled from persistence) -----
+
+  /**
+   * Capture the full stateful session (graph + obligations + decisions + events + docVersion + the
+   * answered-obligation set + re-ask counts) as a plain, JSON-serializable snapshot. This is the
+   * persistence boundary: the Studio agent and the experiment harness save/restore this per-project
+   * rather than holding a long-lived session object.
+   */
+  snapshot(): SessionSnapshot {
+    return {
+      graph: {
+        nodes: this.graph.allNodes().map((n) => ({ ...n, artifactRefs: n.artifactRefs.map((r) => ({ ...r })) })),
+        edges: this.graph.allEdges().map((e) => ({ ...e })),
+      },
+      obligations: this.engine.all().map((o) => ({ ...o, evidenceRefs: [...o.evidenceRefs] })),
+      decisions: this.store
+        .all()
+        .map((d) => ({ ...d, targetNodeIds: [...d.targetNodeIds], obligationIds: [...d.obligationIds], options: d.options ? [...d.options] : undefined })),
+      events: this.events.all().map((e) => ({ seq: e.seq, ts: e.ts, event: e.event })),
+      docVersion: this.docVersion,
+      answeredObligationIds: [...this.answeredObligationIds],
+      reAskCounts: { ...this.reAskCounts },
+    }
+  }
+
+  /**
+   * Re-materialize a session from a {@link SessionSnapshot}. Produces a fresh session whose state is
+   * byte-identical to the snapshotted one, so a later {@link snapshot} round-trips. Uses the provided
+   * id generators + clock (default: random/`Date.now`) — for a deterministic replay, pass the same
+   * injectables that were used to build the original session.
+   */
+  static restore(snapshot: SessionSnapshot, options: SessionOptions = {}): RefinementSession {
+    const session = new RefinementSession({
+      ...options,
+      docVersion: snapshot.docVersion,
+    })
+    session.graph.load({
+      nodes: snapshot.graph.nodes.map((n) => ({ ...n })),
+      edges: snapshot.graph.edges.map((e) => ({ ...e })),
+    })
+    session.engine.load(snapshot.obligations.map((o) => ({ ...o })))
+    session.store.load(
+      snapshot.decisions.map((d) => ({ ...d, targetNodeIds: [...d.targetNodeIds], obligationIds: [...d.obligationIds] })),
+    )
+    session.events.load(snapshot.events.map((e) => ({ seq: e.seq, ts: e.ts, event: e.event })))
+    session.answeredObligationIds = new Set(snapshot.answeredObligationIds)
+    session.reAskCounts = { ...snapshot.reAskCounts }
+    return session
   }
 }

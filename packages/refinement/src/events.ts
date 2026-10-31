@@ -79,4 +79,18 @@ export class EventLog {
     }
     return log
   }
+
+  /** Replace the internal log in place (session restore), re-validating dense sequencing from 0. */
+  load(data: TimedEvent[]): void {
+    const events: TimedEvent[] = []
+    for (const e of data) {
+      events.push({ seq: e.seq, ts: e.ts, event: e.event })
+    }
+    for (let i = 0; i < events.length; i++) {
+      if (events[i].seq !== i) {
+        throw new Error(`event log is not densely sequenced (expected seq ${i}, found ${events[i].seq})`)
+      }
+    }
+    this.events = events
+  }
 }

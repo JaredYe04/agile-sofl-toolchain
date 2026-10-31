@@ -108,6 +108,14 @@ export class DecisionStore {
     return this.active().filter((d) => d.obligationIds.includes(obligationId))
   }
 
+  /**
+   * Bulk-load a set of decisions (session restore). Replaces the current set — used when a persisted
+   * `RefinementSession` snapshot is re-materialized.
+   */
+  load(records: RequirementDecision[]): void {
+    this.decisions = new Map(records.map((d) => [d.decisionId, d]))
+  }
+
   // ---- record ----------------------------------------------------------
 
   /**

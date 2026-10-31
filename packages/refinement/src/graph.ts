@@ -85,6 +85,14 @@ export class RequirementGraph {
   size(): number {
     return this.nodes.size
   }
+  /**
+   * Bulk-load nodes + edges in place (session restore). Replaces the current graph. Used when a
+   * persisted `RefinementSession` snapshot is re-materialized on an existing graph instance.
+   */
+  load(data: { nodes: RequirementNode[]; edges: RefinementEdge[] }): void {
+    this.nodes = new Map(data.nodes.map((n) => [n.id, n]))
+    this.edges = new Map(data.edges.map((e) => [e.id, e]))
+  }
   /** `refines` children of a node (primary-tree navigation). */
   children(id: string): RequirementNode[] {
     return this.allEdges()

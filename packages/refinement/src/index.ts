@@ -90,4 +90,5 @@ export type {
   ApplyRevisionResult,
   TurnResult,
   SessionOptions,
+  SessionSnapshot,
 } from './session.js'

@@ -125,6 +125,14 @@ export class ObligationEngine {
     return this.openObligations().filter((o) => o.severity === 'critical')
   }
 
+  /**
+   * Bulk-load a set of obligations (session restore). Replaces the current set — used when a persisted
+   * `RefinementSession` snapshot is re-materialized, not when detecting.
+   */
+  load(records: RefinementObligation[]): void {
+    this.obligations = new Map(records.map((o) => [o.id, o]))
+  }
+
   // ---- open ------------------------------------------------------------
 
   /** Manually open an obligation (LLM candidate, user decision, or ingested spec diagnostic). */
