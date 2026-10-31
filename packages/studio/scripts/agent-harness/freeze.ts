@@ -4,16 +4,16 @@ import { createHash } from 'node:crypto'
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
 
-export const FREEZE_TAG = 'exp-freeze-v1.2'
+export const FREEZE_TAG = 'exp-freeze-v1.3'
 /** Everything whose change could alter tool behaviour in a batch (harness scripts are recorded by hash instead). */
 export const TOOL_PATHS = [
   'packages/parser/src', 'packages/studio/src', 'packages/editor-api/src', 'packages/aspec/src',
-  'packages/gui/src', 'packages/language-server/src', 'package-lock.json',
+  'packages/gui/src', 'packages/language-server/src', 'packages/refinement/src', 'package-lock.json',
   'packages/parser/package.json', 'packages/studio/package.json', 'packages/editor-api/package.json',
-  'packages/aspec/package.json', 'packages/gui/package.json'
+  'packages/aspec/package.json', 'packages/gui/package.json', 'packages/refinement/package.json'
 ]
 /** Workspace packages consumed through their built dist by the harness. */
-export const DIST_PACKAGES = ['parser', 'aspec', 'editor-api', 'gui']
+export const DIST_PACKAGES = ['parser', 'aspec', 'editor-api', 'gui', 'refinement']
 
 export type Git = (args: string[]) => string
 // stderr is captured (not inherited) so Windows autocrlf notices ("LF will be replaced by CRLF") don't clutter the batch log

@@ -20,8 +20,8 @@
  *   first session. Sessions (start/end, runs done) and the per-run session index are kept in the key file only.
  *   A run cut off mid-way (or the error streak that aborted a session) is moved to out/aborted/<id>-a<n>/
  *   (logged in out/aborted/aborted.log) and rerun from scratch.
- * - Refuses to run (exit 2) unless the tool source equals exp-freeze-v1.2 and the workspace dists are
- *   fresh (see freeze.ts); use prepare-v12.mjs to build a v1.2 worktree. --dry-run reports but continues.
+ * - Refuses to run (exit 2) unless the tool source equals exp-freeze-v1.3 and the workspace dists are
+ *   fresh (see freeze.ts); use prepare-v13.mjs to build a v1.3 worktree. --dry-run reports but continues.
  * - Run ids are random hex. The id -> (system, condition,
  *   repeat, order) key goes ONLY to --key-file, which must be outside --out. Coders get out/blinded/<id>/
  *   (final.asfl + steps/<n>.asfl).
@@ -151,7 +151,7 @@ export async function runBatch(o: BatchOptions) {
     for (const s of systems) if (!SYSTEMS[s]) throw new Error(`unknown system '${s}' (known: ${Object.keys(SYSTEMS).join(', ')})`)
     if (!fz.ok) {
       const msg = `freeze check FAILED: ${fz.reasons.join('; ')}${fz.changedToolFiles.length ? `\n  e.g. ${fz.changedToolFiles.slice(0, 8).join('\n  ')}` : ''}`
-      if (!o.dryRun) throw refuse(msg + `\nRun on ${FREEZE_TAG} (see prepare-v12.mjs) or use --dry-run.`)
+      if (!o.dryRun) throw refuse(msg + `\nRun on ${FREEZE_TAG} (see prepare-v13.mjs) or use --dry-run.`)
       log(`[dry-run] ${msg} (continuing because --dry-run)`)
     }
     if (existsSync(keyFile)) throw new Error(`key file already exists: ${keyFile}`)
@@ -339,9 +339,9 @@ async function main() {
     const ignored = ['systems', 'conditions', 'repeats', 'max-approvals', 'out', 'key-file', 'seed'].filter((n) => process.argv.includes(`--${n}`))
     if (ignored.length) console.log(`--resume: ignoring ${ignored.map((n) => `--${n}`).join(', ')} (taken from the key file)`)
   }
-  // In a v1.2 worktree made by prepare-v12.mjs, the .env (API key) stays in the original checkout:
-  // --env-file or .harness/v12-origin.json points at it.
-  const origin = join(repo, 'packages', 'studio', '.harness', 'v12-origin.json')
+  // In a v1.3 worktree made by prepare-v13.mjs, the .env (API key) stays in the original checkout:
+  // --env-file or .harness/v13-origin.json points at it.
+  const origin = join(repo, 'packages', 'studio', '.harness', 'v13-origin.json')
   const envFile = arg('env-file') ?? (existsSync(origin) ? JSON.parse(readFileSync(origin, 'utf-8')).envFile : undefined)
   if (envFile && !dryRun) loadEnvFile(resolve(envFile))
   const userData = process.env.AGILE_SOFL_HARNESS_USERDATA || join(repo, 'packages', 'studio', '.harness', 'userdata')
@@ -351,7 +351,7 @@ async function main() {
   writeFileSync(join(userData, 'llm-profiles.json'), JSON.stringify({ activeId: null, profiles: [] }))
   if (!dryRun) {
     const fz = freezeStatus(repo) // refuse before touching the API key
-    if (!fz.ok) throw Object.assign(new Error(`freeze check FAILED: ${fz.reasons.join('; ')}\nRun on ${FREEZE_TAG} (node scripts/agent-harness/prepare-v12.mjs) or use --dry-run.`), { exitCode: 2 })
+    if (!fz.ok) throw Object.assign(new Error(`freeze check FAILED: ${fz.reasons.join('; ')}\nRun on ${FREEZE_TAG} (node scripts/agent-harness/prepare-v13.mjs) or use --dry-run.`), { exitCode: 2 })
   }
   let key = ''
   if (!dryRun) {

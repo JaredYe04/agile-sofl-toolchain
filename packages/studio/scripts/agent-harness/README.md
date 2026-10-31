@@ -3,11 +3,11 @@
 Run all commands from `packages/studio` unless noted. The scripts make no LLM calls unless a real batch is
 started, and never print the API key.
 
-## 1. Prepare a v1.2 worktree (once)
-Batches must run on `exp-freeze-v1.2` (177749b). `main` contains later tool changes, so the batch refuses to run
+## 1. Prepare a v1.3 worktree (once)
+Batches must run on `exp-freeze-v1.3`. `main` contains later tool changes, so the batch refuses to run
 there (exit 2). Prepare a worktree of the tag that uses the current harness scripts:
 
-    node scripts/agent-harness/prepare-v12.mjs            # -> ../../../agile-sofl-toolchain-v12 (next to the repo)
+    node scripts/agent-harness/prepare-v13.mjs            # -> ../../../agile-sofl-toolchain-v13 (next to the repo)
 
 This runs `npm ci`, builds the workspace packages and the harness, and records where this checkout's
 `packages/studio/.env` is. The key is read from there in place and is not copied.

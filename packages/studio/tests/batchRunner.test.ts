@@ -11,7 +11,7 @@ vi.mock('electron', () => ({ app: { getPath: () => userData, getAppPath: () => u
 import { runBatch, SYSTEMS } from '../scripts/agent-harness/batch'
 import { runB0Auto } from '../scripts/agent-harness/b0auto'
 import { readInformal } from '../scripts/agent-harness/informal'
-import { freezeStatus, harnessSha, isInside, TOOL_PATHS } from '../scripts/agent-harness/freeze'
+import { freezeStatus, harnessSha, isInside, TOOL_PATHS, FREEZE_TAG } from '../scripts/agent-harness/freeze'
 import { aggregateSteps, recordStep, STEP_CSV_COLUMNS, type StepRecord } from '../scripts/agent-harness/steps'
 
 const repo = execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf-8' }).trim()
@@ -89,7 +89,7 @@ describe('batch runner', () => {
         const runDir = join(out, 'runs', run.runId), bl = join(out, 'blinded', run.runId)
         const m = JSON.parse(readFileSync(join(runDir, 'manifest.json'), 'utf-8'))
         expect(m.toolCommit).toMatch(/^[0-9a-f]{40}$/)
-        expect(m).toMatchObject({ freezeTag: 'exp-freeze-v1.2', dryRun: true, maxApprovals: 2 })
+        expect(m).toMatchObject({ freezeTag: FREEZE_TAG, dryRun: true, maxApprovals: 2 })
         // per-step snapshots: one per approved step (budget 2), B0-auto exactly one
         const n = run.condition === 'B0-auto' ? 1 : 2
         expect(run.steps).toBe(n)
@@ -140,7 +140,7 @@ describe('batch runner', () => {
     expect(agg[1]).toMatchObject({ step: 2, runs: 1, mean: { l1Errors: 2 } })
   })
 
-  it('refuses a real (non-dry) batch when the tool source differs from exp-freeze-v1.2', async () => {
+  it('refuses a real (non-dry) batch when the tool source differs from exp-freeze-v1.3', async () => {
     const st = freezeStatus(repo)
     if (st.ok) return // running on the freeze commit itself
     const base = mkdtempSync(join(tmpdir(), 'batch-'))
