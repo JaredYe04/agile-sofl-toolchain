@@ -22,4 +22,3 @@ scripts/soft-copyright/personal-info.json
 /scripts/soft-copyright
 packages/studio/.env.ecnu
 packages/studio/.env.lab
-/packages/studio/out
