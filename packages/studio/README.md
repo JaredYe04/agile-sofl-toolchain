@@ -41,6 +41,17 @@ npm run bundle --workspace @agile-sofl/language-server
 npm run dev --workspace @agile-sofl/studio
 ```
 
+## Headless agent CLI
+
+The specification agent can run without the Electron window: an informal `.aspec` goes in, and a hybrid `.asfl` plus a run directory come out. Configure an OpenAI-compatible model with `ECNU_API_KEY` (optional `ECNU_API_BASE_URL` and `ECNU_MODEL`). `--dry-run` needs no key and makes no network calls.
+
+```bash
+node packages/studio/scripts/agent-harness/headless.mjs --help
+npm run agent:headless --workspace @agile-sofl/studio -- --informal public/templates/minimal-informal.aspec --dry-run
+```
+
+See [scripts/agent-harness/README.md](scripts/agent-harness/README.md).
+
 ## Architecture
 
 | Layer | Role |
