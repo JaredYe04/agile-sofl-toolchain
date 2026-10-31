@@ -29,6 +29,11 @@ export interface ReferenceItem {
    *  any of these is considered "about" this item. These are matching cues, not the gold value — the
    *  agent never sees them; only the oracle uses them to route the question. */
   keywords: string[]
+  /** A neutral, researcher-authored topic phrase (a QUESTION, never the gold value): used by the
+   *  deterministic mock driver (p5methods.ts) to label the requirement node and to word the
+   *  clarification question. It mirrors the open topics already named in `initialRoughStory`, so no
+   *  gold is exposed — the concrete value still comes only from the oracle. */
+  topicPhrase: string
   /** The stakeholder's stance when this is asked. */
   policy: ItemPolicy
   /** Counts toward decision RECALL (a "must-have" the method should recover). */
@@ -90,6 +95,7 @@ export const BOOKING_TASK: P5Task = {
       statement: 'A refund is allowed only within 48 hours of the booking; after 48 hours no refund.',
       answer: 'within 48 hours of the booking',
       keywords: ['refund', '退款', 'money back', 'reimburse'],
+      topicPhrase: 'refund timing',
       policy: 'knows',
       mustHave: true,
       critical: true,
@@ -100,6 +106,7 @@ export const BOOKING_TASK: P5Task = {
       statement: 'A single user may hold at most 3 active (unexpired) bookings at the same time.',
       answer: 'at most 3 active bookings at the same time',
       keywords: ['how many', 'maximum', 'cap', 'limit', 'per user', 'at a time', '同时', '上限'],
+      topicPhrase: 'the maximum per-user cap on active bookings',
       policy: 'knows',
       mustHave: true,
       policyDecision: true
@@ -109,6 +116,7 @@ export const BOOKING_TASK: P5Task = {
       statement: 'A seat that is reserved but not yet paid is held for 15 minutes, then released to others.',
       answer: 'held for 15 minutes, then released',
       keywords: ['hold', 'unpaid', 'unconfirmed', 'expire', 'release', 'minutes', '保留', '超时'],
+      topicPhrase: 'how long an unpaid seat is held before release',
       policy: 'knows',
       mustHave: true,
       critical: true
@@ -118,6 +126,7 @@ export const BOOKING_TASK: P5Task = {
       statement: 'The same seat cannot be booked by two users for the same event time slot.',
       answer: 'a seat cannot be booked by two users for the same time slot',
       keywords: ['double', 'conflict', 'same seat', 'two users', 'duplicate', '并发', '冲突', '重复'],
+      topicPhrase: 'whether two people can book the same seat at the same time',
       policy: 'knows',
       mustHave: true,
       critical: true
@@ -127,6 +136,7 @@ export const BOOKING_TASK: P5Task = {
       statement: 'A customer may cancel a booking only before the event start time.',
       answer: 'cancellation is allowed only before the event start time',
       keywords: ['cancel', 'before', 'start time', 'cutoff', '取消', '开始前'],
+      topicPhrase: 'when a booking may be cancelled',
       policy: 'knows',
       mustHave: true,
       policyDecision: true
@@ -136,6 +146,7 @@ export const BOOKING_TASK: P5Task = {
       statement: 'OVERBOOKING IS UNDECIDED — the stakeholder does not know whether to overbook.',
       answer: 'unknown',
       keywords: ['overbook', 'over-booking', 'oversell', '超售'],
+      topicPhrase: 'whether the system should ever overbook',
       policy: 'unknown',
       mustHave: true,
       policyDecision: true
@@ -145,6 +156,7 @@ export const BOOKING_TASK: P5Task = {
       statement: 'LOYALTY/DISCOUNT POLICY is a private commercial decision the stakeholder will not disclose.',
       answer: 'none_of_above',
       keywords: ['loyalty', 'discount', 'points', 'rewards', '积分', '折扣', '会员'],
+      topicPhrase: 'any discount or loyalty behaviour',
       policy: 'refuse',
       policyDecision: true
     },
@@ -153,6 +165,7 @@ export const BOOKING_TASK: P5Task = {
       statement: 'REFUND-REASON CATEGORIES are DEFERRED to next term (not decided now).',
       answer: 'defer',
       keywords: ['refund reason', 'reason code', 'why refund', '退款原因'],
+      topicPhrase: 'what refund reason codes a customer can choose',
       policy: 'defer',
       policyDecision: true
     }
