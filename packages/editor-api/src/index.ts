@@ -99,6 +99,18 @@ export {
   setModuleParent,
   stripOrphanParents
 } from './modulePatch.js'
+export {
+  hybridSuffixAfterProgramDot,
+  integrateOrphanModulesAfterProgramDot,
+  insertHybridTextBeforeProgramDot,
+  orphanModuleHeaders
+} from './moduleProgramLayout.js'
+export {
+  repairGuiModuleStub,
+  detectOpenGuiModules,
+  isGuiModuleStubIssue,
+  guiStubBlocksParse
+} from './guiModuleStubRepair.js'
 export type { ModulePatchAction } from './modulePatch.js'
 
 export {

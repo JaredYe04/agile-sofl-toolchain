@@ -7,7 +7,10 @@
 import { createHash, randomBytes } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { applyHybridPatch } from '@agile-sofl/editor-api'
+import { applyHybridPatch, collectHybridAgentDiagnostics } from '@agile-sofl/editor-api'
+import { acceptHybridWrite, setHybridWriteDiagnosticCollector } from '../../src/shared/asflRepair'
+
+setHybridWriteDiagnosticCollector(collectHybridAgentDiagnostics)
 import { runAgentTurn, resumeWithToolResult, type AgentTurnContext } from '../../src/main/services/llm/agentLoop'
 import { generationAgentPermissions, newId, type AgentSession, type InformalPatchPayload } from '../../src/main/services/llm/agentTypes'
 import { skillById } from '../../src/main/services/llm/skills'
@@ -98,19 +101,45 @@ export function promptHash(o: { informal: string; skillPrompt: string; userText:
     .digest('hex')
 }
 
-export function applyHybridProposal(source: string, patch: InformalPatchPayload, projectRoot: string): { content: string; error?: string; applied: boolean } {
+export function applyHybridProposal(
+  source: string,
+  patch: InformalPatchPayload,
+  projectRoot: string
+): {
+  content: string
+  error?: string
+  applied: boolean
+  warnings?: string[]
+  diagnostics?: { errors: number; warnings: number; items?: unknown[] }
+} {
+  const gate = (next: string, softError?: string) => {
+    const gated = acceptHybridWrite(source, next)
+    return {
+      content: gated.content,
+      error: softError,
+      applied: gated.content !== source,
+      warnings: gated.warnings,
+      diagnostics: gated.diagnostics
+    }
+  }
   if (isSourcePatch(patch)) {
     const r = applySourceEdits(source, patch.operations as never)
-    return { content: r.content, error: r.error, applied: r.content !== source }
+    const out = gate(r.content, r.error)
+    if (r.error && out.warnings) out.warnings = [...out.warnings, r.error]
+    else if (r.error) out.warnings = [r.error]
+    return out
   }
   const stepOp = patch.operations.find((op) => op.op === 'refine-step')
   if (stepOp && patch.operations.length === 1) {
     const r = applyProjectRefinementStep(projectRoot, source, stepOp as never) as { source: string; error?: string }
     if (r.error) return { content: source, error: r.error, applied: false }
-    return { content: r.source, applied: r.source !== source }
+    return gate(r.source)
   }
   const r = applyHybridPatch(source, patch as never)
-  return { content: r.content, error: r.error, applied: r.content !== source }
+  const out = gate(r.content, r.error)
+  const warnings = [...(out.warnings ?? []), ...(r.warnings ?? [])]
+  if (warnings.length) out.warnings = warnings
+  return out
 }
 
 export async function runOnce(o: RunOptions): Promise<RunResult> {
@@ -195,8 +224,17 @@ export async function runOnce(o: RunOptions): Promise<RunResult> {
       const r = applyHybridProposal(ctx.hybridAsfl ?? '', patch, runDir)
       ctx.hybridAsfl = r.content
       writeFileSync(join(runDir, 'hybrid.asfl'), r.content)
-      payload = r.error ? { action: r.applied ? 'applied' : 'error', error: r.error } : { action: 'applied' }
-      applied = r.applied; applyError = r.error
+      payload = r.error
+        ? {
+            action: r.applied ? 'applied' : 'error',
+            ok: r.applied,
+            error: r.error,
+            warnings: r.warnings,
+            diagnostics: r.diagnostics
+          }
+        : { action: 'applied', ok: true, warnings: r.warnings, diagnostics: r.diagnostics }
+      applied = r.applied
+      applyError = r.error
     } else {
       payload = { action: 'error', error: `harness only applies hybrid proposals (got ${patch.target})` }
       applyError = String(payload.error)

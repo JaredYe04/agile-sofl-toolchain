@@ -1,3 +1,10 @@
+import {
+  detectOpenGuiModules,
+  integrateOrphanModulesAfterProgramDot,
+  orphanModuleHeaders,
+  repairGuiModuleStub
+} from '@agile-sofl/editor-api'
+
 export type HybridWriteDiagnostic = {
   severity: string
   code: string
@@ -115,9 +122,23 @@ function summarizeDiagnostics(source: string): WriteDiagnostics | undefined {
 }
 
 export function acceptHybridWrite(before: string, after: string): WriteOutcome {
-  const repaired = repairAsflSurface(after)
+  const integrated = integrateOrphanModulesAfterProgramDot(after)
+  const stubFixed = repairGuiModuleStub(integrated.text)
+  const repaired = repairAsflSurface(stubFixed.text)
   const introduced = introducedErrors(before, repaired.text)
-  const warnings: string[] = []
+  const warnings: string[] = [...integrated.notes, ...stubFixed.notes]
+  const openGui = detectOpenGuiModules(repaired.text)
+  if (openGui.length) {
+    warnings.push(
+      `Write kept, but GUI module(s) still lack end_module (${openGui.join(', ')}). Use propose_hybrid_changes add kind=module instead of pasting a one-line stub.`
+    )
+  }
+  const orphans = orphanModuleHeaders(repaired.text)
+  if (orphans.length) {
+    warnings.push(
+      `Write kept, but ${orphans.length} module header(s) are not in the parsed program (${orphans.join(', ')}). Call read_hybrid_specification and fix layout or syntax before continuing.`
+    )
+  }
   if (introduced.length) {
     const sample = introduced
       .slice(0, 6)

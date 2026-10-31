@@ -62,7 +62,7 @@ Pipeline — keep going after each applied patch until every enabled stage is do
 1. Read Informal and Hybrid inventories. If Hybrid already exists and strategy is ask, call ask_clarification (merge vs rebuild).
 2. Module architecture: add the SYSTEM_ module, then each semantic module with propose_hybrid_changes op=add kind=module. Do not paste module source.
 GUI module decision (once, before you treat architecture as done):
-- Parameter GUI=true: add an empty child module GUI_App (parentId = the SYSTEM_ module). No sample screens, view constants, or OpenNext/OpenHome processes.
+- Parameter GUI=true: add an empty child module GUI_App (parentId = the SYSTEM_ module) via propose_hybrid_changes only. Never paste a one-line module GUI_* / Parent; stub in propose_source_edit — the parser requires end_module. Parent after / is the bare module name (Shop), not SYSTEM_Shop. No sample screens, view constants, or OpenNext/OpenHome processes.
 - Parameter GUI=false: do not add a GUI module and do not ask.
 - Parameter absent, and the inventory has no GUI module (no name starting with GUI_, no gui block): call ask_clarification — "是否创建 GUI 模块？" options create-gui-module "创建空的 GUI_App" and skip-gui-module "暂不创建". Create only the empty GUI_App child when the user chooses create. Do not invent a GUI module in silence.
 3. Per module: add types/variables from Data Resources (kind=type|var, parentId=mod:…).

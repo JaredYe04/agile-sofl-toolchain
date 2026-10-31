@@ -1,3 +1,5 @@
+import { insertHybridTextBeforeProgramDot } from '@agile-sofl/editor-api'
+
 export type SourceEditOp = {
   op: string
   oldText?: string
@@ -63,7 +65,9 @@ export function applySourceEdits(
         warnings.push('append requires text.')
         continue
       }
-      content = content.trimEnd() ? `${content.trimEnd()}\n${text}` : text
+      content = content.trimEnd()
+        ? insertHybridTextBeforeProgramDot(content, text)
+        : text
       continue
     }
     if (kind === 'replace') {
