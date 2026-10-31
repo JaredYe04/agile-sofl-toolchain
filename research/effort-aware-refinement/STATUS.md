@@ -1,7 +1,7 @@
 # STATUS — Effort-Aware Refinement Research
 
 **Branch:** `research/effort-aware-refinement` · **Baseline commit:** `8f325df`
-**Last updated:** 2026-10-31 (P1 + P2 + P3 + **P4 core done/green** at `094bfcb`; P4 thin Studio tools remaining)
+**Last updated:** 2026-10-31 (P1 + P2 + P3 + **P4 DONE** — core `094bfcb`, thin Studio anti-fabrication tools `3fbecec`, `exp-freeze-v1.3` tag `968126d`; P5 next)
 
 ## Phase gates
 
@@ -11,7 +11,7 @@
 | **P1** | Literature + novelty assessment + RQ freeze | ✅ **DONE** — **REVISE** decision (cost-aware selection = prior art [SAGE-Agent]; claim re-scoped to the joint over a verified hybrid spec) |
 | **P2** | Conceptual model + semantic design + ADRs | ✅ **DONE** (`conceptual-model.md` finalized vs §4; ADR-004) |
 | **P3** | Refinement tree/graph infra + tests-first (stable) | ✅ **DONE** (`b110284`; 107 tests green; 1199-test floor holds) |
-| **P4** | Agent harness + human decision loop | 🟡 **CORE DONE** (`094bfcb`: `RefinementSession` + 6 §6.6 gate replay tests); thin Studio tools + `exp-freeze-v1.3` remaining |
+| **P4** | Agent harness + human decision loop | ✅ **DONE** — core `094bfcb` + thin Studio anti-fabrication tools `3fbecec` (record_decision is NOT an agent tool) + `exp-freeze-v1.3` tag `968126d` (refinement added to the guard) |
 | P5 | Benchmark + oracle + baselines + preregistration | ⬜ |
 | P6 | Run experiments (authorized free model) + diagnose | ⬜ |
 | P7 | User study protocol (design-only; no fabricated participants) | ⬜ |
@@ -107,7 +107,7 @@
   sum; the "1199" first recorded here was a miscount of that same breakdown), same 5 pre-existing
   studio failures, **zero new failures**. `tsc` clean.
 
-## P4 — core completed (`RefinementSession` + §6.6 gate replay tests; commit `094bfcb`)
+## P4 — completed (core `094bfcb` + thin Studio anti-fabrication tools `3fbecec` + `exp-freeze-v1.3` tag)
 - **`RefinementSession`** (`packages/refinement/src/session.ts`) — the single **headless, deterministic,
   typed domain-tool + turn-orchestration** layer (task book §6.1 — **NOT a second agent system**). The
   Studio agent / experiment harness consume it as **thin wrappers** (no logic duplication). Lives in
@@ -133,20 +133,39 @@
   5 failing** (verified per-workspace: parser 493, refinement 115, gui 23, aspec 46, editor-api 196,
   language-server 50, vscode 84, studio 322) — the **5 are the same pre-existing** studio failures
   (4 environmental Electron + 1 `llmPromptsFsf` "implies"), **zero new**.
-- **Remaining P4 (touches `packages/studio`):** wire the 5 **thin** agent tools over `RefinementSession`
-  + add the studio dep + cut `exp-freeze-v1.3`. Gate scenario #7 (real `.asfl` fixtures pass the language
-  checks) is the studio/parser layer, exercised in P5/P6.
+- **Thin Studio layer + anti-fabrication (commit `3fbecec`, touches `packages/studio`):** the requirement
+  tools are **thin, pure wrappers** over `RefinementSession` (`requirementTools.ts`, no fs/Electron). The
+  §6.1 anti-fabrication rule is wired end to end: **`record_decision` is NOT an agent tool** — the LLM only
+  orients (`read_requirement_graph`/`list_obligations`/`select_next_clarification`/`assess_readiness`, all
+  reads) and PRESENTS the stakeholder question via `ask_clarification` **tagged with its `obligationId`**.
+  The stakeholder's actual answer (option label(s) + typed text from the Studio UI, or the experiment
+  oracle's plain text) is the ONLY input that becomes a decision, recorded via
+  `recordHumanClarificationAnswer` under actor `user` (product) or the ISOLATED `simulated_user` (experiment)
+  — threaded through `resumeWithToolResult`'s new `answerActor` param and merged into the tool message so the
+  loop never re-asks. A hallucinated `record_decision` call is **refused** and fabricates nothing; a guess can
+  never become a `user_confirmed` source (provenance enforced in the core). Tests: `requirementTools` (21),
+  `requirementStore` (6), `requirementClarificationFlow` (2, end-to-end real loop + on-disk session incl. the
+  hallucination-refusal case), `clarificationAnswer` (5), `agentHarness` (12) — all green.
+- **`exp-freeze-v1.3` tag (commit `968126d`):** the wiring added requirement source under
+  `packages/studio/src` (in `TOOL_PATHS`), so the guard moved to a new tag (a real P5/P6 batch would be
+  refused on `v1.2`). Coordinated change: `FREEZE_TAG` v1.2→v1.3; **`packages/refinement/src` + package.json
+  added to `TOOL_PATHS`** and `refinement` to `DIST_PACKAGES` so the requirement-layer logic studio now
+  imports is captured by the guard; `prepare-v13.mjs` (replaces `prepare-v12.mjs`) also builds `@agile-sofl/refinement`;
+  the batchRunner `freezeTag` assertion now tracks the `FREEZE_TAG` constant. Verified `freezeStatus → ok` at
+  `968126d` (no tool drift, no stale dist). The "experiment freeze v1.2" reasoning-off decision (2026-10-08) is
+  the experimental design, not the git tag, and is untouched.
+- **Gate scenario #7** (real `.asfl` fixtures pass the language checks) is the studio/parser layer, exercised
+  in P5/P6 (the harness's per-step parser/L1/L2 diagnostics are the seam).
 
 ## Next actions
-1. **P4 (REMAINING):** wire `RefinementSession` as **thin** Studio agent tools — `read_requirement_graph`,
-   `list_obligations`, `select_next_clarification`, `record_decision`, `assess_readiness` — following the
-   `HybridAgentBootstrapPayload` pattern in `packages/studio/src/renderer/lib/refineAgentTools.ts` + tool
-   registration in `main/services/llm/agentLoop.ts` (each a thin call into the session; `record_decision`
-   passes the actor explicitly — never the agent impersonating the user). Add `@agile-sofl/refinement` to
-   studio deps; `tsc` clean + full `npm test` green (1329 floor); then cut `exp-freeze-v1.3`.
-2. **P5:** simulated-stakeholder **oracle** as a `resolveClarification` hook (harness `core.ts:52`) driving
-   `RefinementSession.runTurn`; extend `Condition` to A/B/C/D + ablations (SAGE-Agent EVPI−Cost as the RQ3
-   baseline); scorer + prereg check; smoke + pilot on the offline `--dry-run` fake-LLM path first.
+1. **P4 ✅ DONE** (core `094bfcb` + thin Studio anti-fabrication tools `3fbecec` + `exp-freeze-v1.3` tag
+   `968126d`). All 5 requirement tools are thin wrappers; `record_decision` is deliberately NOT an agent
+   tool (the §6.1 anti-fabrication rule). No P4 work remains; the guard is green at the new tag.
+2. **P5:** simulated-stakeholder **oracle** as a `resolveClarification` hook (harness `core.ts`) that
+   answers in plain text and is threaded through `resumeWithToolResult` with `answerActor = 'simulated_user'`
+   (the ISOLATED simulator actor — task book §6.1; never the agent); it drives `RefinementSession.runTurn`.
+   Extend `Condition` to A/B/C/D + ablations (SAGE-Agent EVPI−Cost as the RQ3 baseline); scorer + prereg
+   check; smoke + pilot on the offline `--dry-run` fake-LLM path first (runs on `exp-freeze-v1.3`).
 3. **P6:** run on the two authorized FREE APIs (both confirmed reachable; ECNU `ecnu-max` =
    `deepseek-v4-flash`); diagnose; iterate (no test-set overfitting).
 4. Paper (P8): cite SAGE-Agent + the others per `literature-notes.md`; RE 2026 = double-blind, 10+2 pages.

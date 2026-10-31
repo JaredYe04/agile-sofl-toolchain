@@ -2,11 +2,14 @@
   "project": "Effort-Aware Incremental Refinement of Hybrid Requirements Specifications with LLM Agents",
   "branch": "research/effort-aware-refinement",
   "baseline_commit": "8f325dfe32db9e2c3498032860fa7bc0cb450227",
-  "last_commit": "094bfcb",
-  "phase": "P4 (core DONE — RefinementSession + 6 §6.6 gate replay tests; thin studio tools + exp-freeze-v1.3 pending)",
+  "last_commit": "968126d",
+  "freeze_tag": "exp-freeze-v1.3",
+  "phase": "P0+P1+P2+P3+P4 DONE -> P5 next. P4 = core 094bfcb + thin Studio anti-fabrication tools 3fbecec + exp-freeze-v1.3 tag 968126d (refinement added to the freeze guard).",
   "p1_gate": "PASSED (REVISE)",
   "p1_gate_note": "Cost-aware EVPI-Cost question selection is PRIOR ART (SAGE-Agent, Findings ACL 2026). Claim re-scoped to the JOINT (typed structure + detector-classified obligations + decision provenance + readiness policy + cross-node decision propagation) over a verified hybrid Agile-SOFL spec. Per task book 3.4: shrink claim, record pivot, keep building.",
   "completed_tasks": [
+    "P4: exp-freeze-v1.3 tag (commit 968126d = the tag; 5 files +31/-27). The Studio wiring touched packages/studio/src (in TOOL_PATHS), so the freeze guard moved v1.2 -> v1.3 or every real P5/P6 batch would be refused (v1.2 predates the requirement tools + the studio refinement dep). Coordinated change: freeze.ts FREEZE_TAG v1.3 + add packages/refinement/src + package.json to TOOL_PATHS and refinement to DIST_PACKAGES (the requirement-layer logic studio now imports is captured by the guard); batch.ts v1.3 refs + v13-origin.json origin name; prepare-v13.mjs (replaces prepare-v12.mjs; also builds @agile-sofl/refinement); batchRunner.test.ts freezeTag assertion now tracks the FREEZE_TAG constant. The 'experiment freeze v1.2' reasoning-off decision (2026-10-08) is the experimental design, NOT the git tag, left untouched. Verified freezeStatus() -> ok:true at 968126d (no tool drift, no stale dist); batchRunner 8/8; studio 351/5.",
+    "P4: thin Studio anti-fabrication requirement layer (commit 3fbecec; 10 files +1227/-6). record_decision is NOT an agent tool (task book 6.1 anti-fabrication): the LLM only orients (read_requirement_graph/list_obligations/select_next_clarification/assess_readiness, all reads gated on hybrid.read) and PRESENTS the stakeholder question via ask_clarification tagged with its obligationId; the stakeholder's actual answer (option labels + typed text from the UI, or the experiment oracle's plain text) is the ONLY input that becomes a decision, recorded via recordHumanClarificationAnswer under actor user (product) or the ISOLATED simulated_user (experiment) threaded through resumeWithToolResult's new answerActor param and merged into the tool message (requirementDecision, 'ALREADY recorded') so the loop never re-asks. A hallucinated record_decision call is REFUSED (not an agent tool) and fabricates nothing; a guess can never become user_confirmed (provenance enforced in the core). Files: requirementTools.ts (new, pure executor; REQUIREMENT_TOOL_NAMES = 4 reads), requirementStore.ts (new, per-project session load/save at .agile-sofl/requirement-graph.json), agentLoop.ts (dispatch + obligationId threading + answerActor record path), skills.ts (drop record_decision schema, tag ask_clarification), agentTypes.ts (ClarificationPrompt.obligationId), clarificationAnswer.ts (export readStructured), studio/package.json (add @agile-sofl/refinement dep). Tests all green: requirementTools (21), requirementStore (6), requirementClarificationFlow (2, end-to-end real agent loop + on-disk session incl. the record_decision hallucination-refusal), clarificationAnswer (5), agentHarness (12). Full studio vitest -> 351 pass / 5 fail (same 5 pre-existing; ZERO new); tsc back to the 68 baseline.",
     "P4: RefinementSession (packages/refinement/src/session.ts) — the single headless, deterministic, typed domain-tool + turn-orchestration layer (task book 6.1, NOT a second agent system). Tools: readRefinementTree, proposeRefinement (AI_hypothesis candidates, never user_confirmed), checkObligations, listOpenObligations, selectNextClarification (cost-aware; answered obligations never re-asked), recordDecision (isolated actor; confirm/answer discharges + honest source, defer tracks deferral, unknown/reject fabricates nothing; supersedes re-evaluates the full impact set + pulls dependents back to needs_clarification, no auto re-approval), proposeRevision/applyRevision (version-gated; stale proposals REJECTED not overwritten), assessReadiness, runTurn (deterministic turn loop; budget exhaustion = stop). Committed 094bfcb.",
     "P4: 6 §6.6 GATE replay tests (tests/session-gate.test.ts) — coarse->confirm->refine->ready; unknown does not fabricate; defer preserves risk + non-blocking branches continue; prior-rule change invalidates dependents w/o auto re-approval; version-stale edit proposal rejected; no infinite re-ask. Each run twice with deterministic id generators to prove replay determinism (+2 supplementary anti-fabrication tests). refinement 115 tests green (107+8); tsc + build clean; full monorepo npm test 1329 passing / 5 failing (same pre-existing studio failures), zero new failures.",
     "P3: packages/refinement (107 tests green) — typed RequirementGraph (refines tree + typed cross-links, INV-1..INV-5, iterative traversals to 10k nodes), detector-classified obligations (mechanical/llm_candidate/user_decision) with discharge() as the anti-fabrication choke point, provenance table (single enforcement), DecisionStore + withdraw propagation (re-opens satisfied/waived/deferred, demotes grounded confirmed nodes, never re-approves), cost-aware selector (SAGE-Agent EVPI-Cost form), ReadinessAssessor (5 verdicts; budget-exhaustion = stop not pass), node lifecycle, dense-sequenced replayable EventLog, schemaVersion=1 serialization (additive migration, crash recovery, future-version rejection, round-trip invariants). Committed b110284. Root build/test wiring added.",
@@ -19,8 +22,8 @@
     "P0-P2: confirmed both authorized FREE APIs reachable (lab lab-qwen3.8-27b reasoning model; ECNU ecnu-max = deepseek-v4-flash)"
   ],
   "remaining_tasks": [
-    "P4 (REMAINING): wire the (now-complete) RefinementSession as THIN Studio agent tools (HybridAgentBootstrapPayload specs per refineAgentTools.ts + registration in main/services/llm/agentLoop.ts — thin wrappers, no logic duplication) + add @agile-sofl/refinement to studio deps; THEN cut the exp-freeze-v1.3 tag (the current exp-freeze-v1.2 guard covers packages/studio/src, which this touches). The requirement-layer core + the 6 §6.6 gate replay tests are DONE (094bfcb). Gate scenario #7 (real .asfl fixtures still pass the language checks) is the studio/parser layer, exercised in P5/P6.",
-    "P5: extend agent-harness (oracle = resolveClarification per core.ts:52; A/B/C/D+ablation conditions off T/B2/B0-auto; scorer; prereg check; smoke+pilot)",
+    "P4: DONE (core 094bfcb + thin Studio anti-fabrication tools 3fbecec + exp-freeze-v1.3 tag 968126d). Gate scenario #7 (real .asfl fixtures still pass the language checks) is the studio/parser layer, exercised in P5/P6 via the harness per-step parser/L1/L2 diagnostics.",
+    "P5: extend agent-harness — simulated-stakeholder oracle = the resolveClarification hook answering in plain text, threaded through resumeWithToolResult with answerActor='simulated_user' (ISOLATED actor, task book 6.1; never the agent), driving RefinementSession.runTurn; A/B/C/D+ablation conditions off T/B2/B0-auto (SAGE-Agent EVPI-Cost as RQ3 baseline); scorer; prereg check; smoke+pilot on the offline --dry-run path first, running on exp-freeze-v1.3 (build via prepare-v13.mjs), then the authorized FREE APIs",
     "P6: run smoke/pilot/main on authorized free model, diagnose, iterate (no test-set overfitting)",
     "P7: user study protocol (design-only; no fabricated participants)",
     "P8: LaTeX paper (IEEE/RE2026 template, TikZ figures, verified references per literature-notes.md, claims-audit.md, reviewer-attack.md) following @skills; RE 2026 = double-blind 10+2 pages",
@@ -31,7 +34,7 @@
     "B4: real-model runs use FREE authorized APIs only (lab lab-qwen3.8-27b, ECNU ecnu-max=deepseek-v4-flash); no paid spend",
     "B5: user study needs real participants (design-only by design)",
     "B6: some literature paywalled (Tower, SOFL-2021 JSS are abstract-only; never invent citations)",
-    "P5 note: freeze guard TOOL_PATHS includes packages/studio/src -> after P4 add new freeze tag (exp-freeze-v1.3); packages/refinement is safe"
+    "RESOLVED (P4): freeze guard now includes packages/studio/src AND packages/refinement/src; exp-freeze-v1.3 tag cut at 968126d. Real P5/P6 batches must run on exp-freeze-v1.3 (build via prepare-v13.mjs, which also builds @agile-sofl/refinement)."
   ],
   "commands_run": [
     "git clone https://github.com/JaredYe04/agile-sofl-toolchain",
@@ -42,8 +45,9 @@
   ],
   "tests_passed": {
     "parser": 493, "refinement": 115, "gui": 23, "aspec": 46, "editor-api": 196, "language-server": 50, "vscode": 84,
-    "studio_passed": 322, "total_passed": 1329,
-    "note": "VERIFIED per-workspace full `npm test` run (commit 094bfcb): 493+115+23+46+196+50+84+322 = 1329 passing / 5 failing. Same 5 pre-existing studio failures (4 environmental Electron-binary + 1 llmPromptsFsf 'implies' assertion); ZERO new failures. (Note: the previously-recorded '1199' total was a miscount of this same per-workspace breakdown — the true sum was always 1321 at the 107-refinement point and is 1329 with the 8 new P4 tests; the 5 pre-existing studio failures are unchanged.)"
+    "parser": 493, "refinement": 121, "gui": 23, "aspec": 46, "editor-api": 196, "language-server": 50, "vscode": 84,
+    "studio_passed": 351, "total_passed": 1364,
+    "note": "VERIFIED per-workspace full `npm test` @ 968126d: 493+121+23+46+196+50+84+351 = 1364 passing / 5 failing. Breakdown moves from the 1329 recorded at 094bfcb: (a) the snapshot/restore commit 16fde03 (task #11) added 6 refinement tests -> refinement 115 -> 121 (never previously folded into the total); (b) the P4 wiring commit 3fbecec added 29 studio tests (requirementTools 21 + requirementStore 6 + requirementClarificationFlow 2) -> studio 322 -> 351. Same 5 pre-existing studio failures (4 environmental Electron-binary + 1 llmPromptsFsf 'implies'); ZERO new failures. tsc --noEmit in studio = 68 = pre-existing baseline (zero new). freezeStatus() -> ok:true at exp-freeze-v1.3 (968126d)."
   },
   "tests_failed": {
     "studio": 5,
@@ -70,12 +74,15 @@
     "research/effort-aware-refinement/research/literature-matrix.csv",
     "research/effort-aware-refinement/research/literature-notes.md",
     "packages/refinement/src/session.ts (P4 RefinementSession domain-tool + turn-orchestration core, 094bfcb)",
-    "packages/refinement/tests/session-gate.test.ts (P4 six §6.6 gate replay tests + 2 anti-fabrication, 094bfcb)"
+    "packages/refinement/tests/session-gate.test.ts (P4 six §6.6 gate replay tests + 2 anti-fabrication, 094bfcb)",
+    "packages/studio/src/main/services/llm/requirementTools.ts (P4 thin pure requirement-tool executor; record_decision NOT an agent tool, 3fbecec)",
+    "packages/studio/src/main/services/llm/requirementStore.ts (P4 per-project RefinementSession load/save, 3fbecec)",
+    "packages/studio/tests/requirementTools.test.ts (21) + requirementStore.test.ts (6) + requirementClarificationFlow.test.ts (2, end-to-end real loop + on-disk session), 3fbecec",
+    "packages/studio/scripts/agent-harness/prepare-v13.mjs (replaces prepare-v12.mjs; builds @agile-sofl/refinement too, 968126d) + exp-freeze-v1.3 tag"
   ],
   "next_actions": [
-    "P4 (core DONE at 094bfcb; REMAINING): wire RefinementSession as THIN Studio agent tools (read_requirement_graph, list_obligations, select_next_clarification, record_decision, assess_readiness) as HybridAgentBootstrapPayload specs (pattern: packages/studio/src/renderer/lib/refineAgentTools.ts; registration: main/services/llm/agentLoop.ts) — thin wrappers only, no logic duplication; add packages/refinement to studio deps; then cut the exp-freeze-v1.3 freeze tag (exp-freeze-v1.2 guard covers packages/studio/src which this touches). The requirement-layer core + 6 §6.6 gate replay tests are DONE.",
-    "P4 acceptance: new tools are a thin layer over the (already-tested) refinement package; add packages/refinement to studio deps; cut the exp-freeze-v1.3 freeze tag (current exp-freeze-v1.2 guard covers packages/studio/src)",
-    "P5: implement the simulated-stakeholder oracle as a resolveClarification hook (core.ts:52); extend Condition to A/B/C/D + ablations (SAGE-Agent EVPI-Cost as RQ3 baseline); scorer + prereg check; smoke+pilot",
+    "P4 DONE (core 094bfcb + snapshot/restore 16fde03 + thin Studio anti-fabrication tools 3fbecec + exp-freeze-v1.3 tag 968126d). record_decision is deliberately NOT an agent tool. No P4 work remains; the guard is green at the new tag.",
+    "P5: implement the simulated-stakeholder ORACLE as the harness resolveClarification hook (core.ts) answering in plain text, threaded through resumeWithToolResult with answerActor='simulated_user' (ISOLATED actor, task book 6.1 — never the agent) driving RefinementSession.runTurn; extend Condition to A/B/C/D + ablations (SAGE-Agent EVPI-Cost as RQ3 baseline); scorer + prereg check; smoke+pilot on the offline --dry-run path first, running on exp-freeze-v1.3 (build via prepare-v13.mjs), then the authorized FREE APIs",
     "Do NOT consume paid APIs; do NOT fabricate results; do NOT push without authorization"
   ]
 }

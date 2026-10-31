@@ -107,3 +107,50 @@ no auto re-approval; (5) version-stale edit REJECTED; (6) no infinite re-ask. + 
 vscode 84, studio 322) — same 5 pre-existing studio failures, **zero new**. (Corrected the earlier
 "1199" total, which was a miscount of this same breakdown.) Remaining P4 = thin Studio agent tools +
 `exp-freeze-v1.3` tag (touches `packages/studio`).
+
+## 2026-10-31 — P4 (thin Studio anti-fabrication tools + `exp-freeze-v1.3`) — DONE, committed `3fbecec` + tag `968126d`
+Built the thin Studio requirement layer and wired the §6.1 anti-fabrication rule end to end, then cut the
+new freeze tag. **Design correction from the task book §6.1 ("record_decision 不能由 Agent 假扮用户直接调用；
+实验中必须明确使用经过隔离的 simulator actor"):** `record_decision` is **NOT an agent tool** — the LLM only
+ORIENTS (`read_requirement_graph`/`list_obligations`/`select_next_clarification`/`assess_readiness`, all reads,
+gated on `hybrid.read`) and PRESENTS the stakeholder question via `ask_clarification` **tagged with its
+`obligationId`**. The stakeholder's actual answer (option label(s) + typed text from the Studio UI, or the
+experiment oracle's plain text) is the ONLY input that becomes a decision, recorded via
+`recordHumanClarificationAnswer` under actor `user` (product) or the ISOLATED `simulated_user` (experiment) —
+threaded through `resumeWithToolResult`'s new 9th `answerActor` param and merged into the tool message
+(`requirementDecision`, "ALREADY recorded") so the loop never re-asks. A hallucinated `record_decision` call
+is REFUSED (`not an agent tool`) and fabricates nothing; a guess can never become a `user_confirmed` source
+(provenance enforced once in the core `provenance.ts`).
+
+- **Files (commit `3fbecec`, 10 files, +1227/-6):** `requirementTools.ts` (new, pure executor: 4 read/assess
+  tools + `clarificationAnswerToDecision` pure mapping + `recordHumanClarificationAnswer` single decision
+  entry point; `REQUIREMENT_TOOL_NAMES` has 4, `record_decision` deliberately absent), `requirementStore.ts`
+  (new, per-project load/save/clear of the `RefinementSession` at `.agile-sofl/requirement-graph.json`),
+  `agentLoop.ts` (dispatch requirement tools; `ask_clarification` carries `obligationId`; `resumeWithToolResult`
+  records the human answer into the session + persists + merges the effect), `skills.ts` (remove `record_decision`
+  schema; tag `ask_clarification` with `obligationId`), `agentTypes.ts` (`ClarificationPrompt.obligationId`),
+  `clarificationAnswer.ts` (export `readStructured`), `studio/package.json` (add `@agile-sofl/refinement` dep).
+- **Tests (all green):** `requirementTools` (21, incl. the `record_decision` refusal + simulated-user never-
+  launder + answer-mapping edge cases), `requirementStore` (6), `requirementClarificationFlow` (2, **end-to-end
+  real agent loop + on-disk session**: (1) LLM orients + presents tagged question → human clicks confirm →
+  obligation satisfied, node `ready`/`user_confirmed`, actor `user`, `human_clarification_answer`; (2) model
+  hallucinates `record_decision` → REFUSED, obligation stays open, node stays `AI_hypothesis`/`draft`),
+  `clarificationAnswer` (5), `agentHarness` (12, existing flow intact). **Full studio `vitest run` → 351 pass /
+  5 fail (the same 5 pre-existing: 4× Electron-environmental + 1× `llmPromptsFsf` "implies"); ZERO new.**
+  `tsc --noEmit` back to the 68 baseline (fixed one new `TS18048` from the recording block's optional chain).
+- **Freeze bump to `exp-freeze-v1.3` (commit `968126d`, tag `968126d`, 5 files +31/-27):** the wiring added
+  requirement source under `packages/studio/src` (in `TOOL_PATHS`), so the guard must move to a new tag or
+  every real P5/P6 batch would be refused (`v1.2` predates the requirement tools + the studio refinement dep).
+  Coordinated change: `freeze.ts` `FREEZE_TAG` v1.2→v1.3 + **add `packages/refinement/src` + `package.json` to
+  `TOOL_PATHS`** and `refinement` to `DIST_PACKAGES` (so the requirement-layer logic studio now imports is
+  captured by the guard — a drift in `refinement/src` can no longer silently change experiment behaviour);
+  `batch.ts` header/messages/`v13-origin.json` origin name/`prepare-v13.mjs` refs; `prepare-v13.mjs` (replaces
+  `prepare-v12.mjs` per convention; also builds `@agile-sofl/refinement`); `batchRunner.test.ts` imports
+  `FREEZE_TAG` so the manifest `freezeTag` assertion tracks the constant + test name updated. The "experiment
+  freeze v1.2" **reasoning-off decision** (2026-10-08, in `agentLoop.ts`/`experimentTelemetry.test.ts`) is the
+  experimental design, NOT the git tag — left untouched. Verified `freezeStatus() → { ok: true }` at `968126d`
+  (no tool drift, no stale dist) + `batchRunner` 8/8 + full studio 351/5.
+- **Note:** the harness command-safety classifier (lab-qwen3.8-27b) flapped hard this window ("temporarily
+  unavailable" / transient denials on Bash/Write/Edit); every call succeeded on retry (B3). One commit message
+  was first mangled by a PowerShell `@'...'@` here-string under bash — amended with a bash `<<'EOF'` heredoc.
+- **P4 is DONE.** Next = **P5** (oracle + baselines + scorer; runs on `exp-freeze-v1.3`).
