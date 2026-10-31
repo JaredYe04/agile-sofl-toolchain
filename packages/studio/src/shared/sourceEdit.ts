@@ -1,5 +1,3 @@
-import { insertHybridTextBeforeProgramDot } from '@agile-sofl/editor-api'
-
 export type SourceEditOp = {
   op: string
   oldText?: string
@@ -34,6 +32,18 @@ export function numberedSource(text: string, maxChars = 16000): string {
   return `${body.slice(0, maxChars)}\n…(truncated)`
 }
 
+/** Keep appends inside the program when the file ends with a trailing dot (same as addModule). */
+function appendBeforeProgramDot(source: string, insert: string): string {
+  const trimmed = source.trimEnd()
+  if (!insert.trim()) return source
+  const hadDot = trimmed.endsWith('.')
+  const body = hadDot ? trimmed.slice(0, -1).trimEnd() : trimmed
+  const separated = body && !/[;.]\s*$/.test(body) ? `${body};` : body
+  const block = insert.trimEnd()
+  const next = separated ? `${separated}\n${block}` : block
+  return hadDot ? `${next}\n.` : next
+}
+
 function clip(text: string, n: number): string {
   const compact = text.replace(/\s+/g, ' ').trim()
   if (compact.length <= n) return compact
@@ -65,9 +75,7 @@ export function applySourceEdits(
         warnings.push('append requires text.')
         continue
       }
-      content = content.trimEnd()
-        ? insertHybridTextBeforeProgramDot(content, text)
-        : text
+      content = content.trimEnd() ? appendBeforeProgramDot(content, text) : text
       continue
     }
     if (kind === 'replace') {
