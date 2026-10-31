@@ -154,3 +154,54 @@ is REFUSED (`not an agent tool`) and fabricates nothing; a guess can never becom
   unavailable" / transient denials on Bash/Write/Edit); every call succeeded on retry (B3). One commit message
   was first mangled by a PowerShell `@'...'@` here-string under bash — amended with a bash `<<'EOF'` heredoc.
 - **P4 is DONE.** Next = **P5** (oracle + baselines + scorer; runs on `exp-freeze-v1.3`).
+
+## 2026-11-01 — P5 (benchmark + oracle + scorer + baselines + smoke) — DONE, commits `ef82d3d`→`1e12d2b`
+Built the frozen P5 benchmark/oracle/scorer/baselines and validated the smoke (prereg §8) with ALL MOCKS
+(no LLM, no API spend). Five commits: `ef82d3d` (frozen task schema + deterministic simulated-stakeholder
+oracle), `ca25534` (thread the ISOLATED `simulated_user` actor + `obligationId` through the harness — the
+P6 oracle seam), `8a999e7` (deterministic run scorer), `e894f1b` (deterministic A/B/C/D method driver +
+gate test), `1e12d2b` (complete the 3-task pilot set).
+
+- **3-task pilot set** (`p5task.ts`): independently authored researcher gold (NOT from any method's output),
+  each scenario mixing all four stances (knows/unknown/refuse/defer) with bilingual collision-checked
+  keywords so each topic question routes to exactly the right item: `booking-01` (8 items),
+  `ecommerce-01` (e-commerce/order/inventory, 7 items), `taskmgmt-01` (task management: roles/dependencies/
+  delete-restore, 9 items). Every item carries a neutral `topicPhrase` (a question, never the gold value)
+  that the mock driver words its questions from — no gold is exposed.
+- **Oracle** (`oracle.ts`): the gold reader + actor stand-in. Keyword routing (most hits, tie → reference
+  order), 4 stances, unmatched question → unanswerable (NO auto-completion of defaults), seeded
+  deterministic + random modes, full interaction log (question, matched items, stance, basis). Gold
+  isolation: the evaluated agent sees only question→response.
+- **Scorer** (`scorer.ts`): pure (imports only `p5task`), independently unit-tested against INTENTIONALLY
+  correct/wrong/missing data (prereg §7.5). Reports the frozen DVs: decision recall, critical-behavior
+  coverage, precision, **unsupported-policy-decisions** (anti-fabrication — a policy value is "supported"
+  only if backed by a real/simulated actor; `AI_hypothesis`/prose-only/`deferred` do not count),
+  traceability integrity, cost DVs, and the pre-registered quality floor (recall ≥ 0.80, unsupported = 0,
+  critical ≥ 0.70).
+- **A/B/C/D method driver + ablations** (`p5methods.ts`): 7 frozen `MethodProfile`s (A free-form /
+  B static tree / C adaptive / D proposed + `D−cost-aware` / `D−propagation` / `D−obligations`). Reuses the
+  FROZEN P3/P4 core (`RefinementSession` + cost-aware `selectNextClarification` + `StakeholderOracle` +
+  `scoreRun`); mocks out ONLY question WORDING (neutral, from `topicPhrase`) and question ORDER (the
+  ablation knob). **ADR-005** records that this is a self-contained deterministic mock (prereg §8 "all
+  mocks"), NOT the `runOnce` real-LLM path and NOT a second agent system (task book §6.1).
+- **Smoke gate (prereg §8):** `p5methods.test.ts` (11 tests) runs the driver + scorer across the whole
+  3-task set and validates logs + scorer: oracle routing (each item's topic question → that item, first
+  match, not unmatched), ablation wiring (each profile reports its frozen flags; A records 0 decisions,
+  typed methods record one per item), **anti-fabrication** (free-form A's prose-only policy values are
+  UNSUPPORTED → floor fails on every task; D meets the floor with 0 unsupported on every task; B/C/D +
+  ablations all supported + floor), honesty of the non-knows items (left open, never fabricated; the
+  recorded answer is an honest terminal), determinism (byte-identical artifacts + trace per seed), and the
+  stakeholder-effort budget knob (a question budget binds and stops the cost-aware run early).
+  **Honesty boundary:** the gate test does NOT assert a D-over-C quality/effort gap — with no budget and a
+  canonical oracle every typed method recovers the full set (equal coverage); the selection/obligations/
+  propagation knobs change ORDER + provenance-source, not coverage, in the mock. The gap is a P6 real-LLM
+  measurement; asserting it here would be a fabricated result.
+- **Routing verification (probe, temporary, deleted):** all 24 items across the 3 tasks self-route
+  (`matchedItemIds[0] === item.id`, `unmatched = false`), and D meets the floor / A fails it on every task.
+- **Tests:** p5methods 11 + scorer 10 + oracle 13 = 34 green. Full studio `vitest run` → **385 pass / 5
+  fail** (the same 5 pre-existing: `projectTemplate` + `experimentTelemetry`×4 = Electron binary missing
+  (environmental); `llmPromptsFsf` = pre-existing "implies" prompt assertion — all unrelated to P5).
+  `tsc --noEmit` → **68** = pre-existing baseline (zero new).
+- **P5 is DONE.** Next = **P6** (run A/B/C/D + ablations through `core.ts runOnce` on the two authorized
+  FREE APIs, scored by `scoreRun`; pilot 3×2×4≈24 → diagnose; then the main run per pilot-variance sample
+  size). The mock driver is a P5 validation instrument — P6 retires it from the production path.

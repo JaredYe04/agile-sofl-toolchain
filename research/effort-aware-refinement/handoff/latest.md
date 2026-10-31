@@ -1,12 +1,29 @@
 # HANDOFF — latest
 
 ## Current status
-- **Branch / commit:** `research/effort-aware-refinement` / latest `968126d` (= `exp-freeze-v1.3` tag).
-  P4 commits: core `094bfcb`, thin Studio anti-fabrication tools `3fbecec`, freeze bump `968126d`. Baseline `8f325df`.
-- **Current phase:** **P0+P1+P2+P3+P4 DONE → P5 next.** P1 gate **PASSED (REVISE)**; **P3 gate PASSED**;
-  **P4 DONE** — requirement-layer core + the 6 §6.6 gate replay tests (`094bfcb`), the thin Studio
-  anti-fabrication tools (`3fbecec`, `record_decision` is NOT an agent tool), and the `exp-freeze-v1.3` tag
-  (`968126d`, with `refinement` added to the freeze guard).
+- **Branch / commit:** `research/effort-aware-refinement` / latest `1e12d2b`. Baseline `8f325df`.
+  P5 commits: oracle `ef82d3d`, harness `simulated_user`/`obligationId` threading `ca25534`, scorer
+  `8a999e7`, deterministic A/B/C/D driver + gate test `e894f1b`, 3-task pilot set `1e12d2b`.
+  (The `exp-freeze-v1.3` tag `968126d` still predates the P5 code — see ADR-005; it is the P6 vehicle.)
+- **Current phase:** **P0–P5 DONE → P6 next.** P1 gate **PASSED (REVISE)**; **P3 gate PASSED**;
+  **P4 DONE** (requirement core + 6 §6.6 gate replay tests, thin Studio anti-fabrication tools,
+  `exp-freeze-v1.3` tag); **P5 DONE** — 3-task pilot benchmark, deterministic simulated-stakeholder oracle,
+  deterministic run scorer, deterministic A/B/C/D + ablation method driver, and the smoke (prereg §8:
+  "all mocks, validate logs + scorer") — all green (see the P5 core decision below + ADR-005).
+- **P5 core decision (the important one for a resumer — ADR-005):** the P5 **smoke is a self-contained,
+  deterministic mock driver** (`p5methods.ts`, 7 frozen `MethodProfile`s: A free-form / B static tree /
+  C adaptive / D proposed + `D−cost-aware`/`D−propagation`/`D−obligations`). It **reuses the frozen P3/P4
+  core** (`RefinementSession` + cost-aware `selectNextClarification` + `StakeholderOracle` + `scoreRun`) and
+  mocks out ONLY question WORDING (neutral, from each item's `topicPhrase`, no gold) and question ORDER (the
+  ablation knob). It is **NOT** the `core.ts runOnce` real-LLM path and **NOT** a second agent system (task
+  book §6.1). The two pipelines are distinct: `runOnce` (real LLM generates questions, oracle answers,
+  produces `.asfl`, gated by `exp-freeze-v1.3`) is the **P6** vehicle and is separately validated (P4
+  `requirementClarificationFlow.test.ts` + `ca25534`). **Honesty boundary the gate test enforces:** it
+  validates routing, ablation wiring, anti-fabrication (free-form A's prose-only policy values are
+  UNSUPPORTED → floor fails; D meets the floor with 0 unsupported on every task), honesty of non-knows items,
+  determinism, and the effort-budget knob — but it **deliberately does NOT assert a D-over-C quality/effort
+  gap** (a no-budget canonical oracle gives equal coverage; that gap is the P6 real-LLM measurement). The
+  mock driver is a P5 validation instrument — **P6 retires it** and runs A/B/C/D through `runOnce`.
 - **P4 core decision (the important one for a resumer):** the requirement layer is now a single
   **headless, deterministic `RefinementSession`** in `@agile-sofl/refinement` (task book §6.1 — **NOT a
   second agent system**). It is the one place the typed domain tools + turn orchestration live, so the
@@ -89,17 +106,26 @@
   `refinement` added to `TOOL_PATHS`/`DIST_PACKAGES`), `batch.ts` (v1.3 refs + `v13-origin.json`),
   `prepare-v13.mjs` (replaces `prepare-v12.mjs`; also builds `refinement`), `batchRunner.test.ts`
   (assertions track the `FREEZE_TAG` constant), `README.md`.
-- **Remaining gaps/risks:** P5 oracle/baselines/scorer, P6 runs, P7 user study (design-only), P8 paper.
-  (P4 is complete — no P4 work remains.)
+- **P5 deliverables (committed):** `p5task.ts` (3 scenarios, 24 reference items, each with neutral
+  `topicPhrase` + bilingual collision-checked keywords), `oracle.ts` (deterministic simulated stakeholder,
+  4 stances, unmatched = no auto-completion, full interaction log, gold isolation), `scorer.ts` (pure DV +
+  quality-floor scorer, anti-fabrication: policy values supported only by a real/simulated actor),
+  `p5methods.ts` (7 frozen A/B/C/D + ablation profiles over the frozen core), `core.ts` (oracle seam +
+  `simulated_user` actor, `ca25534`), + tests `oracle.test.ts` (13), `scorer.test.ts` (10),
+  `p5methods.test.ts` (11). See ADR-005 for the mock-driver design + honesty boundary.
+- **Remaining gaps/risks:** P6 runs (real LLM on free APIs), P7 user study (design-only), P8 paper.
+  (P5 is complete — no P5 work remains.)
 - **External blockers:** Electron (B1, environmental, non-blocking); free APIs only (B4, non-blocking);
   user study needs real participants (B5); some literature paywalled (B6); harness command-safety
   classifier flaps intermittently (B3 — retry succeeds).
-- **Exact next actions (P4 ✅ DONE → start P5):**
-  1. **P5**: the simulated-stakeholder **oracle** as the harness `resolveClarification` hook
-     (`scripts/agent-harness/core.ts`) answering in plain text; thread it through `resumeWithToolResult`
-     with **`answerActor = 'simulated_user'`** (the ISOLATED simulator actor, task book §6.1 — never the
-     agent) so it drives `RefinementSession.runTurn`. Extend `Condition` to A/B/C/D + ablations
-     (SAGE-Agent EVPI−Cost as the RQ3 baseline); scorer + prereg check; smoke + pilot on the offline
-     `--dry-run` fake-LLM path first, **running on `exp-freeze-v1.3`** (build via `prepare-v13.mjs`),
-     then the authorized FREE APIs.
+- **Exact next actions (P5 ✅ DONE → start P6):**
+  1. **P6**: run A/B/C/D + ablations through `core.ts runOnce` (real LLM generates the clarification
+     questions; the `StakeholderOracle` answers in plain text under the ISOLATED `simulated_user` actor;
+     scored by the same `scoreRun`) on the two authorized **FREE** APIs (lab `lab-qwen3.8-27b`;
+     ECNU `ecnu-max` = `deepseek-v4-flash`). **Pilot** 3 scenarios × 2 seeds × 4 groups (≈24 runs) to find
+     protocol problems; then the **main** run per the pilot-variance sample size (pre-registered; written
+     into the run config AFTER the pilot, never after the main run starts). Build the `exp-freeze-v1.3`
+     worktree with `prepare-v13.mjs` (the `runOnce` vehicle; the P5 mock driver is NOT used). Mark any
+     over-budget sub-result `not run: budget not authorized`, never faked. Retire the P5 mock driver from
+     the production path.
   2. No paid APIs, no fabricated results, no unapproved push.

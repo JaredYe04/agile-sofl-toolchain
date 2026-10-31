@@ -99,3 +99,52 @@ ambiguity about module boundaries (docs/13) and so the freeze guard (P5) is pred
   batches run.
 - Keeping the graph/obligations/selector/readiness headless makes them unit/property/replay-testable
   and CI-able (P3), independent of the Electron-unavailable sandbox (B1).
+
+## ADR-005 — P5 smoke = a self-contained deterministic mock driver (not the `runOnce` agent-loop path)
+**Status:** Accepted (2026-11-01, P5)
+
+**Context.** ADR-004 said the experiment harness would drive conditions "reusing `runOnce` + the
+`resolveClarification` oracle hook." There are in fact TWO pipelines, and conflating them would break the
+pre-registration:
+- **`core.ts` `runOnce`** is the **real-LLM** path (P6): it drives the actual `runAgentTurn` /
+  `resumeWithToolResult` agent loop, where the LLM *generates* clarification questions and the
+  `resolveClarification` oracle (the `StakeholderOracle`) answers them in plain text, recorded under the
+  ISOLATED `simulated_user` actor. It produces `.asfl` specs and is gated by the `exp-freeze-v1.3` freeze
+  tag (`prepare-v13.mjs`).
+- Prereg §8 defines the **smoke** (P5 gate) as "1 scenario × 1 seed × all main groups, **all mocks**, to
+  validate logs + scorer" — i.e. validate the A/B/C/D method ablation + oracle + scorer with NO LLM and NO
+  API spend, *before* any real-LLM run.
+
+**Decision.** Implement the P5 smoke as a **self-contained, deterministic mock driver**
+(`p5methods.ts`, 7 frozen `MethodProfile`s) that reuses the **frozen P3/P4 core**
+(`RefinementSession` + the cost-aware `selectNextClarification` selector + `StakeholderOracle` +
+`scoreRun`) and mocks out ONLY the two things a real LLM does differently — question WORDING (neutral,
+researcher-authored from each item's `topicPhrase`, so no gold is exposed) and question ORDER (the ablation
+knob: static / generic / cost-aware). It does NOT create a second agent system (task book §6.1) and does
+NOT route through `runOnce`. The `runOnce` real-LLM path is validated separately (P4
+`requirementClarificationFlow.test.ts` + the `ca25534` `simulated_user`/`obligationId` threading) and is the
+P6 vehicle.
+
+**Why this satisfies (and is honest about) the smoke's contract:**
+- It exercises the exact same frozen mechanism the paper claims: the real selector, the real provenance
+  enforcement (`simulated_user` → `simulated_user_answer` / `deferred`, never `user_confirmed`), the real
+  oracle (gold isolation, 4 stances), and the real scorer (quality floor, anti-fabrication).
+- The smoke's job is to catch **pipeline** bugs (routing, attribution, provenance, scoring) deterministically
+  and cheaply — which is precisely what it does. It is **not** a cost measurement and **not** the source of
+  any D-over-C quality/effort number.
+
+**Consequences / honesty boundaries (what the smoke does NOT do):**
+- It does **not** exercise `core.ts`'s agent loop, prompt hashing, `.asfl` generation, or the LLM's actual
+  question generation. Those are P6, on the two authorized FREE APIs.
+- With no budget and a canonical oracle, every provenance-backed typed method (B/C/D + ablations) recovers
+  the full set, so the mock gives **equal coverage**; the selection/obligations/propagation knobs change
+  ORDER + provenance-source, not coverage, in the mock. **The gate test therefore does NOT assert a
+  D-over-C quality/effort gap** — asserting one here would be a fabricated result. The gap is a P6
+  measurement under budgets (prereg §8: smoke → pilot → main, each on real runs).
+- The `exp-freeze-v1.3` freeze tag (`prepare-v13.mjs`) is **not** used for the smoke (the mock driver is
+  recorded by hash, not the tool-freeze; `scripts/agent-harness/` is not in `TOOL_PATHS`). That tag remains
+  for the P6 `runOnce` real-LLM batches.
+- **P6 change of plan vs ADR-004:** P6 runs A/B/C/D through `core.ts runOnce` (real LLM generates questions;
+  the mock driver's question WORDING/ORDER stand-in is replaced by the LLM's), scored by the same `scoreRun`.
+  The mock driver is retired from the production path after the smoke — it is a P5 validation instrument, not
+  a deliverable artifact.

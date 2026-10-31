@@ -1,7 +1,7 @@
 # STATUS — Effort-Aware Refinement Research
 
 **Branch:** `research/effort-aware-refinement` · **Baseline commit:** `8f325df`
-**Last updated:** 2026-10-31 (P1 + P2 + P3 + **P4 DONE** — core `094bfcb`, thin Studio anti-fabrication tools `3fbecec`, `exp-freeze-v1.3` tag `968126d`; P5 next)
+**Last updated:** 2026-11-01 (P1–P5 **DONE** — P5: oracle `ef82d3d`, harness threading `ca25534`, scorer `8a999e7`, deterministic A/B/C/D driver + gate test `e894f1b`, 3-task pilot set `1e12d2b`; P6 next)
 
 ## Phase gates
 
@@ -12,7 +12,7 @@
 | **P2** | Conceptual model + semantic design + ADRs | ✅ **DONE** (`conceptual-model.md` finalized vs §4; ADR-004) |
 | **P3** | Refinement tree/graph infra + tests-first (stable) | ✅ **DONE** (`b110284`; 107 tests green; 1199-test floor holds) |
 | **P4** | Agent harness + human decision loop | ✅ **DONE** — core `094bfcb` + thin Studio anti-fabrication tools `3fbecec` (record_decision is NOT an agent tool) + `exp-freeze-v1.3` tag `968126d` (refinement added to the guard) |
-| P5 | Benchmark + oracle + baselines + preregistration | ⬜ |
+| P5 | Benchmark + oracle + baselines + preregistration | ✅ **DONE** — 3-task pilot set, oracle, scorer, deterministic A/B/C/D driver + ablations, smoke (all mocks, validates logs + scorer) |
 | P6 | Run experiments (authorized free model) + diagnose | ⬜ |
 | P7 | User study protocol (design-only; no fabricated participants) | ⬜ |
 | P8 | LaTeX paper draft + claims audit | ⬜ |
@@ -157,15 +157,54 @@
 - **Gate scenario #7** (real `.asfl` fixtures pass the language checks) is the studio/parser layer, exercised
   in P5/P6 (the harness's per-step parser/L1/L2 diagnostics are the seam).
 
+## P5 — completed (gate passed: smoke validated logs + scorer, all mocks)
+- **3-scenario pilot task set** (prereg §5: pilot = 3 scenarios) — `p5task.ts`, independently authored
+  (researcher's gold, NOT from any method's output), each mixing all four stakeholder stances
+  (knows / unknown / refuse / defer), bilingual collision-checked keywords so each topic question routes
+  to exactly the right item (verified by probe across 3 tasks / 24 items):
+  - `booking-01` (booking/cancellation/refund): 8 items.
+  - `ecommerce-01` (e-commerce/order/inventory, cross-process consistency): 7 items.
+  - `taskmgmt-01` (task management: roles/dependencies/delete-restore): 9 items.
+- **Deterministic simulated-stakeholder oracle** (`oracle.ts`, `ef82d3d`) — the gold reader + actor
+  stand-in: keyword routing (most hits, tie → reference order), 4 stances, unmatched = no auto-completion,
+  seeded deterministic/random modes, full interaction log. Gold isolation: the evaluated agent sees only
+  question→response.
+- **Isolated `simulated_user` actor + `obligationId` threaded through the harness** (`ca25534`) — the
+  `resolveClarification` answer is recorded under the ISOLATED `simulated_user` actor (task book §6.1;
+  never the agent, never laundered into `user_confirmed`); the oracle seam for P6's real-LLM `runOnce`.
+- **Deterministic run scorer** (`scorer.ts`, `8a999e7`) — pure (no Electron/LLM/IO), independently unit-
+  tested against INTENTIONALLY correct/wrong/missing data: decision recall, critical-behavior coverage,
+  precision, **unsupported-policy-decisions** (anti-fabrication: a policy value is supported only if backed
+  by a real/simulated actor — `user_confirmed`/`analyst_approved`/`simulated_user_answer`; a raw
+  `AI_hypothesis`/prose-only/`deferred` is not), traceability integrity, cost DVs, and the pre-registered
+  quality floor (recall ≥ 0.80, unsupported = 0, critical ≥ 0.70).
+- **Deterministic A/B/C/D method driver + ablations** (`p5methods.ts`, `e894f1b`) — 7 frozen
+  `MethodProfile`s (A free-form / B static tree / C adaptive / D proposed + `D−cost-aware` /
+  `D−propagation` / `D−obligations`). Reuses the **frozen P3/P4 core** (`RefinementSession` + the
+  cost-aware `selectNextClarification` + `StakeholderOracle` + `scoreRun`); mocks out ONLY question wording
+  (neutral, from `topicPhrase`, no gold) and question order (the ablation knob). See **ADR-005**: this is a
+  self-contained mock driver (prereg §8 "all mocks"), NOT the `runOnce` real-LLM path and NOT a second agent
+  system.
+- **Smoke (prereg §8 gate): 1 scenario × 1 seed × all main groups, all mocks → validate logs + scorer.**
+  `p5methods.test.ts` (11 tests) runs the driver + scorer across the whole 3-task set and validates: oracle
+  routing (each item's topic question → that item), ablation wiring, **anti-fabrication** (free-form A's
+  prose-only policy values are UNSUPPORTED → floor fails on every task; D meets the floor with 0
+  unsupported on every task), honesty of the non-knows items, determinism (byte-identical per seed), and the
+  stakeholder-effort budget knob. **The gate test deliberately does NOT assert a D-over-C quality/effort gap**
+  (a no-budget canonical oracle gives equal coverage; that gap is the P6 real-LLM measurement — asserting it
+  now would be a fabricated result).
+- **Tests:** p5methods 11 + scorer 10 + oracle 13 green. Full studio suite unchanged at 390 (385 pass; the
+  5 pre-existing failures — Electron binary ×5, `llmPromptsFsf` ×1 — unrelated). tsc baseline unchanged (68).
+- **Note for P6:** the mock driver is a P5 validation instrument; P6 retires it from the production path and
+  runs A/B/C/D through `core.ts runOnce` (real LLM generates the questions, oracle answers, same `scoreRun`).
+  The `exp-freeze-v1.3` tag + `prepare-v13.mjs` remain the P6 `runOnce` vehicle (the mock driver is recorded
+  by hash, not the tool-freeze).
+
 ## Next actions
-1. **P4 ✅ DONE** (core `094bfcb` + thin Studio anti-fabrication tools `3fbecec` + `exp-freeze-v1.3` tag
-   `968126d`). All 5 requirement tools are thin wrappers; `record_decision` is deliberately NOT an agent
-   tool (the §6.1 anti-fabrication rule). No P4 work remains; the guard is green at the new tag.
-2. **P5:** simulated-stakeholder **oracle** as a `resolveClarification` hook (harness `core.ts`) that
-   answers in plain text and is threaded through `resumeWithToolResult` with `answerActor = 'simulated_user'`
-   (the ISOLATED simulator actor — task book §6.1; never the agent); it drives `RefinementSession.runTurn`.
-   Extend `Condition` to A/B/C/D + ablations (SAGE-Agent EVPI−Cost as the RQ3 baseline); scorer + prereg
-   check; smoke + pilot on the offline `--dry-run` fake-LLM path first (runs on `exp-freeze-v1.3`).
-3. **P6:** run on the two authorized FREE APIs (both confirmed reachable; ECNU `ecnu-max` =
-   `deepseek-v4-flash`); diagnose; iterate (no test-set overfitting).
-4. Paper (P8): cite SAGE-Agent + the others per `literature-notes.md`; RE 2026 = double-blind, 10+2 pages.
+1. **P5 ✅ DONE** (oracle `ef82d3d` + threading `ca25534` + scorer `8a999e7` + A/B/C/D driver `e894f1b` +
+   3-task pilot set `1e12d2b`; smoke green per ADR-005). No P5 work remains.
+2. **P6:** run A/B/C/D + ablations through `core.ts runOnce` on the two authorized FREE APIs (lab
+   `lab-qwen3.8-27b`; ECNU `ecnu-max` = `deepseek-v4-flash`), scored by `scoreRun`; pilot 3×2×4≈24 →
+   diagnose protocol problems; then the main run per the pilot-variance sample size (no test-set
+   overfitting; mark any over-budget sub-result `not run: budget not authorized`, never faked).
+3. Paper (P8): cite SAGE-Agent + the others per `literature-notes.md`; RE 2026 = double-blind, 10+2 pages.
