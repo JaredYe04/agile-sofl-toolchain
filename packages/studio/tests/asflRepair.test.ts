@@ -1,4 +1,8 @@
-import { collectHybridAgentDiagnostics, collectHybridWriteLintDiagnostics } from '@agile-sofl/editor-api'
+import {
+  collectHybridAgentDiagnostics,
+  collectHybridWriteLintDiagnostics,
+  orphanModuleHeaders
+} from '@agile-sofl/editor-api'
 import { check } from '@agile-sofl/parser'
 import { beforeAll, describe, expect, it } from 'vitest'
 import {
@@ -86,6 +90,18 @@ end_module
     expect(gated.content).not.toBe(before)
     expect(gated.warnings?.join(' ')).toMatch(/kept/i)
     expect(gated.warnings?.join(' ')).toMatch(/@/)
+  })
+
+  it('integrates a GUI module stub that was appended after the program dot', () => {
+    const before = `module SYSTEM_Shop;
+end_module;
+module Catalog / Shop;
+end_module.`
+    const after = `${before}\nmodule GUI_App / Shop;\nend_module`
+    const gated = acceptHybridWrite(before, after)
+    expect(gated.content.indexOf('module GUI_App')).toBeLessThan(gated.content.lastIndexOf('.'))
+    expect(gated.warnings?.join(' ')).toMatch(/program dot/i)
+    expect(orphanModuleHeaders(gated.content)).toEqual([])
   })
 
   it('keeps a write when the full parser reports new errors', () => {

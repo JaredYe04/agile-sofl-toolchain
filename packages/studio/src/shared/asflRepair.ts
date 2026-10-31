@@ -1,3 +1,8 @@
+import {
+  integrateOrphanModulesAfterProgramDot,
+  orphanModuleHeaders
+} from '@agile-sofl/editor-api'
+
 export type HybridWriteDiagnostic = {
   severity: string
   code: string
@@ -115,9 +120,16 @@ function summarizeDiagnostics(source: string): WriteDiagnostics | undefined {
 }
 
 export function acceptHybridWrite(before: string, after: string): WriteOutcome {
-  const repaired = repairAsflSurface(after)
+  const integrated = integrateOrphanModulesAfterProgramDot(after)
+  const repaired = repairAsflSurface(integrated.text)
   const introduced = introducedErrors(before, repaired.text)
-  const warnings: string[] = []
+  const warnings: string[] = [...integrated.notes]
+  const orphans = orphanModuleHeaders(repaired.text)
+  if (orphans.length) {
+    warnings.push(
+      `Write kept, but ${orphans.length} module header(s) are not in the parsed program (${orphans.join(', ')}). Call read_hybrid_specification and fix layout or syntax before continuing.`
+    )
+  }
   if (introduced.length) {
     const sample = introduced
       .slice(0, 6)

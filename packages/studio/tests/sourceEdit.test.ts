@@ -46,6 +46,14 @@ describe('applySourceEdits', () => {
     expect(r.applied).toBe(true)
   })
 
+  it('appends before a trailing program dot instead of after it', () => {
+    const base = 'module SYSTEM_A;\nend_module;\nmodule B / A;\nend_module.'
+    const stub = 'module GUI_App / A;\nend_module'
+    const r = applySourceEdits(base, [{ op: 'append', text: stub }])
+    expect(r.content.indexOf('module GUI_App')).toBeLessThan(r.content.lastIndexOf('.'))
+    expect(r.content).not.toMatch(/\.\s*\n\s*module GUI_App/)
+  })
+
   it('replace-document overwrites the file', () => {
     const r = applySourceEdits('garbage', [
       { op: 'replace-document', text: 'module GUI;\nend_module' }

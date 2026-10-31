@@ -143,7 +143,13 @@ export function scanModuleProcesses(source: string, range: ModuleSourceRange): s
 }
 
 /** Detect leftover Hybrid text that is not a module header (CRUD must not report success). */
+const ORPHAN_MODULES_AFTER_DOT =
+  /^([\s\S]*?\.\s*\n\s*)((?:module|system)\s[\s\S]*)$/i
+
 export function hybridLeftoverMessage(source: string): string | null {
+  if (ORPHAN_MODULES_AFTER_DOT.test(source.trimEnd())) {
+    return 'Hybrid source has module text after the program dot (.); released parsers ignore it'
+  }
   const trimmed = source.trim()
   if (!trimmed || /^[.;\s]*$/.test(trimmed)) return null
   const headers = listModuleHeaders(source)

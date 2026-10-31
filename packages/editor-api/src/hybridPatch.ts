@@ -23,6 +23,7 @@ import {
   type ParsedHybridId
 } from './hybridIds.js'
 import { addModule, removeModule, renameModule, setModuleParent } from './modulePatch.js'
+import { integrateOrphanModulesAfterProgramDot } from './moduleProgramLayout.js'
 import {
   patchComment,
   patchFsfSpec,
@@ -1211,6 +1212,9 @@ export function applyHybridPatch(
     if (result.warnings?.length) lintWarnings.push(...result.warnings)
     if (nextNames.length) protectedNames = nextNames
   }
+  const integrated = integrateOrphanModulesAfterProgramDot(content)
+  content = integrated.text
+  if (integrated.notes.length) lintWarnings.push(...integrated.notes)
   const leftover = hybridLeftoverMessage(content)
   if (leftover) lintWarnings.push(leftover)
   const warnings = [...opFailures, ...lintWarnings]
