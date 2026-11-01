@@ -1,0 +1,40 @@
+{
+  "id": "P12",
+  "version": 1,
+  "interpreter": "studio-subject-policy-v1",
+  "source": "subject-table",
+  "derivedFrom": {
+    "yearsSpecWork": "lt2",
+    "task": "greenfield",
+    "domain": "CI/CD 平台"
+  },
+  "acceptPropensity": 0.573,
+  "riskAversion": 0.757,
+  "penalties": {
+    "perOp": 0.035,
+    "removeOp": 0.12,
+    "sourceEdit": 0.1,
+    "refineStep": 0.06,
+    "largePatchOps": 6,
+    "largePatch": 0.16
+  },
+  "clarification": "authorized-facts",
+  "proposalThink": {
+    "distribution": "lognormal",
+    "medianSeconds": 15.41,
+    "sigma": 0.42,
+    "secondsPerKChar": 1.5,
+    "minSeconds": 3,
+    "maxSeconds": 55
+  },
+  "clarificationThink": {
+    "distribution": "lognormal",
+    "medianSeconds": 8.5,
+    "sigma": 0.38,
+    "secondsPerKChar": 0.3,
+    "minSeconds": 2,
+    "maxSeconds": 24
+  },
+  "seed": 2279860472,
+  "notes": "Derived from yearsSpecWork and task. The interpreter reads these fields and does not special-case the subject id."
+}
