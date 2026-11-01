@@ -1,0 +1,40 @@
+{
+  "id": "P4",
+  "version": 1,
+  "interpreter": "studio-subject-policy-v1",
+  "source": "subject-table",
+  "derivedFrom": {
+    "yearsSpecWork": "5to10",
+    "task": "greenfield",
+    "domain": "游戏引擎/渲染"
+  },
+  "acceptPropensity": 0.816,
+  "riskAversion": 0.391,
+  "penalties": {
+    "perOp": 0.035,
+    "removeOp": 0.12,
+    "sourceEdit": 0.1,
+    "refineStep": 0.06,
+    "largePatchOps": 6,
+    "largePatch": 0.16
+  },
+  "clarification": "authorized-facts",
+  "proposalThink": {
+    "distribution": "lognormal",
+    "medianSeconds": 8.04,
+    "sigma": 0.34,
+    "secondsPerKChar": 1.5,
+    "minSeconds": 3,
+    "maxSeconds": 55
+  },
+  "clarificationThink": {
+    "distribution": "lognormal",
+    "medianSeconds": 5.16,
+    "sigma": 0.31,
+    "secondsPerKChar": 0.3,
+    "minSeconds": 2,
+    "maxSeconds": 24
+  },
+  "seed": 486533473,
+  "notes": "Derived from yearsSpecWork and task. The interpreter reads these fields and does not special-case the subject id."
+}

@@ -114,6 +114,10 @@ The process prints one JSON object on stdout: `runId`, `out`, `hybrid`, `approva
 
 `<out>` under `.harness/` is gitignored. Point `--out` somewhere else if you want to keep artifacts outside that directory.
 
+## Case-study subjects (P4–P23)
+
+Do not use this CLI for case-study re-runs. It auto-approves every hybrid proposal in the same turn. The Studio subject runner (`scripts/studio-subjects/`) drives the same main-process Apply/Reject services as the Agent panel, waits a subject-specific thinking time, and can reject. See that directory's README.
+
 ## Example informal specification
 
 ```markdown
