@@ -12,7 +12,7 @@ vi.mock('electron', () => ({
 
 import { applyStudioProposal } from '../src/main/services/agentProposal'
 import { helpText, installSubjectDryRunFetch, parseCliArgs } from '../scripts/studio-subjects/cli'
-import { runSubject } from '../scripts/studio-subjects/driver'
+import { resolveDecisionBudget, runSubject } from '../scripts/studio-subjects/driver'
 import { generateAgentModel, loadAgentModel, writeAgentModels } from '../scripts/studio-subjects/models'
 import { resolveFromFacts } from '../scripts/studio-subjects/oracle'
 import { decideProposal } from '../scripts/studio-subjects/policy'
@@ -160,11 +160,29 @@ describe('studio subject runner', () => {
   it('prints help and refuses to start without a subject selection', () => {
     expect(helpText()).toMatch(/real Studio agent loop/)
     expect(helpText()).toMatch(/never under 2 seconds|never less than 2 seconds|at least 3 seconds/)
+    expect(helpText()).toMatch(/0 = unlimited/)
     expect(parseCliArgs(['node', 'studio-subjects', '--help'])).toEqual({ help: true })
     expect(parseCliArgs(['node', 'studio-subjects'])).toMatchObject({ error: expect.stringMatching(/--pilot/) })
     expect(parseCliArgs(['node', 'studio-subjects', '--dry-run', '--subjects', 'P4'])).toMatchObject({
       options: { dryRun: true, mode: 'ids', ids: ['P4'] }
     })
+  })
+
+  it('accepts --max-decisions 0 as unlimited and does not cap positives at 40', () => {
+    expect(
+      parseCliArgs(['node', 'studio-subjects', '--dry-run', '--subjects', 'P4', '--max-decisions', '0'])
+    ).toMatchObject({ options: { maxDecisions: 0 } })
+    expect(
+      parseCliArgs(['node', 'studio-subjects', '--dry-run', '--subjects', 'P4', '--max-decisions', '41'])
+    ).toMatchObject({ options: { maxDecisions: 41 } })
+    expect(
+      parseCliArgs(['node', 'studio-subjects', '--dry-run', '--subjects', 'P4', '--max-decisions', '-1'])
+    ).toMatchObject({ error: expect.stringMatching(/0 = unlimited/) })
+    expect(resolveDecisionBudget(0)).toBe(Number.POSITIVE_INFINITY)
+    expect(resolveDecisionBudget(-3)).toBe(Number.POSITIVE_INFINITY)
+    expect(resolveDecisionBudget(Number.NaN)).toBe(Number.POSITIVE_INFINITY)
+    expect(resolveDecisionBudget(Number.POSITIVE_INFINITY)).toBe(Number.POSITIVE_INFINITY)
+    expect(resolveDecisionBudget(8)).toBe(8)
   })
 
   it('dry-run proposes an informal edit when the original task is an informal phase', async () => {

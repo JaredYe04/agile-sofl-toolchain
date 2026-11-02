@@ -62,7 +62,7 @@ node packages/studio/scripts/studio-subjects/studio-subjects.mjs --pilot --out .
 node packages/studio/scripts/studio-subjects/studio-subjects.mjs --all --out ./studio-subjects-p4-p23
 ```
 
-`--concurrency` is 1 by default and at most 2. Calls inside one subject stay serial. `--max-decisions` bounds Accept/Reject choices per phase (default 8; dry-run default 2).
+`--concurrency` is 1 by default and at most 2. Calls inside one subject stay serial. `--max-decisions` bounds Accept/Reject choices per phase (default 8; dry-run default 2; `0` = unlimited).
 
 A full P4–P23 run is serial by default. Each proposal blocks on the sampled thinking time (several seconds, up to the model maximum of 55 seconds) plus one model round-trip. Plan the API quota for three phases on greenfield subjects (informal, hybrid, extension) and one extension phase on extension subjects, up to `--max-decisions` proposals per phase, plus clarification turns.
 

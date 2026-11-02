@@ -35,6 +35,11 @@ import type { Pace, PhaseName, Subject } from './types'
 
 const PHASE_GUARD = 24
 
+/** 0 / NaN / ±Infinity / negatives mean no decision-budget stop. */
+export function resolveDecisionBudget(maxDecisions: number): number {
+  return Number.isFinite(maxDecisions) && maxDecisions > 0 ? maxDecisions : Number.POSITIVE_INFINITY
+}
+
 export type SleepFn = (ms: number) => Promise<void>
 
 export type SubjectRunResult = {
@@ -132,6 +137,7 @@ export async function runSubject(o: {
       minSlept = minSlept == null ? sleptMs : Math.min(minSlept, sleptMs)
     }
 
+    const maxDecisions = resolveDecisionBudget(o.maxDecisions)
     for (const phase of phasesFor(o.subject)) {
       const phaseResult = await runPhase({
         subject: o.subject,
@@ -139,7 +145,7 @@ export async function runSubject(o: {
         phase,
         ctx,
         projectRoot,
-        maxDecisions: o.maxDecisions,
+        maxDecisions,
         pace: o.pace,
         sleep,
         resolve,
