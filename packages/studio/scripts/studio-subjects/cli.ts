@@ -62,7 +62,7 @@ Options:
                          under packages/studio (gitignored).
   --env-file <path>      KEY=VALUE file. Does not override existing environment.
   --concurrency <n>      1 or 2. Default 1. HTTP inside one subject stays serial.
-  --max-decisions <n>    Accept/Reject decisions per phase (1–40).
+  --max-decisions <n>    Accept/Reject decisions per phase (0 = unlimited).
                          Default 8, or 2 with --dry-run.
 
 LLM (real runs):
@@ -153,9 +153,8 @@ export function parseCliArgs(argv: string[]): { help: true } | { error: string }
   let maxDecisions: number | undefined
   if (values.has('max-decisions')) {
     const raw = values.get('max-decisions')!
-    if (!/^\d+$/.test(raw)) return { error: '--max-decisions must be an integer from 1 to 40' }
+    if (!/^\d+$/.test(raw)) return { error: '--max-decisions must be a non-negative integer (0 = unlimited)' }
     maxDecisions = Number(raw)
-    if (maxDecisions < 1 || maxDecisions > 40) return { error: '--max-decisions must be an integer from 1 to 40' }
   }
   return {
     options: {
