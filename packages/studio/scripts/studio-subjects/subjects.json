@@ -1,0 +1,312 @@
+{
+  "version": 1,
+  "note": "P4–P23 subject table for case-study-sim. Task-packet facts only; not interview quotes. Pilot = P4–P6.",
+  "subjects": [
+    {
+      "id": "P4",
+      "pilot": true,
+      "domain": "游戏引擎/渲染",
+      "yearsSpecWork": "5to10",
+      "task": "greenfield",
+      "project": "Project-RenderCore",
+      "systemName": "RenderCore",
+      "initialModel": "场景图/资源/主循环",
+      "extension": "热重载与多线程调度",
+      "authorizedFacts": [
+        { "id": "scene-graph", "keywords": ["场景图", "scene", "节点"], "text": "场景图是变换/网格/相机/灯光节点树。" },
+        { "id": "assets", "keywords": ["资源", "纹理", "着色器", "网格"], "text": "资源覆盖网格、纹理、着色器，按引用计数加载卸载。" },
+        { "id": "loop", "keywords": ["主循环", "tick", "帧"], "text": "主循环顺序为输入 → 更新 → 渲染。" },
+        { "id": "hot-reload", "keywords": ["热重载", "reload"], "text": "热重载按模块替换着色器与场景资源。" },
+        { "id": "threads", "keywords": ["多线程", "调度", "线程"], "text": "渲染线程与更新线程通过帧队列同步。" }
+      ]
+    },
+    {
+      "id": "P5",
+      "pilot": true,
+      "domain": "游戏客户端/战斗",
+      "yearsSpecWork": "2to5",
+      "task": "greenfield",
+      "project": "Project-BattleClient",
+      "systemName": "BattleClient",
+      "initialModel": "状态机/技能/预测校正",
+      "extension": "回放与观战",
+      "authorizedFacts": [
+        { "id": "fsm", "keywords": ["状态机", "idle", "cast"], "text": "战斗状态机包含 idle/cast/hit/dead。" },
+        { "id": "skill", "keywords": ["技能", "冷却"], "text": "技能带冷却、消耗和命中判定。" },
+        { "id": "pred", "keywords": ["预测", "校正", "回滚"], "text": "客户端预测，服务器校正。" },
+        { "id": "replay", "keywords": ["回放", "replay"], "text": "回放记录输入帧。" },
+        { "id": "spectate", "keywords": ["观战", "spectator"], "text": "观战消费只读快照流。" }
+      ]
+    },
+    {
+      "id": "P6",
+      "pilot": true,
+      "domain": "工业 MES",
+      "yearsSpecWork": "gt10",
+      "task": "extension",
+      "project": "FactoryMES-LineA",
+      "systemName": "FactoryMES",
+      "initialModel": "已有工单报工",
+      "extension": "OEE与停机工单联动",
+      "seedInformalFile": "fixtures/P6-FactoryMES-LineA.aspec",
+      "seedHybridFile": "fixtures/P6-FactoryMES-LineA.asfl",
+      "authorizedFacts": [
+        { "id": "wo", "keywords": ["工单", "报工"], "text": "已有工单创建、报工、完工；closed 工单禁止报工。" },
+        { "id": "oee", "keywords": ["OEE", "可用率", "表现", "质量"], "text": "OEE = 可用率 × 表现 × 质量，三项均来自工单与停机记录。" },
+        { "id": "down", "keywords": ["停机", "维修"], "text": "停机事件自动开维修工单并回写停机时长。" }
+      ]
+    },
+    {
+      "id": "P7",
+      "domain": "汽车电子/ECU",
+      "yearsSpecWork": "2to5",
+      "task": "greenfield",
+      "project": "Project-BodyECU",
+      "systemName": "BodyECU",
+      "initialModel": "车灯/门锁/车窗",
+      "extension": "诊断与故障码",
+      "authorizedFacts": [
+        { "id": "body", "keywords": ["车灯", "门锁", "车窗"], "text": "车身 ECU 控制车灯、门锁、车窗。" },
+        { "id": "dtc", "keywords": ["诊断", "故障码", "DTC"], "text": "诊断服务读写故障码，不清空未确认码。" }
+      ]
+    },
+    {
+      "id": "P8",
+      "domain": "支付清算",
+      "yearsSpecWork": "gt10",
+      "task": "extension",
+      "project": "ClearingHub-Core",
+      "systemName": "ClearingHub",
+      "initialModel": "已有入账/对账",
+      "extension": "日终轧差与差错处理",
+      "seedInformal": "# Functions\n\n## 入账\n\n登记已清算分录。\n\n## 对账\n\n按日核对入账与渠道回盘。\n\n# Data Resources\n\n## 分录\n\n分录号、金额、渠道、日期。\n\n# Constraints\n\n## 金额非负\n\n入账金额不得为负。\n",
+      "seedHybrid": "module SYSTEM_ClearingHub;\ntype TxId = nat;\nvar posted: set of TxId;\nprocess PostEntry (id: TxId) ok: nat\n    ext wr posted: set of TxId\n    FSF :\n    id > 0 && ok = 1 ||\n    others && ok = 0\nend_process\nprocess Reconcile (day: nat) ok: nat\n    ext rd posted: set of TxId\n    FSF :\n    day > 0 && ok = 1 ||\n    others && ok = 0\nend_process\nend_module\n",
+      "authorizedFacts": [
+        { "id": "post", "keywords": ["入账", "对账"], "text": "已有入账与按日对账。" },
+        { "id": "net", "keywords": ["轧差", "差错"], "text": "日终轧差输出净额；差错进入待处理队列，不自动冲正。" }
+      ]
+    },
+    {
+      "id": "P9",
+      "domain": "医院HIS/挂号",
+      "yearsSpecWork": "5to10",
+      "task": "greenfield",
+      "project": "Project-ClinicDesk",
+      "systemName": "ClinicDesk",
+      "initialModel": "挂号/分诊/叫号",
+      "extension": "医保结算预检",
+      "authorizedFacts": [
+        { "id": "reg", "keywords": ["挂号", "分诊", "叫号"], "text": "门诊台覆盖挂号、分诊、叫号。" },
+        { "id": "ins", "keywords": ["医保", "预检"], "text": "医保结算预检只校验参保状态，不完成扣费。" }
+      ]
+    },
+    {
+      "id": "P10",
+      "domain": "仓储WMS",
+      "yearsSpecWork": "2to5",
+      "task": "extension",
+      "project": "Warehouse-A",
+      "systemName": "WarehouseA",
+      "initialModel": "已有入库上架",
+      "extension": "波次拣选与库存锁定",
+      "seedInformal": "# Functions\n\n## 入库\n\n收货并生成入库单。\n\n## 上架\n\n把入库库存放到库位。\n\n# Data Resources\n\n## 库位库存\n\nSKU、库位、数量。\n\n# Constraints\n\n## 数量非负\n\n库存数量不得为负。\n",
+      "seedHybrid": "module SYSTEM_WarehouseA;\ntype Sku = nat; Loc = nat; Qty = nat;\nvar stock: map Sku to Qty;\nprocess Receive (sku: Sku, qty: Qty) ok: nat\n    ext wr stock: map Sku to Qty\n    FSF :\n    qty > 0 && ok = 1 ||\n    others && ok = 0\nend_process\nprocess Putaway (sku: Sku, loc: Loc) ok: nat\n    ext wr stock: map Sku to Qty\n    FSF :\n    loc > 0 && ok = 1 ||\n    others && ok = 0\nend_process\nend_module\n",
+      "authorizedFacts": [
+        { "id": "in", "keywords": ["入库", "上架"], "text": "已有入库与上架。" },
+        { "id": "wave", "keywords": ["波次", "锁定", "拣选"], "text": "波次拣选前锁定库存，释放未拣数量。" }
+      ]
+    },
+    {
+      "id": "P11",
+      "domain": "电信BSS/套餐",
+      "yearsSpecWork": "gt10",
+      "task": "greenfield",
+      "project": "Project-OfferCat",
+      "systemName": "OfferCat",
+      "initialModel": "套餐/订购/开通",
+      "extension": "停复机与欠费策略",
+      "authorizedFacts": [
+        { "id": "offer", "keywords": ["套餐", "订购", "开通"], "text": "套餐目录、订购、开通。" },
+        { "id": "suspend", "keywords": ["停机", "复机", "欠费"], "text": "欠费停机与复机按账期，不即时销户。" }
+      ]
+    },
+    {
+      "id": "P12",
+      "domain": "CI/CD 平台",
+      "yearsSpecWork": "lt2",
+      "task": "greenfield",
+      "project": "Project-PipeForge",
+      "systemName": "PipeForge",
+      "initialModel": "流水线/制品/环境",
+      "extension": "质量门禁与回滚",
+      "authorizedFacts": [
+        { "id": "pipe", "keywords": ["流水线", "制品", "环境"], "text": "流水线产出制品并部署到命名环境。" },
+        { "id": "gate", "keywords": ["门禁", "回滚"], "text": "质量门禁失败则禁止晋级；回滚指向上一成功制品。" }
+      ]
+    },
+    {
+      "id": "P13",
+      "domain": "物联网网关",
+      "yearsSpecWork": "5to10",
+      "task": "extension",
+      "project": "EdgeGateway-N3",
+      "systemName": "EdgeGateway",
+      "initialModel": "已有设备接入上报",
+      "extension": "规则引擎与断线缓存",
+      "seedInformal": "# Functions\n\n## 设备接入\n\n网关注册设备标识。\n\n## 上报\n\n设备周期上报遥测。\n\n# Data Resources\n\n## 设备\n\n设备号、在线状态、最近上报。\n\n# Constraints\n\n## 设备号唯一\n\n网关内设备号不重复。\n",
+      "seedHybrid": "module SYSTEM_EdgeGateway;\ntype DevId = nat;\nvar online: set of DevId;\nprocess Register (id: DevId) ok: nat\n    ext wr online: set of DevId\n    FSF :\n    id > 0 && ok = 1 ||\n    others && ok = 0\nend_process\nprocess Report (id: DevId, value: nat) ok: nat\n    ext rd online: set of DevId\n    FSF :\n    id > 0 && ok = 1 ||\n    others && ok = 0\nend_process\nend_module\n",
+      "authorizedFacts": [
+        { "id": "dev", "keywords": ["设备", "上报", "接入"], "text": "已有设备接入与遥测上报。" },
+        { "id": "rule", "keywords": ["规则", "断线", "缓存"], "text": "断线期间缓存上报，恢复后按规则引擎转发。" }
+      ]
+    },
+    {
+      "id": "P14",
+      "domain": "移动银行",
+      "yearsSpecWork": "2to5",
+      "task": "greenfield",
+      "project": "Project-PocketBank",
+      "systemName": "PocketBank",
+      "initialModel": "账户/转账/限额",
+      "extension": "设备绑定与风控",
+      "authorizedFacts": [
+        { "id": "acct", "keywords": ["账户", "转账", "限额"], "text": "账户、转账、日累计限额。" },
+        { "id": "risk", "keywords": ["设备绑定", "风控"], "text": "新设备需绑定；风控拒绝未绑定设备的转账。" }
+      ]
+    },
+    {
+      "id": "P15",
+      "domain": "CAD 图纸协同",
+      "yearsSpecWork": "gt10",
+      "task": "extension",
+      "project": "DraftCollab-v2",
+      "systemName": "DraftCollab",
+      "initialModel": "已有图纸版本",
+      "extension": "审签流与冲突合并",
+      "seedInformal": "# Functions\n\n## 新建图纸\n\n创建图纸并给出版本号。\n\n## 提交版本\n\n提交新版本内容。\n\n# Data Resources\n\n## 图纸版本\n\n图纸号、版本号、提交者。\n\n# Constraints\n\n## 版本递增\n\n新版本号大于当前版本号。\n",
+      "seedHybrid": "module SYSTEM_DraftCollab;\ntype DocId = nat; Ver = nat;\nvar current: map DocId to Ver;\nprocess CreateDoc () id: DocId\n    ext wr current: map DocId to Ver\n    FSF :\n    others && id = 1\nend_process\nprocess Commit (id: DocId, ver: Ver) ok: nat\n    ext wr current: map DocId to Ver\n    FSF :\n    ver > 0 && ok = 1 ||\n    others && ok = 0\nend_process\nend_module\n",
+      "authorizedFacts": [
+        { "id": "ver", "keywords": ["图纸", "版本"], "text": "已有图纸与版本提交。" },
+        { "id": "sign", "keywords": ["审签", "冲突", "合并"], "text": "审签流通过后才能发布；冲突合并保留双方变更记录。" }
+      ]
+    },
+    {
+      "id": "P16",
+      "domain": "编译器前端",
+      "yearsSpecWork": "5to10",
+      "task": "greenfield",
+      "project": "Project-MiniFront",
+      "systemName": "MiniFront",
+      "initialModel": "词法/语法/符号表",
+      "extension": "增量分析和诊断",
+      "authorizedFacts": [
+        { "id": "front", "keywords": ["词法", "语法", "符号表"], "text": "词法、语法、符号表构成前端。" },
+        { "id": "incr", "keywords": ["增量", "诊断"], "text": "增量分析只重算脏文件；诊断带行号。" }
+      ]
+    },
+    {
+      "id": "P17",
+      "domain": "电力SCADA",
+      "yearsSpecWork": "gt10",
+      "task": "extension",
+      "project": "GridSCADA-RegionB",
+      "systemName": "GridSCADA",
+      "initialModel": "已有遥测遥控",
+      "extension": "事故推演与闭锁",
+      "seedInformal": "# Functions\n\n## 遥测采集\n\n采集遥测量。\n\n## 遥控下发\n\n向设备下发遥控。\n\n# Data Resources\n\n## 测点\n\n测点号、值、品质。\n\n# Constraints\n\n## 测点号唯一\n\n区域内测点号不重复。\n",
+      "seedHybrid": "module SYSTEM_GridSCADA;\ntype PointId = nat; Cmd = nat;\nvar points: map PointId to nat;\nprocess Telemetry (id: PointId, value: nat) ok: nat\n    ext wr points: map PointId to nat\n    FSF :\n    id > 0 && ok = 1 ||\n    others && ok = 0\nend_process\nprocess Control (id: PointId, cmd: Cmd) ok: nat\n    ext rd points: map PointId to nat\n    FSF :\n    cmd > 0 && ok = 1 ||\n    others && ok = 0\nend_process\nend_module\n",
+      "authorizedFacts": [
+        { "id": "scada", "keywords": ["遥测", "遥控"], "text": "已有遥测采集与遥控下发。" },
+        { "id": "lock", "keywords": ["推演", "闭锁"], "text": "事故推演不写实设备；闭锁条件满足时拒绝遥控。" }
+      ]
+    },
+    {
+      "id": "P18",
+      "domain": "教育LMS",
+      "yearsSpecWork": "lt2",
+      "task": "greenfield",
+      "project": "Project-CourseHub",
+      "systemName": "CourseHub",
+      "initialModel": "课程/作业/成绩",
+      "extension": "防作弊与补考",
+      "authorizedFacts": [
+        { "id": "lms", "keywords": ["课程", "作业", "成绩"], "text": "课程、作业、成绩。" },
+        { "id": "exam", "keywords": ["作弊", "补考"], "text": "防作弊标记异常提交；补考覆盖对应作业一次。" }
+      ]
+    },
+    {
+      "id": "P19",
+      "domain": "安全SIEM",
+      "yearsSpecWork": "5to10",
+      "task": "greenfield",
+      "project": "Project-AlertBus",
+      "systemName": "AlertBus",
+      "initialModel": "采集/解析/告警",
+      "extension": "关联规则与工单",
+      "authorizedFacts": [
+        { "id": "siem", "keywords": ["采集", "解析", "告警"], "text": "日志采集、解析、告警。" },
+        { "id": "corr", "keywords": ["关联", "工单"], "text": "关联规则聚合告警后开工单，不自动关闭源告警。" }
+      ]
+    },
+    {
+      "id": "P20",
+      "domain": "航电显示",
+      "yearsSpecWork": "gt10",
+      "task": "extension",
+      "project": "AvionicsPFD-A",
+      "systemName": "AvionicsPFD",
+      "initialModel": "已有主飞行显示",
+      "extension": "告警抑制与模式切换",
+      "seedInformal": "# Functions\n\n## 姿态显示\n\n显示俯仰滚转。\n\n## 空速高度\n\n显示空速与高度。\n\n# Data Resources\n\n## 飞行参数\n\n俯仰、滚转、空速、高度。\n\n# Constraints\n\n## 显示刷新\n\n主飞行显示持续刷新输入参数。\n",
+      "seedHybrid": "module SYSTEM_AvionicsPFD;\ntype Param = nat;\nvar pitch: Param; roll: Param; airspeed: Param; alt: Param;\nprocess ShowAttitude (p: Param, r: Param) ok: nat\n    ext wr pitch: Param wr roll: Param\n    FSF :\n    others && ok = 1\nend_process\nprocess ShowAirData (s: Param, a: Param) ok: nat\n    ext wr airspeed: Param wr alt: Param\n    FSF :\n    others && ok = 1\nend_process\nend_module\n",
+      "authorizedFacts": [
+        { "id": "pfd", "keywords": ["飞行显示", "姿态", "空速"], "text": "已有主飞行显示（姿态、空速、高度）。" },
+        { "id": "inh", "keywords": ["抑制", "模式"], "text": "告警抑制在指定模式生效；模式切换不丢失当前参数。" }
+      ]
+    },
+    {
+      "id": "P21",
+      "domain": "电商履约",
+      "yearsSpecWork": "2to5",
+      "task": "greenfield",
+      "project": "Project-FulfillX",
+      "systemName": "FulfillX",
+      "initialModel": "订单/库存/发货",
+      "extension": "拆单合单与缺货",
+      "authorizedFacts": [
+        { "id": "ful", "keywords": ["订单", "库存", "发货"], "text": "订单、库存扣减、发货。" },
+        { "id": "split", "keywords": ["拆单", "合单", "缺货"], "text": "缺货可拆单；合单仅限同一收货地址。" }
+      ]
+    },
+    {
+      "id": "P22",
+      "domain": "区块链结算",
+      "yearsSpecWork": "5to10",
+      "task": "extension",
+      "project": "LedgerNet-Clear",
+      "systemName": "LedgerNet",
+      "initialModel": "已有转账记账",
+      "extension": "多方对账与争议窗口",
+      "seedInformal": "# Functions\n\n## 转账\n\n在账本上移动余额。\n\n## 记账\n\n追加不可改记录。\n\n# Data Resources\n\n## 账户余额\n\n账户、余额。\n\n# Constraints\n\n## 余额非负\n\n转账后余额不得为负。\n",
+      "seedHybrid": "module SYSTEM_LedgerNet;\ntype Acct = nat; Amt = nat;\nvar bal: map Acct to Amt;\nprocess Transfer (src: Acct, dst: Acct, amt: Amt) ok: nat\n    ext wr bal: map Acct to Amt\n    FSF :\n    amt > 0 && ok = 1 ||\n    others && ok = 0\nend_process\nend_module\n",
+      "authorizedFacts": [
+        { "id": "led", "keywords": ["转账", "记账"], "text": "已有转账记账，余额非负。" },
+        { "id": "disp", "keywords": ["对账", "争议"], "text": "多方对账输出差异；争议窗口内可挂起结算。" }
+      ]
+    },
+    {
+      "id": "P23",
+      "domain": "操作系统调度",
+      "yearsSpecWork": "lt2",
+      "task": "greenfield",
+      "project": "Project-TinySched",
+      "systemName": "TinySched",
+      "initialModel": "进程/队列/时间片",
+      "extension": "优先级继承与亲和性",
+      "authorizedFacts": [
+        { "id": "sched", "keywords": ["进程", "队列", "时间片"], "text": "进程、就绪队列、时间片轮转。" },
+        { "id": "prio", "keywords": ["优先级", "亲和"], "text": "优先级继承避免优先级反转；亲和性限制可运行 CPU 集合。" }
+      ]
+    }
+  ]
+}

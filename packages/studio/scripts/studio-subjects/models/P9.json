@@ -1,0 +1,40 @@
+{
+  "id": "P9",
+  "version": 1,
+  "interpreter": "studio-subject-policy-v1",
+  "source": "subject-table",
+  "derivedFrom": {
+    "yearsSpecWork": "5to10",
+    "task": "greenfield",
+    "domain": "医院HIS/挂号"
+  },
+  "acceptPropensity": 0.796,
+  "riskAversion": 0.383,
+  "penalties": {
+    "perOp": 0.035,
+    "removeOp": 0.12,
+    "sourceEdit": 0.1,
+    "refineStep": 0.06,
+    "largePatchOps": 6,
+    "largePatch": 0.16
+  },
+  "clarification": "authorized-facts",
+  "proposalThink": {
+    "distribution": "lognormal",
+    "medianSeconds": 6.8,
+    "sigma": 0.34,
+    "secondsPerKChar": 1.5,
+    "minSeconds": 3,
+    "maxSeconds": 55
+  },
+  "clarificationThink": {
+    "distribution": "lognormal",
+    "medianSeconds": 4.65,
+    "sigma": 0.31,
+    "secondsPerKChar": 0.3,
+    "minSeconds": 2,
+    "maxSeconds": 24
+  },
+  "seed": 402645378,
+  "notes": "Derived from yearsSpecWork and task. The interpreter reads these fields and does not special-case the subject id."
+}

@@ -145,7 +145,6 @@ export function applyHybridProposal(
 }
 
 export async function runOnce(o: RunOptions): Promise<RunResult> {
-  process.env.AGILE_SOFL_HARNESS_SKIP_POST_WRITE_DIAG = '1'
   const runId = o.runId ?? randomBytes(4).toString('hex')
   const runDir = join(o.outDir, 'runs', runId)
   mkdirSync(join(runDir, '.agile-sofl'), { recursive: true })
@@ -167,14 +166,9 @@ export async function runOnce(o: RunOptions): Promise<RunResult> {
   const maxApprovals = o.maxApprovals ?? 3
 
   const ctx: AgentTurnContext = {
-<<<<<<< HEAD
-    projectName: 'pilot', projectRoot: runDir, moduleId: 'project',
+    projectName: o.projectName ?? 'pilot', projectRoot: runDir, moduleId: 'project',
     informalMarkdown: informal, hybridAsfl: o.initialHybridAsfl ?? '', skillId, permissions: generationAgentPermissions(),
     ...(o.omitAskClarification ? { harnessOmitAskClarification: true } : {})
-=======
-    projectName: o.projectName ?? 'pilot', projectRoot: runDir, moduleId: 'project',
-    informalMarkdown: informal, hybridAsfl: o.initialHybridAsfl ?? '', skillId, permissions: generationAgentPermissions()
->>>>>>> a79d781360c04c3ab82330693b5ad7ec48562864
   }
   if (o.initialHybridAsfl !== undefined) writeFileSync(join(runDir, 'hybrid.asfl'), o.initialHybridAsfl)
   const now = new Date().toISOString()

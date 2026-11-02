@@ -1,0 +1,46 @@
+module SYSTEM_FactoryMES;
+type
+    WorkOrderId = nat;
+    Qty = nat;
+    Status = {<open>, <closed>};
+    WorkOrder = composed of
+        id: WorkOrderId
+        plan_qty: Qty
+        good_qty: Qty
+        bad_qty: Qty
+        status: Status
+    end;
+    Report = composed of
+        id: nat
+        order: WorkOrderId
+        good: Qty
+        bad: Qty
+        hours: nat
+    end;
+var
+    orders: map WorkOrderId to WorkOrder;
+    reports: seq of Report;
+    next_id: WorkOrderId;
+inv
+    next_id > 0;
+process CreateOrder (plan_qty: Qty) id: WorkOrderId
+    ext wr orders: map WorkOrderId to WorkOrder
+    wr next_id: WorkOrderId
+    FSF :
+    plan_qty > 0 && id = next_id ||
+    others && id = 0
+end_process
+process ReportWork (order: WorkOrderId, good: Qty, bad: Qty, hours: nat) ok: nat
+    ext wr orders: map WorkOrderId to WorkOrder
+    wr reports: seq of Report
+    FSF :
+    order > 0 && ok = 1 ||
+    others && ok = 0
+end_process
+process CloseOrder (order: WorkOrderId) ok: nat
+    ext wr orders: map WorkOrderId to WorkOrder
+    FSF :
+    order > 0 && ok = 1 ||
+    others && ok = 0
+end_process
+end_module

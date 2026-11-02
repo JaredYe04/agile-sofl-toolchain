@@ -1,0 +1,40 @@
+{
+  "id": "P15",
+  "version": 1,
+  "interpreter": "studio-subject-policy-v1",
+  "source": "subject-table",
+  "derivedFrom": {
+    "yearsSpecWork": "gt10",
+    "task": "extension",
+    "domain": "CAD 图纸协同"
+  },
+  "acceptPropensity": 0.649,
+  "riskAversion": 0.693,
+  "penalties": {
+    "perOp": 0.035,
+    "removeOp": 0.12,
+    "sourceEdit": 0.1,
+    "refineStep": 0.06,
+    "largePatchOps": 6,
+    "largePatch": 0.16
+  },
+  "clarification": "authorized-facts",
+  "proposalThink": {
+    "distribution": "lognormal",
+    "medianSeconds": 9.13,
+    "sigma": 0.3,
+    "secondsPerKChar": 1.5,
+    "minSeconds": 3,
+    "maxSeconds": 55
+  },
+  "clarificationThink": {
+    "distribution": "lognormal",
+    "medianSeconds": 5.19,
+    "sigma": 0.27,
+    "secondsPerKChar": 0.3,
+    "minSeconds": 2,
+    "maxSeconds": 24
+  },
+  "seed": 2397303805,
+  "notes": "Derived from yearsSpecWork and task. The interpreter reads these fields and does not special-case the subject id."
+}
